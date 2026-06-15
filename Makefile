@@ -26,12 +26,27 @@ samples:
 clean-samples:
 	rm -rf $(SAMPLES_DIR)
 
-.PHONY: build
+.PHONY: build db-migrate db-rollback db-reset db-status
 
-build: build-controller-manager
+build: build-controller-manager build-migrate
 
 build-controller-manager:
 	go build -o bin/controller-manager ./cmd/controller-manager/...
+
+build-migrate:
+	go build -o bin/migrate ./cmd/migrate/...
+
+db-migrate:
+	go run ./cmd/migrate/ --cmd=migrate
+
+db-rollback:
+	go run ./cmd/migrate/ --cmd=rollback
+
+db-reset:
+	go run ./cmd/migrate/ --cmd=reset
+
+db-status:
+	go run ./cmd/migrate/ --cmd=status
 
 $(CONTROLLER_GEN):
 	GOBIN=$(shell go env GOPATH)/bin go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.16.5
