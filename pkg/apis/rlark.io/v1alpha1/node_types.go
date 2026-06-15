@@ -43,6 +43,8 @@ type NodeInfo struct {
 	OperatingSystem string `json:"operatingSystem,omitempty"`
 }
 
+// +genclient
+// +genclient:nonNamespaced
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:path=nodes,scope=Cluster,shortName=ienode

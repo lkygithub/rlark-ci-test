@@ -35,6 +35,7 @@ type JobStatus struct {
 	EndTime    *metav1.Time       `json:"endTime,omitempty"`
 }
 
+// +genclient
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:path=jobs,scope=Namespaced,shortName=iejob
