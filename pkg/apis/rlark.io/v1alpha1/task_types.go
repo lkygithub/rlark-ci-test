@@ -90,6 +90,7 @@ type TaskStatus struct {
 	RetryCount     int32              `json:"retryCount,omitempty"`
 }
 
+// +genclient
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:path=tasks,scope=Namespaced,shortName=task
