@@ -32,7 +32,7 @@ import (
 // JobsGetter has a method to return a JobInterface.
 // A group's client should implement this interface.
 type JobsGetter interface {
-	Jobs(namespace string) JobInterface
+	Jobs() JobInterface
 }
 
 // JobInterface has methods to work with Job resources.
@@ -59,13 +59,13 @@ type jobs struct {
 }
 
 // newJobs returns a Jobs
-func newJobs(c *RlinfV1alpha1Client, namespace string) *jobs {
+func newJobs(c *RlinfV1alpha1Client) *jobs {
 	return &jobs{
 		gentype.NewClientWithListAndApply[*rlarkiov1alpha1.Job, *rlarkiov1alpha1.JobList, *applyconfigurationrlarkiov1alpha1.JobApplyConfiguration](
 			"jobs",
 			c.RESTClient(),
 			scheme.ParameterCodec,
-			namespace,
+			"",
 			func() *rlarkiov1alpha1.Job { return &rlarkiov1alpha1.Job{} },
 			func() *rlarkiov1alpha1.JobList { return &rlarkiov1alpha1.JobList{} },
 		),

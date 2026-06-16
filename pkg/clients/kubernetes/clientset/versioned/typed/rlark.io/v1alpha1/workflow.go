@@ -32,7 +32,7 @@ import (
 // WorkflowsGetter has a method to return a WorkflowInterface.
 // A group's client should implement this interface.
 type WorkflowsGetter interface {
-	Workflows(namespace string) WorkflowInterface
+	Workflows() WorkflowInterface
 }
 
 // WorkflowInterface has methods to work with Workflow resources.
@@ -59,13 +59,13 @@ type workflows struct {
 }
 
 // newWorkflows returns a Workflows
-func newWorkflows(c *RlinfV1alpha1Client, namespace string) *workflows {
+func newWorkflows(c *RlinfV1alpha1Client) *workflows {
 	return &workflows{
 		gentype.NewClientWithListAndApply[*rlarkiov1alpha1.Workflow, *rlarkiov1alpha1.WorkflowList, *applyconfigurationrlarkiov1alpha1.WorkflowApplyConfiguration](
 			"workflows",
 			c.RESTClient(),
 			scheme.ParameterCodec,
-			namespace,
+			"",
 			func() *rlarkiov1alpha1.Workflow { return &rlarkiov1alpha1.Workflow{} },
 			func() *rlarkiov1alpha1.WorkflowList { return &rlarkiov1alpha1.WorkflowList{} },
 		),

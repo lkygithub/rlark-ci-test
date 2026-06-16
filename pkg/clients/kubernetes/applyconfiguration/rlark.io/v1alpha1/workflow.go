@@ -34,10 +34,9 @@ type WorkflowApplyConfiguration struct {
 
 // Workflow constructs a declarative configuration of the Workflow type for use with
 // apply.
-func Workflow(name, namespace string) *WorkflowApplyConfiguration {
+func Workflow(name string) *WorkflowApplyConfiguration {
 	b := &WorkflowApplyConfiguration{}
 	b.WithName(name)
-	b.WithNamespace(namespace)
 	b.WithKind("Workflow")
 	b.WithAPIVersion("rlinf.io/v1alpha1")
 	return b

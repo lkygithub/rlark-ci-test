@@ -207,15 +207,15 @@ func writeResourceSection(out *bytes.Buffer, doc crdDocument, version crdVersion
 func buildOperations(kind, plural, listKind, scope, basePath string, hasStatus bool) []apiOperation {
 	collectionParams := []string{"`pretty` (query, optional)", "`continue` (query, optional)", "`limit` (query, optional)", "`fieldSelector` (query, optional)", "`labelSelector` (query, optional)"}
 	if scope == "Namespaced" {
-		collectionParams = append([]string{"`namespace` (path)"}, collectionParams...)
+		collectionParams = append([]string{"`namespace` (query)"}, collectionParams...)
 	}
 	nameParams := []string{"`name` (path)", "`pretty` (query, optional)"}
 	if scope == "Namespaced" {
-		nameParams = append([]string{"`namespace` (path)"}, nameParams...)
+		nameParams = append([]string{"`namespace` (query)"}, nameParams...)
 	}
 	writeParams := []string{"`pretty` (query, optional)", "`dryRun` (query, optional)", "`fieldManager` (query, optional)", "`fieldValidation` (query, optional)"}
 	if scope == "Namespaced" {
-		writeParams = append([]string{"`namespace` (path)"}, writeParams...)
+		writeParams = append([]string{"`namespace` (query)"}, writeParams...)
 	}
 	statusWriteParams := append([]string{}, nameParams...)
 	statusWriteParams = append(statusWriteParams, "`fieldManager` (query, optional)", "`fieldValidation` (query, optional)")
@@ -272,10 +272,7 @@ func buildOperations(kind, plural, listKind, scope, basePath string, hasStatus b
 }
 
 func resourceBasePath(scope, group, version, plural string) string {
-	if scope == "Cluster" {
-		return fmt.Sprintf("/apis/%s/%s/%s", group, version, plural)
-	}
-	return fmt.Sprintf("/apis/%s/%s/namespaces/{namespace}/%s", group, version, plural)
+	return fmt.Sprintf("/apis/%s/%s/%s", group, version, plural)
 }
 
 func writeSchemaSection(out *bytes.Buffer, node schemaNode, depth int, name string) {

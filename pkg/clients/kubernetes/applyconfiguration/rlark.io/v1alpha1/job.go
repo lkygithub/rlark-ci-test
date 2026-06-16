@@ -34,10 +34,9 @@ type JobApplyConfiguration struct {
 
 // Job constructs a declarative configuration of the Job type for use with
 // apply.
-func Job(name, namespace string) *JobApplyConfiguration {
+func Job(name string) *JobApplyConfiguration {
 	b := &JobApplyConfiguration{}
 	b.WithName(name)
-	b.WithNamespace(namespace)
 	b.WithKind("Job")
 	b.WithAPIVersion("rlinf.io/v1alpha1")
 	return b

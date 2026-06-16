@@ -12,9 +12,9 @@ spec:
     listKind: NodeList
     plural: nodes
     shortNames:
-    - ienode
+    - rlnode
     singular: node
-  scope: Cluster
+  scope: Namespaced
   versions:
   - name: v1alpha1
     schema:

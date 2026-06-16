@@ -30,8 +30,9 @@ type JobLister interface {
 	// List lists all Jobs in the indexer.
 	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*rlarkiov1alpha1.Job, err error)
-	// Jobs returns an object that can list and get Jobs.
-	Jobs(namespace string) JobNamespaceLister
+	// Get retrieves the Job from the index for a given name.
+	// Objects returned here must be treated as read-only.
+	Get(name string) (*rlarkiov1alpha1.Job, error)
 	JobListerExpansion
 }
 
@@ -43,27 +44,4 @@ type jobLister struct {
 // NewJobLister returns a new JobLister.
 func NewJobLister(indexer cache.Indexer) JobLister {
 	return &jobLister{listers.New[*rlarkiov1alpha1.Job](indexer, rlarkiov1alpha1.Resource("job"))}
-}
-
-// Jobs returns an object that can list and get Jobs.
-func (s *jobLister) Jobs(namespace string) JobNamespaceLister {
-	return jobNamespaceLister{listers.NewNamespaced[*rlarkiov1alpha1.Job](s.ResourceIndexer, namespace)}
-}
-
-// JobNamespaceLister helps list and get Jobs.
-// All objects returned here must be treated as read-only.
-type JobNamespaceLister interface {
-	// List lists all Jobs in the indexer for a given namespace.
-	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*rlarkiov1alpha1.Job, err error)
-	// Get retrieves the Job from the indexer for a given namespace and name.
-	// Objects returned here must be treated as read-only.
-	Get(name string) (*rlarkiov1alpha1.Job, error)
-	JobNamespaceListerExpansion
-}
-
-// jobNamespaceLister implements the JobNamespaceLister
-// interface.
-type jobNamespaceLister struct {
-	listers.ResourceIndexer[*rlarkiov1alpha1.Job]
 }

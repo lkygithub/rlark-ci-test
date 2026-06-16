@@ -30,11 +30,11 @@ type fakeWorkflows struct {
 	Fake *FakeRlinfV1alpha1
 }
 
-func newFakeWorkflows(fake *FakeRlinfV1alpha1, namespace string) typedrlarkiov1alpha1.WorkflowInterface {
+func newFakeWorkflows(fake *FakeRlinfV1alpha1) typedrlarkiov1alpha1.WorkflowInterface {
 	return &fakeWorkflows{
 		gentype.NewFakeClientWithListAndApply[*v1alpha1.Workflow, *v1alpha1.WorkflowList, *rlarkiov1alpha1.WorkflowApplyConfiguration](
 			fake.Fake,
-			namespace,
+			"",
 			v1alpha1.SchemeGroupVersion.WithResource("workflows"),
 			v1alpha1.SchemeGroupVersion.WithKind("Workflow"),
 			func() *v1alpha1.Workflow { return &v1alpha1.Workflow{} },

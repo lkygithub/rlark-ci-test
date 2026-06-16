@@ -32,7 +32,7 @@ import (
 // NodesGetter has a method to return a NodeInterface.
 // A group's client should implement this interface.
 type NodesGetter interface {
-	Nodes() NodeInterface
+	Nodes(namespace string) NodeInterface
 }
 
 // NodeInterface has methods to work with Node resources.
@@ -59,13 +59,13 @@ type nodes struct {
 }
 
 // newNodes returns a Nodes
-func newNodes(c *RlinfV1alpha1Client) *nodes {
+func newNodes(c *RlinfV1alpha1Client, namespace string) *nodes {
 	return &nodes{
 		gentype.NewClientWithListAndApply[*rlarkiov1alpha1.Node, *rlarkiov1alpha1.NodeList, *applyconfigurationrlarkiov1alpha1.NodeApplyConfiguration](
 			"nodes",
 			c.RESTClient(),
 			scheme.ParameterCodec,
-			"",
+			namespace,
 			func() *rlarkiov1alpha1.Node { return &rlarkiov1alpha1.Node{} },
 			func() *rlarkiov1alpha1.NodeList { return &rlarkiov1alpha1.NodeList{} },
 		),

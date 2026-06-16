@@ -30,11 +30,11 @@ type fakeNodes struct {
 	Fake *FakeRlinfV1alpha1
 }
 
-func newFakeNodes(fake *FakeRlinfV1alpha1) typedrlarkiov1alpha1.NodeInterface {
+func newFakeNodes(fake *FakeRlinfV1alpha1, namespace string) typedrlarkiov1alpha1.NodeInterface {
 	return &fakeNodes{
 		gentype.NewFakeClientWithListAndApply[*v1alpha1.Node, *v1alpha1.NodeList, *rlarkiov1alpha1.NodeApplyConfiguration](
 			fake.Fake,
-			"",
+			namespace,
 			v1alpha1.SchemeGroupVersion.WithResource("nodes"),
 			v1alpha1.SchemeGroupVersion.WithKind("Node"),
 			func() *v1alpha1.Node { return &v1alpha1.Node{} },

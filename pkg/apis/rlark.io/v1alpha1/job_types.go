@@ -36,9 +36,10 @@ type JobStatus struct {
 }
 
 // +genclient
+// +genclient:nonNamespaced
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-// +kubebuilder:resource:path=jobs,scope=Namespaced,shortName=iejob
+// +kubebuilder:resource:path=jobs,scope=Cluster,shortName=rljob
 // +kubebuilder:printcolumn:name="Phase",type=string,JSONPath=`.status.phase`
 // +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
 type Job struct {

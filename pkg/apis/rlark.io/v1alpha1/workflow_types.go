@@ -36,9 +36,10 @@ type WorkflowStatus struct {
 }
 
 // +genclient
+// +genclient:nonNamespaced
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-// +kubebuilder:resource:path=workflows,scope=Namespaced,shortName=iewf
+// +kubebuilder:resource:path=workflows,scope=Cluster,shortName=rlwf
 // +kubebuilder:printcolumn:name="Phase",type=string,JSONPath=`.status.phase`
 // +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
 type Workflow struct {

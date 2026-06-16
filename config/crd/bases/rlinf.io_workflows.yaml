@@ -12,9 +12,9 @@ spec:
     listKind: WorkflowList
     plural: workflows
     shortNames:
-    - iewf
+    - rlwf
     singular: workflow
-  scope: Namespaced
+  scope: Cluster
   versions:
   - additionalPrinterColumns:
     - jsonPath: .status.phase

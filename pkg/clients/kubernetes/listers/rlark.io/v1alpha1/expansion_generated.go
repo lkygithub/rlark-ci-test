@@ -21,13 +21,13 @@ package v1alpha1
 // JobLister.
 type JobListerExpansion interface{}
 
-// JobNamespaceListerExpansion allows custom methods to be added to
-// JobNamespaceLister.
-type JobNamespaceListerExpansion interface{}
-
 // NodeListerExpansion allows custom methods to be added to
 // NodeLister.
 type NodeListerExpansion interface{}
+
+// NodeNamespaceListerExpansion allows custom methods to be added to
+// NodeNamespaceLister.
+type NodeNamespaceListerExpansion interface{}
 
 // TaskListerExpansion allows custom methods to be added to
 // TaskLister.
@@ -40,7 +40,3 @@ type TaskNamespaceListerExpansion interface{}
 // WorkflowListerExpansion allows custom methods to be added to
 // WorkflowLister.
 type WorkflowListerExpansion interface{}
-
-// WorkflowNamespaceListerExpansion allows custom methods to be added to
-// WorkflowNamespaceLister.
-type WorkflowNamespaceListerExpansion interface{}

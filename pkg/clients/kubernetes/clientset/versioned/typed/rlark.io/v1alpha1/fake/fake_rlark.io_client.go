@@ -27,20 +27,20 @@ type FakeRlinfV1alpha1 struct {
 	*testing.Fake
 }
 
-func (c *FakeRlinfV1alpha1) Jobs(namespace string) v1alpha1.JobInterface {
-	return newFakeJobs(c, namespace)
+func (c *FakeRlinfV1alpha1) Jobs() v1alpha1.JobInterface {
+	return newFakeJobs(c)
 }
 
-func (c *FakeRlinfV1alpha1) Nodes() v1alpha1.NodeInterface {
-	return newFakeNodes(c)
+func (c *FakeRlinfV1alpha1) Nodes(namespace string) v1alpha1.NodeInterface {
+	return newFakeNodes(c, namespace)
 }
 
 func (c *FakeRlinfV1alpha1) Tasks(namespace string) v1alpha1.TaskInterface {
 	return newFakeTasks(c, namespace)
 }
 
-func (c *FakeRlinfV1alpha1) Workflows(namespace string) v1alpha1.WorkflowInterface {
-	return newFakeWorkflows(c, namespace)
+func (c *FakeRlinfV1alpha1) Workflows() v1alpha1.WorkflowInterface {
+	return newFakeWorkflows(c)
 }
 
 // RESTClient returns a RESTClient that is used to communicate
