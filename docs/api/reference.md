@@ -6,17 +6,16 @@ Kubernetes-style API surface generated from the current CRDs.
 
 - Group: `rlinf.io`
 - Version: `v1alpha1`
-- Scope: `Namespaced`
+- Scope: `Cluster`
 - Resource: `jobs`
 
 ### Operations
 
-#### `GET /apis/rlinf.io/v1alpha1/namespaces/{namespace}/jobs`
+#### `GET /apis/rlinf.io/v1alpha1/jobs`
 
 List jobs resources.
 
 Parameters:
-- `namespace` (path)
 - `pretty` (query, optional)
 - `continue` (query, optional)
 - `limit` (query, optional)
@@ -27,12 +26,11 @@ Responses:
 - `200` OK → `JobList`
 - `401` Unauthorized
 
-#### `POST /apis/rlinf.io/v1alpha1/namespaces/{namespace}/jobs`
+#### `POST /apis/rlinf.io/v1alpha1/jobs`
 
 Create a Job resource.
 
 Parameters:
-- `namespace` (path)
 - `pretty` (query, optional)
 - `dryRun` (query, optional)
 - `fieldManager` (query, optional)
@@ -45,12 +43,11 @@ Responses:
 - `202` Accepted → `Job`
 - `401` Unauthorized
 
-#### `DELETE /apis/rlinf.io/v1alpha1/namespaces/{namespace}/jobs`
+#### `DELETE /apis/rlinf.io/v1alpha1/jobs`
 
 Delete a collection of jobs resources.
 
 Parameters:
-- `namespace` (path)
 - `pretty` (query, optional)
 - `continue` (query, optional)
 - `limit` (query, optional)
@@ -61,12 +58,11 @@ Responses:
 - `200` OK → `Status`
 - `401` Unauthorized
 
-#### `GET /apis/rlinf.io/v1alpha1/namespaces/{namespace}/jobs/{name}`
+#### `GET /apis/rlinf.io/v1alpha1/jobs/{name}`
 
 Get a Job resource.
 
 Parameters:
-- `namespace` (path)
 - `name` (path)
 - `pretty` (query, optional)
 
@@ -75,12 +71,11 @@ Responses:
 - `401` Unauthorized
 - `404` Not Found
 
-#### `PUT /apis/rlinf.io/v1alpha1/namespaces/{namespace}/jobs/{name}`
+#### `PUT /apis/rlinf.io/v1alpha1/jobs/{name}`
 
 Replace a Job resource.
 
 Parameters:
-- `namespace` (path)
 - `name` (path)
 - `pretty` (query, optional)
 - `fieldManager` (query, optional)
@@ -93,12 +88,11 @@ Responses:
 - `401` Unauthorized
 - `404` Not Found
 
-#### `PATCH /apis/rlinf.io/v1alpha1/namespaces/{namespace}/jobs/{name}`
+#### `PATCH /apis/rlinf.io/v1alpha1/jobs/{name}`
 
 Patch a Job resource.
 
 Parameters:
-- `namespace` (path)
 - `name` (path)
 - `pretty` (query, optional)
 - `fieldManager` (query, optional)
@@ -112,12 +106,11 @@ Responses:
 - `401` Unauthorized
 - `404` Not Found
 
-#### `DELETE /apis/rlinf.io/v1alpha1/namespaces/{namespace}/jobs/{name}`
+#### `DELETE /apis/rlinf.io/v1alpha1/jobs/{name}`
 
 Delete a Job resource.
 
 Parameters:
-- `namespace` (path)
 - `name` (path)
 - `pretty` (query, optional)
 
@@ -127,12 +120,11 @@ Responses:
 - `401` Unauthorized
 - `404` Not Found
 
-#### `GET /apis/rlinf.io/v1alpha1/namespaces/{namespace}/jobs/{name}/status`
+#### `GET /apis/rlinf.io/v1alpha1/jobs/{name}/status`
 
 Get the status subresource for Job.
 
 Parameters:
-- `namespace` (path)
 - `name` (path)
 - `pretty` (query, optional)
 
@@ -141,12 +133,11 @@ Responses:
 - `401` Unauthorized
 - `404` Not Found
 
-#### `PUT /apis/rlinf.io/v1alpha1/namespaces/{namespace}/jobs/{name}/status`
+#### `PUT /apis/rlinf.io/v1alpha1/jobs/{name}/status`
 
 Replace the status subresource for Job.
 
 Parameters:
-- `namespace` (path)
 - `name` (path)
 - `pretty` (query, optional)
 - `fieldManager` (query, optional)
@@ -160,12 +151,11 @@ Responses:
 - `401` Unauthorized
 - `404` Not Found
 
-#### `PATCH /apis/rlinf.io/v1alpha1/namespaces/{namespace}/jobs/{name}/status`
+#### `PATCH /apis/rlinf.io/v1alpha1/jobs/{name}/status`
 
 Patch the status subresource for Job.
 
 Parameters:
-- `namespace` (path)
 - `name` (path)
 - `pretty` (query, optional)
 - `fieldManager` (query, optional)
@@ -219,7 +209,7 @@ Responses:
 
 - Group: `rlinf.io`
 - Version: `v1alpha1`
-- Scope: `Cluster`
+- Scope: `Namespaced`
 - Resource: `nodes`
 
 ### Operations
@@ -229,6 +219,7 @@ Responses:
 List nodes resources.
 
 Parameters:
+- `namespace` (query)
 - `pretty` (query, optional)
 - `continue` (query, optional)
 - `limit` (query, optional)
@@ -244,6 +235,7 @@ Responses:
 Create a Node resource.
 
 Parameters:
+- `namespace` (query)
 - `pretty` (query, optional)
 - `dryRun` (query, optional)
 - `fieldManager` (query, optional)
@@ -261,6 +253,7 @@ Responses:
 Delete a collection of nodes resources.
 
 Parameters:
+- `namespace` (query)
 - `pretty` (query, optional)
 - `continue` (query, optional)
 - `limit` (query, optional)
@@ -276,6 +269,7 @@ Responses:
 Get a Node resource.
 
 Parameters:
+- `namespace` (query)
 - `name` (path)
 - `pretty` (query, optional)
 
@@ -289,6 +283,7 @@ Responses:
 Replace a Node resource.
 
 Parameters:
+- `namespace` (query)
 - `name` (path)
 - `pretty` (query, optional)
 - `fieldManager` (query, optional)
@@ -306,6 +301,7 @@ Responses:
 Patch a Node resource.
 
 Parameters:
+- `namespace` (query)
 - `name` (path)
 - `pretty` (query, optional)
 - `fieldManager` (query, optional)
@@ -324,6 +320,7 @@ Responses:
 Delete a Node resource.
 
 Parameters:
+- `namespace` (query)
 - `name` (path)
 - `pretty` (query, optional)
 
@@ -338,6 +335,7 @@ Responses:
 Get the status subresource for Node.
 
 Parameters:
+- `namespace` (query)
 - `name` (path)
 - `pretty` (query, optional)
 
@@ -351,6 +349,7 @@ Responses:
 Replace the status subresource for Node.
 
 Parameters:
+- `namespace` (query)
 - `name` (path)
 - `pretty` (query, optional)
 - `fieldManager` (query, optional)
@@ -369,6 +368,7 @@ Responses:
 Patch the status subresource for Node.
 
 Parameters:
+- `namespace` (query)
 - `name` (path)
 - `pretty` (query, optional)
 - `fieldManager` (query, optional)
@@ -416,12 +416,12 @@ Responses:
 
 ### Operations
 
-#### `GET /apis/rlinf.io/v1alpha1/namespaces/{namespace}/tasks`
+#### `GET /apis/rlinf.io/v1alpha1/tasks`
 
 List tasks resources.
 
 Parameters:
-- `namespace` (path)
+- `namespace` (query)
 - `pretty` (query, optional)
 - `continue` (query, optional)
 - `limit` (query, optional)
@@ -432,12 +432,12 @@ Responses:
 - `200` OK → `TaskList`
 - `401` Unauthorized
 
-#### `POST /apis/rlinf.io/v1alpha1/namespaces/{namespace}/tasks`
+#### `POST /apis/rlinf.io/v1alpha1/tasks`
 
 Create a Task resource.
 
 Parameters:
-- `namespace` (path)
+- `namespace` (query)
 - `pretty` (query, optional)
 - `dryRun` (query, optional)
 - `fieldManager` (query, optional)
@@ -450,12 +450,12 @@ Responses:
 - `202` Accepted → `Task`
 - `401` Unauthorized
 
-#### `DELETE /apis/rlinf.io/v1alpha1/namespaces/{namespace}/tasks`
+#### `DELETE /apis/rlinf.io/v1alpha1/tasks`
 
 Delete a collection of tasks resources.
 
 Parameters:
-- `namespace` (path)
+- `namespace` (query)
 - `pretty` (query, optional)
 - `continue` (query, optional)
 - `limit` (query, optional)
@@ -466,12 +466,12 @@ Responses:
 - `200` OK → `Status`
 - `401` Unauthorized
 
-#### `GET /apis/rlinf.io/v1alpha1/namespaces/{namespace}/tasks/{name}`
+#### `GET /apis/rlinf.io/v1alpha1/tasks/{name}`
 
 Get a Task resource.
 
 Parameters:
-- `namespace` (path)
+- `namespace` (query)
 - `name` (path)
 - `pretty` (query, optional)
 
@@ -480,12 +480,12 @@ Responses:
 - `401` Unauthorized
 - `404` Not Found
 
-#### `PUT /apis/rlinf.io/v1alpha1/namespaces/{namespace}/tasks/{name}`
+#### `PUT /apis/rlinf.io/v1alpha1/tasks/{name}`
 
 Replace a Task resource.
 
 Parameters:
-- `namespace` (path)
+- `namespace` (query)
 - `name` (path)
 - `pretty` (query, optional)
 - `fieldManager` (query, optional)
@@ -498,12 +498,12 @@ Responses:
 - `401` Unauthorized
 - `404` Not Found
 
-#### `PATCH /apis/rlinf.io/v1alpha1/namespaces/{namespace}/tasks/{name}`
+#### `PATCH /apis/rlinf.io/v1alpha1/tasks/{name}`
 
 Patch a Task resource.
 
 Parameters:
-- `namespace` (path)
+- `namespace` (query)
 - `name` (path)
 - `pretty` (query, optional)
 - `fieldManager` (query, optional)
@@ -517,12 +517,12 @@ Responses:
 - `401` Unauthorized
 - `404` Not Found
 
-#### `DELETE /apis/rlinf.io/v1alpha1/namespaces/{namespace}/tasks/{name}`
+#### `DELETE /apis/rlinf.io/v1alpha1/tasks/{name}`
 
 Delete a Task resource.
 
 Parameters:
-- `namespace` (path)
+- `namespace` (query)
 - `name` (path)
 - `pretty` (query, optional)
 
@@ -532,12 +532,12 @@ Responses:
 - `401` Unauthorized
 - `404` Not Found
 
-#### `GET /apis/rlinf.io/v1alpha1/namespaces/{namespace}/tasks/{name}/status`
+#### `GET /apis/rlinf.io/v1alpha1/tasks/{name}/status`
 
 Get the status subresource for Task.
 
 Parameters:
-- `namespace` (path)
+- `namespace` (query)
 - `name` (path)
 - `pretty` (query, optional)
 
@@ -546,12 +546,12 @@ Responses:
 - `401` Unauthorized
 - `404` Not Found
 
-#### `PUT /apis/rlinf.io/v1alpha1/namespaces/{namespace}/tasks/{name}/status`
+#### `PUT /apis/rlinf.io/v1alpha1/tasks/{name}/status`
 
 Replace the status subresource for Task.
 
 Parameters:
-- `namespace` (path)
+- `namespace` (query)
 - `name` (path)
 - `pretty` (query, optional)
 - `fieldManager` (query, optional)
@@ -565,12 +565,12 @@ Responses:
 - `401` Unauthorized
 - `404` Not Found
 
-#### `PATCH /apis/rlinf.io/v1alpha1/namespaces/{namespace}/tasks/{name}/status`
+#### `PATCH /apis/rlinf.io/v1alpha1/tasks/{name}/status`
 
 Patch the status subresource for Task.
 
 Parameters:
-- `namespace` (path)
+- `namespace` (query)
 - `name` (path)
 - `pretty` (query, optional)
 - `fieldManager` (query, optional)
@@ -628,17 +628,16 @@ Responses:
 
 - Group: `rlinf.io`
 - Version: `v1alpha1`
-- Scope: `Namespaced`
+- Scope: `Cluster`
 - Resource: `workflows`
 
 ### Operations
 
-#### `GET /apis/rlinf.io/v1alpha1/namespaces/{namespace}/workflows`
+#### `GET /apis/rlinf.io/v1alpha1/workflows`
 
 List workflows resources.
 
 Parameters:
-- `namespace` (path)
 - `pretty` (query, optional)
 - `continue` (query, optional)
 - `limit` (query, optional)
@@ -649,12 +648,11 @@ Responses:
 - `200` OK → `WorkflowList`
 - `401` Unauthorized
 
-#### `POST /apis/rlinf.io/v1alpha1/namespaces/{namespace}/workflows`
+#### `POST /apis/rlinf.io/v1alpha1/workflows`
 
 Create a Workflow resource.
 
 Parameters:
-- `namespace` (path)
 - `pretty` (query, optional)
 - `dryRun` (query, optional)
 - `fieldManager` (query, optional)
@@ -667,12 +665,11 @@ Responses:
 - `202` Accepted → `Workflow`
 - `401` Unauthorized
 
-#### `DELETE /apis/rlinf.io/v1alpha1/namespaces/{namespace}/workflows`
+#### `DELETE /apis/rlinf.io/v1alpha1/workflows`
 
 Delete a collection of workflows resources.
 
 Parameters:
-- `namespace` (path)
 - `pretty` (query, optional)
 - `continue` (query, optional)
 - `limit` (query, optional)
@@ -683,12 +680,11 @@ Responses:
 - `200` OK → `Status`
 - `401` Unauthorized
 
-#### `GET /apis/rlinf.io/v1alpha1/namespaces/{namespace}/workflows/{name}`
+#### `GET /apis/rlinf.io/v1alpha1/workflows/{name}`
 
 Get a Workflow resource.
 
 Parameters:
-- `namespace` (path)
 - `name` (path)
 - `pretty` (query, optional)
 
@@ -697,12 +693,11 @@ Responses:
 - `401` Unauthorized
 - `404` Not Found
 
-#### `PUT /apis/rlinf.io/v1alpha1/namespaces/{namespace}/workflows/{name}`
+#### `PUT /apis/rlinf.io/v1alpha1/workflows/{name}`
 
 Replace a Workflow resource.
 
 Parameters:
-- `namespace` (path)
 - `name` (path)
 - `pretty` (query, optional)
 - `fieldManager` (query, optional)
@@ -715,12 +710,11 @@ Responses:
 - `401` Unauthorized
 - `404` Not Found
 
-#### `PATCH /apis/rlinf.io/v1alpha1/namespaces/{namespace}/workflows/{name}`
+#### `PATCH /apis/rlinf.io/v1alpha1/workflows/{name}`
 
 Patch a Workflow resource.
 
 Parameters:
-- `namespace` (path)
 - `name` (path)
 - `pretty` (query, optional)
 - `fieldManager` (query, optional)
@@ -734,12 +728,11 @@ Responses:
 - `401` Unauthorized
 - `404` Not Found
 
-#### `DELETE /apis/rlinf.io/v1alpha1/namespaces/{namespace}/workflows/{name}`
+#### `DELETE /apis/rlinf.io/v1alpha1/workflows/{name}`
 
 Delete a Workflow resource.
 
 Parameters:
-- `namespace` (path)
 - `name` (path)
 - `pretty` (query, optional)
 
@@ -749,12 +742,11 @@ Responses:
 - `401` Unauthorized
 - `404` Not Found
 
-#### `GET /apis/rlinf.io/v1alpha1/namespaces/{namespace}/workflows/{name}/status`
+#### `GET /apis/rlinf.io/v1alpha1/workflows/{name}/status`
 
 Get the status subresource for Workflow.
 
 Parameters:
-- `namespace` (path)
 - `name` (path)
 - `pretty` (query, optional)
 
@@ -763,12 +755,11 @@ Responses:
 - `401` Unauthorized
 - `404` Not Found
 
-#### `PUT /apis/rlinf.io/v1alpha1/namespaces/{namespace}/workflows/{name}/status`
+#### `PUT /apis/rlinf.io/v1alpha1/workflows/{name}/status`
 
 Replace the status subresource for Workflow.
 
 Parameters:
-- `namespace` (path)
 - `name` (path)
 - `pretty` (query, optional)
 - `fieldManager` (query, optional)
@@ -782,12 +773,11 @@ Responses:
 - `401` Unauthorized
 - `404` Not Found
 
-#### `PATCH /apis/rlinf.io/v1alpha1/namespaces/{namespace}/workflows/{name}/status`
+#### `PATCH /apis/rlinf.io/v1alpha1/workflows/{name}/status`
 
 Patch the status subresource for Workflow.
 
 Parameters:
-- `namespace` (path)
 - `name` (path)
 - `pretty` (query, optional)
 - `fieldManager` (query, optional)

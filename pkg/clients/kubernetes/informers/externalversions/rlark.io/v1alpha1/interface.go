@@ -46,12 +46,12 @@ func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakList
 
 // Jobs returns a JobInformer.
 func (v *version) Jobs() JobInformer {
-	return &jobInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+	return &jobInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }
 
 // Nodes returns a NodeInformer.
 func (v *version) Nodes() NodeInformer {
-	return &nodeInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
+	return &nodeInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // Tasks returns a TaskInformer.
@@ -61,5 +61,5 @@ func (v *version) Tasks() TaskInformer {
 
 // Workflows returns a WorkflowInformer.
 func (v *version) Workflows() WorkflowInformer {
-	return &workflowInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+	return &workflowInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }

@@ -30,11 +30,11 @@ type fakeJobs struct {
 	Fake *FakeRlinfV1alpha1
 }
 
-func newFakeJobs(fake *FakeRlinfV1alpha1, namespace string) typedrlarkiov1alpha1.JobInterface {
+func newFakeJobs(fake *FakeRlinfV1alpha1) typedrlarkiov1alpha1.JobInterface {
 	return &fakeJobs{
 		gentype.NewFakeClientWithListAndApply[*v1alpha1.Job, *v1alpha1.JobList, *rlarkiov1alpha1.JobApplyConfiguration](
 			fake.Fake,
-			namespace,
+			"",
 			v1alpha1.SchemeGroupVersion.WithResource("jobs"),
 			v1alpha1.SchemeGroupVersion.WithKind("Job"),
 			func() *v1alpha1.Job { return &v1alpha1.Job{} },

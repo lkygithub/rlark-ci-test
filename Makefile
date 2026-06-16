@@ -28,10 +28,13 @@ clean-samples:
 
 .PHONY: build db-migrate db-rollback db-reset db-status
 
-build: build-controller-manager build-migrate
+build: build-controller-manager build-api-gateway build-migrate
 
 build-controller-manager:
 	go build -o bin/controller-manager ./cmd/controller-manager/...
+
+build-api-gateway:
+	go build -o bin/api-gateway ./cmd/api-gateway/...
 
 build-migrate:
 	go build -o bin/migrate ./cmd/migrate/...

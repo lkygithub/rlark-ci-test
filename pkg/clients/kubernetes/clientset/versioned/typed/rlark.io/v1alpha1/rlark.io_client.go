@@ -38,20 +38,20 @@ type RlinfV1alpha1Client struct {
 	restClient rest.Interface
 }
 
-func (c *RlinfV1alpha1Client) Jobs(namespace string) JobInterface {
-	return newJobs(c, namespace)
+func (c *RlinfV1alpha1Client) Jobs() JobInterface {
+	return newJobs(c)
 }
 
-func (c *RlinfV1alpha1Client) Nodes() NodeInterface {
-	return newNodes(c)
+func (c *RlinfV1alpha1Client) Nodes(namespace string) NodeInterface {
+	return newNodes(c, namespace)
 }
 
 func (c *RlinfV1alpha1Client) Tasks(namespace string) TaskInterface {
 	return newTasks(c, namespace)
 }
 
-func (c *RlinfV1alpha1Client) Workflows(namespace string) WorkflowInterface {
-	return newWorkflows(c, namespace)
+func (c *RlinfV1alpha1Client) Workflows() WorkflowInterface {
+	return newWorkflows(c)
 }
 
 // NewForConfig creates a new RlinfV1alpha1Client for the given config.

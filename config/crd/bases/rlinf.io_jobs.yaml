@@ -12,9 +12,9 @@ spec:
     listKind: JobList
     plural: jobs
     shortNames:
-    - iejob
+    - rljob
     singular: job
-  scope: Namespaced
+  scope: Cluster
   versions:
   - additionalPrinterColumns:
     - jsonPath: .status.phase

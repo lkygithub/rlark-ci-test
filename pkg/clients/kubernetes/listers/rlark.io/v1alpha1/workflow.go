@@ -30,8 +30,9 @@ type WorkflowLister interface {
 	// List lists all Workflows in the indexer.
 	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*rlarkiov1alpha1.Workflow, err error)
-	// Workflows returns an object that can list and get Workflows.
-	Workflows(namespace string) WorkflowNamespaceLister
+	// Get retrieves the Workflow from the index for a given name.
+	// Objects returned here must be treated as read-only.
+	Get(name string) (*rlarkiov1alpha1.Workflow, error)
 	WorkflowListerExpansion
 }
 
@@ -43,27 +44,4 @@ type workflowLister struct {
 // NewWorkflowLister returns a new WorkflowLister.
 func NewWorkflowLister(indexer cache.Indexer) WorkflowLister {
 	return &workflowLister{listers.New[*rlarkiov1alpha1.Workflow](indexer, rlarkiov1alpha1.Resource("workflow"))}
-}
-
-// Workflows returns an object that can list and get Workflows.
-func (s *workflowLister) Workflows(namespace string) WorkflowNamespaceLister {
-	return workflowNamespaceLister{listers.NewNamespaced[*rlarkiov1alpha1.Workflow](s.ResourceIndexer, namespace)}
-}
-
-// WorkflowNamespaceLister helps list and get Workflows.
-// All objects returned here must be treated as read-only.
-type WorkflowNamespaceLister interface {
-	// List lists all Workflows in the indexer for a given namespace.
-	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*rlarkiov1alpha1.Workflow, err error)
-	// Get retrieves the Workflow from the indexer for a given namespace and name.
-	// Objects returned here must be treated as read-only.
-	Get(name string) (*rlarkiov1alpha1.Workflow, error)
-	WorkflowNamespaceListerExpansion
-}
-
-// workflowNamespaceLister implements the WorkflowNamespaceLister
-// interface.
-type workflowNamespaceLister struct {
-	listers.ResourceIndexer[*rlarkiov1alpha1.Workflow]
 }
