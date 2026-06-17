@@ -3,10 +3,11 @@ package persistencer
 import (
 	"context"
 
-	"github.com/rlinf/rlark/pkg/clients/db"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/rest"
+
+	"github.com/rlinf/rlark/pkg/clients/db"
 )
 
 const (

@@ -3,9 +3,10 @@ package persistencer
 import (
 	"fmt"
 
-	"github.com/rlinf/rlark/pkg/clients/db"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+
+	"github.com/rlinf/rlark/pkg/clients/db"
 )
 
 // GenericSyncHandlerImpl provides a generic implementation of GenericSyncHandler.
