@@ -2,24 +2,82 @@ package db
 
 import (
 	"time"
+
+	"github.com/uptrace/bun"
 )
 
-// ----- Task History -----
+// ----- Base Resource Model -----
 
-// TaskHistory represents a row in the task_history table.
-type TaskHistory struct {
-	ID            int64      `bun:",pk,autoincrement" json:"id"`
-	TaskUID       string     `bun:"task_uid,type:text,notnull" json:"taskUid"`
-	TaskName      string     `bun:"task_name,type:text,notnull" json:"taskName"`
-	TaskNamespace string     `bun:"task_namespace,type:text,notnull" json:"taskNamespace"`
-	AgentType     string     `bun:"agent_type,type:text,notnull" json:"agentType"`
-	Phase         string     `bun:"phase,type:text,notnull,default:'Pending'" json:"phase"`
-	NodeName      string     `bun:"node_name,type:text,notnull,default:''" json:"nodeName"`
-	Message       string     `bun:"message,type:text,notnull,default:''" json:"message"`
-	RetryCount    int32      `bun:"retry_count,notnull,default:0" json:"retryCount"`
-	StartedAt     *time.Time `bun:"started_at,type:timestamptz" json:"startedAt,omitempty"`
-	CompletedAt   *time.Time `bun:"completed_at,type:timestamptz" json:"completedAt,omitempty"`
-	CreatedAt     time.Time  `bun:"created_at,type:timestamptz,notnull,default:now()" json:"createdAt"`
-	UpdatedAt     time.Time  `bun:"updated_at,type:timestamptz,notnull,default:now()" json:"updatedAt"`
-	RawData       any        `bun:"raw_data,type:jsonb" json:"rawData,omitempty"`
+// BaseResourceModel contains the common fields for all resource tables.
+// Each resource type embeds this and overrides TableName().
+type BaseResourceModel struct {
+	// Primary key
+	ID string `bun:"id,pk,notnull"`
+
+	// Kubernetes metadata
+	Namespace string `bun:"namespace"`
+	Name      string `bun:"name,notnull"`
+	UID       string `bun:"uid,notnull,unique"`
+
+	// Timestamps
+	CreatedAt time.Time  `bun:"created_at,notnull"`
+	DeletedAt *time.Time `bun:"deleted_at,soft_delete"`
+
+	// Raw resource data (spec + status + metadata) as JSON
+	Raw map[string]interface{} `bun:"raw,type:jsonb,notnull"`
+}
+
+// IsDeleted returns true if the resource has been soft-deleted.
+func (r *BaseResourceModel) IsDeleted() bool {
+	return r.DeletedAt != nil
+}
+
+// ----- Resource-specific Models -----
+
+// JobModel is the database model for Job resources.
+type JobModel struct {
+	bun.BaseModel `bun:"table:jobs,alias:j"`
+
+	BaseResourceModel
+}
+
+// TableName returns the table name for JobModel.
+func (JobModel) TableName() string {
+	return "jobs"
+}
+
+// NodeModel is the database model for Node resources.
+type NodeModel struct {
+	bun.BaseModel `bun:"table:nodes,alias:n"`
+
+	BaseResourceModel
+}
+
+// TableName returns the table name for NodeModel.
+func (NodeModel) TableName() string {
+	return "nodes"
+}
+
+// TaskModel is the database model for Task resources.
+type TaskModel struct {
+	bun.BaseModel `bun:"table:tasks,alias:t"`
+
+	BaseResourceModel
+}
+
+// TableName returns the table name for TaskModel.
+func (TaskModel) TableName() string {
+	return "tasks"
+}
+
+// WorkflowModel is the database model for Workflow resources.
+type WorkflowModel struct {
+	bun.BaseModel `bun:"table:workflows,alias:w"`
+
+	BaseResourceModel
+}
+
+// TableName returns the table name for WorkflowModel.
+func (WorkflowModel) TableName() string {
+	return "workflows"
 }
