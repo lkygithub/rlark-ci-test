@@ -42,19 +42,5 @@ build-migrate:
 build-persistencer:
 	go build -o bin/persistencer ./cmd/persistencer/...
 
-.PHONY: db-migrate db-rollback db-reset db-status
-
-db-migrate:
-	go run ./cmd/migrate/ --cmd=migrate
-
-db-rollback:
-	go run ./cmd/migrate/ --cmd=rollback
-
-db-reset:
-	go run ./cmd/migrate/ --cmd=reset
-
-db-status:
-	go run ./cmd/migrate/ --cmd=status
-
 $(CONTROLLER_GEN):
 	GOBIN=$(shell go env GOPATH)/bin go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.16.5

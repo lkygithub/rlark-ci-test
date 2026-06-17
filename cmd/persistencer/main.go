@@ -7,11 +7,12 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/rlinf/rlark/pkg/clients/db"
-	"github.com/rlinf/rlark/pkg/controllers/persistencer"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/klog/v2"
+
+	"github.com/rlinf/rlark/pkg/clients/db"
+	"github.com/rlinf/rlark/pkg/controllers/persistencer"
 )
 
 func main() {

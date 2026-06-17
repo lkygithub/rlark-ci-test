@@ -6,8 +6,6 @@ import (
 	"sync"
 	"time"
 
-	rlarkv1alpha1 "github.com/rlinf/rlark/pkg/apis/rlark.io/v1alpha1"
-	"github.com/rlinf/rlark/pkg/clients/db"
 	"github.com/uptrace/bun"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -19,6 +17,9 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog/v2"
+
+	rlarkv1alpha1 "github.com/rlinf/rlark/pkg/apis/rlark.io/v1alpha1"
+	"github.com/rlinf/rlark/pkg/clients/db"
 )
 
 // HandlerWrapper wraps a generic handler to provide a common interface for the controller.

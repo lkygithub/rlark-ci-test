@@ -1,8 +1,11 @@
 package db
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
+
+	"go.yaml.in/yaml/v2"
 )
 
 // Config holds PostgreSQL connection configuration.
@@ -50,4 +53,14 @@ func (c Config) DSNWithSSL(sslmode string) string {
 		"postgres://%s:%s@%s:%d/%s?sslmode=%s",
 		c.User, c.Password, c.Host, c.Port, c.Database, sslmode,
 	)
+}
+
+func UnmarshalConfig(data []byte, cfg *Config) error {
+	if err := yaml.Unmarshal(data, cfg); err == nil {
+		return nil
+	}
+	if err := json.Unmarshal(data, cfg); err == nil {
+		return nil
+	}
+	return fmt.Errorf("failed to unmarshal config as YAML or JSON")
 }
