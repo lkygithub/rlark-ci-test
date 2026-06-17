@@ -26,9 +26,9 @@ samples:
 clean-samples:
 	rm -rf $(SAMPLES_DIR)
 
-.PHONY: build db-migrate db-rollback db-reset db-status
+.PHONY: build build-controller-manager build-migrate build-persistencer
 
-build: build-controller-manager build-api-gateway build-migrate
+build: build-controller-manager build-api-gateway build-migrate build-persistencer
 
 build-controller-manager:
 	go build -o bin/controller-manager ./cmd/controller-manager/...
@@ -38,6 +38,11 @@ build-api-gateway:
 
 build-migrate:
 	go build -o bin/migrate ./cmd/migrate/...
+
+build-persistencer:
+	go build -o bin/persistencer ./cmd/persistencer/...
+
+.PHONY: db-migrate db-rollback db-reset db-status
 
 db-migrate:
 	go run ./cmd/migrate/ --cmd=migrate
