@@ -1,12 +1,17 @@
 package db
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/uptrace/bun"
 )
 
-// ----- Base Resource Model -----
+// ResourceModel is the interface that all resource models must implement.
+type ResourceModel interface {
+	// GetBase returns the underlying BaseResourceModel.
+	GetBase() *BaseResourceModel
+}
 
 // BaseResourceModel contains the common fields for all resource tables.
 // Each resource type embeds this and overrides TableName().
@@ -21,15 +26,14 @@ type BaseResourceModel struct {
 
 	// Timestamps
 	CreatedAt time.Time  `bun:"created_at,notnull"`
-	DeletedAt *time.Time `bun:"deleted_at,soft_delete"`
+	DeletedAt *time.Time `bun:"deleted_at"`
 
 	// Raw resource data (spec + status + metadata) as JSON
-	Raw map[string]interface{} `bun:"raw,type:jsonb,notnull"`
+	Raw json.RawMessage `bun:"raw,type:jsonb,notnull"`
 }
 
-// IsDeleted returns true if the resource has been soft-deleted.
-func (r *BaseResourceModel) IsDeleted() bool {
-	return r.DeletedAt != nil
+func (b *BaseResourceModel) GetBase() *BaseResourceModel {
+	return b
 }
 
 // ----- Resource-specific Models -----
@@ -41,9 +45,11 @@ type JobModel struct {
 	BaseResourceModel
 }
 
-// TableName returns the table name for JobModel.
-func (JobModel) TableName() string {
-	return "jobs"
+// LatestJobModel is the database model for the latest Job resources.
+type LatestJobModel struct {
+	bun.BaseModel `bun:"table:latest_jobs,alias:lj"`
+
+	BaseResourceModel
 }
 
 // NodeModel is the database model for Node resources.
@@ -53,9 +59,11 @@ type NodeModel struct {
 	BaseResourceModel
 }
 
-// TableName returns the table name for NodeModel.
-func (NodeModel) TableName() string {
-	return "nodes"
+// LatestNodeModel is the database model for the latest Node resources.
+type LatestNodeModel struct {
+	bun.BaseModel `bun:"table:latest_nodes,alias:ln"`
+
+	BaseResourceModel
 }
 
 // TaskModel is the database model for Task resources.
@@ -65,9 +73,11 @@ type TaskModel struct {
 	BaseResourceModel
 }
 
-// TableName returns the table name for TaskModel.
-func (TaskModel) TableName() string {
-	return "tasks"
+// LatestTaskModel is the database model for the latest Task resources.
+type LatestTaskModel struct {
+	bun.BaseModel `bun:"table:latest_tasks,alias:lt"`
+
+	BaseResourceModel
 }
 
 // WorkflowModel is the database model for Workflow resources.
@@ -77,7 +87,9 @@ type WorkflowModel struct {
 	BaseResourceModel
 }
 
-// TableName returns the table name for WorkflowModel.
-func (WorkflowModel) TableName() string {
-	return "workflows"
+// LatestWorkflowModel is the database model for the latest Workflow resources.
+type LatestWorkflowModel struct {
+	bun.BaseModel `bun:"table:latest_workflows,alias:lw"`
+
+	BaseResourceModel
 }

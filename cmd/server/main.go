@@ -11,7 +11,7 @@ import (
 func main() {
 	config := server.DefaultConfig()
 	cmd := &cobra.Command{
-		Use:   "server",
+		Use:   "rlark-server",
 		Short: "Start the server application",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			srv := server.NewServer(&config)

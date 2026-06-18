@@ -8,8 +8,6 @@ import (
 
 	"golang.org/x/sync/errgroup"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/leaderelection"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 
@@ -124,20 +122,10 @@ func (s *Server) init(ctx context.Context) error {
 }
 
 func (s *Server) initKubeClient(ctx context.Context) error {
-	var restConfig *rest.Config
-	var err error
-	if s.config.KubeClientConfig.InCluster {
-		restConfig, err = rest.InClusterConfig()
-	} else {
-		restConfig, err = clientcmd.BuildConfigFromFlags(s.config.KubeClientConfig.Master, s.config.KubeClientConfig.KubeconfigPath)
-	}
+	restConfig, err := s.config.KubeClientConfig.BuildRestConfig()
 	if err != nil {
 		return fmt.Errorf("build Kubernetes client config: %w", err)
 	}
-	restConfig.QPS = s.config.KubeClientConfig.QPS
-	restConfig.Burst = s.config.KubeClientConfig.Burst
-	restConfig.Timeout = s.config.KubeClientConfig.Timeout
-
 	s.kubeClient, err = kubernetes.NewForConfig(restConfig)
 	if err != nil {
 		return fmt.Errorf("create Kubernetes client: %w", err)
