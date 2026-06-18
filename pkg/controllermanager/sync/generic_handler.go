@@ -1,0 +1,82 @@
+package sync
+
+import (
+	"encoding/json"
+	"fmt"
+
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/rlinf/rlark/pkg/clients/db"
+)
+
+// Handler defines the interface for syncing resources to the database.
+type Handler interface {
+	GetTableName() string
+	GetResourceType() string
+	ShouldSyncObject(obj client.Object) bool
+	ToPersistedModelObject(obj client.Object) (db.ResourceModel, error)
+	ToPersistedLastestModelObject(obj client.Object) (db.ResourceModel, error)
+}
+
+type genericSyncHandler struct {
+	tableName           string
+	resourceType        string
+	wrapBaseModel       func(base db.BaseResourceModel) db.ResourceModel
+	wrapLatestBaseModel func(base db.BaseResourceModel) db.ResourceModel
+}
+
+var _ Handler = (*genericSyncHandler)(nil)
+
+func (h *genericSyncHandler) GetTableName() string {
+	return h.tableName
+}
+
+func (h *genericSyncHandler) GetResourceType() string {
+	return h.resourceType
+}
+
+func (h *genericSyncHandler) ShouldSyncObject(obj client.Object) bool {
+	return CheckSync(obj)
+}
+
+func (h *genericSyncHandler) ToPersistedModelObject(obj client.Object) (db.ResourceModel, error) {
+	rawData, err := json.Marshal(obj)
+	if err != nil {
+		return nil, fmt.Errorf("marshal object: %w", err)
+	}
+
+	m := db.BaseResourceModel{
+		ID:        obj.GetNamespace() + "/" + obj.GetName() + "/" + string(obj.GetUID()),
+		Namespace: obj.GetNamespace(),
+		Name:      obj.GetName(),
+		UID:       string(obj.GetUID()),
+		CreatedAt: obj.GetCreationTimestamp().Time,
+		Raw:       rawData,
+	}
+	if obj.GetDeletionTimestamp() != nil {
+		deletedAt := obj.GetDeletionTimestamp().Time
+		m.DeletedAt = &deletedAt
+	}
+	return h.wrapBaseModel(m), nil
+}
+
+func (h *genericSyncHandler) ToPersistedLastestModelObject(obj client.Object) (db.ResourceModel, error) {
+	rawData, err := json.Marshal(obj)
+	if err != nil {
+		return nil, fmt.Errorf("marshal object: %w", err)
+	}
+
+	m := db.BaseResourceModel{
+		ID:        obj.GetNamespace() + "/" + obj.GetName(),
+		Namespace: obj.GetNamespace(),
+		Name:      obj.GetName(),
+		UID:       string(obj.GetUID()),
+		CreatedAt: obj.GetCreationTimestamp().Time,
+		Raw:       rawData,
+	}
+	if obj.GetDeletionTimestamp() != nil {
+		deletedAt := obj.GetDeletionTimestamp().Time
+		m.DeletedAt = &deletedAt
+	}
+	return h.wrapLatestBaseModel(m), nil
+}

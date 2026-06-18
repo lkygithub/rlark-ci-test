@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"github.com/spf13/pflag"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 type KubernetesClientConfig struct {
@@ -28,6 +30,34 @@ type KubernetesClientConfig struct {
 
 	// Timeout is the timeout for Kubernetes client requests (optional).
 	Timeout time.Duration
+}
+
+func (c *KubernetesClientConfig) SetupFlags(fs *pflag.FlagSet) {
+	// Kubernetes client flags
+	fs.StringVar(&c.KubeconfigPath, "kubeconfig", c.KubeconfigPath, "Path to kubeconfig file (if not using in-cluster config)")
+	fs.StringVar(&c.Master, "master", c.Master, "The address of the Kubernetes API server (overrides kubeconfig)")
+	fs.BoolVar(&c.InCluster, "in-cluster", c.InCluster, "Use in-cluster Kubernetes configuration")
+	fs.StringVar(&c.Namespace, "kube-namespace", c.Namespace, "Kubernetes namespace to configure the client for")
+	fs.Float32Var(&c.QPS, "kube-qps", c.QPS, "Kubernetes client QPS")
+	fs.IntVar(&c.Burst, "kube-burst", c.Burst, "Kubernetes client burst")
+	fs.DurationVar(&c.Timeout, "kube-timeout", c.Timeout, "Kubernetes client request timeout")
+}
+
+func (c KubernetesClientConfig) BuildRestConfig() (*rest.Config, error) {
+	var restConfig *rest.Config
+	var err error
+	if c.InCluster {
+		restConfig, err = rest.InClusterConfig()
+	} else {
+		restConfig, err = clientcmd.BuildConfigFromFlags(c.Master, c.KubeconfigPath)
+	}
+	if err != nil {
+		return nil, err
+	}
+	restConfig.QPS = c.QPS
+	restConfig.Burst = c.Burst
+	restConfig.Timeout = c.Timeout
+	return restConfig, nil
 }
 
 // Config holds the server configuration parameters.
@@ -73,13 +103,7 @@ func (c *Config) SetupFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&c.PeerServiceName, "peer-service", c.PeerServiceName, "DNS name of the peer service for clustering")
 	fs.StringSliceVar(&c.Peers, "peers", c.Peers, "Comma-separated list of peer server addresses for clustering")
 
-	// Kubernetes client flags
-	fs.StringVar(&c.KubeClientConfig.KubeconfigPath, "kubeconfig", c.KubeClientConfig.KubeconfigPath, "Path to kubeconfig file (if not using in-cluster config)")
-	fs.BoolVar(&c.KubeClientConfig.InCluster, "in-cluster", c.KubeClientConfig.InCluster, "Use in-cluster Kubernetes configuration")
-	fs.StringVar(&c.KubeClientConfig.Namespace, "kube-namespace", c.KubeClientConfig.Namespace, "Kubernetes namespace to configure the client for")
-	fs.Float32Var(&c.KubeClientConfig.QPS, "kube-qps", c.KubeClientConfig.QPS, "Kubernetes client QPS")
-	fs.IntVar(&c.KubeClientConfig.Burst, "kube-burst", c.KubeClientConfig.Burst, "Kubernetes client burst")
-	fs.DurationVar(&c.KubeClientConfig.Timeout, "kube-timeout", c.KubeClientConfig.Timeout, "Kubernetes client request timeout")
+	c.KubeClientConfig.SetupFlags(fs)
 }
 
 func (c Config) Namespace() string {

@@ -1,4 +1,4 @@
-package controllers
+package job
 
 import (
 	"context"
