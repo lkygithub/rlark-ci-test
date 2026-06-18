@@ -1,7 +1,7 @@
 package sync
 
 import (
-	"k8s.io/apimachinery/pkg/runtime"
+	"github.com/uptrace/bun"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -33,11 +33,12 @@ type TaskReconciler struct {
 // +kubebuilder:rbac:groups=rlinf.io,resources=tasks/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=rlinf.io,resources=tasks/finalizers,verbs=update
 
-func NewTaskReconciler(config Config, client client.Client, scheme *runtime.Scheme) *TaskReconciler {
+func NewTaskReconciler(config Config, client client.Client, db *bun.DB) *TaskReconciler {
 	return &TaskReconciler{
 		config: config,
 		genericReconciler: &genericReconciler[*rlarkv1alpha1.Job]{
 			client:  client,
+			db:      db,
 			handler: newTaskSyncHandler(),
 		},
 	}
