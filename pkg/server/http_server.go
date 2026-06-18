@@ -13,17 +13,10 @@ import (
 )
 
 func (s *Server) registerHTTPHandlers(r *gin.Engine) {
-	api := r.Group("/api", func(ctx *gin.Context) {
-		if len(ctx.Request.TLS.PeerCertificates) > 0 {
-			clientCert := ctx.Request.TLS.PeerCertificates[0]
-			if s.checkCertRevoked(string(clientCert.SubjectKeyId)) {
-				ctx.JSON(http.StatusUnauthorized, gin.H{"error": "client certificate revoked"})
-				ctx.Abort()
-				return
-			}
-		}
-	})
+	api := r.Group("/api", s.handleCertCheck)
 	api.GET("connect", s.handleProxyConnect)
+	api.POST("sign", s.handleSignCertificate)
+	api.Any("proxy/:target/*path", s.handleProxy)
 }
 
 func (s *Server) runHTTPServer(ctx context.Context) error {

@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/http/httputil"
+	"net/url"
 
 	"github.com/gin-gonic/gin"
 	"github.com/rancher/remotedialer"
@@ -12,8 +14,14 @@ import (
 	"github.com/rlinf/rlark/pkg/server/reverseproxy"
 )
 
-func (s *Server) GetDial(ctx context.Context, address string, userMeta map[string]string) (remotedialer.Dialer, string, error) {
-	// TODO
+func (s *Server) GetDial(ctx context.Context, dialType, address string, userMeta map[string]string) (remotedialer.Dialer, string, error) {
+	switch dialType {
+	case "default":
+		//
+
+	case "ssh":
+		//
+	}
 	return nil, "", fmt.Errorf("GetDial not implemented")
 }
 
@@ -45,4 +53,35 @@ func (s *Server) handleProxyConnect(ctx *gin.Context) {
 	}
 
 	s.dialerFactory.ServeHTTP(ctx.Writer, ctx.Request)
+}
+
+func (s *Server) handlePeerConnectProxy(ctx *gin.Context) {
+	target := ctx.Param("target")
+	url := &url.URL{
+		Scheme: "https",
+		Host:   fmt.Sprintf("%s:%d", target, s.config.HTTPSPort),
+		Path:   "/api/connect",
+	}
+	proxy := httputil.ReverseProxy{
+		Director: func(req *http.Request) {
+			req.URL = url
+			req.Host = url.Host
+		},
+		Transport: s.defaultPeerTransport,
+	}
+	proxy.ServeHTTP(ctx.Writer, ctx.Request)
+}
+
+func (s *Server) handleProxy(ctx *gin.Context) {
+	target := ctx.Param("target")
+	path := ctx.Param("path")
+
+	ctx.Request.URL.Path = path
+	url := &url.URL{
+		Scheme: "http",
+		Host:   target,
+	}
+	proxy := httputil.NewSingleHostReverseProxy(url)
+	proxy.Transport = s.defaultProxyTransport
+	proxy.ServeHTTP(ctx.Writer, ctx.Request)
 }

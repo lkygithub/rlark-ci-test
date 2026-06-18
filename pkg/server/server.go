@@ -3,6 +3,8 @@ package server
 import (
 	"context"
 	"fmt"
+	"net"
+	"net/http"
 	"os"
 	"time"
 
@@ -27,21 +29,34 @@ type Server struct {
 	rlarkClient versioned.Interface
 	dbClient    *db.DB // may be nil if DBConfigPath is not provided, should be checked before use
 
-	tls cert.Data
-	ca  []cert.Data
+	tlsCA *cert.Data
+	tls   cert.Data
+	ca    []cert.Data
 
-	dialerFactory *reverseproxy.DialerFactory
+	dialerFactory         *reverseproxy.DialerFactory
+	defaultProxyTransport http.RoundTripper
+	defaultPeerTransport  http.RoundTripper
 }
 
 // NewServer creates a new Server instance with the provided configuration.
 func NewServer(config *Config) *Server {
-	return &Server{
+	s := &Server{
 		config: config,
 
 		ca: make([]cert.Data, 0),
 
 		dialerFactory: reverseproxy.NewDialerFactory(),
 	}
+	s.defaultProxyTransport = &http.Transport{
+		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			dial, address, err := s.GetDial(ctx, "default", addr, nil)
+			if err != nil {
+				return nil, fmt.Errorf("get dial for address %s: %w", addr, err)
+			}
+			return dial(ctx, network, address)
+		},
+	}
+	return s
 }
 
 func (s *Server) Run(ctx context.Context) error {
@@ -54,10 +69,16 @@ func (s *Server) Run(ctx context.Context) error {
 		return s.runBroadcaster(ctx)
 	})
 	eg.Go(func() error {
+		return s.runPeerTunnel(ctx)
+	})
+	eg.Go(func() error {
 		return s.runHTTPServer(ctx)
 	})
 	eg.Go(func() error {
 		return s.runSSHServer(ctx)
+	})
+	eg.Go(func() error {
+		return s.runUnsafeHTTPServer(ctx)
 	})
 
 	if err := eg.Wait(); err != nil {
@@ -168,54 +189,26 @@ func (s *Server) initServerData(ctx context.Context) error {
 
 	// 2. 检查 Kubernetes 中保存的各个配置，如果没有则初始化。
 	// TODO
-	if err := s.initTLSConfig(ctx); err != nil {
-		return fmt.Errorf("failed to initialize TLS config: %w", err)
+	if err := s.loadTLSCA(ctx); err != nil {
+		return fmt.Errorf("load TLS CA: %w", err)
+	}
+	if err := s.loadTLSConfig(ctx); err != nil {
+		return fmt.Errorf("load TLS config: %w", err)
 	}
 	if err := s.initCAConfigs(ctx); err != nil {
-		return fmt.Errorf("failed to initialize CA configs: %w", err)
+		return fmt.Errorf("initialize CA configs: %w", err)
+	}
+	if err := s.signAdminCert(ctx); err != nil {
+		return fmt.Errorf("sign admin certificate: %w", err)
+	}
+	if err := s.initPeerTransport(ctx); err != nil {
+		return fmt.Errorf("initialize peer transport: %w", err)
 	}
 
 	// 3. 检查数据库中的表结构和索引，如果不正确则进行迁移。
-	// TODO
-
-	return nil
-}
-
-func (s *Server) runBroadcaster(ctx context.Context) error {
-	// 向 Kubernetes 集群通过 Lease 广播服务器的存在，并且检查其他服务器的信息
-	// 用于构建 Peer-to-Peer 的服务器集群，确保高可用和负载均衡。
-
-	id := fmt.Sprintf("%s-%d", os.Getenv("HOSTNAME"), os.Getpid())
-	ip := os.Getenv("POD_IP")
-	rl, err := resourcelock.New(
-		resourcelock.LeasesResourceLock,
-		s.config.Namespace(),
-		"rlark-server-"+id,
-		s.kubeClient.CoreV1(),
-		s.kubeClient.CoordinationV1(),
-		resourcelock.ResourceLockConfig{
-			Identity: ip,
-		},
-	)
-	if err != nil {
-		return fmt.Errorf("create resource lock: %w", err)
+	if s.dbClient != nil {
+		// TODO: perform database migration if necessary
 	}
 
-	le, err := leaderelection.NewLeaderElector(leaderelection.LeaderElectionConfig{
-		Lock:          rl,
-		LeaseDuration: time.Second * 30,
-		RenewDeadline: time.Second * 10,
-		RetryPeriod:   time.Second * 5,
-		Callbacks: leaderelection.LeaderCallbacks{
-			OnStartedLeading: func(ctx context.Context) {},
-			OnStoppedLeading: func() {},
-			OnNewLeader:      func(identity string) {},
-		},
-	})
-	if err != nil {
-		return fmt.Errorf("create leader elector: %w", err)
-	}
-
-	le.Run(ctx)
 	return nil
 }

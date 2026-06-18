@@ -2,6 +2,7 @@ package server
 
 import (
 	"cmp"
+	"os"
 	"time"
 
 	"github.com/spf13/pflag"
@@ -67,6 +68,9 @@ type Config struct {
 	// SSH Port to listen on.
 	SSHPort int
 
+	// UnsafeHTTPPort is the port to listen on for unsafe HTTP connections.
+	UnsafeHTTPPort int
+
 	// Kubernetes client configuration.
 	KubeClientConfig KubernetesClientConfig
 
@@ -82,12 +86,11 @@ type Config struct {
 // DefaultConfig returns a Config with sensible defaults.
 func DefaultConfig() Config {
 	return Config{
-		HTTPSPort: 8443,
-		SSHPort:   2222,
+		HTTPSPort:      8443,
+		SSHPort:        2222,
+		UnsafeHTTPPort: 8888,
 		KubeClientConfig: KubernetesClientConfig{
-			InCluster: true,
-			QPS:       5.0,
-			Burst:     10,
+			KubeconfigPath: os.Getenv("KUBECONFIG"),
 		},
 		DBConfigPath:    "",
 		PeerServiceName: "",
@@ -99,6 +102,7 @@ func DefaultConfig() Config {
 func (c *Config) SetupFlags(fs *pflag.FlagSet) {
 	fs.IntVar(&c.HTTPSPort, "https-port", c.HTTPSPort, "HTTPS port to listen on")
 	fs.IntVar(&c.SSHPort, "ssh-port", c.SSHPort, "SSH port to listen on")
+	fs.IntVar(&c.UnsafeHTTPPort, "unsafe-http-port", c.UnsafeHTTPPort, "Unsafe HTTP port to listen on")
 	fs.StringVar(&c.DBConfigPath, "db-config", c.DBConfigPath, "Path to database configuration file")
 	fs.StringVar(&c.PeerServiceName, "peer-service", c.PeerServiceName, "DNS name of the peer service for clustering")
 	fs.StringSliceVar(&c.Peers, "peers", c.Peers, "Comma-separated list of peer server addresses for clustering")
