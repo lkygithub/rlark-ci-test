@@ -1,7 +1,7 @@
 package sync
 
 import (
-	"k8s.io/apimachinery/pkg/runtime"
+	"github.com/uptrace/bun"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -33,11 +33,12 @@ type NodeReconciler struct {
 // +kubebuilder:rbac:groups=rlinf.io,resources=nodes/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=rlinf.io,resources=nodes/finalizers,verbs=update
 
-func NewNodeReconciler(config Config, client client.Client, scheme *runtime.Scheme) *NodeReconciler {
+func NewNodeReconciler(config Config, client client.Client, db *bun.DB) *NodeReconciler {
 	return &NodeReconciler{
 		config: config,
 		genericReconciler: &genericReconciler[*rlarkv1alpha1.Node]{
 			client:  client,
+			db:      db,
 			handler: newNodeSyncHandler(),
 		},
 	}

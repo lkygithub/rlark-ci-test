@@ -3,6 +3,8 @@ package sync
 import (
 	"fmt"
 
+	"github.com/spf13/pflag"
+
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
@@ -18,6 +20,10 @@ func DefaultConfig() Config {
 	return Config{
 		Workers: 5,
 	}
+}
+
+func (c *Config) SetupFlags(fs *pflag.FlagSet) {
+	fs.IntVar(&c.Workers, "sync-workers", c.Workers, "Number of concurrent workers for syncing")
 }
 
 // Validate validates the configuration.

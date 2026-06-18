@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/leaderelection"
@@ -24,7 +25,7 @@ type Server struct {
 
 	kubeClient  kubernetes.Interface
 	rlarkClient versioned.Interface
-	dbClient    *db.DB
+	dbClient    *db.DB // may be nil if DBConfigPath is not provided, should be checked before use
 
 	tls cert.Data
 	ca  []cert.Data
@@ -138,6 +139,11 @@ func (s *Server) initKubeClient(ctx context.Context) error {
 }
 
 func (s *Server) initDatabase(ctx context.Context) error {
+	if s.config.DBConfigPath == "" {
+		logrus.Warningf("RLark server is running without persistent storage.")
+		return nil
+	}
+
 	dbConfig := db.DefaultConfig()
 	data, err := os.ReadFile(s.config.DBConfigPath)
 	if err != nil {

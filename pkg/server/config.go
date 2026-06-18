@@ -89,7 +89,7 @@ func DefaultConfig() Config {
 			QPS:       5.0,
 			Burst:     10,
 		},
-		DBConfigPath:    "config/db_config.yaml",
+		DBConfigPath:    "",
 		PeerServiceName: "",
 		Peers:           []string{},
 	}

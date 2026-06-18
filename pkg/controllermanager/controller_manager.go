@@ -2,7 +2,9 @@ package controllermanager
 
 import (
 	"fmt"
+	"os"
 
+	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -12,6 +14,7 @@ import (
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
 	rlarkv1alpha1 "github.com/rlinf/rlark/pkg/apis/rlark.io/v1alpha1"
+	"github.com/rlinf/rlark/pkg/clients/db"
 	"github.com/rlinf/rlark/pkg/controllermanager/job"
 	"github.com/rlinf/rlark/pkg/controllermanager/node"
 	"github.com/rlinf/rlark/pkg/controllermanager/sync"
@@ -65,10 +68,29 @@ func New(config Config) (manager.Manager, error) {
 			Client: mgr.GetClient(),
 			Scheme: scheme,
 		},
-		sync.NewJobReconciler(config.SyncConfig, mgr.GetClient(), scheme),
-		sync.NewTaskReconciler(config.SyncConfig, mgr.GetClient(), scheme),
-		sync.NewWorkflowReconciler(config.SyncConfig, mgr.GetClient(), scheme),
-		sync.NewNodeReconciler(config.SyncConfig, mgr.GetClient(), scheme),
+	}
+
+	if config.DBConfigPath != "" {
+		dbConfig := db.DefaultConfig()
+		data, err := os.ReadFile(config.DBConfigPath)
+		if err != nil {
+			return nil, fmt.Errorf("read database config file: %w", err)
+		}
+		if err := db.UnmarshalConfig(data, &dbConfig); err != nil {
+			return nil, fmt.Errorf("unmarshal database config: %w", err)
+		}
+		db, err := db.Open(dbConfig)
+		if err != nil {
+			return nil, fmt.Errorf("open database: %w", err)
+		}
+		reconcilers = append(reconcilers,
+			sync.NewJobReconciler(config.SyncConfig, mgr.GetClient(), db.DB),
+			sync.NewTaskReconciler(config.SyncConfig, mgr.GetClient(), db.DB),
+			sync.NewWorkflowReconciler(config.SyncConfig, mgr.GetClient(), db.DB),
+			sync.NewNodeReconciler(config.SyncConfig, mgr.GetClient(), db.DB),
+		)
+	} else {
+		logrus.Warningf("RLark controller manager is running without persistent storage.")
 	}
 
 	for _, r := range reconcilers {
