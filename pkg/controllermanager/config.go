@@ -27,7 +27,7 @@ type Config struct {
 func DefaultConfig() Config {
 	return Config{
 		KubeClientConfig: server.KubernetesClientConfig{
-			KubeconfigPath: os.Getenv("KUBE_CONFIG"),
+			KubeconfigPath: os.Getenv("KUBECONFIG"),
 		},
 		DBConfigPath: "",
 

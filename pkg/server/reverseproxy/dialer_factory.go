@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"sync"
 
+	"github.com/google/uuid"
 	"github.com/rancher/remotedialer"
 )
 
@@ -54,6 +55,8 @@ func NewDialerFactory() *DialerFactory {
 		clients: make(map[string]*client),
 	}
 	f.dialerServer = remotedialer.New(f.auth, remotedialer.DefaultErrorWriter)
+	f.dialerServer.PeerID = uuid.NewString()
+	f.dialerServer.PeerToken = uuid.NewString()
 	return f
 }
 
@@ -119,6 +122,22 @@ func (f *DialerFactory) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 func (f *DialerFactory) GetDialer(ctx context.Context, clientKey string) remotedialer.Dialer {
 	return f.dialerServer.Dialer(clientKey)
+}
+
+func (f *DialerFactory) GetPeerID() string {
+	return f.dialerServer.PeerID
+}
+
+func (f *DialerFactory) GetPeerToken() string {
+	return f.dialerServer.PeerToken
+}
+
+func (f *DialerFactory) AddPeer(server, peerID, peerToken string) {
+	f.dialerServer.AddPeer(server, peerID, peerToken)
+}
+
+func (f *DialerFactory) RemovePeer(peerID string) {
+	f.dialerServer.RemovePeer(peerID)
 }
 
 func SetPeerHeaders(req *http.Request, peerID, peerToken string) {

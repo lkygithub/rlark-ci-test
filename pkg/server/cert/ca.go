@@ -89,11 +89,7 @@ func (ca Data) SignX509Certificate(template *x509.Certificate) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	var buf bytes.Buffer
-	if err := pem.Encode(&buf, &pem.Block{Type: "CERTIFICATE", Bytes: certDER}); err != nil {
-		return nil, err
-	}
-	return buf.Bytes(), nil
+	return EncodeCertificateToPEM(certDER)
 }
 
 func (ca Data) SignSSHCertificate(template *gossh.Certificate) ([]byte, error) {
@@ -119,5 +115,5 @@ func (ca Data) SignSSHCertificate(template *gossh.Certificate) ([]byte, error) {
 	if err := cert.SignCert(rand.Reader, caSigner); err != nil {
 		return nil, err
 	}
-	return gossh.MarshalAuthorizedKey(cert), nil
+	return EncodeSSHCertificateToPEM(cert.Marshal())
 }

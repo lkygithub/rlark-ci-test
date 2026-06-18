@@ -156,7 +156,7 @@ func (s *Server) handleSSHChannel(srv *ssh.Server, conn *gossh.ServerConn, newCh
 	}
 
 	address := net.JoinHostPort(payload.Host, fmt.Sprint(payload.Port))
-	dialer, target, err := s.GetDial(ctx, address, userMata)
+	dialer, target, err := s.GetDial(ctx, "ssh", address, userMata)
 	if err != nil {
 		logrus.Errorf("Cannot get dialer for %v: %v", ctx.SessionID(), err)
 		s.rejectSSHChannel(newChan, fmt.Sprintf("Cannot get dialer: %v", err))

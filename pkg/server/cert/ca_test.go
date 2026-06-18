@@ -6,7 +6,6 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
-	"encoding/pem"
 	"math/big"
 	"testing"
 
@@ -38,13 +37,9 @@ func TestSigning(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to sign x509 certificate: %v", err)
 	}
-	x509CertBlock, _ := pem.Decode(x509PEM)
-	if x509CertBlock == nil || x509CertBlock.Type != "CERTIFICATE" {
-		t.Fatalf("failed to decode signed certificate PEM")
-	}
-	x509Cert, err := x509.ParseCertificate(x509CertBlock.Bytes)
+	x509Cert, err := DecodeCertificateFromPEM(x509PEM)
 	if err != nil {
-		t.Fatalf("failed to parse signed certificate: %v", err)
+		t.Fatalf("failed to decode signed certificate: %v", err)
 	}
 	if err := x509Cert.CheckSignatureFrom(ca.Cert); err != nil {
 		t.Fatalf("certificate signature verification failed: %v", err)
@@ -68,20 +63,16 @@ func TestSigning(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to sign SSH certificate: %v", err)
 	}
-	sshCert, _, _, _, err := gossh.ParseAuthorizedKey(sshPEM)
+	sshCert, err := DecodeSSHCertificateFromPEM(sshPEM)
 	if err != nil {
-		t.Fatalf("failed to parse signed SSH certificate: %v", err)
-	}
-	typedSSHCert, ok := sshCert.(*gossh.Certificate)
-	if !ok {
-		t.Fatalf("parsed SSH certificate has wrong type: %T", sshCert)
+		t.Fatalf("failed to decode signed SSH certificate: %v", err)
 	}
 	cc := &gossh.CertChecker{
 		IsUserAuthority: func(auth gossh.PublicKey) bool {
 			return bytes.Equal(auth.Marshal(), sshKey.Marshal())
 		},
 	}
-	if err := cc.CheckCert("test", typedSSHCert); err != nil {
+	if err := cc.CheckCert("test", sshCert); err != nil {
 		t.Fatalf("SSH certificate verification failed: %v", err)
 	}
 }
