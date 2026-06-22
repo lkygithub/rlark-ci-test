@@ -15,6 +15,7 @@ type genericReconciler[T client.Object] struct {
 	client  client.Client
 	db      *bun.DB
 	handler Handler
+	newObj  func() T
 }
 
 func (r *genericReconciler[T]) saveToDatabase(ctx context.Context, m db.ResourceModel) error {
@@ -23,10 +24,10 @@ func (r *genericReconciler[T]) saveToDatabase(ctx context.Context, m db.Resource
 		On("CONFLICT (id) DO UPDATE").
 		Set("namespace = EXCLUDED.namespace").
 		Set("name = EXCLUDED.name").
+		Set("uid = EXCLUDED.uid").
 		Set("raw = EXCLUDED.raw").
 		Set("deleted_at = EXCLUDED.deleted_at").
 		Exec(ctx)
-
 	return err
 }
 
@@ -37,7 +38,7 @@ func (r *genericReconciler[T]) syncResource(ctx context.Context, obj T) error {
 	}
 	if m != nil {
 		if err := r.saveToDatabase(ctx, m); err != nil {
-			return fmt.Errorf("save into database: %w", err)
+			return fmt.Errorf("save history into database: %w", err)
 		}
 	}
 
@@ -67,19 +68,15 @@ func (r *genericReconciler[T]) handleFinalizer(ctx context.Context, obj T) error
 }
 
 func (r *genericReconciler[T]) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	var obj T
+	obj := r.newObj()
 	if err := r.client.Get(ctx, req.NamespacedName, obj); err != nil {
-		// Log error
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 	if err := r.syncResource(ctx, obj); err != nil {
-		// Log error
 		return ctrl.Result{}, err
 	}
 	if obj.GetDeletionTimestamp() != nil {
-		// Handle finalizer logic if needed
 		if err := r.handleFinalizer(ctx, obj); err != nil {
-			// Log error
 			return ctrl.Result{}, err
 		}
 	}
