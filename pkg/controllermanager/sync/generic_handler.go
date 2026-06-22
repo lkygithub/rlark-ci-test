@@ -21,6 +21,7 @@ type Handler interface {
 type genericSyncHandler struct {
 	tableName           string
 	resourceType        string
+	isNamespaced        bool
 	wrapBaseModel       func(base db.BaseResourceModel) db.ResourceModel
 	wrapLatestBaseModel func(base db.BaseResourceModel) db.ResourceModel
 }
@@ -39,6 +40,20 @@ func (h *genericSyncHandler) ShouldSyncObject(obj client.Object) bool {
 	return CheckSync(obj)
 }
 
+func (h *genericSyncHandler) buildHistoryID(obj client.Object) string {
+	if h.isNamespaced {
+		return obj.GetNamespace() + "/" + obj.GetName() + "/" + string(obj.GetUID())
+	}
+	return obj.GetName() + "/" + string(obj.GetUID())
+}
+
+func (h *genericSyncHandler) buildLatestID(obj client.Object) string {
+	if h.isNamespaced {
+		return obj.GetNamespace() + "/" + obj.GetName()
+	}
+	return obj.GetName()
+}
+
 func (h *genericSyncHandler) ToPersistedModelObject(obj client.Object) (db.ResourceModel, error) {
 	rawData, err := json.Marshal(obj)
 	if err != nil {
@@ -46,7 +61,7 @@ func (h *genericSyncHandler) ToPersistedModelObject(obj client.Object) (db.Resou
 	}
 
 	m := db.BaseResourceModel{
-		ID:        obj.GetNamespace() + "/" + obj.GetName() + "/" + string(obj.GetUID()),
+		ID:        h.buildHistoryID(obj),
 		Namespace: obj.GetNamespace(),
 		Name:      obj.GetName(),
 		UID:       string(obj.GetUID()),
@@ -67,7 +82,7 @@ func (h *genericSyncHandler) ToPersistedLastestModelObject(obj client.Object) (d
 	}
 
 	m := db.BaseResourceModel{
-		ID:        obj.GetNamespace() + "/" + obj.GetName(),
+		ID:        h.buildLatestID(obj),
 		Namespace: obj.GetNamespace(),
 		Name:      obj.GetName(),
 		UID:       string(obj.GetUID()),

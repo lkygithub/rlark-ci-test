@@ -14,6 +14,7 @@ func newNodeSyncHandler() Handler {
 	return &genericSyncHandler{
 		tableName:    "nodes",
 		resourceType: "nodes.rlinf.io",
+		isNamespaced: true, // Node is namespace-scoped
 		wrapBaseModel: func(base db.BaseResourceModel) db.ResourceModel {
 			return &db.NodeModel{BaseResourceModel: base}
 		},
@@ -40,6 +41,7 @@ func NewNodeReconciler(config Config, client client.Client, db *bun.DB) *NodeRec
 			client:  client,
 			db:      db,
 			handler: newNodeSyncHandler(),
+			newObj:  func() *rlarkv1alpha1.Node { return &rlarkv1alpha1.Node{} },
 		},
 	}
 }
@@ -49,6 +51,6 @@ func (r *NodeReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&rlarkv1alpha1.Node{}).
 		WithOptions(r.config.ToControllerOptions()).
-		Named("node").
+		Named("node-sync").
 		Complete(r)
 }

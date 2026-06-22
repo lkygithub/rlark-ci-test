@@ -1,6 +1,7 @@
 package controllermanager
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -79,15 +80,20 @@ func New(config Config) (manager.Manager, error) {
 		if err := db.UnmarshalConfig(data, &dbConfig); err != nil {
 			return nil, fmt.Errorf("unmarshal database config: %w", err)
 		}
-		db, err := db.Open(dbConfig)
+		database, err := db.Open(dbConfig)
 		if err != nil {
 			return nil, fmt.Errorf("open database: %w", err)
 		}
+		ctx := context.Background()
+		if err := database.Migrate(ctx); err != nil {
+			return nil, fmt.Errorf("run database migrations: %w", err)
+		}
+		logrus.Infof("database connected and migrated")
 		reconcilers = append(reconcilers,
-			sync.NewJobReconciler(config.SyncConfig, mgr.GetClient(), db.DB),
-			sync.NewTaskReconciler(config.SyncConfig, mgr.GetClient(), db.DB),
-			sync.NewWorkflowReconciler(config.SyncConfig, mgr.GetClient(), db.DB),
-			sync.NewNodeReconciler(config.SyncConfig, mgr.GetClient(), db.DB),
+			sync.NewJobReconciler(config.SyncConfig, mgr.GetClient(), database.DB),
+			sync.NewTaskReconciler(config.SyncConfig, mgr.GetClient(), database.DB),
+			sync.NewWorkflowReconciler(config.SyncConfig, mgr.GetClient(), database.DB),
+			sync.NewNodeReconciler(config.SyncConfig, mgr.GetClient(), database.DB),
 		)
 	} else {
 		logrus.Warningf("RLark controller manager is running without persistent storage.")

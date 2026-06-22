@@ -14,6 +14,7 @@ func newTaskSyncHandler() Handler {
 	return &genericSyncHandler{
 		tableName:    "tasks",
 		resourceType: "tasks.rlinf.io",
+		isNamespaced: true, // Task is namespace-scoped
 		wrapBaseModel: func(base db.BaseResourceModel) db.ResourceModel {
 			return &db.TaskModel{BaseResourceModel: base}
 		},
@@ -26,7 +27,7 @@ func newTaskSyncHandler() Handler {
 // TaskReconciler reconciles Task resources.
 type TaskReconciler struct {
 	config Config
-	*genericReconciler[*rlarkv1alpha1.Job]
+	*genericReconciler[*rlarkv1alpha1.Task]
 }
 
 // +kubebuilder:rbac:groups=rlinf.io,resources=tasks,verbs=get;list;watch;create;update;patch;delete
@@ -36,10 +37,11 @@ type TaskReconciler struct {
 func NewTaskReconciler(config Config, client client.Client, db *bun.DB) *TaskReconciler {
 	return &TaskReconciler{
 		config: config,
-		genericReconciler: &genericReconciler[*rlarkv1alpha1.Job]{
+		genericReconciler: &genericReconciler[*rlarkv1alpha1.Task]{
 			client:  client,
 			db:      db,
 			handler: newTaskSyncHandler(),
+			newObj:  func() *rlarkv1alpha1.Task { return &rlarkv1alpha1.Task{} },
 		},
 	}
 }
@@ -49,6 +51,6 @@ func (r *TaskReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&rlarkv1alpha1.Task{}).
 		WithOptions(r.config.ToControllerOptions()).
-		Named("task").
+		Named("task-sync").
 		Complete(r)
 }

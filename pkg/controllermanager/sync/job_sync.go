@@ -14,6 +14,7 @@ func newJobSyncHandler() Handler {
 	return &genericSyncHandler{
 		tableName:    "jobs",
 		resourceType: "jobs.rlinf.io",
+		isNamespaced: false, // Job is cluster-scoped
 		wrapBaseModel: func(base db.BaseResourceModel) db.ResourceModel {
 			return &db.JobModel{BaseResourceModel: base}
 		},
@@ -40,6 +41,7 @@ func NewJobReconciler(config Config, client client.Client, db *bun.DB) *JobRecon
 			client:  client,
 			db:      db,
 			handler: newJobSyncHandler(),
+			newObj:  func() *rlarkv1alpha1.Job { return &rlarkv1alpha1.Job{} },
 		},
 	}
 }

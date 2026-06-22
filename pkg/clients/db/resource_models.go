@@ -11,6 +11,8 @@ import (
 type ResourceModel interface {
 	// GetBase returns the underlying BaseResourceModel.
 	GetBase() *BaseResourceModel
+	// FillFromRaw extracts metadata from raw JSON and fills the model's base fields.
+	FillFromRaw(data map[string]interface{})
 }
 
 // BaseResourceModel contains the common fields for all resource tables.
@@ -22,7 +24,7 @@ type BaseResourceModel struct {
 	// Kubernetes metadata
 	Namespace string `bun:"namespace"`
 	Name      string `bun:"name,notnull"`
-	UID       string `bun:"uid,notnull,unique"`
+	UID       string `bun:"uid,notnull"`
 
 	// Timestamps
 	CreatedAt time.Time  `bun:"created_at,notnull"`
@@ -36,18 +38,15 @@ func (b *BaseResourceModel) GetBase() *BaseResourceModel {
 	return b
 }
 
-// ----- Resource-specific Models -----
+func (b *BaseResourceModel) FillFromRaw(data map[string]interface{}) {
+	fillBaseFromRaw(b, data)
+}
+
+// ----- Resource-specific Models (history tables) -----
 
 // JobModel is the database model for Job resources.
 type JobModel struct {
 	bun.BaseModel `bun:"table:jobs,alias:j"`
-
-	BaseResourceModel
-}
-
-// LatestJobModel is the database model for the latest Job resources.
-type LatestJobModel struct {
-	bun.BaseModel `bun:"table:latest_jobs,alias:lj"`
 
 	BaseResourceModel
 }
@@ -59,13 +58,6 @@ type NodeModel struct {
 	BaseResourceModel
 }
 
-// LatestNodeModel is the database model for the latest Node resources.
-type LatestNodeModel struct {
-	bun.BaseModel `bun:"table:latest_nodes,alias:ln"`
-
-	BaseResourceModel
-}
-
 // TaskModel is the database model for Task resources.
 type TaskModel struct {
 	bun.BaseModel `bun:"table:tasks,alias:t"`
@@ -73,16 +65,32 @@ type TaskModel struct {
 	BaseResourceModel
 }
 
-// LatestTaskModel is the database model for the latest Task resources.
-type LatestTaskModel struct {
-	bun.BaseModel `bun:"table:latest_tasks,alias:lt"`
+// WorkflowModel is the database model for Workflow resources.
+type WorkflowModel struct {
+	bun.BaseModel `bun:"table:workflows,alias:w"`
 
 	BaseResourceModel
 }
 
-// WorkflowModel is the database model for Workflow resources.
-type WorkflowModel struct {
-	bun.BaseModel `bun:"table:workflows,alias:w"`
+// ----- Latest Resource Models -----
+
+// LatestJobModel is the database model for the latest Job resources.
+type LatestJobModel struct {
+	bun.BaseModel `bun:"table:latest_jobs,alias:lj"`
+
+	BaseResourceModel
+}
+
+// LatestNodeModel is the database model for the latest Node resources.
+type LatestNodeModel struct {
+	bun.BaseModel `bun:"table:latest_nodes,alias:ln"`
+
+	BaseResourceModel
+}
+
+// LatestTaskModel is the database model for the latest Task resources.
+type LatestTaskModel struct {
+	bun.BaseModel `bun:"table:latest_tasks,alias:lt"`
 
 	BaseResourceModel
 }

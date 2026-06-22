@@ -26,9 +26,9 @@ samples:
 clean-samples:
 	rm -rf $(SAMPLES_DIR)
 
-.PHONY: build build-controller-manager build-migrate build-persistencer
+.PHONY: build build-controller-manager build-api-gateway build-migrate
 
-build: build-controller-manager build-api-gateway build-migrate build-persistencer
+build: build-controller-manager build-api-gateway build-migrate
 
 build-controller-manager:
 	go build -o bin/controller-manager ./cmd/controller-manager/...
@@ -38,9 +38,6 @@ build-api-gateway:
 
 build-migrate:
 	go build -o bin/migrate ./cmd/migrate/...
-
-build-persistencer:
-	go build -o bin/persistencer ./cmd/persistencer/...
 
 $(CONTROLLER_GEN):
 	GOBIN=$(shell go env GOPATH)/bin go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.16.5
