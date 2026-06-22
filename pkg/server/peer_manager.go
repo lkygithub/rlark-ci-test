@@ -2,69 +2,44 @@ package server
 
 import (
 	"context"
-	"crypto/rand"
-	"crypto/rsa"
 	"crypto/tls"
 	"crypto/x509"
-	"crypto/x509/pkix"
 	"fmt"
-	"math/big"
 	"net/http"
 	"os"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
-	"github.com/rlinf/rlark/pkg/server/cert"
 	"github.com/sirupsen/logrus"
 	coordinationv1 "k8s.io/api/coordination/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/tools/leaderelection"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
+
+	"github.com/rlinf/rlark/pkg/server/cert"
+)
+
+var (
+	ServerPeerPrefix = "rlark-server-peer-"
 )
 
 func (s *Server) initPeerTransport(ctx context.Context) error {
 	if len(s.ca) == 0 {
 		return fmt.Errorf("no CA available for peer transport")
 	}
-
-	peerID := s.dialerFactory.GetPeerID()
-	peerToken := s.dialerFactory.GetPeerToken()
-
-	// 签一个临时的客户端证书，用于服务器之间的 TLS 连接
-	leafKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	signType, meta, err := s.parseSignRequest(&SignRequest{Role: "peer"})
 	if err != nil {
-		return fmt.Errorf("generate peer leaf key: %w", err)
+		return fmt.Errorf("parse sign request: %w", err)
 	}
-	serial, _ := rand.Int(rand.Reader, new(big.Int).Lsh(big.NewInt(1), 128))
-	template := &x509.Certificate{
-		SerialNumber: serial,
-		Subject:      pkix.Name{CommonName: "peer-" + peerID},
-		NotBefore:    s.ca[0].Cert.NotBefore,
-		NotAfter:     s.ca[0].Cert.NotAfter,
-		KeyUsage:     x509.KeyUsageDigitalSignature,
-		PublicKey:    leafKey.Public(),
-		SubjectKeyId: []byte(uuid.NewString()),
-	}
-	cert.SetX509CertMeta(template, map[string]string{
-		"peerID":    peerID,
-		"peerToken": peerToken,
-	})
-
-	ca := s.ca[0]
-	certPEM, err := ca.SignX509Certificate(template)
+	certData, err := cert.Sign(&s.ca[0], signType, meta)
 	if err != nil {
 		return fmt.Errorf("sign peer certificate: %w", err)
 	}
-	keyPEM, err := cert.EncodePrivateKeyToPEM(leafKey)
+	clientCert, err := tls.X509KeyPair(certData.CertPEM, certData.KeyPEM)
 	if err != nil {
-		return fmt.Errorf("encode peer private key: %w", err)
-	}
-	clientCert, err := tls.X509KeyPair(certPEM, keyPEM)
-	if err != nil {
-		return fmt.Errorf("create TLS certificate: %w", err)
+		return fmt.Errorf("create client certificate: %w", err)
 	}
 
 	var caCertPool *x509.CertPool
@@ -88,7 +63,7 @@ func (s *Server) runBroadcaster(ctx context.Context) error {
 	// 向 Kubernetes 集群通过 Lease 广播服务器的存在，并且检查其他服务器的信息
 	// 用于构建 Peer-to-Peer 的服务器集群，确保高可用和负载均衡。
 
-	id := fmt.Sprintf("rlark-server-%s-%d", os.Getenv("HOSTNAME"), os.Getpid())
+	id := ServerPeerPrefix + os.Getenv("HOSTNAME")
 	ip := os.Getenv("POD_IP") + "/" + s.dialerFactory.GetPeerID() + "/" + s.dialerFactory.GetPeerToken()
 	rl, err := resourcelock.New(
 		resourcelock.LeasesResourceLock,
@@ -127,7 +102,7 @@ func (s *Server) runPeerTunnel(ctx context.Context) error {
 	var mu sync.Mutex
 	leaseMap := make(map[string]string) // leaseName -> leaseIdentity(ip/peerID/peerToken)
 
-	myLeaseName := fmt.Sprintf("rlark-server-%s-%d", os.Getenv("HOSTNAME"), os.Getpid())
+	myLeaseName := ServerPeerPrefix + os.Getenv("HOSTNAME")
 
 	setLease := func(name, identity string) {
 		mu.Lock()
@@ -166,7 +141,7 @@ func (s *Server) runPeerTunnel(ctx context.Context) error {
 	client := s.kubeClient.CoordinationV1().Leases(s.config.Namespace())
 
 	// 通过 Kubernetes Lease 发现其他服务器实例并建立 Peer-to-Peer 连接。
-	// 每台服务器在 runBroadcaster 中创建名为 rlark-server-{HOSTNAME}-{PID} 的 Lease，
+	// 每台服务器在 runBroadcaster 中创建名为 rlark-server-peer-{HOSTNAME} 的 Lease，
 	// HolderIdentity 格式为 {POD_IP}/{peerID}/{peerToken}。
 	// 注意：失去 HolderIdentity 时，不直接删除 Peer，防止短暂的网络波动导致 Peer 大量波动。
 	// 只有当 Lease 长时间没有 HolderIdentity 时，才删除 Lease，以触发 Peer 的删除。
@@ -190,7 +165,7 @@ func (s *Server) runPeerTunnel(ctx context.Context) error {
 		var leaseNames map[string]struct{} = make(map[string]struct{})
 		for i := range leaseList.Items {
 			lease := &leaseList.Items[i]
-			if !strings.HasPrefix(lease.Name, "rlark-server-") {
+			if !strings.HasPrefix(lease.Name, ServerPeerPrefix) {
 				continue
 			}
 			// 从列表中将符合条件的 Lease 添加到 Peer 列表中。
@@ -260,7 +235,7 @@ func watchLeases(
 			if !ok {
 				continue
 			}
-			if !strings.HasPrefix(lease.Name, "rlark-server-") {
+			if !strings.HasPrefix(lease.Name, ServerPeerPrefix) {
 				continue
 			}
 

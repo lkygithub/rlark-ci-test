@@ -10,6 +10,7 @@ import (
 
 type Config struct {
 	ServerAddress         string
+	ServerHostname        string
 	ClientCertPath        string
 	ClientKeyPath         string
 	CAPath                string
@@ -20,7 +21,8 @@ type Config struct {
 
 func DefaultConfig() *Config {
 	return &Config{
-		ServerAddress:         "localhost:10443",
+		ServerAddress:         "localhost:8443",
+		ServerHostname:        "",
 		ClientCertPath:        "",
 		ClientKeyPath:         "",
 		CAPath:                "",
@@ -34,6 +36,7 @@ func DefaultConfig() *Config {
 
 func (c *Config) SetupFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&c.ServerAddress, "server-address", c.ServerAddress, "Address of the server to connect to")
+	fs.StringVar(&c.ServerHostname, "server-hostname", c.ServerHostname, "Expected hostname of the server for TLS verification (optional)")
 	fs.StringVar(&c.ClientCertPath, "client-cert", c.ClientCertPath, "Path to the client TLS certificate")
 	fs.StringVar(&c.ClientKeyPath, "client-key", c.ClientKeyPath, "Path to the client TLS private key")
 	fs.StringVar(&c.CAPath, "ca-cert", c.CAPath, "Path to the CA certificate for verifying the server")

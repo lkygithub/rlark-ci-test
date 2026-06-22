@@ -13,6 +13,11 @@ import (
 func (s *Server) registerUnsafeHTTPHandlers(r *gin.Engine) {
 	api := r.Group("/api", s.handleCertCheck)
 	api.GET("peer/:target", s.handlePeerConnectProxy)
+
+	r.GET("/healthz") // TODO
+	r.GET("/readyz")  // TODO
+	r.GET("/livez")   // TODO
+	r.GET("/metrics") // TODO
 }
 
 func (s *Server) runUnsafeHTTPServer(ctx context.Context) error {

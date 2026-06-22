@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"net"
 	"net/http"
@@ -11,6 +12,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/leaderelection"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 
@@ -25,9 +27,12 @@ type Server struct {
 	// config holds the server configuration parameters.
 	config *Config
 
+	restConfig  *rest.Config
 	kubeClient  kubernetes.Interface
 	rlarkClient versioned.Interface
-	dbClient    *db.DB // may be nil if DBConfigPath is not provided, should be checked before use
+	kubeHandler http.Handler
+
+	dbClient *db.DB // may be nil if DBConfigPath is not provided, should be checked before use
 
 	tlsCA *cert.Data
 	tls   cert.Data
@@ -55,6 +60,9 @@ func NewServer(config *Config) *Server {
 			}
 			return dial(ctx, network, address)
 		},
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: true,
+		},
 	}
 	return s
 }
@@ -72,7 +80,7 @@ func (s *Server) Run(ctx context.Context) error {
 		return s.runPeerTunnel(ctx)
 	})
 	eg.Go(func() error {
-		return s.runHTTPServer(ctx)
+		return s.runHTTPSServer(ctx)
 	})
 	eg.Go(func() error {
 		return s.runSSHServer(ctx)
@@ -144,18 +152,24 @@ func (s *Server) init(ctx context.Context) error {
 }
 
 func (s *Server) initKubeClient(ctx context.Context) error {
-	restConfig, err := s.config.KubeClientConfig.BuildRestConfig()
+	var err error
+	s.restConfig, err = s.config.KubeClientConfig.BuildRestConfig()
 	if err != nil {
 		return fmt.Errorf("build Kubernetes client config: %w", err)
 	}
-	s.kubeClient, err = kubernetes.NewForConfig(restConfig)
+	s.kubeClient, err = kubernetes.NewForConfig(s.restConfig)
 	if err != nil {
 		return fmt.Errorf("create Kubernetes client: %w", err)
 	}
-	s.rlarkClient, err = versioned.NewForConfig(restConfig)
+	s.rlarkClient, err = versioned.NewForConfig(s.restConfig)
 	if err != nil {
 		return fmt.Errorf("create RLark client: %w", err)
 	}
+	kubeProxy, err := NewKubeProxy(s.restConfig)
+	if err != nil {
+		return fmt.Errorf("create Kubernetes proxy: %w", err)
+	}
+	s.kubeHandler = kubeProxy.GetHandler()
 	return nil
 }
 

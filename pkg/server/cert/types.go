@@ -14,18 +14,18 @@ type Data struct {
 }
 
 func LoadData(certPEM, keyPEM []byte) (*Data, error) {
-	caCert, err := x509.ParseCertificate(certPEM)
+	cert, err := DecodeCertificateFromPEM(certPEM)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse CA certificate: %w", err)
+		return nil, fmt.Errorf("failed to parse certificate: %w", err)
 	}
-	caKey, err := x509.ParsePKCS1PrivateKey(keyPEM)
+	key, err := DecodePrivateKeyFromPEM(keyPEM)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse CA private key: %w", err)
+		return nil, fmt.Errorf("failed to parse private key: %w", err)
 	}
 	return &Data{
 		CertPEM: certPEM,
-		Cert:    caCert,
+		Cert:    cert,
 		KeyPEM:  keyPEM,
-		Key:     caKey,
+		Key:     key,
 	}, nil
 }

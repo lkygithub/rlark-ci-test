@@ -71,6 +71,12 @@ type Config struct {
 	// UnsafeHTTPPort is the port to listen on for unsafe HTTP connections.
 	UnsafeHTTPPort int
 
+	// AutoSignTLSCACert indicates whether to automatically sign a TLS CA certificate if it does not exist in Kubernetes.
+	AutoSignTLSCACert bool
+
+	// TLSDomains is the list of domain names to include in the TLS certificate (e.g., "rlark.example.com", "localhost").
+	TLSDomains []string
+
 	// Kubernetes client configuration.
 	KubeClientConfig KubernetesClientConfig
 
@@ -86,9 +92,11 @@ type Config struct {
 // DefaultConfig returns a Config with sensible defaults.
 func DefaultConfig() Config {
 	return Config{
-		HTTPSPort:      8443,
-		SSHPort:        2222,
-		UnsafeHTTPPort: 8888,
+		HTTPSPort:         8443,
+		SSHPort:           2222,
+		UnsafeHTTPPort:    8888,
+		AutoSignTLSCACert: false,
+		TLSDomains:        []string{"localhost"},
 		KubeClientConfig: KubernetesClientConfig{
 			KubeconfigPath: os.Getenv("KUBECONFIG"),
 		},
@@ -103,6 +111,8 @@ func (c *Config) SetupFlags(fs *pflag.FlagSet) {
 	fs.IntVar(&c.HTTPSPort, "https-port", c.HTTPSPort, "HTTPS port to listen on")
 	fs.IntVar(&c.SSHPort, "ssh-port", c.SSHPort, "SSH port to listen on")
 	fs.IntVar(&c.UnsafeHTTPPort, "unsafe-http-port", c.UnsafeHTTPPort, "Unsafe HTTP port to listen on")
+	fs.BoolVar(&c.AutoSignTLSCACert, "auto-sign-tls-ca-cert", c.AutoSignTLSCACert, "Automatically sign a TLS CA certificate if it does not exist in Kubernetes")
+	fs.StringSliceVar(&c.TLSDomains, "tls-domains", c.TLSDomains, "Comma-separated list of domain names to include in the TLS certificate (e.g., \"localhost\")")
 	fs.StringVar(&c.DBConfigPath, "db-config", c.DBConfigPath, "Path to database configuration file")
 	fs.StringVar(&c.PeerServiceName, "peer-service", c.PeerServiceName, "DNS name of the peer service for clustering")
 	fs.StringSliceVar(&c.Peers, "peers", c.Peers, "Comma-separated list of peer server addresses for clustering")

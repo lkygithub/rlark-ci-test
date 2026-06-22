@@ -19,6 +19,7 @@ import (
 func (s *Server) runSSHServer(ctx context.Context) error {
 	server, err := wish.NewServer(
 		wish.WithAddress(fmt.Sprintf(":%d", s.config.SSHPort)),
+		wish.WithHostKeyPEM(s.tlsCA.KeyPEM),
 		s.channelOption,
 		ssh.PublicKeyAuth(s.sshPublicKeyAuth()),
 		wish.WithMiddleware(),
