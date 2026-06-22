@@ -8,7 +8,7 @@ import (
 	"net"
 	"net/url"
 	"os"
-	"strings"
+	"path"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -37,7 +37,21 @@ func (a *Agent) runTunnel(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	wsurl := fmt.Sprintf("wss://%v%v%v", surl.Host, strings.TrimSuffix(surl.Path, "/"), "/api/connect")
+	dialerTarget := surl.Host
+	connectNetDialer := func(ctx context.Context, network, addr string) (net.Conn, error) {
+		var d net.Dialer
+		return d.DialContext(ctx, network, dialerTarget)
+	}
+
+	if a.config.ServerHostname != "" {
+		if port := surl.Port(); port != "" {
+			surl.Host = a.config.ServerHostname + ":" + port
+		} else {
+			surl.Host = a.config.ServerHostname
+		}
+	}
+	surl.Scheme = "wss"
+	surl.Path = path.Join(surl.Path, "api", "connect")
 	dialer := &websocket.Dialer{
 		TLSClientConfig: &tls.Config{
 			Certificates:       []tls.Certificate{clientCert},
@@ -46,14 +60,17 @@ func (a *Agent) runTunnel(ctx context.Context) error {
 			InsecureSkipVerify: a.config.InsecureSkipTLSVerify,
 		},
 		HandshakeTimeout: remotedialer.HandshakeTimeOut,
+		NetDialContext:   connectNetDialer,
+	}
+	auth := func(proto, address string) bool {
+		return true
 	}
 	netDialer := func(ctx context.Context, network, addr string) (net.Conn, error) {
 		var d net.Dialer
 		return d.DialContext(ctx, network, addr)
 	}
-
 	connect := func() error {
-		ws, _, err := dialer.DialContext(ctx, wsurl, nil)
+		ws, _, err := dialer.DialContext(ctx, surl.String(), nil)
 		if err != nil {
 			return err
 		}
@@ -62,7 +79,7 @@ func (a *Agent) runTunnel(ctx context.Context) error {
 		sessCtx, cancel := context.WithCancel(ctx)
 		defer cancel()
 
-		session := remotedialer.NewClientSessionWithDialer(nil, ws, netDialer)
+		session := remotedialer.NewClientSessionWithDialer(auth, ws, netDialer)
 		defer session.Close()
 
 		_, err = session.Serve(sessCtx)

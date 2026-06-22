@@ -12,16 +12,19 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func (s *Server) registerHTTPHandlers(r *gin.Engine) {
+func (s *Server) registerHTTPSHandlers(r *gin.Engine) {
 	api := r.Group("/api", s.handleCertCheck)
 	api.GET("connect", s.handleProxyConnect)
 	api.POST("sign", s.handleSignCertificate)
 	api.Any("proxy/:target/*path", s.handleProxy)
+
+	kubernetes := api.Group("/kubernetes")
+	kubernetes.Any("*path", s.handleKubernetesProxy)
 }
 
-func (s *Server) runHTTPServer(ctx context.Context) error {
+func (s *Server) runHTTPSServer(ctx context.Context) error {
 	r := gin.Default()
-	s.registerHTTPHandlers(r)
+	s.registerHTTPSHandlers(r)
 
 	certPool := x509.NewCertPool()
 	for _, ca := range s.ca {

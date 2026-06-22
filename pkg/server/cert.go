@@ -9,14 +9,14 @@ import (
 	"fmt"
 	"math/big"
 	"net/http"
+	"time"
 
-	gossh "golang.org/x/crypto/ssh"
+	"github.com/gin-gonic/gin"
+	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	"github.com/rlinf/rlark/pkg/server/cert"
 )
 
@@ -33,6 +33,12 @@ func (s *Server) loadTLSCA(ctx context.Context) error {
 	secret, err := s.kubeClient.CoreV1().Secrets(s.config.Namespace()).Get(ctx, defaultTLSCASecretName, metav1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
+			if s.config.AutoSignTLSCACert {
+				logrus.Infof("TLS CA secret %s/%s not found, creating a self-signed TLS CA certificate", s.config.Namespace(), defaultTLSCASecretName)
+				return s.createAndStoreCA(ctx, defaultTLSCASecretName, func(d *cert.Data) {
+					s.tlsCA = d
+				})
+			}
 			return nil
 		}
 		return err
@@ -50,12 +56,16 @@ func (s *Server) loadTLSCA(ctx context.Context) error {
 }
 
 func (s *Server) loadTLSConfig(ctx context.Context) error {
-	// 读取 Kubernetes Secret 中保存的 TLS 证书和私钥，如果不存在则返回错误提示用户创建。
+	// 读取 Kubernetes Secret 中保存的 TLS 证书和私钥，如果不存在则尝试使用 TLS CA 生成一个自签名的 TLS 证书并保存到 Kubernetes 中。
 
 	secret, err := s.kubeClient.CoreV1().Secrets(s.config.Namespace()).Get(ctx, defaultTLSSecretName, metav1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
-			return fmt.Errorf("TLS secret %s/%s not found, please create it with the server certificate and key", s.config.Namespace(), defaultTLSSecretName)
+			if s.tlsCA == nil {
+				return fmt.Errorf("TLS secret %s/%s not found, please create it with the server certificate and key", s.config.Namespace(), defaultTLSSecretName)
+			}
+			logrus.Infof("TLS secret %s/%s not found, creating a self-signed TLS certificate using the CA", s.config.Namespace(), defaultTLSSecretName)
+			return s.createAndStoreTLSConfig(ctx, s.tlsCA)
 		}
 		return err
 	}
@@ -71,6 +81,74 @@ func (s *Server) loadTLSConfig(ctx context.Context) error {
 	return nil
 }
 
+func (s *Server) createAndStoreTLSConfig(ctx context.Context, ca *cert.Data) error {
+	// 生成一个新的 TLS 证书，并且使用 CA 进行签名，然后保存到 Kubernetes Secret 中。
+
+	leafKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		return fmt.Errorf("generate TLS cert key: %w", err)
+	}
+	serial, _ := rand.Int(rand.Reader, new(big.Int).Lsh(big.NewInt(1), 128))
+	commonName := "rlark-server"
+	if len(s.config.TLSDomains) > 0 {
+		commonName = s.config.TLSDomains[0]
+	}
+	template := &x509.Certificate{
+		SerialNumber: serial,
+		Subject: pkix.Name{
+			CommonName:   commonName,
+			Organization: []string{"RLinf"},
+		},
+		NotBefore:   time.Now().Add(-1 * time.Hour),
+		NotAfter:    time.Now().Add(365 * 24 * time.Hour),
+		KeyUsage:    x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
+		ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		PublicKey:   leafKey.Public(),
+		DNSNames:    s.config.TLSDomains,
+	}
+
+	certPEM, err := ca.SignX509Certificate(template)
+	if err != nil {
+		return fmt.Errorf("sign TLS certificate: %w", err)
+	}
+	keyPEM, err := cert.EncodePrivateKeyToPEM(leafKey)
+	if err != nil {
+		return fmt.Errorf("encode TLS private key: %w", err)
+	}
+
+	data := map[string][]byte{
+		v1.TLSCertKey:       certPEM,
+		v1.TLSPrivateKeyKey: keyPEM,
+	}
+
+	secret := &v1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      defaultTLSSecretName,
+			Namespace: s.config.Namespace(),
+			Labels: map[string]string{
+				"app":  "rlark",
+				"type": "tls",
+			},
+			Annotations: map[string]string{
+				"description": "TLS certificate and key for RLark server",
+			},
+			Finalizers: []string{"rlark.io/tls-secret-protection"},
+		},
+		Data: data,
+		Type: v1.SecretTypeTLS,
+	}
+	_, err = s.kubeClient.CoreV1().Secrets(s.config.Namespace()).Create(ctx, secret, metav1.CreateOptions{})
+	if err != nil {
+		return fmt.Errorf("create TLS secret: %w", err)
+	}
+	tls, err := cert.LoadData(certPEM, keyPEM)
+	if err != nil {
+		return fmt.Errorf("load TLS data: %w", err)
+	}
+	s.tls = *tls
+	return nil
+}
+
 func (s *Server) initCAConfigs(ctx context.Context) error {
 	// 读取 Kubernetes Secret 中保存的 CA 证书和私钥，如果不存在则创建一个新的 CA 并保存到 Kubernetes 中。
 
@@ -78,7 +156,9 @@ func (s *Server) initCAConfigs(ctx context.Context) error {
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// 如果 Secret 不存在，则创建一个新的 CA 并保存到 Kubernetes 中。
-			return s.createAndStoreCA(ctx)
+			return s.createAndStoreCA(ctx, defaultClientCASecretName, func(d *cert.Data) {
+				s.ca = append(s.ca, *d)
+			})
 		}
 		return err
 	}
@@ -94,7 +174,7 @@ func (s *Server) initCAConfigs(ctx context.Context) error {
 	return nil
 }
 
-func (s *Server) createAndStoreCA(ctx context.Context) error {
+func (s *Server) createAndStoreCA(ctx context.Context, name string, callback func(*cert.Data)) error {
 	// 生成一个新的 CA 证书和私钥，并且保存到 Kubernetes Secret 中。
 
 	ca, err := cert.GenerateCA(cert.GenerateTemplateCA())
@@ -104,7 +184,7 @@ func (s *Server) createAndStoreCA(ctx context.Context) error {
 
 	secret := &v1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      defaultClientCASecretName,
+			Name:      name,
 			Namespace: s.config.Namespace(),
 			Labels: map[string]string{
 				"app":  "rlark",
@@ -126,7 +206,7 @@ func (s *Server) createAndStoreCA(ctx context.Context) error {
 		return err
 	}
 
-	s.ca = append(s.ca, *ca)
+	callback(ca)
 	return nil
 }
 
@@ -137,38 +217,17 @@ func (s *Server) signAdminCert(ctx context.Context) error {
 
 	// 生成一个新的 Admin 证书，并且使用第一个 CA 进行签名。
 	// 证书用于其他内部组件访问服务器的 API，具有管理员权限。
-
-	leafKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	signType, meta, err := s.parseSignRequest(&SignRequest{Role: "admin"})
 	if err != nil {
-		return fmt.Errorf("generate admin cert key: %w", err)
+		return fmt.Errorf("parse sign request: %w", err)
 	}
-	serial, _ := rand.Int(rand.Reader, new(big.Int).Lsh(big.NewInt(1), 128))
-	template := &x509.Certificate{
-		SerialNumber: serial,
-		Subject:      pkix.Name{CommonName: "admin"},
-		NotBefore:    s.ca[0].Cert.NotBefore,
-		NotAfter:     s.ca[0].Cert.NotAfter,
-		KeyUsage:     x509.KeyUsageDigitalSignature,
-		PublicKey:    leafKey.Public(),
-		SubjectKeyId: []byte(uuid.NewString()),
-	}
-	cert.SetX509CertMeta(template, map[string]string{
-		"permission.admin": "true", // TODO
-	})
-
-	ca := s.ca[0]
-	certPEM, err := ca.SignX509Certificate(template)
+	certData, err := cert.Sign(&s.ca[0], signType, meta)
 	if err != nil {
 		return fmt.Errorf("sign admin certificate: %w", err)
 	}
-	keyPEM, err := cert.EncodePrivateKeyToPEM(leafKey)
-	if err != nil {
-		return fmt.Errorf("encode admin private key: %w", err)
-	}
-
 	data := map[string][]byte{
-		"client.crt": certPEM,
-		"client.key": keyPEM,
+		"client.crt": certData.CertPEM,
+		"client.key": certData.KeyPEM,
 	}
 
 	secret, err := s.kubeClient.CoreV1().Secrets(s.config.Namespace()).Get(ctx, defaultAdminCertSecretName, metav1.GetOptions{})
@@ -225,91 +284,4 @@ func (s *Server) handleCertCheck(ctx *gin.Context) {
 	}
 
 	ctx.Next()
-}
-
-// TODO: API 化
-type signRequest struct {
-	Type string            `json:"type"`
-	Meta map[string]string `json:"meta"`
-}
-
-func (s *Server) handleSignCertificate(ctx *gin.Context) {
-	var req signRequest
-	if err := ctx.BindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
-		return
-	}
-	if req.Meta == nil {
-		req.Meta = make(map[string]string)
-	}
-
-	if len(s.ca) == 0 {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "no CA available"})
-		return
-	}
-	ca := s.ca[0]
-
-	leafKey, err := rsa.GenerateKey(rand.Reader, 2048)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "generate certificate key failed"})
-		return
-	}
-	keyPEM, err := cert.EncodePrivateKeyToPEM(leafKey)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "encode private key failed"})
-		return
-	}
-	serial, _ := rand.Int(rand.Reader, new(big.Int).Lsh(big.NewInt(1), 128))
-
-	var certPEM []byte
-	switch req.Type {
-	case "x509", "":
-		template := &x509.Certificate{
-			SerialNumber: serial,
-			Subject:      pkix.Name{CommonName: "client"},
-			NotBefore:    ca.Cert.NotBefore,
-			NotAfter:     ca.Cert.NotAfter,
-			KeyUsage:     x509.KeyUsageDigitalSignature,
-			PublicKey:    leafKey.Public(),
-			SubjectKeyId: []byte(uuid.NewString()),
-		}
-		cert.SetX509CertMeta(template, req.Meta)
-		certPEM, err = ca.SignX509Certificate(template)
-		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "sign certificate failed"})
-			return
-		}
-
-	case "ssh":
-		sshKey, err := gossh.NewPublicKey(leafKey.Public())
-		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "create SSH public key failed"})
-			return
-		}
-		template := &gossh.Certificate{
-			Key:             sshKey,
-			Serial:          serial.Uint64(),
-			CertType:        gossh.UserCert,
-			KeyId:           uuid.NewString(),
-			ValidPrincipals: []string{"client"},
-			ValidAfter:      uint64(ca.Cert.NotBefore.Unix()),
-			ValidBefore:     uint64(ca.Cert.NotAfter.Unix()),
-			Permissions:     gossh.Permissions{},
-		}
-		cert.SetSSHCertMeta(template, req.Meta)
-		certPEM, err = ca.SignSSHCertificate(template)
-		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "sign SSH certificate failed"})
-			return
-		}
-
-	default:
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "unsupported certificate type"})
-		return
-	}
-
-	ctx.JSON(http.StatusOK, gin.H{
-		"cert": string(certPEM),
-		"key":  string(keyPEM),
-	})
 }

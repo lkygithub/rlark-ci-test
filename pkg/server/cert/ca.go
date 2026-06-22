@@ -20,10 +20,10 @@ func GenerateTemplateCA() *x509.Certificate {
 		SerialNumber: serial,
 		Subject: pkix.Name{
 			CommonName:   "RLark CA",
-			Organization: []string{"rlark"},
+			Organization: []string{"RLinf"},
 		},
 		NotBefore:             time.Now().Add(-1 * time.Hour),
-		NotAfter:              time.Now().Add(10 * 365 * 24 * time.Hour),
+		NotAfter:              time.Now().Add(20 * 365 * 24 * time.Hour),
 		KeyUsage:              x509.KeyUsageCertSign | x509.KeyUsageDigitalSignature,
 		BasicConstraintsValid: true,
 		IsCA:                  true,
@@ -55,20 +55,20 @@ func GenerateCA(template *x509.Certificate) (*Data, error) {
 		return nil, err
 	}
 
-	var buf bytes.Buffer
-	if err := pem.Encode(&buf, &pem.Block{Type: "CERTIFICATE", Bytes: caCert.Raw}); err != nil {
+	var certBuf bytes.Buffer
+	if err := pem.Encode(&certBuf, &pem.Block{Type: "CERTIFICATE", Bytes: caCert.Raw}); err != nil {
 		return nil, err
 	}
-	caCertPEM := buf.Bytes()
+	caCertPEM := certBuf.Bytes()
 
-	buf.Reset()
-	if err := pem.Encode(&buf, &pem.Block{
+	var keyBuf bytes.Buffer
+	if err := pem.Encode(&keyBuf, &pem.Block{
 		Type:  "RSA PRIVATE KEY",
 		Bytes: x509.MarshalPKCS1PrivateKey(caKey),
 	}); err != nil {
 		return nil, err
 	}
-	caKeyPEM := buf.Bytes()
+	caKeyPEM := keyBuf.Bytes()
 
 	return &Data{
 		CertPEM: caCertPEM,
