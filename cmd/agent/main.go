@@ -5,16 +5,16 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/rlinf/rlark/pkg/server"
+	"github.com/rlinf/rlark/pkg/agent"
 )
 
 func main() {
-	config := server.DefaultConfig()
+	config := agent.DefaultConfig()
 	cmd := &cobra.Command{
-		Use:   "rlark-server",
-		Short: "Start the server application",
+		Use:   "rlark-agent",
+		Short: "Start the agent application",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			srv := server.NewServer(config)
+			srv := agent.NewAgent(config)
 			return srv.Run(cmd.Context())
 		},
 	}

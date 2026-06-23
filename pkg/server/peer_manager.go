@@ -217,7 +217,7 @@ func watchLeases(
 	unsetLease func(name string),
 ) error {
 	// 设置每次 Watch 的最长时间，超过这个时间后无论如何都要重新 List 和 Watch，避免长时间的 Watch 导致状态不同步。
-	ctx, cancel := context.WithTimeout(ctx, time.Minute*10)
+	ctx, cancel := context.WithTimeout(ctx, time.Minute*30)
 	defer cancel()
 
 	defer watcher.Stop()

@@ -24,6 +24,17 @@ func GetX509CertMeta(cert *x509.Certificate) (map[string]string, bool) {
 	if cert == nil {
 		return nil, false
 	}
+	// 创建证书时，会将 Meta 存于 ExtraExtensions 中，但是证书经过 TLS 握手后，
+	// Meta 可能会出现在 Extensions 中，因此需要同时检查两个字段
+	for _, ext := range cert.Extensions {
+		if ext.Id.Equal(metaX509OID) {
+			var meta map[string]string
+			if err := json.Unmarshal(ext.Value, &meta); err != nil {
+				return nil, false
+			}
+			return meta, true
+		}
+	}
 	for _, ext := range cert.ExtraExtensions {
 		if ext.Id.Equal(metaX509OID) {
 			var meta map[string]string

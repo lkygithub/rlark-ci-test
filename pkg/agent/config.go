@@ -19,8 +19,8 @@ type Config struct {
 	KubeClientConfig server.KubernetesClientConfig
 }
 
-func DefaultConfig() *Config {
-	return &Config{
+func DefaultConfig() Config {
+	return Config{
 		ServerAddress:         "localhost:8443",
 		ServerHostname:        "",
 		ClientCertPath:        "",
@@ -41,4 +41,6 @@ func (c *Config) SetupFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&c.ClientKeyPath, "client-key", c.ClientKeyPath, "Path to the client TLS private key")
 	fs.StringVar(&c.CAPath, "ca-cert", c.CAPath, "Path to the CA certificate for verifying the server")
 	fs.BoolVar(&c.InsecureSkipTLSVerify, "insecure-skip-tls-verify", c.InsecureSkipTLSVerify, "Skip TLS certificate verification (not recommended)")
+
+	c.KubeClientConfig.SetupFlags(fs)
 }

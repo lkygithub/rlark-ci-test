@@ -32,6 +32,7 @@ func (s *Server) parseSignRequest(req *SignRequest) (string, map[string]string, 
 		impersonation := "system:serviceaccount:" + namespace + ":" + "rlark-agent"
 		return "x509", map[string]string{
 			"agentID":                  req.ClientID,
+			"clientKey":                req.ClientID,
 			"kubernetes-impersonation": impersonation,
 		}, nil
 

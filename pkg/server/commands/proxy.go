@@ -1,0 +1,56 @@
+package commands
+
+import (
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"net/url"
+
+	"github.com/rlinf/rlark/pkg/server"
+	"github.com/spf13/cobra"
+)
+
+func ProxyCurlCommand() *cobra.Command {
+	var method string = "GET"
+	var data string
+
+	cmd := &cobra.Command{
+		Use:   "proxy-curl [URL]",
+		Short: "Make a HTTP request through the server proxy endpoint.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) == 0 {
+				return cmd.Help()
+			}
+			u, err := url.Parse(args[0])
+			if err != nil {
+				return fmt.Errorf("invalid URL: %w", err)
+			}
+			client, err := server.NewClientFromKubernetes(cmd.Context(), Port, KubeClientConfig)
+			if err != nil {
+				return err
+			}
+			target := client.BuildURLWithQuery(u.Query(), "api", "proxy", u.Host, u.Path)
+			var resp *http.Response
+			if data != "" {
+				resp, err = client.DoRequestWithObject(cmd.Context(), method, target, json.RawMessage(data))
+			} else {
+				resp, err = client.DoRequest(cmd.Context(), method, target, nil)
+			}
+			if err != nil {
+				return err
+			}
+			defer resp.Body.Close()
+
+			fmt.Fprintf(cmd.ErrOrStderr(), "Status: %s\n", resp.Status)
+			fmt.Fprintf(cmd.ErrOrStderr(), "Headers:\n")
+			for k, v := range resp.Header {
+				fmt.Fprintf(cmd.ErrOrStderr(), "  %s: %s\n", k, v)
+			}
+			fmt.Fprintln(cmd.ErrOrStderr(), "Body:")
+			_, err = io.Copy(cmd.OutOrStdout(), resp.Body)
+			return err
+		},
+	}
+	return cmd
+}
