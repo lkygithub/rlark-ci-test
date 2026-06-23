@@ -25,7 +25,7 @@ import (
 // Server is the main struct for the server application, encapsulating all components and dependencies.
 type Server struct {
 	// config holds the server configuration parameters.
-	config *Config
+	config Config
 
 	restConfig  *rest.Config
 	kubeClient  kubernetes.Interface
@@ -44,7 +44,7 @@ type Server struct {
 }
 
 // NewServer creates a new Server instance with the provided configuration.
-func NewServer(config *Config) *Server {
+func NewServer(config Config) *Server {
 	s := &Server{
 		config: config,
 
@@ -202,7 +202,6 @@ func (s *Server) initServerData(ctx context.Context) error {
 	// TODO
 
 	// 2. 检查 Kubernetes 中保存的各个配置，如果没有则初始化。
-	// TODO
 	if err := s.loadTLSCA(ctx); err != nil {
 		return fmt.Errorf("load TLS CA: %w", err)
 	}

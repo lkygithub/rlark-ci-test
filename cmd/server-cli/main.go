@@ -15,6 +15,7 @@ func main() {
 	}
 
 	cmd.AddCommand(commands.SignCommand())
+	cmd.AddCommand(commands.ProxyCurlCommand())
 	commands.SetupPersistentFlags(cmd.PersistentFlags())
 
 	if err := cmd.Execute(); err != nil {

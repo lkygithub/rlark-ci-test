@@ -18,14 +18,12 @@ import (
 )
 
 func (s *Server) GetDial(ctx context.Context, dialType, address string, userMeta map[string]string) (remotedialer.Dialer, string, error) {
-	fmt.Println("GetDial called with dialType:", dialType, "address:", address, "userMeta:", userMeta)
-
 	switch dialType {
 	case "default":
-		//
+		// TODO
 
 	case "ssh":
-		//
+		// TODO
 	}
 	return nil, "", fmt.Errorf("GetDial not implemented")
 }
@@ -35,7 +33,6 @@ func (s *Server) handleProxyConnect(ctx *gin.Context) {
 		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "client certificate required"})
 		return
 	}
-
 	clientCert := ctx.Request.TLS.PeerCertificates[0]
 	userMeta, ok := cert.GetX509CertMeta(clientCert)
 	if !ok {
