@@ -162,7 +162,7 @@ func (s *Server) runPeerTunnel(ctx context.Context) error {
 			}
 			continue
 		}
-		var leaseNames map[string]struct{} = make(map[string]struct{})
+		leaseNames := make(map[string]struct{})
 		for i := range leaseList.Items {
 			lease := &leaseList.Items[i]
 			if !strings.HasPrefix(lease.Name, ServerPeerPrefix) {

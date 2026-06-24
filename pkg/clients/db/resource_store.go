@@ -44,65 +44,65 @@ type LabelSelector struct {
 
 // ListResult holds the result of a list query.
 type ListResult struct {
-	Items []map[string]interface{} `json:"items"`
-	Total int                      `json:"total"`
+	Items []map[string]any `json:"items"`
+	Total int              `json:"total"`
 }
 
-// ResourceQuerier provides generic CRUD operations for a resource table.
-type ResourceQuerier struct {
+// ResourceStore provides generic CRUD operations for a resource table.
+type ResourceStore struct {
 	db            *bun.DB
 	tableName     string
 	tableAlias    string
 	newModel      func() ResourceModel
-	newModelSlice func() interface{} // returns a pointer to an empty slice of the concrete model type, e.g. func() interface{} { return &[]NodeModel{} }
+	newModelSlice func() any // returns a pointer to an empty slice of the concrete model type, e.g. func() any { return &[]NodeModel{} }
 }
 
-// NewNodeQuerier creates a ResourceQuerier for latest nodes.
-func NewNodeQuerier(db *bun.DB) *ResourceQuerier {
-	return &ResourceQuerier{
+// NewNodeStore creates a ResourceStore for latest nodes.
+func NewNodeStore(db *bun.DB) *ResourceStore {
+	return &ResourceStore{
 		db:            db,
 		tableName:     "latest_nodes",
 		tableAlias:    "ln",
 		newModel:      func() ResourceModel { return &LatestNodeModel{} },
-		newModelSlice: func() interface{} { return &[]LatestNodeModel{} },
+		newModelSlice: func() any { return &[]LatestNodeModel{} },
 	}
 }
 
-// NewWorkflowQuerier creates a ResourceQuerier for latest workflows.
-func NewWorkflowQuerier(db *bun.DB) *ResourceQuerier {
-	return &ResourceQuerier{
+// NewWorkflowStore creates a ResourceStore for latest workflows.
+func NewWorkflowStore(db *bun.DB) *ResourceStore {
+	return &ResourceStore{
 		db:            db,
 		tableName:     "latest_workflows",
 		tableAlias:    "lw",
 		newModel:      func() ResourceModel { return &LatestWorkflowModel{} },
-		newModelSlice: func() interface{} { return &[]LatestWorkflowModel{} },
+		newModelSlice: func() any { return &[]LatestWorkflowModel{} },
 	}
 }
 
-// NewJobQuerier creates a ResourceQuerier for latest jobs.
-func NewJobQuerier(db *bun.DB) *ResourceQuerier {
-	return &ResourceQuerier{
+// NewJobStore creates a ResourceStore for latest jobs.
+func NewJobStore(db *bun.DB) *ResourceStore {
+	return &ResourceStore{
 		db:            db,
 		tableName:     "latest_jobs",
 		tableAlias:    "lj",
 		newModel:      func() ResourceModel { return &LatestJobModel{} },
-		newModelSlice: func() interface{} { return &[]LatestJobModel{} },
+		newModelSlice: func() any { return &[]LatestJobModel{} },
 	}
 }
 
-// NewTaskQuerier creates a ResourceQuerier for latest tasks.
-func NewTaskQuerier(db *bun.DB) *ResourceQuerier {
-	return &ResourceQuerier{
+// NewTaskStore creates a ResourceStore for latest tasks.
+func NewTaskStore(db *bun.DB) *ResourceStore {
+	return &ResourceStore{
 		db:            db,
 		tableName:     "latest_tasks",
 		tableAlias:    "lt",
 		newModel:      func() ResourceModel { return &LatestTaskModel{} },
-		newModelSlice: func() interface{} { return &[]LatestTaskModel{} },
+		newModelSlice: func() any { return &[]LatestTaskModel{} },
 	}
 }
 
 // List queries resources with filtering, sorting, and pagination.
-func (q *ResourceQuerier) List(ctx context.Context, opts ListOptions) (*ListResult, error) {
+func (q *ResourceStore) List(ctx context.Context, opts ListOptions) (*ListResult, error) {
 	baseQuery := q.db.NewSelect().
 		Model(q.newModel()).
 		Where("deleted_at IS NULL")
@@ -165,11 +165,11 @@ func (q *ResourceQuerier) List(ctx context.Context, opts ListOptions) (*ListResu
 	}
 
 	// Extract Raw from each model via ResourceModel interface
-	var items []map[string]interface{}
+	var items []map[string]any
 	items = scanResultsToItems(slicePtr)
 
 	if items == nil {
-		items = []map[string]interface{}{}
+		items = []map[string]any{}
 	}
 
 	return &ListResult{
@@ -179,7 +179,7 @@ func (q *ResourceQuerier) List(ctx context.Context, opts ListOptions) (*ListResu
 }
 
 // Get returns a single resource by name (and namespace if applicable).
-func (q *ResourceQuerier) Get(ctx context.Context, namespace, name string) (map[string]interface{}, error) {
+func (q *ResourceStore) Get(ctx context.Context, namespace, name string) (map[string]any, error) {
 	m := q.newModel()
 	query := q.db.NewSelect().
 		Model(m).
@@ -193,7 +193,7 @@ func (q *ResourceQuerier) Get(ctx context.Context, namespace, name string) (map[
 	if err := query.Scan(ctx); err != nil {
 		return nil, fmt.Errorf("get %s/%s from %s: %w", namespace, name, q.tableName, err)
 	}
-	var result map[string]interface{}
+	var result map[string]any
 	if err := json.Unmarshal(m.GetBase().Raw, &result); err != nil {
 		return nil, fmt.Errorf("unmarshal raw %s/%s from %s: %w", namespace, name, q.tableName, err)
 	}
@@ -201,7 +201,7 @@ func (q *ResourceQuerier) Get(ctx context.Context, namespace, name string) (map[
 }
 
 // Create inserts a new resource.
-func (q *ResourceQuerier) Create(ctx context.Context, data map[string]interface{}) error {
+func (q *ResourceStore) Create(ctx context.Context, data map[string]any) error {
 	m := q.newModel()
 	m.FillFromRaw(data)
 
@@ -213,7 +213,7 @@ func (q *ResourceQuerier) Create(ctx context.Context, data map[string]interface{
 }
 
 // Update replaces an existing resource by name.
-func (q *ResourceQuerier) Update(ctx context.Context, namespace, name string, data map[string]interface{}) error {
+func (q *ResourceStore) Update(ctx context.Context, namespace, name string, data map[string]any) error {
 	m := q.newModel()
 	m.FillFromRaw(data)
 	base := m.GetBase()
@@ -234,7 +234,7 @@ func (q *ResourceQuerier) Update(ctx context.Context, namespace, name string, da
 }
 
 // Patch merges the provided data into an existing resource.
-func (q *ResourceQuerier) Patch(ctx context.Context, namespace, name string, patch map[string]interface{}) error {
+func (q *ResourceStore) Patch(ctx context.Context, namespace, name string, patch map[string]any) error {
 	current, err := q.Get(ctx, namespace, name)
 	if err != nil {
 		return err
@@ -245,7 +245,7 @@ func (q *ResourceQuerier) Patch(ctx context.Context, namespace, name string, pat
 }
 
 // Delete soft-deletes a resource by name.
-func (q *ResourceQuerier) Delete(ctx context.Context, namespace, name string) error {
+func (q *ResourceStore) Delete(ctx context.Context, namespace, name string) error {
 	now := time.Now()
 	query := q.db.NewUpdate().
 		TableExpr(q.tableName).
@@ -265,7 +265,7 @@ func (q *ResourceQuerier) Delete(ctx context.Context, namespace, name string) er
 }
 
 // fillBaseFromRaw extracts metadata from the raw JSON and fills a BaseResourceModel.
-func fillBaseFromRaw(base *BaseResourceModel, raw map[string]interface{}) {
+func fillBaseFromRaw(base *BaseResourceModel, raw map[string]any) {
 	rawBytes, err := json.Marshal(raw)
 	if err != nil {
 		return
@@ -273,7 +273,7 @@ func fillBaseFromRaw(base *BaseResourceModel, raw map[string]interface{}) {
 	base.Raw = rawBytes
 	base.CreatedAt = time.Now()
 
-	if meta, ok := raw["metadata"].(map[string]interface{}); ok {
+	if meta, ok := raw["metadata"].(map[string]any); ok {
 		if n, ok := meta["name"].(string); ok {
 			base.Name = n
 		}
@@ -312,13 +312,13 @@ func applySelector(query *bun.SelectQuery, colExpr, op, value string) *bun.Selec
 
 // scanResultsToItems extracts Raw fields from a pointer to a slice of ResourceModel types.
 // slicePtr is expected to be *[]T where T implements ResourceModel (via pointer receiver).
-func scanResultsToItems(slicePtr interface{}) []map[string]interface{} {
+func scanResultsToItems(slicePtr any) []map[string]any {
 	v := reflect.ValueOf(slicePtr)
-	if v.Kind() != reflect.Ptr || v.Elem().Kind() != reflect.Slice {
+	if v.Kind() != reflect.Pointer || v.Elem().Kind() != reflect.Slice {
 		return nil
 	}
 	slice := v.Elem()
-	items := make([]map[string]interface{}, slice.Len())
+	items := make([]map[string]any, slice.Len())
 	for i := 0; i < slice.Len(); i++ {
 		elem := slice.Index(i)
 		// Take address since ResourceModel methods use pointer receivers
@@ -332,8 +332,8 @@ func scanResultsToItems(slicePtr interface{}) []map[string]interface{} {
 }
 
 // deepMerge recursively merges patch into base. Map values are merged, scalar values are overwritten.
-func deepMerge(base, patch map[string]interface{}) map[string]interface{} {
-	result := make(map[string]interface{})
+func deepMerge(base, patch map[string]any) map[string]any {
+	result := make(map[string]any)
 	for k, v := range base {
 		result[k] = v
 	}
@@ -342,8 +342,8 @@ func deepMerge(base, patch map[string]interface{}) map[string]interface{} {
 			delete(result, k)
 			continue
 		}
-		baseVal, baseIsMap := base[k].(map[string]interface{})
-		patchVal, patchIsMap := v.(map[string]interface{})
+		baseVal, baseIsMap := base[k].(map[string]any)
+		patchVal, patchIsMap := v.(map[string]any)
 		if baseIsMap && patchIsMap {
 			result[k] = deepMerge(baseVal, patchVal)
 		} else {

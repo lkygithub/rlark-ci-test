@@ -14,10 +14,16 @@ import (
 
 func (s *Server) registerHTTPSHandlers(r *gin.Engine) {
 	api := r.Group("/api", s.handleCertCheck)
+
+	// Peer connection and proxy endpoints
 	api.GET("connect", s.handleProxyConnect)
-	api.POST("sign", s.handleSignCertificate)
 	api.Any("proxy/:target/*path", s.handleProxy)
 
+	// Sign and revoke certificate endpoints
+	api.POST("sign", s.handleSignCertificate)
+	api.POST("revoke", s.handleRevokeCertificate)
+
+	// Kubernetes API proxy endpoint
 	kubernetes := api.Group("/kubernetes")
 	kubernetes.Any("*path", s.handleKubernetesProxy)
 }

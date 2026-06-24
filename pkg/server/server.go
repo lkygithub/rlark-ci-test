@@ -9,6 +9,7 @@ import (
 	"os"
 	"time"
 
+	gocache "github.com/patrickmn/go-cache"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
 	"k8s.io/client-go/kubernetes"
@@ -32,7 +33,11 @@ type Server struct {
 	rlarkClient versioned.Interface
 	kubeHandler http.Handler
 
-	dbClient *db.DB // may be nil if DBConfigPath is not provided, should be checked before use
+	// DB Client and Stores
+	// may be nil if DBConfigPath is not provided, should be checked before use
+	dbClient *db.DB
+	rcStore  *db.RevokedCertificateStore
+	rcCache  *gocache.Cache
 
 	tlsCA *cert.Data
 	tls   cert.Data
@@ -47,6 +52,8 @@ type Server struct {
 func NewServer(config Config) *Server {
 	s := &Server{
 		config: config,
+
+		rcCache: gocache.New(5*time.Minute, 10*time.Minute),
 
 		ca: make([]cert.Data, 0),
 
@@ -192,6 +199,7 @@ func (s *Server) initDatabase(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("open database: %w", err)
 	}
+	s.rcStore = db.NewRevokedCertificateStore(s.dbClient.DB)
 	return nil
 }
 

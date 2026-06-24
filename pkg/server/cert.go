@@ -8,10 +8,8 @@ import (
 	"crypto/x509/pkix"
 	"fmt"
 	"math/big"
-	"net/http"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -262,26 +260,4 @@ func (s *Server) signAdminCert(ctx context.Context) error {
 		return fmt.Errorf("update admin cert secret: %w", err)
 	}
 	return nil
-}
-
-func (s *Server) checkCertRevoked(keyID string) bool {
-	// TODO
-	return false
-}
-
-func (s *Server) handleCertCheck(ctx *gin.Context) {
-	if len(ctx.Request.TLS.PeerCertificates) > 0 {
-		clientCert := ctx.Request.TLS.PeerCertificates[0]
-		if s.checkCertRevoked(string(clientCert.SubjectKeyId)) {
-			ctx.JSON(http.StatusUnauthorized, gin.H{"error": "client certificate revoked"})
-			ctx.Abort()
-			return
-		}
-	} else {
-		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "client certificate required"})
-		ctx.Abort()
-		return
-	}
-
-	ctx.Next()
 }

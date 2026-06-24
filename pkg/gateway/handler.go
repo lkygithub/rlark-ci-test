@@ -111,14 +111,14 @@ func (g *Gateway) handleGet(resource string) gin.HandlerFunc {
 // --- Database-backed read handlers ---
 
 func (g *Gateway) handleListDB(c *gin.Context, resource string) {
-	querier, ok := g.queriers[resource]
+	store, ok := g.stores[resource]
 	if !ok {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "resource not configured"})
 		return
 	}
 
 	opts := g.parseListOptions(c)
-	result, err := querier.List(c.Request.Context(), opts)
+	result, err := store.List(c.Request.Context(), opts)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -127,7 +127,7 @@ func (g *Gateway) handleListDB(c *gin.Context, resource string) {
 }
 
 func (g *Gateway) handleGetDB(c *gin.Context, resource string) {
-	querier, ok := g.queriers[resource]
+	store, ok := g.stores[resource]
 	if !ok {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "resource not configured"})
 		return
@@ -136,7 +136,7 @@ func (g *Gateway) handleGetDB(c *gin.Context, resource string) {
 	name := c.Param("name")
 	namespace := c.Query("namespace")
 
-	obj, err := querier.Get(c.Request.Context(), namespace, name)
+	obj, err := store.Get(c.Request.Context(), namespace, name)
 	if err != nil {
 		if strings.Contains(err.Error(), "no rows") {
 			c.JSON(http.StatusNotFound, gin.H{"error": "not found"})

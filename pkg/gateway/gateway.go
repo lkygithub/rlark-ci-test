@@ -22,11 +22,11 @@ type Gateway struct {
 
 	dbClient *db.DB // may be nil if DBConfigPath is not provided, should be checked before use
 
-	queriers  map[string]*db.ResourceQuerier
+	stores    map[string]*db.ResourceStore
 	accessors map[string]*resourceAccessor
 }
 
-// NewGateway creates a Gateway with database-backed queriers for read operations
+// NewGateway creates a Gateway with database-backed stores for read operations
 // and a Kubernetes typed client for write operations. If database is nil, read operations
 // fall back to the Kubernetes API server.
 func NewGateway(config Config) *Gateway {
@@ -75,14 +75,14 @@ func (g *Gateway) init(ctx context.Context) error {
 		return fmt.Errorf("create Kubernetes client: %w", err)
 	}
 
-	// init queriers and accessors
-	g.queriers = make(map[string]*db.ResourceQuerier)
+	// init stores and accessors
+	g.stores = make(map[string]*db.ResourceStore)
 	g.accessors = registerAccessors(g.kubeClient)
 	if g.dbClient != nil {
-		g.queriers["nodes"] = db.NewNodeQuerier(g.dbClient.DB)
-		g.queriers["workflows"] = db.NewWorkflowQuerier(g.dbClient.DB)
-		g.queriers["jobs"] = db.NewJobQuerier(g.dbClient.DB)
-		g.queriers["tasks"] = db.NewTaskQuerier(g.dbClient.DB)
+		g.stores["nodes"] = db.NewNodeStore(g.dbClient.DB)
+		g.stores["workflows"] = db.NewWorkflowStore(g.dbClient.DB)
+		g.stores["jobs"] = db.NewJobStore(g.dbClient.DB)
+		g.stores["tasks"] = db.NewTaskStore(g.dbClient.DB)
 	}
 
 	return nil

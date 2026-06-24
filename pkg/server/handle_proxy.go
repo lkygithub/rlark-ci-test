@@ -15,11 +15,10 @@ import (
 	"github.com/rancher/remotedialer"
 
 	"github.com/rlinf/rlark/pkg/apis"
-	"github.com/rlinf/rlark/pkg/server/cert"
 	"github.com/rlinf/rlark/pkg/server/reverseproxy"
 )
 
-func (s *Server) GetDial(ctx context.Context, dialType, address string, userMeta map[string]string) (remotedialer.Dialer, string, error) {
+func (s *Server) GetDial(ctx context.Context, dialType, address string, certMeta map[string]string) (remotedialer.Dialer, string, error) {
 	switch dialType {
 	case "default":
 		// TODO
@@ -31,18 +30,8 @@ func (s *Server) GetDial(ctx context.Context, dialType, address string, userMeta
 }
 
 func (s *Server) handleProxyConnect(ctx *gin.Context) {
-	if len(ctx.Request.TLS.PeerCertificates) == 0 {
-		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "client certificate required"})
-		return
-	}
-	clientCert := ctx.Request.TLS.PeerCertificates[0]
-	userMeta, ok := cert.GetX509CertMeta(clientCert)
-	if !ok {
-		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "invalid client certificate"})
-		return
-	}
-
-	clientID := userMeta[apis.MetaRemoteDialerClientID]
+	certMeta := GetCertMetaFromContext(ctx)
+	clientID := certMeta[apis.MetaRemoteDialerClientID]
 	if clientID != "" {
 		clientKey := clientID
 		if role := ctx.Request.Header.Get(apis.RemoteDialerRoleHeader); role != "" {
@@ -50,8 +39,8 @@ func (s *Server) handleProxyConnect(ctx *gin.Context) {
 		}
 		reverseproxy.SetClientHeader(ctx.Request, clientKey)
 	} else {
-		peerID := userMeta[apis.MetaRemoteDialerPeerID]
-		peerToken := userMeta[apis.MetaRemoteDialerPeerToken]
+		peerID := certMeta[apis.MetaRemoteDialerPeerID]
+		peerToken := certMeta[apis.MetaRemoteDialerPeerToken]
 		if peerID != "" && peerToken != "" {
 			reverseproxy.SetPeerHeaders(ctx.Request, peerID, peerToken)
 		} else {
@@ -60,7 +49,7 @@ func (s *Server) handleProxyConnect(ctx *gin.Context) {
 		}
 	}
 
-	if agentID := userMeta[apis.MetaAgentID]; agentID != "" {
+	if agentID := certMeta[apis.MetaAgentID]; agentID != "" {
 		// 如果是 Agent 接入，需要检查是否完成该 Agent 的注册流程
 		if err := s.registerAgent(ctx.Request.Context(), agentID); err != nil {
 			ctx.JSON(http.StatusBadGateway, gin.H{"error": fmt.Sprintf("agent registration failed: %v", err)})
@@ -109,26 +98,20 @@ func (s *Server) handleProxy(ctx *gin.Context) {
 }
 
 func (s *Server) handleKubernetesProxy(ctx *gin.Context) {
-	if len(ctx.Request.TLS.PeerCertificates) == 0 {
-		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "client certificate required"})
-		return
-	}
-
 	// 只有提供了 "kubernetes-impersonation" 元数据的证书才允许使用 Kubernetes 代理功能
 	// 如果证书中 "kubernetes-impersonation" 的值为 "-"，则表示不进行任何 impersonation
 
-	userCert := ctx.Request.TLS.PeerCertificates[0]
-	userMeta, _ := cert.GetX509CertMeta(userCert)
-	if userMeta == nil || userMeta[apis.MetaKubernetesImpersonation] == "" {
+	certMeta := GetCertMetaFromContext(ctx)
+	if certMeta[apis.MetaKubernetesImpersonation] == "" {
 		ctx.JSON(http.StatusForbidden, gin.H{"error": "client certificate does not allow Kubernetes proxying"})
 		return
 	}
 
 	header := make(http.Header)
-	if impersonation := userMeta[apis.MetaKubernetesImpersonation]; impersonation != "-" {
+	if impersonation := certMeta[apis.MetaKubernetesImpersonation]; impersonation != "-" {
 		header.Set("Impersonate-User", impersonation)
 	}
-	if impersonationGroup := userMeta[apis.MetaKubernetesImpersonationGroup]; impersonationGroup != "" {
+	if impersonationGroup := certMeta[apis.MetaKubernetesImpersonationGroup]; impersonationGroup != "" {
 		groups := strings.Split(impersonationGroup, ",")
 		for i := range groups {
 			groups[i] = strings.TrimSpace(groups[i])
@@ -137,10 +120,10 @@ func (s *Server) handleKubernetesProxy(ctx *gin.Context) {
 			header.Add("Impersonate-Group", impersonationGroup)
 		}
 	}
-	if impersonationUid := userMeta[apis.MetaKubernetesImpersonationUID]; impersonationUid != "" {
+	if impersonationUid := certMeta[apis.MetaKubernetesImpersonationUID]; impersonationUid != "" {
 		header.Set("Impersonate-Uid", impersonationUid)
 	}
-	for k, v := range userMeta {
+	for k, v := range certMeta {
 		if after, ok := strings.CutPrefix(k, apis.MetaKubernetesImpersonationExtraPrefix); ok {
 			header.Set("Impersonate-Extra-"+after, v)
 		}

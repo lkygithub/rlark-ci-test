@@ -37,11 +37,12 @@ func NewKubeProxy(restConfig *rest.Config) (*KubeProxy, error) {
 func (p *KubeProxy) GetHandler() http.Handler {
 	proxy := httputil.NewSingleHostReverseProxy(p.apiServer)
 	proxy.Transport = p.transport
-	originalDirector := proxy.Director
-	proxy.Director = func(req *http.Request) {
-		originalDirector(req)
-		req.Host = p.apiServer.Host
-		req.Header.Set("Accept", "application/json, */*")
+	proxy.Rewrite = func(pr *httputil.ProxyRequest) {
+		pr.Out.Host = p.apiServer.Host
+		if pr.Out.Header == nil {
+			pr.Out.Header = make(http.Header)
+		}
+		pr.Out.Header.Set("Accept", "application/json, */*")
 	}
 	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
 		logrus.Errorf("KubeProxy error: %v", err)
