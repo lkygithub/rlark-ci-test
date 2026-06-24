@@ -11,8 +11,10 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/rancher/remotedialer"
 
+	"github.com/rlinf/rlark/pkg/apis"
 	"github.com/rlinf/rlark/pkg/server/cert"
 	"github.com/rlinf/rlark/pkg/server/reverseproxy"
 )
@@ -40,16 +42,34 @@ func (s *Server) handleProxyConnect(ctx *gin.Context) {
 		return
 	}
 
-	clientKey := userMeta["clientKey"]
-	if clientKey != "" {
+	clientID := userMeta[apis.MetaRemoteDialerClientID]
+	if clientID != "" {
+		clientKey := clientID
+		if role := ctx.Request.Header.Get(apis.RemoteDialerRoleHeader); role != "" {
+			clientKey = clientID + "-" + role
+		}
 		reverseproxy.SetClientHeader(ctx.Request, clientKey)
 	} else {
-		peerID := userMeta["peerID"]
-		peerToken := userMeta["peerToken"]
+		peerID := userMeta[apis.MetaRemoteDialerPeerID]
+		peerToken := userMeta[apis.MetaRemoteDialerPeerToken]
 		if peerID != "" && peerToken != "" {
 			reverseproxy.SetPeerHeaders(ctx.Request, peerID, peerToken)
 		} else {
 			ctx.JSON(http.StatusUnauthorized, gin.H{"error": "client certificate missing required metadata"})
+			return
+		}
+	}
+
+	if agentID := userMeta[apis.MetaAgentID]; agentID != "" {
+		// 如果是 Agent 接入，需要检查是否完成该 Agent 的注册流程
+		if err := s.registerAgent(ctx.Request.Context(), agentID); err != nil {
+			ctx.JSON(http.StatusBadGateway, gin.H{"error": fmt.Sprintf("agent registration failed: %v", err)})
+			return
+		}
+		// 在接入期间，启动 Broadcast 机制，向集群广播该 Agent 的存在信息
+		role := ctx.Request.Header.Get(apis.RemoteDialerRoleHeader)
+		if err := s.startAgentBroadcaster(ctx.Request.Context(), agentID, role, uuid.NewString()); err != nil {
+			ctx.JSON(http.StatusBadGateway, gin.H{"error": fmt.Sprintf("start agent broadcaster failed: %v", err)})
 			return
 		}
 	}
@@ -99,16 +119,16 @@ func (s *Server) handleKubernetesProxy(ctx *gin.Context) {
 
 	userCert := ctx.Request.TLS.PeerCertificates[0]
 	userMeta, _ := cert.GetX509CertMeta(userCert)
-	if userMeta == nil || userMeta["kubernetes-impersonation"] == "" {
+	if userMeta == nil || userMeta[apis.MetaKubernetesImpersonation] == "" {
 		ctx.JSON(http.StatusForbidden, gin.H{"error": "client certificate does not allow Kubernetes proxying"})
 		return
 	}
 
 	header := make(http.Header)
-	if impersonation := userMeta["kubernetes-impersonation"]; impersonation != "-" {
-		header.Set("kubernetes-impersonation", impersonation)
+	if impersonation := userMeta[apis.MetaKubernetesImpersonation]; impersonation != "-" {
+		header.Set("Impersonate-User", impersonation)
 	}
-	if impersonationGroup := userMeta["kubernetes-impersonation-group"]; impersonationGroup != "" {
+	if impersonationGroup := userMeta[apis.MetaKubernetesImpersonationGroup]; impersonationGroup != "" {
 		groups := strings.Split(impersonationGroup, ",")
 		for i := range groups {
 			groups[i] = strings.TrimSpace(groups[i])
@@ -117,11 +137,11 @@ func (s *Server) handleKubernetesProxy(ctx *gin.Context) {
 			header.Add("Impersonate-Group", impersonationGroup)
 		}
 	}
-	if impersonationUid := userMeta["kubernetes-impersonation-uid"]; impersonationUid != "" {
+	if impersonationUid := userMeta[apis.MetaKubernetesImpersonationUID]; impersonationUid != "" {
 		header.Set("Impersonate-Uid", impersonationUid)
 	}
 	for k, v := range userMeta {
-		if after, ok := strings.CutPrefix(k, "kubernetes-impersonation-extra-"); ok {
+		if after, ok := strings.CutPrefix(k, apis.MetaKubernetesImpersonationExtraPrefix); ok {
 			header.Set("Impersonate-Extra-"+after, v)
 		}
 	}
