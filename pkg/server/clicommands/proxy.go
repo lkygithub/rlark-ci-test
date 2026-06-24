@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/rlinf/rlark/pkg/server"
 	"github.com/spf13/cobra"
 )
 
@@ -26,7 +25,7 @@ func ProxyCurlCommand() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("invalid URL: %w", err)
 			}
-			client, err := server.NewClientFromKubernetes(cmd.Context(), Port, KubeClientConfig)
+			client, err := NewClient(cmd.Context())
 			if err != nil {
 				return err
 			}

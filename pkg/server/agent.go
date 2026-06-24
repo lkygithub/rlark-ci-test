@@ -88,7 +88,9 @@ func (s *Server) startAgentBroadcaster(ctx context.Context, agentID, role, connI
 		RenewDeadline: time.Second * 10,
 		RetryPeriod:   time.Second * 5,
 		Callbacks: leaderelection.LeaderCallbacks{
-			OnStartedLeading: func(ctx context.Context) {},
+			OnStartedLeading: func(ctx context.Context) {
+				<-ctx.Done()
+			},
 			OnStoppedLeading: func() {},
 			OnNewLeader:      func(identity string) {},
 		},

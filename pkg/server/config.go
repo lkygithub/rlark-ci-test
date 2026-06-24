@@ -79,7 +79,7 @@ type ClientConfig struct {
 
 func DefaultClientConfig() ClientConfig {
 	return ClientConfig{
-		ServerAddress:         "localhost:8443",
+		ServerAddress:         "https://localhost:8443",
 		ServerHostname:        "",
 		ClientCertPath:        "",
 		ClientKeyPath:         "",

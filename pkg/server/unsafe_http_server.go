@@ -14,9 +14,9 @@ func (s *Server) registerUnsafeHTTPHandlers(r *gin.Engine) {
 	api := r.Group("/api")
 	api.GET("peer/:target", s.handlePeerConnectProxy)
 
-	r.GET("/healthz") // TODO
-	r.GET("/readyz")  // TODO
-	r.GET("/livez")   // TODO
+	r.GET("/healthz", s.handleHealthCheck)
+	r.GET("/readyz", s.handleHealthCheck)
+	r.GET("/livez", s.handleHealthCheck)
 	r.GET("/metrics") // TODO
 }
 
@@ -44,4 +44,12 @@ func (s *Server) runUnsafeHTTPServer(ctx context.Context) error {
 
 	logrus.Printf("Starting unsafe HTTP server on port %d", s.config.UnsafeHTTPPort)
 	return server.Serve(l)
+}
+
+func (s *Server) handleHealthCheck(ctx *gin.Context) {
+	if s.peerBroadcasted {
+		ctx.JSON(http.StatusOK, gin.H{"status": "ok"})
+	} else {
+		ctx.JSON(http.StatusServiceUnavailable, gin.H{"status": "not ready"})
+	}
 }

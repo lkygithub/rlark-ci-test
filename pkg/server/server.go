@@ -46,6 +46,9 @@ type Server struct {
 	dialerFactory         *reverseproxy.DialerFactory
 	defaultProxyTransport http.RoundTripper
 	defaultPeerTransport  http.RoundTripper
+
+	// health scope variables
+	peerBroadcasted bool // 第一次广播完成后，才认为服务已经准备好
 }
 
 // NewServer creates a new Server instance with the provided configuration.

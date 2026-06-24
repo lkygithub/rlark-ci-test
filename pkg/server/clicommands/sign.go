@@ -24,7 +24,7 @@ func SignCommand() *cobra.Command {
 		Use:   "sign",
 		Short: "Sign a certificate.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client, err := server.NewClientFromKubernetes(cmd.Context(), Port, KubeClientConfig)
+			client, err := NewClient(cmd.Context())
 			if err != nil {
 				return err
 			}
@@ -91,7 +91,7 @@ func RevokeCommand() *cobra.Command {
 				return fmt.Errorf("invalid cert-type: %s", certType)
 			}
 
-			client, err := server.NewClientFromKubernetes(cmd.Context(), Port, KubeClientConfig)
+			client, err := NewClient(cmd.Context())
 			if err != nil {
 				return err
 			}
