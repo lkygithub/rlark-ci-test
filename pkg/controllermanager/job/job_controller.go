@@ -2,14 +2,13 @@ package job
 
 import (
 	"context"
-	"fmt"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	rlarkv1alpha1 "github.com/rlinf/rlark/pkg/apis/rlark.io/v1alpha1"
+	"github.com/rlinf/rlark/pkg/controllermanager/controller"
 )
 
 // JobReconciler reconciles Job resources.
@@ -21,32 +20,29 @@ type JobReconciler struct {
 // +kubebuilder:rbac:groups=rlinf.io,resources=jobs,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=rlinf.io,resources=jobs/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=rlinf.io,resources=jobs/finalizers,verbs=update
+// +kubebuilder:rbac:groups=rlinf.io,resources=tasks,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=rlinf.io,resources=tasks/status,verbs=get;update;patch
 
 // Reconcile handles a Job reconciliation request.
 func (r *JobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	logger := log.FromContext(ctx).WithValues("job", req.NamespacedName)
-	logger.Info("Reconciling Job")
+	return controller.ReconcileWith(ctx, req, &rlarkv1alpha1.Job{}, "job", r)
+}
 
-	var job rlarkv1alpha1.Job
-	if err := r.Get(ctx, req.NamespacedName, &job); err != nil {
-		logger.Error(err, "unable to fetch Job")
-		return ctrl.Result{}, client.IgnoreNotFound(err)
-	}
+func (r *JobReconciler) IsTerminal(obj client.Object) bool {
+	job := obj.(*rlarkv1alpha1.Job)
+	return job.Status.Phase == rlarkv1alpha1.JobPhaseSucceeded ||
+		job.Status.Phase == rlarkv1alpha1.JobPhaseFailed
+}
 
-	logger.Info(fmt.Sprintf("Job %s/%s phase=%s", job.Namespace, job.Name, job.Status.Phase))
-
-	// TODO: implement reconciliation logic
-	// - resolve JobTaskTemplate into Task resources
-	// - track task status and update job phase
-	// - handle transitions: Pending → Running → Succeeded/Failed
-
-	return ctrl.Result{}, nil
+func (r *JobReconciler) ReconcileStateMachine(ctx context.Context, obj client.Object) (bool, error) {
+	return r.reconcileWithStateMachine(ctx, obj.(*rlarkv1alpha1.Job))
 }
 
 // SetupWithManager registers the controller with the manager.
 func (r *JobReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&rlarkv1alpha1.Job{}).
+		Owns(&rlarkv1alpha1.Task{}).
 		Named("job").
 		Complete(r)
 }

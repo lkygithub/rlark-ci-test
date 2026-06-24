@@ -1,0 +1,72 @@
+package job
+
+import (
+	"context"
+
+	"github.com/looplab/fsm"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	rlarkv1alpha1 "github.com/rlinf/rlark/pkg/apis/rlark.io/v1alpha1"
+)
+
+const (
+	EventInit          = "init"
+	EventTasksRunning  = "tasks-running"
+	EventAllTasksDone  = "all-tasks-succeeded"
+	EventAnyTaskFailed = "any-task-failed"
+)
+
+var jobEvents = fsm.Events{
+	{
+		Name: EventInit,
+		Src:  []string{""},
+		Dst:  string(rlarkv1alpha1.JobPhasePending),
+	},
+	{
+		Name: EventTasksRunning,
+		Src:  []string{string(rlarkv1alpha1.JobPhasePending)},
+		Dst:  string(rlarkv1alpha1.JobPhaseRunning),
+	},
+	{
+		Name: EventAllTasksDone,
+		Src:  []string{string(rlarkv1alpha1.JobPhaseRunning)},
+		Dst:  string(rlarkv1alpha1.JobPhaseSucceeded),
+	},
+	{
+		Name: EventAnyTaskFailed,
+		Src:  []string{string(rlarkv1alpha1.JobPhaseRunning)},
+		Dst:  string(rlarkv1alpha1.JobPhaseFailed),
+	},
+}
+
+func newJobStateMachine() *fsm.FSM {
+	return fsm.NewFSM("", jobEvents, fsm.Callbacks{
+		"enter_state": func(ctx context.Context, e *fsm.Event) {
+			job := e.Args[0].(*rlarkv1alpha1.Job)
+			job.Status.Phase = rlarkv1alpha1.JobPhase(e.Dst)
+		},
+		"enter_" + string(rlarkv1alpha1.JobPhasePending): func(ctx context.Context, e *fsm.Event) {
+			job := e.Args[0].(*rlarkv1alpha1.Job)
+			now := metav1.Now()
+			job.Status.StartTime = &now
+			if job.Status.Tasks == nil {
+				job.Status.Tasks = make([]rlarkv1alpha1.JobTaskStatus, 0, len(job.Spec.Tasks))
+				for _, t := range job.Spec.Tasks {
+					job.Status.Tasks = append(job.Status.Tasks, rlarkv1alpha1.JobTaskStatus{
+						Name: t.Name,
+					})
+				}
+			}
+		},
+		"enter_" + string(rlarkv1alpha1.JobPhaseSucceeded): func(ctx context.Context, e *fsm.Event) {
+			job := e.Args[0].(*rlarkv1alpha1.Job)
+			now := metav1.Now()
+			job.Status.EndTime = &now
+		},
+		"enter_" + string(rlarkv1alpha1.JobPhaseFailed): func(ctx context.Context, e *fsm.Event) {
+			job := e.Args[0].(*rlarkv1alpha1.Job)
+			now := metav1.Now()
+			job.Status.EndTime = &now
+		},
+	})
+}
