@@ -18,7 +18,7 @@ func (a *Agent) runTunnel(ctx context.Context, role string) error {
 	}
 	netDialer := func(ctx context.Context, network, addr string) (net.Conn, error) {
 		var d net.Dialer
-		if a.localDialer != nil && addr == "0.0.0.0:1" { // 约定的 local server 地址
+		if addr == "0.0.0.0:1" { // 约定的 local server 地址
 			return a.localDialer(ctx)
 		}
 		return d.DialContext(ctx, network, addr)

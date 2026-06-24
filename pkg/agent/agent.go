@@ -12,6 +12,7 @@ import (
 
 	"github.com/rlinf/rlark/pkg/clients/kubernetes/clientset/versioned"
 	"github.com/rlinf/rlark/pkg/server"
+	"github.com/rlinf/rlark/pkg/utils"
 )
 
 type Agent struct {
@@ -26,7 +27,7 @@ type Agent struct {
 	kubeHandler      http.Handler
 
 	localListener net.Listener
-	localDialer   func(ctx context.Context) (net.Conn, error)
+	localDialer   utils.Dial
 }
 
 func NewAgent(config Config) *Agent {
@@ -71,7 +72,8 @@ func (a *Agent) init(ctx context.Context) error {
 	}
 	a.kubeHandler = kubeProxy.GetHandler()
 
-	// TODO: Initialize local listener and dialer
+	// Initialize local listener and dialer
+	a.localListener, a.localDialer = utils.NetPipeWithBuffer(65536)
 
 	return nil
 }
@@ -90,10 +92,7 @@ func (a *Agent) Run(ctx context.Context) error {
 		return a.runTunnel(ctx, role)
 	})
 	eg.Go(func() error {
-		if a.localListener != nil {
-			return a.runLocalHTTPServer(ctx)
-		}
-		return nil
+		return a.runLocalHTTPServer(ctx)
 	})
 	if a.config.Mode == "cluster" || a.config.Mode == "both" {
 		eg.Go(func() error {
