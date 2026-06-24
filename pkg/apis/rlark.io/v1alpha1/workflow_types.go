@@ -27,6 +27,10 @@ type WorkflowJobStatus struct {
 	Message string   `json:"message,omitempty"`
 }
 
+func (s *WorkflowJobStatus) GetPhase() string   { return string(s.Phase) }
+func (s *WorkflowJobStatus) SetPhase(p string)  { s.Phase = JobPhase(p) }
+func (s *WorkflowJobStatus) SetMessage(m string) { s.Message = m }
+
 type WorkflowStatus struct {
 	Phase      WorkflowPhase       `json:"phase,omitempty"`
 	Jobs       []WorkflowJobStatus `json:"jobs,omitempty"`
