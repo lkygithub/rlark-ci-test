@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/rlinf/rlark/pkg/apis"
 	"github.com/rlinf/rlark/pkg/server/cert"
 )
 
@@ -17,23 +18,23 @@ func (s *Server) parseSignRequest(req *SignRequest) (string, map[string]string, 
 	switch req.Role {
 	case "admin":
 		return "x509", map[string]string{
-			"permission.admin":         "true", // TODO
-			"kubernetes-impersonation": "-",
+			apis.MetaPermissionAdmin:         "true", // TODO
+			apis.MetaKubernetesImpersonation: "-",
 		}, nil
 
 	case "peer":
 		return "x509", map[string]string{
-			"peerID":    s.dialerFactory.GetPeerID(),
-			"peerToken": s.dialerFactory.GetPeerToken(),
+			apis.MetaRemoteDialerPeerID:    s.dialerFactory.GetPeerID(),
+			apis.MetaRemoteDialerPeerToken: s.dialerFactory.GetPeerToken(),
 		}, nil
 
 	case "agent":
-		namespace := "rlarkns-" + req.ClientID
-		impersonation := "system:serviceaccount:" + namespace + ":" + "rlark-agent"
+		namespace := apis.RLarkAgentNamespacePrefix + req.ClientID
+		impersonation := "system:serviceaccount:" + namespace + ":" + apis.RLarkAgentServiceAccountName
 		return "x509", map[string]string{
-			"agentID":                  req.ClientID,
-			"clientKey":                req.ClientID,
-			"kubernetes-impersonation": impersonation,
+			apis.MetaAgentID:                 req.ClientID,
+			apis.MetaRemoteDialerClientID:    req.ClientID,
+			apis.MetaKubernetesImpersonation: impersonation,
 		}, nil
 
 	default:
