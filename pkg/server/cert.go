@@ -30,11 +30,11 @@ const (
 func (s *Server) loadTLSCA(ctx context.Context) error {
 	// 读取 Kubernetes Secret 中保存的 TLS CA 证书和私钥，如果不存在则跳过（因为 TLS 证书可能是由外部 CA 签发的，不需要服务器自己管理 CA）。
 
-	secret, err := s.kubeClient.CoreV1().Secrets(s.config.Namespace()).Get(ctx, defaultTLSCASecretName, metav1.GetOptions{})
+	secret, err := s.kubeClient.CoreV1().Secrets(s.config.KubeClientConfig.DefaultNamespace()).Get(ctx, defaultTLSCASecretName, metav1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
 			if s.config.AutoSignTLSCACert {
-				logrus.Infof("TLS CA secret %s/%s not found, creating a self-signed TLS CA certificate", s.config.Namespace(), defaultTLSCASecretName)
+				logrus.Infof("TLS CA secret %s/%s not found, creating a self-signed TLS CA certificate", s.config.KubeClientConfig.DefaultNamespace(), defaultTLSCASecretName)
 				return s.createAndStoreCA(ctx, defaultTLSCASecretName, func(d *cert.Data) {
 					s.tlsCA = d
 				})
@@ -44,7 +44,7 @@ func (s *Server) loadTLSCA(ctx context.Context) error {
 		return err
 	}
 	if secret.Data == nil {
-		return fmt.Errorf("TLS CA secret %s/%s has no data", s.config.Namespace(), defaultTLSCASecretName)
+		return fmt.Errorf("TLS CA secret %s/%s has no data", s.config.KubeClientConfig.DefaultNamespace(), defaultTLSCASecretName)
 	}
 	ca, err := cert.LoadData(secret.Data["ca.crt"], secret.Data["ca.key"])
 	if err != nil {
@@ -58,19 +58,19 @@ func (s *Server) loadTLSCA(ctx context.Context) error {
 func (s *Server) loadTLSConfig(ctx context.Context) error {
 	// 读取 Kubernetes Secret 中保存的 TLS 证书和私钥，如果不存在则尝试使用 TLS CA 生成一个自签名的 TLS 证书并保存到 Kubernetes 中。
 
-	secret, err := s.kubeClient.CoreV1().Secrets(s.config.Namespace()).Get(ctx, defaultTLSSecretName, metav1.GetOptions{})
+	secret, err := s.kubeClient.CoreV1().Secrets(s.config.KubeClientConfig.DefaultNamespace()).Get(ctx, defaultTLSSecretName, metav1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
 			if s.tlsCA == nil {
-				return fmt.Errorf("TLS secret %s/%s not found, please create it with the server certificate and key", s.config.Namespace(), defaultTLSSecretName)
+				return fmt.Errorf("TLS secret %s/%s not found, please create it with the server certificate and key", s.config.KubeClientConfig.DefaultNamespace(), defaultTLSSecretName)
 			}
-			logrus.Infof("TLS secret %s/%s not found, creating a self-signed TLS certificate using the CA", s.config.Namespace(), defaultTLSSecretName)
+			logrus.Infof("TLS secret %s/%s not found, creating a self-signed TLS certificate using the CA", s.config.KubeClientConfig.DefaultNamespace(), defaultTLSSecretName)
 			return s.createAndStoreTLSConfig(ctx, s.tlsCA)
 		}
 		return err
 	}
 	if secret.Data == nil {
-		return fmt.Errorf("TLS secret %s/%s has no data", s.config.Namespace(), defaultTLSSecretName)
+		return fmt.Errorf("TLS secret %s/%s has no data", s.config.KubeClientConfig.DefaultNamespace(), defaultTLSSecretName)
 	}
 	data, err := cert.LoadData(secret.Data[v1.TLSCertKey], secret.Data[v1.TLSPrivateKeyKey])
 	if err != nil {
@@ -124,7 +124,7 @@ func (s *Server) createAndStoreTLSConfig(ctx context.Context, ca *cert.Data) err
 	secret := &v1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      defaultTLSSecretName,
-			Namespace: s.config.Namespace(),
+			Namespace: s.config.KubeClientConfig.DefaultNamespace(),
 			Labels: map[string]string{
 				"app":  "rlark",
 				"type": "tls",
@@ -137,7 +137,7 @@ func (s *Server) createAndStoreTLSConfig(ctx context.Context, ca *cert.Data) err
 		Data: data,
 		Type: v1.SecretTypeTLS,
 	}
-	_, err = s.kubeClient.CoreV1().Secrets(s.config.Namespace()).Create(ctx, secret, metav1.CreateOptions{})
+	_, err = s.kubeClient.CoreV1().Secrets(s.config.KubeClientConfig.DefaultNamespace()).Create(ctx, secret, metav1.CreateOptions{})
 	if err != nil {
 		return fmt.Errorf("create TLS secret: %w", err)
 	}
@@ -152,7 +152,7 @@ func (s *Server) createAndStoreTLSConfig(ctx context.Context, ca *cert.Data) err
 func (s *Server) initCAConfigs(ctx context.Context) error {
 	// 读取 Kubernetes Secret 中保存的 CA 证书和私钥，如果不存在则创建一个新的 CA 并保存到 Kubernetes 中。
 
-	secret, err := s.kubeClient.CoreV1().Secrets(s.config.Namespace()).Get(ctx, defaultClientCASecretName, metav1.GetOptions{})
+	secret, err := s.kubeClient.CoreV1().Secrets(s.config.KubeClientConfig.DefaultNamespace()).Get(ctx, defaultClientCASecretName, metav1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// 如果 Secret 不存在，则创建一个新的 CA 并保存到 Kubernetes 中。
@@ -163,7 +163,7 @@ func (s *Server) initCAConfigs(ctx context.Context) error {
 		return err
 	}
 	if secret.Data == nil {
-		return fmt.Errorf("CA secret %s/%s has no data", s.config.Namespace(), defaultClientCASecretName)
+		return fmt.Errorf("CA secret %s/%s has no data", s.config.KubeClientConfig.DefaultNamespace(), defaultClientCASecretName)
 	}
 	ca, err := cert.LoadData(secret.Data["ca.crt"], secret.Data["ca.key"])
 	if err != nil {
@@ -185,7 +185,7 @@ func (s *Server) createAndStoreCA(ctx context.Context, name string, callback fun
 	secret := &v1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
-			Namespace: s.config.Namespace(),
+			Namespace: s.config.KubeClientConfig.DefaultNamespace(),
 			Labels: map[string]string{
 				"app":  "rlark",
 				"type": "ca",
@@ -201,7 +201,7 @@ func (s *Server) createAndStoreCA(ctx context.Context, name string, callback fun
 		},
 		Type: v1.SecretTypeOpaque,
 	}
-	_, err = s.kubeClient.CoreV1().Secrets(s.config.Namespace()).Create(ctx, secret, metav1.CreateOptions{})
+	_, err = s.kubeClient.CoreV1().Secrets(s.config.KubeClientConfig.DefaultNamespace()).Create(ctx, secret, metav1.CreateOptions{})
 	if err != nil {
 		return err
 	}
@@ -230,13 +230,13 @@ func (s *Server) signAdminCert(ctx context.Context) error {
 		"client.key": certData.KeyPEM,
 	}
 
-	secret, err := s.kubeClient.CoreV1().Secrets(s.config.Namespace()).Get(ctx, defaultAdminCertSecretName, metav1.GetOptions{})
+	secret, err := s.kubeClient.CoreV1().Secrets(s.config.KubeClientConfig.DefaultNamespace()).Get(ctx, defaultAdminCertSecretName, metav1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
 			secret = &v1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      defaultAdminCertSecretName,
-					Namespace: s.config.Namespace(),
+					Namespace: s.config.KubeClientConfig.DefaultNamespace(),
 					Labels: map[string]string{
 						"app":  "rlark",
 						"type": "admin-cert",
@@ -249,7 +249,7 @@ func (s *Server) signAdminCert(ctx context.Context) error {
 				Data: data,
 				Type: v1.SecretTypeOpaque,
 			}
-			if _, err := s.kubeClient.CoreV1().Secrets(s.config.Namespace()).Create(ctx, secret, metav1.CreateOptions{}); err != nil {
+			if _, err := s.kubeClient.CoreV1().Secrets(s.config.KubeClientConfig.DefaultNamespace()).Create(ctx, secret, metav1.CreateOptions{}); err != nil {
 				return fmt.Errorf("create admin cert secret: %w", err)
 			}
 			return nil
@@ -258,7 +258,7 @@ func (s *Server) signAdminCert(ctx context.Context) error {
 	}
 
 	secret.Data = data
-	if _, err := s.kubeClient.CoreV1().Secrets(s.config.Namespace()).Update(ctx, secret, metav1.UpdateOptions{}); err != nil {
+	if _, err := s.kubeClient.CoreV1().Secrets(s.config.KubeClientConfig.DefaultNamespace()).Update(ctx, secret, metav1.UpdateOptions{}); err != nil {
 		return fmt.Errorf("update admin cert secret: %w", err)
 	}
 	return nil

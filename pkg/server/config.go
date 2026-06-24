@@ -44,6 +44,10 @@ func (c *KubernetesClientConfig) SetupFlags(fs *pflag.FlagSet) {
 	fs.DurationVar(&c.Timeout, "kube-timeout", c.Timeout, "Kubernetes client request timeout")
 }
 
+func (c KubernetesClientConfig) DefaultNamespace() string {
+	return cmp.Or(c.Namespace, "default")
+}
+
 func (c KubernetesClientConfig) BuildRestConfig() (*rest.Config, error) {
 	var restConfig *rest.Config
 	var err error
@@ -118,8 +122,4 @@ func (c *Config) SetupFlags(fs *pflag.FlagSet) {
 	fs.StringSliceVar(&c.Peers, "peers", c.Peers, "Comma-separated list of peer server addresses for clustering")
 
 	c.KubeClientConfig.SetupFlags(fs)
-}
-
-func (c Config) Namespace() string {
-	return cmp.Or(c.KubeClientConfig.Namespace, "default")
 }

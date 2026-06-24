@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/uptrace/bun"
@@ -16,8 +17,8 @@ import (
 // DB wraps a Bun database connection and provides health checks.
 type DB struct {
 	*bun.DB
-	cfg       Config
-	migrator  *migrate.Migrator
+	cfg      Config
+	migrator *migrate.Migrator
 }
 
 // Open connects to PostgreSQL via Bun+pgdriver and returns a DB handle.
@@ -57,6 +58,19 @@ func Open(cfg Config) (*DB, error) {
 		cfg:      cfg,
 		migrator: migrate.NewMigrator(db, Migrations),
 	}, nil
+}
+
+func OpenFromFileConfig(path string) (*DB, error) {
+	dbConfig := DefaultConfig()
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("read database config file: %w", err)
+	}
+	if err := UnmarshalConfig(data, &dbConfig); err != nil {
+		return nil, fmt.Errorf("unmarshal database config: %w", err)
+	}
+
+	return Open(dbConfig)
 }
 
 // Config returns the config used to create this DB.

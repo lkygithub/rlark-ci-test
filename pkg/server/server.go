@@ -112,7 +112,7 @@ func (s *Server) init(ctx context.Context) error {
 	id := fmt.Sprintf("%s-%d", os.Getenv("HOSTNAME"), os.Getpid())
 	rl, err := resourcelock.New(
 		resourcelock.LeasesResourceLock,
-		s.config.Namespace(),
+		s.config.KubeClientConfig.DefaultNamespace(),
 		"rlark-server-init-lock",
 		s.kubeClient.CoreV1(),
 		s.kubeClient.CoordinationV1(),
@@ -148,7 +148,16 @@ func (s *Server) init(ctx context.Context) error {
 
 	err = <-initServerDataErrorCh
 	leCancel()
-	return err
+	if err != nil {
+		return err
+	}
+
+	// 4. 初始化本实例的一些信息
+	if err := s.initSelfInstance(ctx); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (s *Server) initKubeClient(ctx context.Context) error {
@@ -178,17 +187,8 @@ func (s *Server) initDatabase(ctx context.Context) error {
 		logrus.Warningf("RLark server is running without persistent storage.")
 		return nil
 	}
-
-	dbConfig := db.DefaultConfig()
-	data, err := os.ReadFile(s.config.DBConfigPath)
-	if err != nil {
-		return fmt.Errorf("read database config file: %w", err)
-	}
-	if err := db.UnmarshalConfig(data, &dbConfig); err != nil {
-		return fmt.Errorf("unmarshal database config: %w", err)
-	}
-
-	s.dbClient, err = db.Open(dbConfig)
+	var err error
+	s.dbClient, err = db.OpenFromFileConfig(s.config.DBConfigPath)
 	if err != nil {
 		return fmt.Errorf("open database: %w", err)
 	}
@@ -214,14 +214,20 @@ func (s *Server) initServerData(ctx context.Context) error {
 	if err := s.signAdminCert(ctx); err != nil {
 		return fmt.Errorf("sign admin certificate: %w", err)
 	}
-	if err := s.initPeerTransport(ctx); err != nil {
-		return fmt.Errorf("initialize peer transport: %w", err)
-	}
 
 	// 3. 检查数据库中的表结构和索引，如果不正确则进行迁移。
 	if s.dbClient != nil {
-		// TODO: perform database migration if necessary
+		if err := s.dbClient.Migrate(ctx); err != nil {
+			return fmt.Errorf("migrate database: %w", err)
+		}
 	}
 
+	return nil
+}
+
+func (s *Server) initSelfInstance(ctx context.Context) error {
+	if err := s.initPeerTransport(ctx); err != nil {
+		return fmt.Errorf("initialize peer transport: %w", err)
+	}
 	return nil
 }

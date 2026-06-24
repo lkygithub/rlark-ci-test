@@ -11,7 +11,7 @@ Kubernetes-style API surface generated from the current CRDs.
 
 ### Operations
 
-#### `GET /apis/rlinf.io/v1alpha1/jobs`
+#### `GET /api/v1/rlinf.io/v1alpha1/jobs`
 
 List jobs resources.
 
@@ -26,7 +26,7 @@ Responses:
 - `200` OK → `JobList`
 - `401` Unauthorized
 
-#### `POST /apis/rlinf.io/v1alpha1/jobs`
+#### `POST /api/v1/rlinf.io/v1alpha1/jobs`
 
 Create a Job resource.
 
@@ -43,7 +43,7 @@ Responses:
 - `202` Accepted → `Job`
 - `401` Unauthorized
 
-#### `DELETE /apis/rlinf.io/v1alpha1/jobs`
+#### `DELETE /api/v1/rlinf.io/v1alpha1/jobs`
 
 Delete a collection of jobs resources.
 
@@ -58,7 +58,7 @@ Responses:
 - `200` OK → `Status`
 - `401` Unauthorized
 
-#### `GET /apis/rlinf.io/v1alpha1/jobs/{name}`
+#### `GET /api/v1/rlinf.io/v1alpha1/jobs/{name}`
 
 Get a Job resource.
 
@@ -71,7 +71,7 @@ Responses:
 - `401` Unauthorized
 - `404` Not Found
 
-#### `PUT /apis/rlinf.io/v1alpha1/jobs/{name}`
+#### `PUT /api/v1/rlinf.io/v1alpha1/jobs/{name}`
 
 Replace a Job resource.
 
@@ -88,7 +88,7 @@ Responses:
 - `401` Unauthorized
 - `404` Not Found
 
-#### `PATCH /apis/rlinf.io/v1alpha1/jobs/{name}`
+#### `PATCH /api/v1/rlinf.io/v1alpha1/jobs/{name}`
 
 Patch a Job resource.
 
@@ -106,7 +106,7 @@ Responses:
 - `401` Unauthorized
 - `404` Not Found
 
-#### `DELETE /apis/rlinf.io/v1alpha1/jobs/{name}`
+#### `DELETE /api/v1/rlinf.io/v1alpha1/jobs/{name}`
 
 Delete a Job resource.
 
@@ -120,7 +120,7 @@ Responses:
 - `401` Unauthorized
 - `404` Not Found
 
-#### `GET /apis/rlinf.io/v1alpha1/jobs/{name}/status`
+#### `GET /api/v1/rlinf.io/v1alpha1/jobs/{name}/status`
 
 Get the status subresource for Job.
 
@@ -133,7 +133,7 @@ Responses:
 - `401` Unauthorized
 - `404` Not Found
 
-#### `PUT /apis/rlinf.io/v1alpha1/jobs/{name}/status`
+#### `PUT /api/v1/rlinf.io/v1alpha1/jobs/{name}/status`
 
 Replace the status subresource for Job.
 
@@ -151,7 +151,7 @@ Responses:
 - `401` Unauthorized
 - `404` Not Found
 
-#### `PATCH /apis/rlinf.io/v1alpha1/jobs/{name}/status`
+#### `PATCH /api/v1/rlinf.io/v1alpha1/jobs/{name}/status`
 
 Patch the status subresource for Job.
 
@@ -214,7 +214,7 @@ Responses:
 
 ### Operations
 
-#### `GET /apis/rlinf.io/v1alpha1/nodes`
+#### `GET /api/v1/rlinf.io/v1alpha1/nodes`
 
 List nodes resources.
 
@@ -230,7 +230,7 @@ Responses:
 - `200` OK → `NodeList`
 - `401` Unauthorized
 
-#### `POST /apis/rlinf.io/v1alpha1/nodes`
+#### `POST /api/v1/rlinf.io/v1alpha1/nodes`
 
 Create a Node resource.
 
@@ -248,7 +248,7 @@ Responses:
 - `202` Accepted → `Node`
 - `401` Unauthorized
 
-#### `DELETE /apis/rlinf.io/v1alpha1/nodes`
+#### `DELETE /api/v1/rlinf.io/v1alpha1/nodes`
 
 Delete a collection of nodes resources.
 
@@ -264,7 +264,7 @@ Responses:
 - `200` OK → `Status`
 - `401` Unauthorized
 
-#### `GET /apis/rlinf.io/v1alpha1/nodes/{name}`
+#### `GET /api/v1/rlinf.io/v1alpha1/nodes/{name}`
 
 Get a Node resource.
 
@@ -278,7 +278,7 @@ Responses:
 - `401` Unauthorized
 - `404` Not Found
 
-#### `PUT /apis/rlinf.io/v1alpha1/nodes/{name}`
+#### `PUT /api/v1/rlinf.io/v1alpha1/nodes/{name}`
 
 Replace a Node resource.
 
@@ -296,7 +296,7 @@ Responses:
 - `401` Unauthorized
 - `404` Not Found
 
-#### `PATCH /apis/rlinf.io/v1alpha1/nodes/{name}`
+#### `PATCH /api/v1/rlinf.io/v1alpha1/nodes/{name}`
 
 Patch a Node resource.
 
@@ -315,7 +315,7 @@ Responses:
 - `401` Unauthorized
 - `404` Not Found
 
-#### `DELETE /apis/rlinf.io/v1alpha1/nodes/{name}`
+#### `DELETE /api/v1/rlinf.io/v1alpha1/nodes/{name}`
 
 Delete a Node resource.
 
@@ -330,7 +330,7 @@ Responses:
 - `401` Unauthorized
 - `404` Not Found
 
-#### `GET /apis/rlinf.io/v1alpha1/nodes/{name}/status`
+#### `GET /api/v1/rlinf.io/v1alpha1/nodes/{name}/status`
 
 Get the status subresource for Node.
 
@@ -344,7 +344,7 @@ Responses:
 - `401` Unauthorized
 - `404` Not Found
 
-#### `PUT /apis/rlinf.io/v1alpha1/nodes/{name}/status`
+#### `PUT /api/v1/rlinf.io/v1alpha1/nodes/{name}/status`
 
 Replace the status subresource for Node.
 
@@ -363,7 +363,7 @@ Responses:
 - `401` Unauthorized
 - `404` Not Found
 
-#### `PATCH /apis/rlinf.io/v1alpha1/nodes/{name}/status`
+#### `PATCH /api/v1/rlinf.io/v1alpha1/nodes/{name}/status`
 
 Patch the status subresource for Node.
 
@@ -416,7 +416,7 @@ Responses:
 
 ### Operations
 
-#### `GET /apis/rlinf.io/v1alpha1/tasks`
+#### `GET /api/v1/rlinf.io/v1alpha1/tasks`
 
 List tasks resources.
 
@@ -432,7 +432,7 @@ Responses:
 - `200` OK → `TaskList`
 - `401` Unauthorized
 
-#### `POST /apis/rlinf.io/v1alpha1/tasks`
+#### `POST /api/v1/rlinf.io/v1alpha1/tasks`
 
 Create a Task resource.
 
@@ -450,7 +450,7 @@ Responses:
 - `202` Accepted → `Task`
 - `401` Unauthorized
 
-#### `DELETE /apis/rlinf.io/v1alpha1/tasks`
+#### `DELETE /api/v1/rlinf.io/v1alpha1/tasks`
 
 Delete a collection of tasks resources.
 
@@ -466,7 +466,7 @@ Responses:
 - `200` OK → `Status`
 - `401` Unauthorized
 
-#### `GET /apis/rlinf.io/v1alpha1/tasks/{name}`
+#### `GET /api/v1/rlinf.io/v1alpha1/tasks/{name}`
 
 Get a Task resource.
 
@@ -480,7 +480,7 @@ Responses:
 - `401` Unauthorized
 - `404` Not Found
 
-#### `PUT /apis/rlinf.io/v1alpha1/tasks/{name}`
+#### `PUT /api/v1/rlinf.io/v1alpha1/tasks/{name}`
 
 Replace a Task resource.
 
@@ -498,7 +498,7 @@ Responses:
 - `401` Unauthorized
 - `404` Not Found
 
-#### `PATCH /apis/rlinf.io/v1alpha1/tasks/{name}`
+#### `PATCH /api/v1/rlinf.io/v1alpha1/tasks/{name}`
 
 Patch a Task resource.
 
@@ -517,7 +517,7 @@ Responses:
 - `401` Unauthorized
 - `404` Not Found
 
-#### `DELETE /apis/rlinf.io/v1alpha1/tasks/{name}`
+#### `DELETE /api/v1/rlinf.io/v1alpha1/tasks/{name}`
 
 Delete a Task resource.
 
@@ -532,7 +532,7 @@ Responses:
 - `401` Unauthorized
 - `404` Not Found
 
-#### `GET /apis/rlinf.io/v1alpha1/tasks/{name}/status`
+#### `GET /api/v1/rlinf.io/v1alpha1/tasks/{name}/status`
 
 Get the status subresource for Task.
 
@@ -546,7 +546,7 @@ Responses:
 - `401` Unauthorized
 - `404` Not Found
 
-#### `PUT /apis/rlinf.io/v1alpha1/tasks/{name}/status`
+#### `PUT /api/v1/rlinf.io/v1alpha1/tasks/{name}/status`
 
 Replace the status subresource for Task.
 
@@ -565,7 +565,7 @@ Responses:
 - `401` Unauthorized
 - `404` Not Found
 
-#### `PATCH /apis/rlinf.io/v1alpha1/tasks/{name}/status`
+#### `PATCH /api/v1/rlinf.io/v1alpha1/tasks/{name}/status`
 
 Patch the status subresource for Task.
 
@@ -633,7 +633,7 @@ Responses:
 
 ### Operations
 
-#### `GET /apis/rlinf.io/v1alpha1/workflows`
+#### `GET /api/v1/rlinf.io/v1alpha1/workflows`
 
 List workflows resources.
 
@@ -648,7 +648,7 @@ Responses:
 - `200` OK → `WorkflowList`
 - `401` Unauthorized
 
-#### `POST /apis/rlinf.io/v1alpha1/workflows`
+#### `POST /api/v1/rlinf.io/v1alpha1/workflows`
 
 Create a Workflow resource.
 
@@ -665,7 +665,7 @@ Responses:
 - `202` Accepted → `Workflow`
 - `401` Unauthorized
 
-#### `DELETE /apis/rlinf.io/v1alpha1/workflows`
+#### `DELETE /api/v1/rlinf.io/v1alpha1/workflows`
 
 Delete a collection of workflows resources.
 
@@ -680,7 +680,7 @@ Responses:
 - `200` OK → `Status`
 - `401` Unauthorized
 
-#### `GET /apis/rlinf.io/v1alpha1/workflows/{name}`
+#### `GET /api/v1/rlinf.io/v1alpha1/workflows/{name}`
 
 Get a Workflow resource.
 
@@ -693,7 +693,7 @@ Responses:
 - `401` Unauthorized
 - `404` Not Found
 
-#### `PUT /apis/rlinf.io/v1alpha1/workflows/{name}`
+#### `PUT /api/v1/rlinf.io/v1alpha1/workflows/{name}`
 
 Replace a Workflow resource.
 
@@ -710,7 +710,7 @@ Responses:
 - `401` Unauthorized
 - `404` Not Found
 
-#### `PATCH /apis/rlinf.io/v1alpha1/workflows/{name}`
+#### `PATCH /api/v1/rlinf.io/v1alpha1/workflows/{name}`
 
 Patch a Workflow resource.
 
@@ -728,7 +728,7 @@ Responses:
 - `401` Unauthorized
 - `404` Not Found
 
-#### `DELETE /apis/rlinf.io/v1alpha1/workflows/{name}`
+#### `DELETE /api/v1/rlinf.io/v1alpha1/workflows/{name}`
 
 Delete a Workflow resource.
 
@@ -742,7 +742,7 @@ Responses:
 - `401` Unauthorized
 - `404` Not Found
 
-#### `GET /apis/rlinf.io/v1alpha1/workflows/{name}/status`
+#### `GET /api/v1/rlinf.io/v1alpha1/workflows/{name}/status`
 
 Get the status subresource for Workflow.
 
@@ -755,7 +755,7 @@ Responses:
 - `401` Unauthorized
 - `404` Not Found
 
-#### `PUT /apis/rlinf.io/v1alpha1/workflows/{name}/status`
+#### `PUT /api/v1/rlinf.io/v1alpha1/workflows/{name}/status`
 
 Replace the status subresource for Workflow.
 
@@ -773,7 +773,7 @@ Responses:
 - `401` Unauthorized
 - `404` Not Found
 
-#### `PATCH /apis/rlinf.io/v1alpha1/workflows/{name}/status`
+#### `PATCH /api/v1/rlinf.io/v1alpha1/workflows/{name}/status`
 
 Patch the status subresource for Workflow.
 

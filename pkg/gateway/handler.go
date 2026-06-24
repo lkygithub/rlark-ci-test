@@ -1,4 +1,4 @@
-package api
+package gateway
 
 import (
 	"net/http"
@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+
 	"github.com/rlinf/rlark/pkg/clients/db"
 )
 
@@ -89,7 +90,7 @@ func parseLabelSelector(s string) (db.LabelSelector, error) {
 
 func (g *Gateway) handleList(resource string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if g.dbEnabled {
+		if g.dbClient != nil {
 			g.handleListDB(c, resource)
 		} else {
 			g.handleListKube(c, resource)
@@ -99,7 +100,7 @@ func (g *Gateway) handleList(resource string) gin.HandlerFunc {
 
 func (g *Gateway) handleGet(resource string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if g.dbEnabled {
+		if g.dbClient != nil {
 			g.handleGetDB(c, resource)
 		} else {
 			g.handleGetKube(c, resource)

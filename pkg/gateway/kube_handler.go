@@ -1,4 +1,4 @@
-package api
+package gateway
 
 import (
 	"context"
@@ -7,10 +7,10 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/gin-gonic/gin"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	"github.com/gin-gonic/gin"
 	rlarkiov1alpha1 "github.com/rlinf/rlark/pkg/apis/rlark.io/v1alpha1"
 	versioned "github.com/rlinf/rlark/pkg/clients/kubernetes/clientset/versioned"
 )
