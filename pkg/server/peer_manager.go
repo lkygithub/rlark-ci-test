@@ -85,7 +85,10 @@ func (s *Server) runBroadcaster(ctx context.Context) error {
 		RenewDeadline: time.Second * 10,
 		RetryPeriod:   time.Second * 5,
 		Callbacks: leaderelection.LeaderCallbacks{
-			OnStartedLeading: func(ctx context.Context) {},
+			OnStartedLeading: func(ctx context.Context) {
+				s.peerBroadcasted = true
+				<-ctx.Done()
+			},
 			OnStoppedLeading: func() {},
 			OnNewLeader:      func(identity string) {},
 		},

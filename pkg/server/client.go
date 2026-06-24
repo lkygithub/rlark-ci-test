@@ -113,7 +113,7 @@ func NewClientFromConfig(config ClientConfig) (*Client, error) {
 // and retrieving the client certificate from Kubernetes secrets. It can only be
 // used when the client is running inside the same network as the server and has
 // access to the Kubernetes API.
-func NewClientFromKubernetes(ctx context.Context, port int, kubeConfig clients.KubernetesClientConfig) (*Client, error) {
+func NewClientFromKubernetes(ctx context.Context, serverAddr string, kubeConfig clients.KubernetesClientConfig) (*Client, error) {
 	restConfig, err := kubeConfig.BuildRestConfig()
 	if err != nil {
 		return nil, fmt.Errorf("build rest config: %w", err)
@@ -124,29 +124,39 @@ func NewClientFromKubernetes(ctx context.Context, port int, kubeConfig clients.K
 	}
 	namespace := kubeConfig.DefaultNamespace()
 
-	leases, err := kubeClient.CoordinationV1().Leases(namespace).List(ctx, metav1.ListOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("list leases in namespace %s: %w", namespace, err)
+	if !strings.HasPrefix(serverAddr, "http") {
+		serverAddr = "https://" + serverAddr
 	}
-	serverIPs := make([]string, 0)
-	for _, item := range leases.Items {
-		if strings.HasPrefix(item.Name, ServerPeerPrefix) {
-			if item.Spec.HolderIdentity == nil || item.Spec.LeaseDurationSeconds == nil {
-				continue
-			}
-			if time.Since(item.Spec.RenewTime.Time) > time.Duration(*item.Spec.LeaseDurationSeconds)*time.Second {
-				continue
-			}
-			ip, _, _ := strings.Cut(*item.Spec.HolderIdentity, "/")
-			if net.ParseIP(ip) != nil {
-				serverIPs = append(serverIPs, ip)
+	serverUrl, err := url.Parse(serverAddr)
+	if err != nil {
+		return nil, fmt.Errorf("parse server address: %w", err)
+	}
+	if serverUrl.Hostname() == "" {
+		leases, err := kubeClient.CoordinationV1().Leases(namespace).List(ctx, metav1.ListOptions{})
+		if err != nil {
+			return nil, fmt.Errorf("list leases in namespace %s: %w", namespace, err)
+		}
+		serverIPs := make([]string, 0)
+		for _, item := range leases.Items {
+			if strings.HasPrefix(item.Name, ServerPeerPrefix) {
+				if item.Spec.HolderIdentity == nil || item.Spec.LeaseDurationSeconds == nil {
+					continue
+				}
+				if time.Since(item.Spec.RenewTime.Time) > time.Duration(*item.Spec.LeaseDurationSeconds)*time.Second {
+					continue
+				}
+				ip, _, _ := strings.Cut(*item.Spec.HolderIdentity, "/")
+				if net.ParseIP(ip) != nil {
+					serverIPs = append(serverIPs, ip)
+				}
 			}
 		}
+		if len(serverIPs) == 0 {
+			return nil, fmt.Errorf("no server peers found in namespace %s", namespace)
+		}
+		serverHost := serverIPs[rand.Intn(len(serverIPs))]
+		serverUrl.Host = net.JoinHostPort(serverHost, serverUrl.Port())
 	}
-	if len(serverIPs) == 0 {
-		return nil, fmt.Errorf("no server peers found in namespace %s", namespace)
-	}
-	serverIP := serverIPs[rand.Intn(len(serverIPs))]
 
 	clientSecret, err := kubeClient.CoreV1().Secrets(namespace).Get(ctx, defaultAdminCertSecretName, metav1.GetOptions{})
 	if err != nil {
@@ -174,7 +184,7 @@ func NewClientFromKubernetes(ctx context.Context, port int, kubeConfig clients.K
 		MinVersion:         tls.VersionTLS12,
 		InsecureSkipVerify: true,
 	}
-	return NewClient(fmt.Sprintf("https://%s:%d", serverIP, port), tlsConfig, nil), nil
+	return NewClient(serverUrl.String(), tlsConfig, nil), nil
 }
 
 // BuildURL 构建完整的请求 URL

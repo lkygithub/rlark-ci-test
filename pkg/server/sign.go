@@ -77,6 +77,11 @@ func (s *Server) parseSignRequest(req *SignRequest) (string, map[string]string, 
 }
 
 func (s *Server) handleSignCertificate(ctx *gin.Context) {
+	if !apis.PermissionChecker.IsAdmin(GetCertMetaFromContext(ctx)) {
+		ctx.JSON(http.StatusForbidden, gin.H{"error": "admin permission required"})
+		return
+	}
+
 	if len(s.ca) == 0 {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "no CA available"})
 		return
@@ -150,6 +155,11 @@ func (s *Server) handleCertCheck(ctx *gin.Context) {
 }
 
 func (s *Server) handleRevokeCertificate(ctx *gin.Context) {
+	if !apis.PermissionChecker.IsAdmin(GetCertMetaFromContext(ctx)) {
+		ctx.JSON(http.StatusForbidden, gin.H{"error": "admin permission required"})
+		return
+	}
+
 	var req RevokeCertRequest
 	if err := ctx.BindJSON(&req); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})

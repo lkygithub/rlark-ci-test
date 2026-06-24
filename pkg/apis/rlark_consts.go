@@ -6,8 +6,9 @@ const (
 )
 
 const (
-	MetaPermissionPrefix = "permission."
-	MetaPermissionAdmin  = MetaPermissionPrefix + "admin"
+	MetaPermissionPrefix     = "permission:"
+	MetaPermissionAdmin      = MetaPermissionPrefix + "admin"       // value: "true"
+	MetaPermissionAgentProxy = MetaPermissionPrefix + "agent-proxy" // value: agent1,agent2,agent3
 
 	MetaKubernetesImpersonation            = "kubernetes-impersonation"
 	MetaKubernetesImpersonationGroup       = "kubernetes-impersonation-group"
