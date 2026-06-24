@@ -11,6 +11,7 @@ func init() {
 	Migrations.MustRegister(func(ctx context.Context, db *bun.DB) error {
 		// Create tables for each resource type
 		models := []any{
+			(*RevokedCertificateModel)(nil),
 			(*JobModel)(nil),
 			(*LatestJobModel)(nil),
 			(*NodeModel)(nil),
