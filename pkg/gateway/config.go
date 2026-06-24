@@ -1,9 +1,7 @@
 package gateway
 
 import (
-	"os"
-
-	"github.com/rlinf/rlark/pkg/server"
+	"github.com/rlinf/rlark/pkg/clients"
 	"github.com/spf13/pflag"
 )
 
@@ -13,7 +11,7 @@ type Config struct {
 	Address string
 
 	// KubeClientConfig is the Kubernetes client configuration.
-	KubeClientConfig server.KubernetesClientConfig
+	KubeClientConfig clients.KubernetesClientConfig
 
 	// DBConfigPath is the file path to the database configuration (e.g., YAML or JSON).
 	DBConfigPath string
@@ -22,10 +20,8 @@ type Config struct {
 // DefaultConfig returns a Config with sensible defaults.
 func DefaultConfig() Config {
 	return Config{
-		Address: ":8080",
-		KubeClientConfig: server.KubernetesClientConfig{
-			KubeconfigPath: os.Getenv("KUBECONFIG"),
-		},
+		Address:          ":8080",
+		KubeClientConfig: clients.DefaultKubernetesClientConfig(),
 	}
 }
 

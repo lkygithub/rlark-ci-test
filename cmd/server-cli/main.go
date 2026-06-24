@@ -5,7 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/rlinf/rlark/pkg/server/commands"
+	"github.com/rlinf/rlark/pkg/server/clicommands"
 )
 
 func main() {
@@ -14,9 +14,9 @@ func main() {
 		Short: "A CLI tool for managing the rlark server",
 	}
 
-	cmd.AddCommand(commands.SignCommand())
-	cmd.AddCommand(commands.ProxyCurlCommand())
-	commands.SetupPersistentFlags(cmd.PersistentFlags())
+	cmd.AddCommand(clicommands.SignCommand())
+	cmd.AddCommand(clicommands.ProxyCurlCommand())
+	clicommands.SetupPersistentFlags(cmd.PersistentFlags())
 
 	if err := cmd.Execute(); err != nil {
 		os.Exit(1)

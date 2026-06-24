@@ -12,22 +12,108 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"path"
 	"strings"
 	"time"
 
+	"github.com/gorilla/websocket"
+	"github.com/rancher/remotedialer"
+	"github.com/rlinf/rlark/pkg/clients"
 	"github.com/rlinf/rlark/pkg/server/cert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
 type Client struct {
-	baseURL    string
-	transport  http.RoundTripper
-	httpClient *http.Client
+	baseURL         string
+	tlsConfig       *tls.Config
+	netDialer       remotedialer.Dialer
+	transport       http.RoundTripper
+	httpClient      *http.Client
+	websocketDialer *websocket.Dialer
 }
 
-func NewClientFromKubernetes(ctx context.Context, port int, kubeConfig KubernetesClientConfig) (*Client, error) {
+// NewClient creates a new Client with the given base URL, TLS configuration, and network dialer.
+func NewClient(baseURL string, tlsConfig *tls.Config, netDialer remotedialer.Dialer) *Client {
+	if netDialer == nil {
+		netDialer = func(ctx context.Context, network, addr string) (net.Conn, error) {
+			var d net.Dialer
+			return d.DialContext(ctx, network, addr)
+		}
+	}
+	transport := &http.Transport{
+		TLSClientConfig: tlsConfig,
+		DialContext:     netDialer,
+	}
+	httpClient := &http.Client{
+		Transport: transport,
+		Timeout:   30 * time.Second,
+	}
+	websocketDialer := &websocket.Dialer{
+		TLSClientConfig:  tlsConfig,
+		NetDialContext:   netDialer,
+		HandshakeTimeout: remotedialer.HandshakeTimeOut,
+	}
+	return &Client{
+		baseURL:         baseURL,
+		tlsConfig:       tlsConfig,
+		netDialer:       netDialer,
+		transport:       transport,
+		httpClient:      httpClient,
+		websocketDialer: websocketDialer,
+	}
+}
+
+// NewClientFromConfig creates a new Client from the given ClientConfig.
+func NewClientFromConfig(config ClientConfig) (*Client, error) {
+	clientCert, err := tls.LoadX509KeyPair(config.ClientCertPath, config.ClientKeyPath)
+	if err != nil {
+		return nil, fmt.Errorf("load client certificate: %w", err)
+	}
+	var caCertPool *x509.CertPool
+	if config.CAPath != "" {
+		caCertPool = x509.NewCertPool()
+		caCertData, err := os.ReadFile(config.CAPath)
+		if err != nil {
+			return nil, fmt.Errorf("read CA certificate: %w", err)
+		}
+		if ok := caCertPool.AppendCertsFromPEM(caCertData); !ok {
+			return nil, fmt.Errorf("failed to append CA certificate")
+		}
+	}
+	u, err := url.Parse(config.ServerAddress)
+	if err != nil {
+		return nil, fmt.Errorf("parse server address: %w", err)
+	}
+	dialerTarget := u.Host
+	if config.ServerHostname != "" {
+		if port := u.Port(); port != "" {
+			u.Host = config.ServerHostname + ":" + port
+		} else {
+			u.Host = config.ServerHostname
+		}
+	}
+
+	netDialer := func(ctx context.Context, network, addr string) (net.Conn, error) {
+		var d net.Dialer
+		return d.DialContext(ctx, network, dialerTarget)
+	}
+	tlsConfig := &tls.Config{
+		Certificates:       []tls.Certificate{clientCert},
+		RootCAs:            caCertPool,
+		MinVersion:         tls.VersionTLS12,
+		InsecureSkipVerify: config.InsecureSkipTLSVerify,
+	}
+
+	return NewClient(u.String(), tlsConfig, netDialer), nil
+}
+
+// NewClientFromKubernetes creates a new Client by discovering the server's IP
+// and retrieving the client certificate from Kubernetes secrets. It can only be
+// used when the client is running inside the same network as the server and has
+// access to the Kubernetes API.
+func NewClientFromKubernetes(ctx context.Context, port int, kubeConfig clients.KubernetesClientConfig) (*Client, error) {
 	restConfig, err := kubeConfig.BuildRestConfig()
 	if err != nil {
 		return nil, fmt.Errorf("build rest config: %w", err)
@@ -82,23 +168,13 @@ func NewClientFromKubernetes(ctx context.Context, port int, kubeConfig Kubernete
 		caCertPool.AppendCertsFromPEM(caSecret.Data["ca.crt"])
 	}
 
-	transport := &http.Transport{
-		TLSClientConfig: &tls.Config{
-			Certificates:       []tls.Certificate{clientCert},
-			RootCAs:            caCertPool,
-			MinVersion:         tls.VersionTLS12,
-			InsecureSkipVerify: true,
-		},
+	tlsConfig := &tls.Config{
+		Certificates:       []tls.Certificate{clientCert},
+		RootCAs:            caCertPool,
+		MinVersion:         tls.VersionTLS12,
+		InsecureSkipVerify: true,
 	}
-
-	return &Client{
-		baseURL:   fmt.Sprintf("https://%s:%d", serverIP, port),
-		transport: transport,
-		httpClient: &http.Client{
-			Transport: transport,
-			Timeout:   30 * time.Second,
-		},
-	}, nil
+	return NewClient(fmt.Sprintf("https://%s:%d", serverIP, port), tlsConfig, nil), nil
 }
 
 // BuildURL 构建完整的请求 URL
@@ -131,10 +207,24 @@ func (c *Client) DoRequest(ctx context.Context, method, rawURL string, body io.R
 	return c.httpClient.Do(req)
 }
 
-func (c Client) DoRequestWithObject(ctx context.Context, method, rawURL string, obj any, requestOptions ...func(*http.Request)) (*http.Response, error) {
+func (c *Client) DoRequestWithObject(ctx context.Context, method, rawURL string, obj any, requestOptions ...func(*http.Request)) (*http.Response, error) {
 	body, err := json.Marshal(obj)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal object: %w", err)
 	}
 	return c.DoRequest(ctx, method, rawURL, bytes.NewReader(body), requestOptions...)
+}
+
+func (c *Client) DialWebsocket(ctx context.Context, header http.Header) (*websocket.Conn, *http.Response, error) {
+	urlStr := c.BuildURL("api", "connect")
+	u, err := url.Parse(urlStr)
+	if err != nil {
+		return nil, nil, fmt.Errorf("parse websocket URL: %w", err)
+	}
+	if u.Scheme == "https" {
+		u.Scheme = "wss"
+	} else {
+		u.Scheme = "ws"
+	}
+	return c.websocketDialer.DialContext(ctx, u.String(), header)
 }
