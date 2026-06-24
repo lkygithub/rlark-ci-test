@@ -1,4 +1,9 @@
 .idea/
 /bin/
 tmp/
-api-gateway
+/gateway
+/server
+/server-cli
+/agent
+/controller-manager
+/crd-api-docgen

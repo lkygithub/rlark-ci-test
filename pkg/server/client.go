@@ -2,7 +2,6 @@ package server
 
 import (
 	"bytes"
-	"cmp"
 	"context"
 	"crypto/tls"
 	"crypto/x509"
@@ -37,7 +36,7 @@ func NewClientFromKubernetes(ctx context.Context, port int, kubeConfig Kubernete
 	if err != nil {
 		return nil, fmt.Errorf("create kube client: %w", err)
 	}
-	namespace := cmp.Or(kubeConfig.Namespace, "default")
+	namespace := kubeConfig.DefaultNamespace()
 
 	leases, err := kubeClient.CoordinationV1().Leases(namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {

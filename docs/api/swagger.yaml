@@ -16,7 +16,7 @@ tags:
 
 paths:
   # ─── Job Collection ───────────────────────────────────────────────
-  /apis/rlinf.io/v1alpha1/jobs:
+  /api/v1/rlinf.io/v1alpha1/jobs:
     get:
       tags: [Job]
       summary: List jobs
@@ -92,7 +92,7 @@ paths:
           description: Unauthorized
 
   # ─── Job Named ────────────────────────────────────────────────────
-  /apis/rlinf.io/v1alpha1/jobs/{name}:
+  /api/v1/rlinf.io/v1alpha1/jobs/{name}:
     get:
       tags: [Job]
       summary: Get a Job
@@ -206,7 +206,7 @@ paths:
           description: Not Found
 
   # ─── Job Status Subresource ──────────────────────────────────────
-  /apis/rlinf.io/v1alpha1/jobs/{name}/status:
+  /api/v1/rlinf.io/v1alpha1/jobs/{name}/status:
     get:
       tags: [Job]
       summary: Get Job status
@@ -306,7 +306,7 @@ paths:
           description: Not Found
 
   # ─── Job Logs (not yet implemented) ──────────────────────────────
-  /apis/rlinf.io/v1alpha1/jobs/{name}/logs:
+  /api/v1/rlinf.io/v1alpha1/jobs/{name}/logs:
     get:
       tags: [Job]
       summary: Get Job logs
@@ -326,7 +326,7 @@ paths:
           description: Not Implemented
 
   # ─── Job Metrics (not yet implemented) ───────────────────────────
-  /apis/rlinf.io/v1alpha1/jobs/{name}/metrics:
+  /api/v1/rlinf.io/v1alpha1/jobs/{name}/metrics:
     get:
       tags: [Job]
       summary: Get Job metrics
@@ -346,7 +346,7 @@ paths:
           description: Not Implemented
 
   # ─── Node Collection ─────────────────────────────────────────────
-  /apis/rlinf.io/v1alpha1/nodes:
+  /api/v1/rlinf.io/v1alpha1/nodes:
     get:
       tags: [Node]
       summary: List nodes
@@ -425,7 +425,7 @@ paths:
           description: Unauthorized
 
   # ─── Node Named ──────────────────────────────────────────────────
-  /apis/rlinf.io/v1alpha1/nodes/{name}:
+  /api/v1/rlinf.io/v1alpha1/nodes/{name}:
     get:
       tags: [Node]
       summary: Get a Node
@@ -543,7 +543,7 @@ paths:
           description: Not Found
 
   # ─── Node Status Subresource ─────────────────────────────────────
-  /apis/rlinf.io/v1alpha1/nodes/{name}/status:
+  /api/v1/rlinf.io/v1alpha1/nodes/{name}/status:
     get:
       tags: [Node]
       summary: Get Node status
@@ -646,7 +646,7 @@ paths:
           description: Not Found
 
   # ─── Task Collection ─────────────────────────────────────────────
-  /apis/rlinf.io/v1alpha1/tasks:
+  /api/v1/rlinf.io/v1alpha1/tasks:
     get:
       tags: [Task]
       summary: List tasks
@@ -725,7 +725,7 @@ paths:
           description: Unauthorized
 
   # ─── Task Named ──────────────────────────────────────────────────
-  /apis/rlinf.io/v1alpha1/tasks/{name}:
+  /api/v1/rlinf.io/v1alpha1/tasks/{name}:
     get:
       tags: [Task]
       summary: Get a Task
@@ -843,7 +843,7 @@ paths:
           description: Not Found
 
   # ─── Task Status Subresource ─────────────────────────────────────
-  /apis/rlinf.io/v1alpha1/tasks/{name}/status:
+  /api/v1/rlinf.io/v1alpha1/tasks/{name}/status:
     get:
       tags: [Task]
       summary: Get Task status
@@ -946,7 +946,7 @@ paths:
           description: Not Found
 
   # ─── Workflow Collection ─────────────────────────────────────────
-  /apis/rlinf.io/v1alpha1/workflows:
+  /api/v1/rlinf.io/v1alpha1/workflows:
     get:
       tags: [Workflow]
       summary: List workflows
@@ -1022,7 +1022,7 @@ paths:
           description: Unauthorized
 
   # ─── Workflow Named ──────────────────────────────────────────────
-  /apis/rlinf.io/v1alpha1/workflows/{name}:
+  /api/v1/rlinf.io/v1alpha1/workflows/{name}:
     get:
       tags: [Workflow]
       summary: Get a Workflow
@@ -1136,7 +1136,7 @@ paths:
           description: Not Found
 
   # ─── Workflow Status Subresource ─────────────────────────────────
-  /apis/rlinf.io/v1alpha1/workflows/{name}/status:
+  /api/v1/rlinf.io/v1alpha1/workflows/{name}/status:
     get:
       tags: [Workflow]
       summary: Get Workflow status

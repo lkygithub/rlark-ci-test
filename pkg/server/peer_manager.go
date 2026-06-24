@@ -67,7 +67,7 @@ func (s *Server) runBroadcaster(ctx context.Context) error {
 	ip := os.Getenv("POD_IP") + "/" + s.dialerFactory.GetPeerID() + "/" + s.dialerFactory.GetPeerToken()
 	rl, err := resourcelock.New(
 		resourcelock.LeasesResourceLock,
-		s.config.Namespace(),
+		s.config.KubeClientConfig.DefaultNamespace(),
 		id,
 		s.kubeClient.CoreV1(),
 		s.kubeClient.CoordinationV1(),
@@ -138,7 +138,7 @@ func (s *Server) runPeerTunnel(ctx context.Context) error {
 		}
 	}
 
-	client := s.kubeClient.CoordinationV1().Leases(s.config.Namespace())
+	client := s.kubeClient.CoordinationV1().Leases(s.config.KubeClientConfig.DefaultNamespace())
 
 	// 通过 Kubernetes Lease 发现其他服务器实例并建立 Peer-to-Peer 连接。
 	// 每台服务器在 runBroadcaster 中创建名为 rlark-server-peer-{HOSTNAME} 的 Lease，

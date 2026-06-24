@@ -272,7 +272,7 @@ func buildOperations(kind, plural, listKind, scope, basePath string, hasStatus b
 }
 
 func resourceBasePath(scope, group, version, plural string) string {
-	return fmt.Sprintf("/apis/%s/%s/%s", group, version, plural)
+	return fmt.Sprintf("/api/v1/%s/%s/%s", group, version, plural)
 }
 
 func writeSchemaSection(out *bytes.Buffer, node schemaNode, depth int, name string) {
