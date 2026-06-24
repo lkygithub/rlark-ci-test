@@ -1,16 +1,15 @@
 package controllermanager
 
 import (
-	"os"
-
-	"github.com/rlinf/rlark/pkg/controllermanager/sync"
-	"github.com/rlinf/rlark/pkg/server"
 	"github.com/spf13/pflag"
+
+	"github.com/rlinf/rlark/pkg/clients"
+	"github.com/rlinf/rlark/pkg/controllermanager/sync"
 )
 
 type Config struct {
 	// Kubernetes client configuration.
-	KubeClientConfig server.KubernetesClientConfig
+	KubeClientConfig clients.KubernetesClientConfig
 
 	// DBConfigPath is the file path to the database configuration (e.g., YAML or JSON).
 	DBConfigPath string
@@ -26,10 +25,8 @@ type Config struct {
 
 func DefaultConfig() Config {
 	return Config{
-		KubeClientConfig: server.KubernetesClientConfig{
-			KubeconfigPath: os.Getenv("KUBECONFIG"),
-		},
-		DBConfigPath: "",
+		KubeClientConfig: clients.DefaultKubernetesClientConfig(),
+		DBConfigPath:     "",
 
 		LeaderElection:   true,
 		LeaderElectionID: "rlark-controller-manager",

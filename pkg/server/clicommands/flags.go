@@ -1,13 +1,13 @@
-package commands
+package clicommands
 
 import (
 	"github.com/spf13/pflag"
 
-	"github.com/rlinf/rlark/pkg/server"
+	"github.com/rlinf/rlark/pkg/clients"
 )
 
 var (
-	KubeClientConfig server.KubernetesClientConfig
+	KubeClientConfig clients.KubernetesClientConfig
 	Port             int = 8443
 )
 

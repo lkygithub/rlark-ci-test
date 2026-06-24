@@ -1,69 +1,15 @@
 package server
 
 import (
-	"cmp"
-	"os"
-	"time"
+	"fmt"
 
 	"github.com/spf13/pflag"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/tools/clientcmd/api"
+
+	"github.com/rlinf/rlark/pkg/clients"
 )
-
-type KubernetesClientConfig struct {
-	// KubeconfigPath is the path to the kubeconfig file for connecting to the Kubernetes cluster.
-	KubeconfigPath string
-
-	// Master is the address of the Kubernetes API server. If not specified, the client will use the default in-cluster configuration or kubeconfig file configuration.
-	Master string
-
-	// InCluster indicates whether to use in-cluster configuration.
-	InCluster bool
-
-	// Namespace is the Kubernetes namespace to configure the client for. If empty, the client will use the default namespace.
-	Namespace string
-
-	// QPS is the maximum number of queries per second allowed for the Kubernetes client.
-	QPS float32
-
-	// Burst is the maximum burst for throttle when connecting to the Kubernetes cluster.
-	Burst int
-
-	// Timeout is the timeout for Kubernetes client requests (optional).
-	Timeout time.Duration
-}
-
-func (c *KubernetesClientConfig) SetupFlags(fs *pflag.FlagSet) {
-	// Kubernetes client flags
-	fs.StringVar(&c.KubeconfigPath, "kubeconfig", c.KubeconfigPath, "Path to kubeconfig file (if not using in-cluster config)")
-	fs.StringVar(&c.Master, "master", c.Master, "The address of the Kubernetes API server (overrides kubeconfig)")
-	fs.BoolVar(&c.InCluster, "in-cluster", c.InCluster, "Use in-cluster Kubernetes configuration")
-	fs.StringVar(&c.Namespace, "kube-namespace", c.Namespace, "Kubernetes namespace to configure the client for")
-	fs.Float32Var(&c.QPS, "kube-qps", c.QPS, "Kubernetes client QPS")
-	fs.IntVar(&c.Burst, "kube-burst", c.Burst, "Kubernetes client burst")
-	fs.DurationVar(&c.Timeout, "kube-timeout", c.Timeout, "Kubernetes client request timeout")
-}
-
-func (c KubernetesClientConfig) DefaultNamespace() string {
-	return cmp.Or(c.Namespace, "default")
-}
-
-func (c KubernetesClientConfig) BuildRestConfig() (*rest.Config, error) {
-	var restConfig *rest.Config
-	var err error
-	if c.InCluster {
-		restConfig, err = rest.InClusterConfig()
-	} else {
-		restConfig, err = clientcmd.BuildConfigFromFlags(c.Master, c.KubeconfigPath)
-	}
-	if err != nil {
-		return nil, err
-	}
-	restConfig.QPS = c.QPS
-	restConfig.Burst = c.Burst
-	restConfig.Timeout = c.Timeout
-	return restConfig, nil
-}
 
 // Config holds the server configuration parameters.
 type Config struct {
@@ -82,7 +28,7 @@ type Config struct {
 	TLSDomains []string
 
 	// Kubernetes client configuration.
-	KubeClientConfig KubernetesClientConfig
+	KubeClientConfig clients.KubernetesClientConfig
 
 	// DBConfigPath is the file path to the database configuration (e.g., YAML or JSON).
 	DBConfigPath string
@@ -101,12 +47,10 @@ func DefaultConfig() Config {
 		UnsafeHTTPPort:    8888,
 		AutoSignTLSCACert: false,
 		TLSDomains:        []string{"localhost"},
-		KubeClientConfig: KubernetesClientConfig{
-			KubeconfigPath: os.Getenv("KUBECONFIG"),
-		},
-		DBConfigPath:    "",
-		PeerServiceName: "",
-		Peers:           []string{},
+		KubeClientConfig:  clients.DefaultKubernetesClientConfig(),
+		DBConfigPath:      "",
+		PeerServiceName:   "",
+		Peers:             []string{},
 	}
 }
 
@@ -122,4 +66,62 @@ func (c *Config) SetupFlags(fs *pflag.FlagSet) {
 	fs.StringSliceVar(&c.Peers, "peers", c.Peers, "Comma-separated list of peer server addresses for clustering")
 
 	c.KubeClientConfig.SetupFlags(fs)
+}
+
+type ClientConfig struct {
+	ServerAddress         string
+	ServerHostname        string
+	ClientCertPath        string
+	ClientKeyPath         string
+	CAPath                string
+	InsecureSkipTLSVerify bool
+}
+
+func DefaultClientConfig() ClientConfig {
+	return ClientConfig{
+		ServerAddress:         "localhost:8443",
+		ServerHostname:        "",
+		ClientCertPath:        "",
+		ClientKeyPath:         "",
+		CAPath:                "",
+		InsecureSkipTLSVerify: false,
+	}
+}
+
+func (c *ClientConfig) SetupFlags(fs *pflag.FlagSet) {
+	fs.StringVar(&c.ServerAddress, "server-address", c.ServerAddress, "Address of the server to connect to")
+	fs.StringVar(&c.ServerHostname, "server-hostname", c.ServerHostname, "Expected hostname of the server for TLS verification (optional)")
+	fs.StringVar(&c.ClientCertPath, "client-cert", c.ClientCertPath, "Path to the client TLS certificate")
+	fs.StringVar(&c.ClientKeyPath, "client-key", c.ClientKeyPath, "Path to the client TLS private key")
+	fs.StringVar(&c.CAPath, "ca-cert", c.CAPath, "Path to the CA certificate for verifying the server")
+	fs.BoolVar(&c.InsecureSkipTLSVerify, "insecure-skip-tls-verify", c.InsecureSkipTLSVerify, "Skip TLS certificate verification (not recommended)")
+}
+
+func (c *ClientConfig) BuildKubeAPIConfig() (*api.Config, error) {
+	config := api.NewConfig()
+
+	cluster := api.NewCluster()
+	cluster.Server = fmt.Sprintf("%s/api/kubernetes", c.ServerAddress)
+	if c.InsecureSkipTLSVerify {
+		cluster.InsecureSkipTLSVerify = true
+	} else if c.CAPath != "" {
+		cluster.CertificateAuthority = c.CAPath
+	}
+	config.Clusters["management"] = cluster
+
+	user := api.NewAuthInfo()
+	user.ClientCertificate = c.ClientCertPath
+	user.ClientKey = c.ClientKeyPath
+	config.AuthInfos["agent"] = user
+
+	context := api.NewContext()
+	context.Cluster = "management"
+	context.AuthInfo = "agent"
+	config.Contexts["default"] = context
+	config.CurrentContext = "default"
+	return config, nil
+}
+
+func (c *ClientConfig) BuildRestConfig() (*rest.Config, error) {
+	return clientcmd.BuildConfigFromKubeconfigGetter("", c.BuildKubeAPIConfig)
 }

@@ -7,14 +7,15 @@ import (
 	"golang.org/x/sync/errgroup"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/client-go/tools/clientcmd/api"
 
 	"github.com/rlinf/rlark/pkg/clients/kubernetes/clientset/versioned"
+	"github.com/rlinf/rlark/pkg/server"
 )
 
 type Agent struct {
 	config Config
+
+	serverClient *server.Client
 
 	managementConfig *rest.Config
 	managementClient versioned.Interface
@@ -29,50 +30,34 @@ func NewAgent(config Config) *Agent {
 }
 
 func (a *Agent) init(ctx context.Context) error {
-	// Initialize Management API client
-	mgmtConfig, err := clientcmd.BuildConfigFromKubeconfigGetter("", func() (*api.Config, error) {
-		config := api.NewConfig()
+	var err error
 
-		cluster := api.NewCluster()
-		cluster.Server = fmt.Sprintf("%s/api/kubernetes", a.config.ServerAddress)
-		if a.config.InsecureSkipTLSVerify {
-			cluster.InsecureSkipTLSVerify = true
-		} else if a.config.CAPath != "" {
-			cluster.CertificateAuthority = a.config.CAPath
-		}
-		config.Clusters["management"] = cluster
+	// Initialize server client
+	a.serverClient, err = server.NewClientFromConfig(a.config.ClientConfig)
+	if err != nil {
+		return fmt.Errorf("create server client: %w", err)
+	}
 
-		user := api.NewAuthInfo()
-		user.ClientCertificate = a.config.ClientCertPath
-		user.ClientKey = a.config.ClientKeyPath
-		config.AuthInfos["agent"] = user
-
-		context := api.NewContext()
-		context.Cluster = "management"
-		context.AuthInfo = "agent"
-		config.Contexts["default"] = context
-		config.CurrentContext = "default"
-		return config, nil
-	})
+	// Initialize Management Kube API client
+	a.managementConfig, err = a.config.ClientConfig.BuildRestConfig()
 	if err != nil {
 		return fmt.Errorf("build management API config: %w", err)
 	}
-	a.managementConfig = mgmtConfig
-	a.managementClient, err = versioned.NewForConfig(mgmtConfig)
+	a.managementClient, err = versioned.NewForConfig(a.managementConfig)
 	if err != nil {
 		return fmt.Errorf("create management API client: %w", err)
 	}
 
 	// Initialize Kubernetes client
-	restConfig, err := a.config.KubeClientConfig.BuildRestConfig()
+	a.kubeConfig, err = a.config.KubeClientConfig.BuildRestConfig()
 	if err != nil {
 		return fmt.Errorf("build Kubernetes REST config: %w", err)
 	}
-	a.kubeConfig = restConfig
-	a.kubeClient, err = kubernetes.NewForConfig(restConfig)
+	a.kubeClient, err = kubernetes.NewForConfig(a.kubeConfig)
 	if err != nil {
 		return fmt.Errorf("create Kubernetes client: %w", err)
 	}
+
 	return nil
 }
 
