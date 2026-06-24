@@ -3,22 +3,32 @@ package agent
 import (
 	"context"
 	"net"
+	"net/http"
 	"time"
 
 	"github.com/rancher/remotedialer"
 	"github.com/sirupsen/logrus"
+
+	"github.com/rlinf/rlark/pkg/apis"
 )
 
-func (a *Agent) runTunnel(ctx context.Context) error {
+func (a *Agent) runTunnel(ctx context.Context, role string) error {
 	auth := func(proto, address string) bool {
 		return true
 	}
 	netDialer := func(ctx context.Context, network, addr string) (net.Conn, error) {
 		var d net.Dialer
+		if a.localDialer != nil && addr == "0.0.0.0:1" { // 约定的 local server 地址
+			return a.localDialer(ctx)
+		}
 		return d.DialContext(ctx, network, addr)
 	}
+	header := make(http.Header)
+	if role != "" {
+		header.Set(apis.RemoteDialerRoleHeader, role)
+	}
 	connect := func() error {
-		ws, _, err := a.serverClient.DialWebsocket(ctx, nil)
+		ws, _, err := a.serverClient.DialWebsocket(ctx, header)
 		if err != nil {
 			return err
 		}

@@ -3,6 +3,8 @@ package agent
 import (
 	"context"
 	"fmt"
+	"net"
+	"net/http"
 
 	"golang.org/x/sync/errgroup"
 	"k8s.io/client-go/kubernetes"
@@ -21,6 +23,10 @@ type Agent struct {
 	managementClient versioned.Interface
 	kubeConfig       *rest.Config
 	kubeClient       kubernetes.Interface
+	kubeHandler      http.Handler
+
+	localListener net.Listener
+	localDialer   func(ctx context.Context) (net.Conn, error)
 }
 
 func NewAgent(config Config) *Agent {
@@ -58,6 +64,15 @@ func (a *Agent) init(ctx context.Context) error {
 		return fmt.Errorf("create Kubernetes client: %w", err)
 	}
 
+	// Initialize Kubernetes Proxy
+	kubeProxy, err := server.NewKubeProxy(a.kubeConfig)
+	if err != nil {
+		return fmt.Errorf("create kube proxy: %w", err)
+	}
+	a.kubeHandler = kubeProxy.GetHandler()
+
+	// TODO: Initialize local listener and dialer
+
 	return nil
 }
 
@@ -68,8 +83,28 @@ func (a *Agent) Run(ctx context.Context) error {
 
 	var eg errgroup.Group
 	eg.Go(func() error {
-		return a.runTunnel(ctx)
+		role := ""
+		if a.config.Mode == "node" {
+			role = "node-agent"
+		}
+		return a.runTunnel(ctx, role)
 	})
+	eg.Go(func() error {
+		if a.localListener != nil {
+			return a.runLocalHTTPServer(ctx)
+		}
+		return nil
+	})
+	if a.config.Mode == "cluster" || a.config.Mode == "both" {
+		eg.Go(func() error {
+			return (&clusterAgent{a: a}).Run(ctx)
+		})
+	}
+	if a.config.Mode == "node" || a.config.Mode == "both" {
+		eg.Go(func() error {
+			return (&nodeAgent{a: a}).Run(ctx)
+		})
+	}
 
 	if err := eg.Wait(); err != nil {
 		return fmt.Errorf("agent run error: %w", err)
