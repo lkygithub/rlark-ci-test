@@ -5,6 +5,7 @@ import (
 	"crypto/subtle"
 	"fmt"
 	"net"
+	"time"
 
 	"github.com/charmbracelet/ssh"
 	"github.com/charmbracelet/wish"
@@ -22,7 +23,7 @@ func (s *Server) runSSHServer(ctx context.Context) error {
 		wish.WithHostKeyPEM(s.tlsCA.KeyPEM),
 		s.channelOption,
 		ssh.PublicKeyAuth(s.sshPublicKeyAuth()),
-		wish.WithMiddleware(),
+		wish.WithMiddleware(s.sshMiddleware()),
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create SSH server: %w", err)
@@ -100,7 +101,9 @@ func (s *Server) sshPublicKeyAuth() ssh.PublicKeyHandler {
 			return false
 		},
 		IsRevoked: func(cert *gossh.Certificate) bool {
-			return s.checkCertRevoked(cert.KeyId)
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			return s.checkCertRevoked(ctx, "ssh", fmt.Sprint(cert.Serial), cert.KeyId)
 		},
 		UserKeyFallback: func(conn gossh.ConnMetadata, key gossh.PublicKey) (*gossh.Permissions, error) {
 			return nil, fmt.Errorf("certificate authentication required")
@@ -141,7 +144,7 @@ func (s *Server) handleSSHChannel(srv *ssh.Server, conn *gossh.ServerConn, newCh
 		s.rejectSSHChannel(newChan, "No permissions found")
 		return
 	}
-	userMata, ok := cert.GetSSHCertMeta(&gossh.Certificate{Permissions: *permissions.Permissions})
+	certMeta, ok := cert.GetSSHCertMeta(&gossh.Certificate{Permissions: *permissions.Permissions})
 	if !ok {
 		logrus.Errorf("No metadata found for session %v", ctx.SessionID())
 		s.rejectSSHChannel(newChan, "No metadata found in certificate")
@@ -157,7 +160,7 @@ func (s *Server) handleSSHChannel(srv *ssh.Server, conn *gossh.ServerConn, newCh
 	}
 
 	address := net.JoinHostPort(payload.Host, fmt.Sprint(payload.Port))
-	dialer, target, err := s.GetDial(ctx, "ssh", address, userMata)
+	dialer, target, err := s.GetDial(ctx, "ssh", address, certMeta)
 	if err != nil {
 		logrus.Errorf("Cannot get dialer for %v: %v", ctx.SessionID(), err)
 		s.rejectSSHChannel(newChan, fmt.Sprintf("Cannot get dialer: %v", err))

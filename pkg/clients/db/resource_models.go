@@ -12,7 +12,7 @@ type ResourceModel interface {
 	// GetBase returns the underlying BaseResourceModel.
 	GetBase() *BaseResourceModel
 	// FillFromRaw extracts metadata from raw JSON and fills the model's base fields.
-	FillFromRaw(data map[string]interface{})
+	FillFromRaw(data map[string]any)
 }
 
 // BaseResourceModel contains the common fields for all resource tables.
@@ -38,7 +38,7 @@ func (b *BaseResourceModel) GetBase() *BaseResourceModel {
 	return b
 }
 
-func (b *BaseResourceModel) FillFromRaw(data map[string]interface{}) {
+func (b *BaseResourceModel) FillFromRaw(data map[string]any) {
 	fillBaseFromRaw(b, data)
 }
 

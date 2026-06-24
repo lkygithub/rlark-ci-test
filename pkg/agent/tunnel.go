@@ -22,7 +22,7 @@ func (a *Agent) runTunnel(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		defer ws.Close()
+		defer func() { _ = ws.Close() }()
 
 		sessCtx, cancel := context.WithCancel(ctx)
 		defer cancel()

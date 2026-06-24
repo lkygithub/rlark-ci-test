@@ -11,7 +11,7 @@ import (
 )
 
 func (s *Server) registerUnsafeHTTPHandlers(r *gin.Engine) {
-	api := r.Group("/api", s.handleCertCheck)
+	api := r.Group("/api")
 	api.GET("peer/:target", s.handlePeerConnectProxy)
 
 	r.GET("/healthz") // TODO

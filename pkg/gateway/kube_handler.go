@@ -17,11 +17,11 @@ import (
 
 // resourceAccessor encapsulates Kubernetes client operations for a specific resource type.
 type resourceAccessor struct {
-	list   func(ctx context.Context, namespace string, opts metav1.ListOptions) (interface{}, error)
-	get    func(ctx context.Context, namespace, name string, opts metav1.GetOptions) (interface{}, error)
-	create func(ctx context.Context, namespace string, body json.RawMessage) (interface{}, error)
-	update func(ctx context.Context, namespace, name string, body json.RawMessage) (interface{}, error)
-	patch  func(ctx context.Context, namespace, name string, data []byte) (interface{}, error)
+	list   func(ctx context.Context, namespace string, opts metav1.ListOptions) (any, error)
+	get    func(ctx context.Context, namespace, name string, opts metav1.GetOptions) (any, error)
+	create func(ctx context.Context, namespace string, body json.RawMessage) (any, error)
+	update func(ctx context.Context, namespace, name string, body json.RawMessage) (any, error)
+	patch  func(ctx context.Context, namespace, name string, data []byte) (any, error)
 	delete func(ctx context.Context, namespace, name string) error
 }
 
@@ -29,7 +29,7 @@ type resourceAccessor struct {
 // It centralizes the common create/update/patch/delete patterns so that each
 // resource only needs to provide thin closures that call the typed client methods.
 type kubeClient[T any] struct {
-	doList   func(ctx context.Context, namespace string, opts metav1.ListOptions) (interface{}, error)
+	doList   func(ctx context.Context, namespace string, opts metav1.ListOptions) (any, error)
 	doGet    func(ctx context.Context, namespace, name string, opts metav1.GetOptions) (*T, error)
 	doCreate func(ctx context.Context, namespace string, obj *T, opts metav1.CreateOptions) (*T, error)
 	doUpdate func(ctx context.Context, namespace string, obj *T, opts metav1.UpdateOptions) (*T, error)
@@ -42,17 +42,17 @@ type kubeClient[T any] struct {
 func (c *kubeClient[T]) accessor() *resourceAccessor {
 	return &resourceAccessor{
 		list: c.doList,
-		get: func(ctx context.Context, ns, name string, opts metav1.GetOptions) (interface{}, error) {
+		get: func(ctx context.Context, ns, name string, opts metav1.GetOptions) (any, error) {
 			return c.doGet(ctx, ns, name, opts)
 		},
-		create: func(ctx context.Context, ns string, body json.RawMessage) (interface{}, error) {
+		create: func(ctx context.Context, ns string, body json.RawMessage) (any, error) {
 			obj := new(T)
 			if err := json.Unmarshal(body, obj); err != nil {
 				return nil, err
 			}
 			return c.doCreate(ctx, ns, obj, metav1.CreateOptions{})
 		},
-		update: func(ctx context.Context, ns, name string, body json.RawMessage) (interface{}, error) {
+		update: func(ctx context.Context, ns, name string, body json.RawMessage) (any, error) {
 			current, err := c.doGet(ctx, ns, name, metav1.GetOptions{})
 			if err != nil {
 				return nil, err
@@ -64,7 +64,7 @@ func (c *kubeClient[T]) accessor() *resourceAccessor {
 			any(obj).(metav1.Object).SetResourceVersion(any(current).(metav1.Object).GetResourceVersion())
 			return c.doUpdate(ctx, ns, obj, metav1.UpdateOptions{})
 		},
-		patch: func(ctx context.Context, ns, name string, data []byte) (interface{}, error) {
+		patch: func(ctx context.Context, ns, name string, data []byte) (any, error) {
 			return c.doPatch(ctx, ns, name, types.MergePatchType, data, metav1.PatchOptions{})
 		},
 		delete: func(ctx context.Context, ns, name string) error {
@@ -77,7 +77,7 @@ func (c *kubeClient[T]) accessor() *resourceAccessor {
 func registerAccessors(client versioned.Interface) map[string]*resourceAccessor {
 	return map[string]*resourceAccessor{
 		"jobs": (&kubeClient[rlarkiov1alpha1.Job]{
-			doList: func(ctx context.Context, _ string, opts metav1.ListOptions) (interface{}, error) {
+			doList: func(ctx context.Context, _ string, opts metav1.ListOptions) (any, error) {
 				return client.RlinfV1alpha1().Jobs().List(ctx, opts)
 			},
 			doGet: func(ctx context.Context, _, name string, opts metav1.GetOptions) (*rlarkiov1alpha1.Job, error) {
@@ -98,7 +98,7 @@ func registerAccessors(client versioned.Interface) map[string]*resourceAccessor 
 		}).accessor(),
 
 		"workflows": (&kubeClient[rlarkiov1alpha1.Workflow]{
-			doList: func(ctx context.Context, _ string, opts metav1.ListOptions) (interface{}, error) {
+			doList: func(ctx context.Context, _ string, opts metav1.ListOptions) (any, error) {
 				return client.RlinfV1alpha1().Workflows().List(ctx, opts)
 			},
 			doGet: func(ctx context.Context, _, name string, opts metav1.GetOptions) (*rlarkiov1alpha1.Workflow, error) {
@@ -119,7 +119,7 @@ func registerAccessors(client versioned.Interface) map[string]*resourceAccessor 
 		}).accessor(),
 
 		"nodes": (&kubeClient[rlarkiov1alpha1.Node]{
-			doList: func(ctx context.Context, ns string, opts metav1.ListOptions) (interface{}, error) {
+			doList: func(ctx context.Context, ns string, opts metav1.ListOptions) (any, error) {
 				return client.RlinfV1alpha1().Nodes(ns).List(ctx, opts)
 			},
 			doGet: func(ctx context.Context, ns, name string, opts metav1.GetOptions) (*rlarkiov1alpha1.Node, error) {
@@ -140,7 +140,7 @@ func registerAccessors(client versioned.Interface) map[string]*resourceAccessor 
 		}).accessor(),
 
 		"tasks": (&kubeClient[rlarkiov1alpha1.Task]{
-			doList: func(ctx context.Context, ns string, opts metav1.ListOptions) (interface{}, error) {
+			doList: func(ctx context.Context, ns string, opts metav1.ListOptions) (any, error) {
 				return client.RlinfV1alpha1().Tasks(ns).List(ctx, opts)
 			},
 			doGet: func(ctx context.Context, ns, name string, opts metav1.GetOptions) (*rlarkiov1alpha1.Task, error) {

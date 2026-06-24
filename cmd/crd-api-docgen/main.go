@@ -106,8 +106,8 @@ func main() {
 	})
 
 	var out bytes.Buffer
-	out.WriteString("# API Reference\n\n")
-	out.WriteString("Kubernetes-style API surface generated from the current CRDs.\n\n")
+	_, _ = fmt.Fprintf(&out, "# API Reference\n\n")
+	_, _ = fmt.Fprintf(&out, "Kubernetes-style API surface generated from the current CRDs.\n\n")
 	for _, doc := range docs {
 		if doc.Kind != "CustomResourceDefinition" {
 			continue
@@ -171,37 +171,37 @@ func writeResourceSection(out *bytes.Buffer, doc crdDocument, version crdVersion
 	versionName := version.Name
 	basePath := resourceBasePath(doc.Spec.Scope, group, versionName, plural)
 
-	out.WriteString(fmt.Sprintf("## %s\n\n", kind))
-	out.WriteString(fmt.Sprintf("- Group: `%s`\n", group))
-	out.WriteString(fmt.Sprintf("- Version: `%s`\n", versionName))
-	out.WriteString(fmt.Sprintf("- Scope: `%s`\n", doc.Spec.Scope))
-	out.WriteString(fmt.Sprintf("- Resource: `%s`\n\n", plural))
+	_, _ = fmt.Fprintf(out, "## %s\n\n", kind)
+	_, _ = fmt.Fprintf(out, "- Group: `%s`\n", group)
+	_, _ = fmt.Fprintf(out, "- Version: `%s`\n", versionName)
+	_, _ = fmt.Fprintf(out, "- Scope: `%s`\n", doc.Spec.Scope)
+	_, _ = fmt.Fprintf(out, "- Resource: `%s`\n\n", plural)
 
-	out.WriteString("### Operations\n\n")
+	_, _ = fmt.Fprintf(out, "### Operations\n\n")
 	for _, op := range buildOperations(kind, plural, listKind, doc.Spec.Scope, basePath, version.Subresources.Status != nil) {
-		out.WriteString(fmt.Sprintf("#### `%s %s`\n\n", op.Method, op.Path))
-		out.WriteString(op.Description + "\n\n")
-		out.WriteString("Parameters:\n")
+		_, _ = fmt.Fprintf(out, "#### `%s %s`\n\n", op.Method, op.Path)
+		_, _ = fmt.Fprintf(out, "%s\n\n", op.Description)
+		_, _ = fmt.Fprintf(out, "Parameters:\n")
 		for _, param := range op.Params {
-			out.WriteString(fmt.Sprintf("- %s\n", param))
+			_, _ = fmt.Fprintf(out, "- %s\n", param)
 		}
 		if op.Body != "" {
-			out.WriteString(fmt.Sprintf("\nRequest body: `%s`\n", op.Body))
+			_, _ = fmt.Fprintf(out, "\nRequest body: `%s`\n", op.Body)
 		}
-		out.WriteString("\nResponses:\n")
+		_, _ = fmt.Fprintf(out, "\nResponses:\n")
 		for _, resp := range op.Responses {
-			out.WriteString(fmt.Sprintf("- `%d` %s", resp.Code, resp.Desc))
+			_, _ = fmt.Fprintf(out, "- `%d` %s", resp.Code, resp.Desc)
 			if resp.Schema != "" {
-				out.WriteString(fmt.Sprintf(" → `%s`", resp.Schema))
+				_, _ = fmt.Fprintf(out, " → `%s`", resp.Schema)
 			}
-			out.WriteString("\n")
+			_, _ = fmt.Fprintf(out, "\n")
 		}
-		out.WriteString("\n")
+		_, _ = fmt.Fprintf(out, "\n")
 	}
 
-	out.WriteString("### Request Schema\n\n")
+	_, _ = fmt.Fprintf(out, "### Request Schema\n\n")
 	writeSchemaSection(out, version.Schema.OpenAPIV3Schema, 0, "")
-	out.WriteString("\n")
+	_, _ = fmt.Fprintf(out, "\n")
 }
 
 func buildOperations(kind, plural, listKind, scope, basePath string, hasStatus bool) []apiOperation {
@@ -303,7 +303,7 @@ func writeSchemaNode(out *bytes.Buffer, name string, node schemaNode, depth int,
 	if node.Description != "" {
 		line += fmt.Sprintf(" - %s", trimDescription(node.Description))
 	}
-	out.WriteString(line + "\n")
+	_, _ = fmt.Fprintf(out, "%s\n", line)
 
 	if shouldCollapseNode(name, node, depth) {
 		return

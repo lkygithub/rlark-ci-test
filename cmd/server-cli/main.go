@@ -15,6 +15,7 @@ func main() {
 	}
 
 	cmd.AddCommand(clicommands.SignCommand())
+	cmd.AddCommand(clicommands.RevokeCommand())
 	cmd.AddCommand(clicommands.ProxyCurlCommand())
 	clicommands.SetupPersistentFlags(cmd.PersistentFlags())
 

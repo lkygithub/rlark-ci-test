@@ -12,7 +12,7 @@ import (
 )
 
 func ProxyCurlCommand() *cobra.Command {
-	var method string = "GET"
+	method := "GET"
 	var data string
 
 	cmd := &cobra.Command{
@@ -40,14 +40,14 @@ func ProxyCurlCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
-			fmt.Fprintf(cmd.ErrOrStderr(), "Status: %s\n", resp.Status)
-			fmt.Fprintf(cmd.ErrOrStderr(), "Headers:\n")
+			_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Status: %s\n", resp.Status)
+			_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Headers:\n")
 			for k, v := range resp.Header {
-				fmt.Fprintf(cmd.ErrOrStderr(), "  %s: %s\n", k, v)
+				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "  %s: %s\n", k, v)
 			}
-			fmt.Fprintln(cmd.ErrOrStderr(), "Body:")
+			_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "Body:")
 			_, err = io.Copy(cmd.OutOrStdout(), resp.Body)
 			return err
 		},

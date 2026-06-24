@@ -1,17 +1,51 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	gocache "github.com/patrickmn/go-cache"
+	"github.com/sirupsen/logrus"
+
 	"github.com/rlinf/rlark/pkg/apis"
+	"github.com/rlinf/rlark/pkg/clients/db"
 	"github.com/rlinf/rlark/pkg/server/cert"
 )
+
+const (
+	ContextKeyCertMeta = "certMeta"
+)
+
+func GetCertMetaFromContext(ctx *gin.Context) map[string]string {
+	if meta, exists := ctx.Get(ContextKeyCertMeta); exists {
+		if certMeta, ok := meta.(map[string]string); ok {
+			return certMeta
+		}
+	}
+	return map[string]string{}
+}
 
 type SignRequest struct {
 	Role     string `json:"role"`                // 证书角色，例如 "agent" 等
 	ClientID string `json:"client_id,omitempty"` // 可选的客户端 ID
+}
+
+type SignResponse struct {
+	CertType     string `json:"cert_type"` // 证书类型，例如 "x509" 或 "ssh"
+	SerialNumber string `json:"serial_number,omitempty"`
+	SubjectKeyID string `json:"subject_key_id,omitempty"`
+	CertPEM      string `json:"cert_pem"` // PEM 编码的证书
+	KeyPEM       string `json:"key_pem"`  // PEM 编码的私钥
+}
+
+type RevokeCertRequest struct {
+	CertType     string `json:"cert_type"`                // 证书类型，例如 "x509" 或 "ssh"
+	SerialNumber string `json:"serial_number,omitempty"`  // 可选的证书序列号
+	SubjectKeyID string `json:"subject_key_id,omitempty"` // 可选的证书主题密钥 ID
+	Reason       string `json:"reason,omitempty"`         // 可选的吊销原因
 }
 
 func (s *Server) parseSignRequest(req *SignRequest) (string, map[string]string, error) {
@@ -63,8 +97,79 @@ func (s *Server) handleSignCertificate(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "sign certificate failed"})
 		return
 	}
-	ctx.JSON(http.StatusOK, gin.H{
-		"cert": string(cert.CertPEM),
-		"key":  string(cert.KeyPEM),
-	})
+	resp := SignResponse{
+		CertType: signType,
+		CertPEM:  string(cert.CertPEM),
+		KeyPEM:   string(cert.KeyPEM),
+	}
+	if cert.Cert != nil {
+		resp.SerialNumber = cert.Cert.SerialNumber.String()
+		resp.SubjectKeyID = fmt.Sprintf("%x", cert.Cert.SubjectKeyId)
+	} else if cert.SSHCert != nil {
+		resp.SerialNumber = fmt.Sprint(cert.SSHCert.Serial)
+		resp.SubjectKeyID = cert.SSHCert.KeyId
+	}
+	ctx.JSON(http.StatusOK, resp)
+}
+
+func (s *Server) checkCertRevoked(ctx context.Context, certType, serialNumber, subjectKeyID string) bool {
+	cacheKey := fmt.Sprintf("%s:%s:%s", certType, serialNumber, subjectKeyID)
+	if cached, found := s.rcCache.Get(cacheKey); found {
+		ret, _ := cached.(bool)
+		return ret
+	}
+	if s.rcStore == nil {
+		return false
+	}
+	revoked, _ := s.rcStore.IsCertificateRevoked(ctx, certType, serialNumber, subjectKeyID)
+	s.rcCache.Set(cacheKey, revoked, gocache.DefaultExpiration)
+	return revoked
+}
+
+func (s *Server) handleCertCheck(ctx *gin.Context) {
+	var meta map[string]string
+	if len(ctx.Request.TLS.PeerCertificates) > 0 {
+		clientCert := ctx.Request.TLS.PeerCertificates[0]
+		subjectKeyID := fmt.Sprintf("%x", clientCert.SubjectKeyId)
+		if s.checkCertRevoked(ctx, "x509", clientCert.SerialNumber.String(), subjectKeyID) {
+			ctx.JSON(http.StatusUnauthorized, gin.H{"error": "client certificate revoked"})
+			ctx.Abort()
+			return
+		}
+		meta, _ = cert.GetX509CertMeta(clientCert)
+	} else {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "client certificate required"})
+		ctx.Abort()
+		return
+	}
+
+	if meta != nil {
+		ctx.Set(ContextKeyCertMeta, meta)
+	}
+	ctx.Next()
+}
+
+func (s *Server) handleRevokeCertificate(ctx *gin.Context) {
+	var req RevokeCertRequest
+	if err := ctx.BindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		return
+	}
+	if s.rcStore != nil {
+		model := &db.RevokedCertificateModel{
+			CertType:         req.CertType,
+			SerialNumber:     req.SerialNumber,
+			SubjectKeyID:     req.SubjectKeyID,
+			RevocationReason: req.Reason,
+			RevokedAt:        time.Now(),
+		}
+		if err := s.rcStore.AddRevokedCertificate(ctx, model); err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "failed to revoke certificate"})
+			return
+		}
+	} else {
+		logrus.Warnf("RevokedCertificateStore is not configured, only in-memory cache will be used for revocation check")
+	}
+	key := fmt.Sprintf("%s:%s:%s", req.CertType, req.SerialNumber, req.SubjectKeyID)
+	s.rcCache.Set(key, true, gocache.DefaultExpiration)
 }
