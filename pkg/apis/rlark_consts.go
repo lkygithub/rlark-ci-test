@@ -19,7 +19,8 @@ const (
 	MetaRemoteDialerPeerToken = "remote-dialer-peer-token"
 	MetaRemoteDialerClientID  = "remote-dialer-client-id"
 
-	MetaAgentID = "agent-id"
+	MetaAgentID   = "agent-id"
+	MetaNamespace = "namespace"
 )
 
 const (

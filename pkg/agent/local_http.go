@@ -29,6 +29,10 @@ func (a *Agent) runLocalHTTPServer(ctx context.Context) error {
 }
 
 func (a *Agent) handleKubernetesProxy(ctx *gin.Context) {
+	if a.localKubeHandler == nil {
+		ctx.AbortWithStatus(http.StatusServiceUnavailable)
+		return
+	}
 	ctx.Request.URL.Path = ctx.Param("path")
-	a.kubeHandler.ServeHTTP(ctx.Writer, ctx.Request)
+	a.localKubeHandler.ServeHTTP(ctx.Writer, ctx.Request)
 }
