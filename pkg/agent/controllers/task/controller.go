@@ -49,10 +49,10 @@ func (c *TaskController) AsKubePushReconcilers() map[base.KubernetesResource]bas
 	}
 }
 
-func (c *TaskController) AsDockerPushReconcilers() map[string]any {
+func (c *TaskController) AsDockerPushReconcilers() map[base.DockerResource]base.DockerReconciler {
 	return nil
 }
 
-func (c *TaskController) AsRawPushReconcilers() map[string]any {
+func (c *TaskController) AsRawPushReconcilers() map[base.RawResource]base.RawReconciler {
 	return nil
 }

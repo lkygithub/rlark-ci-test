@@ -27,6 +27,14 @@ type FakeRlinfV1alpha1 struct {
 	*testing.Fake
 }
 
+func (c *FakeRlinfV1alpha1) Domains() v1alpha1.DomainInterface {
+	return newFakeDomains(c)
+}
+
+func (c *FakeRlinfV1alpha1) DomainPeers(namespace string) v1alpha1.DomainPeerInterface {
+	return newFakeDomainPeers(c, namespace)
+}
+
 func (c *FakeRlinfV1alpha1) Jobs() v1alpha1.JobInterface {
 	return newFakeJobs(c)
 }

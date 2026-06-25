@@ -18,7 +18,8 @@ type JobTaskTemplate struct {
 }
 
 type JobSpec struct {
-	Tasks []JobTaskTemplate `json:"tasks,omitempty"`
+	Domain string            `json:"domain,omitempty"`
+	Tasks  []JobTaskTemplate `json:"tasks,omitempty"`
 }
 
 type JobTaskStatus struct {
@@ -27,8 +28,8 @@ type JobTaskStatus struct {
 	Message string    `json:"message,omitempty"`
 }
 
-func (s *JobTaskStatus) GetPhase() string   { return string(s.Phase) }
-func (s *JobTaskStatus) SetPhase(p string)  { s.Phase = TaskPhase(p) }
+func (s *JobTaskStatus) GetPhase() string    { return string(s.Phase) }
+func (s *JobTaskStatus) SetPhase(p string)   { s.Phase = TaskPhase(p) }
 func (s *JobTaskStatus) SetMessage(m string) { s.Message = m }
 
 type JobStatus struct {

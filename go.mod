@@ -13,16 +13,19 @@ require (
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/rancher/remotedialer v0.6.1
 	github.com/sirupsen/logrus v1.9.4
+	github.com/songgao/water v0.0.0-20200317203138-2b4b6d7c09d8
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.9
 	github.com/uptrace/bun v1.2.18
 	github.com/uptrace/bun/dialect/pgdialect v1.2.18
 	github.com/uptrace/bun/driver/pgdriver v1.2.18
 	github.com/uptrace/bun/extra/bundebug v1.2.18
+	github.com/vishvananda/netlink v1.1.1-0.20211118161826-650dca95af54
 	github.com/xjasonlyu/tun2socks/v2 v2.6.0
 	go.yaml.in/yaml/v2 v2.4.3
 	golang.org/x/crypto v0.48.0
 	golang.org/x/sync v0.19.0
+	gvisor.dev/gvisor v0.0.0-20250523182742-eede7a881b20
 	k8s.io/api v0.36.2
 	k8s.io/apimachinery v0.36.2
 	k8s.io/client-go v0.36.2
@@ -69,6 +72,7 @@ require (
 	github.com/go-playground/validator/v10 v10.30.1 // indirect
 	github.com/goccy/go-json v0.10.5 // indirect
 	github.com/goccy/go-yaml v1.19.2 // indirect
+	github.com/google/btree v1.1.3 // indirect
 	github.com/google/gnostic-models v0.7.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
@@ -102,6 +106,7 @@ require (
 	github.com/tmthrgd/go-hex v0.0.0-20190904060850-447a3041c3bc // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.3.1 // indirect
+	github.com/vishvananda/netns v0.0.0-20210104183010-2eb08e3e575f // indirect
 	github.com/vmihailenco/msgpack/v5 v5.4.1 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
 	github.com/x448/float16 v0.8.4 // indirect

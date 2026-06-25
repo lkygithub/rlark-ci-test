@@ -27,6 +27,11 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&JobList{},
 		&Workflow{},
 		&WorkflowList{},
+
+		&Domain{},
+		&DomainList{},
+		&DomainPeer{},
+		&DomainPeerList{},
 	)
 	metav1.AddToGroupVersion(scheme, GroupVersion)
 	return nil

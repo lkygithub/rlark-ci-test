@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/pflag"
 
 	"github.com/rlinf/rlark/pkg/clients"
+	"github.com/rlinf/rlark/pkg/network/nodeserver"
 	"github.com/rlinf/rlark/pkg/server"
 )
 
@@ -24,6 +25,8 @@ type Config struct {
 	LeaderElection    bool
 	LeaderElectionKey string // namespace/name
 	LeaderElectionID  string // unique identifier for this agent instance, usually hostname
+
+	NodeServerConfig nodeserver.Config
 }
 
 func DefaultConfig() Config {
@@ -34,12 +37,14 @@ func DefaultConfig() Config {
 		Mode:              "cluster",
 		LeaderElectionKey: "default/rlark-agent",
 		LeaderElectionID:  fmt.Sprintf("%s-%d", os.Getenv("HOSTNAME"), os.Getpid()),
+		NodeServerConfig:  nodeserver.DefaultConfig(),
 	}
 }
 
 func (c *Config) SetupFlags(fs *pflag.FlagSet) {
 	c.ClientConfig.SetupFlags(fs)
 	c.KubeClientConfig.SetupFlags(fs)
+	c.NodeServerConfig.SetupFlags(fs)
 
 	fs.StringVar(&c.AgentType, "agent-type", c.AgentType, "agent type: Kubernetes/Docker/Raw")
 	fs.StringVar(&c.Mode, "mode", c.Mode, "agent mode: cluster/node/both")

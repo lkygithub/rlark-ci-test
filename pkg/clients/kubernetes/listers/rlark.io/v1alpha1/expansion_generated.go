@@ -17,6 +17,18 @@ limitations under the License.
 
 package v1alpha1
 
+// DomainListerExpansion allows custom methods to be added to
+// DomainLister.
+type DomainListerExpansion interface{}
+
+// DomainPeerListerExpansion allows custom methods to be added to
+// DomainPeerLister.
+type DomainPeerListerExpansion interface{}
+
+// DomainPeerNamespaceListerExpansion allows custom methods to be added to
+// DomainPeerNamespaceLister.
+type DomainPeerNamespaceListerExpansion interface{}
+
 // JobListerExpansion allows custom methods to be added to
 // JobLister.
 type JobListerExpansion interface{}

@@ -73,6 +73,7 @@ type EnvVar struct {
 type TaskSpec struct {
 	AgentType      AgentType           `json:"agentType,omitempty"`
 	Role           TaskRole            `json:"role"`
+	DownstreamName string              `json:"downstreamName,omitempty"`
 	NodeSelector   map[string]string   `json:"nodeSelector,omitempty"`
 	Kubernetes     *KubernetesTaskSpec `json:"kubernetes,omitempty"`
 	Docker         *DockerTaskSpec     `json:"docker,omitempty"`

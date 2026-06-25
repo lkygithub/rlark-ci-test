@@ -2,6 +2,374 @@
 
 Kubernetes-style API surface generated from the current CRDs.
 
+## Domain
+
+- Group: `rlinf.io`
+- Version: `v1alpha1`
+- Scope: `Cluster`
+- Resource: `domains`
+
+### Operations
+
+#### `GET /api/v1/rlinf.io/v1alpha1/domains`
+
+List domains resources.
+
+Parameters:
+- `pretty` (query, optional)
+- `continue` (query, optional)
+- `limit` (query, optional)
+- `fieldSelector` (query, optional)
+- `labelSelector` (query, optional)
+
+Responses:
+- `200` OK → `DomainList`
+- `401` Unauthorized
+
+#### `POST /api/v1/rlinf.io/v1alpha1/domains`
+
+Create a Domain resource.
+
+Parameters:
+- `pretty` (query, optional)
+- `dryRun` (query, optional)
+- `fieldManager` (query, optional)
+- `fieldValidation` (query, optional)
+
+Request body: `Domain`
+
+Responses:
+- `201` Created → `Domain`
+- `202` Accepted → `Domain`
+- `401` Unauthorized
+
+#### `DELETE /api/v1/rlinf.io/v1alpha1/domains`
+
+Delete a collection of domains resources.
+
+Parameters:
+- `pretty` (query, optional)
+- `continue` (query, optional)
+- `limit` (query, optional)
+- `fieldSelector` (query, optional)
+- `labelSelector` (query, optional)
+
+Responses:
+- `200` OK → `Status`
+- `401` Unauthorized
+
+#### `GET /api/v1/rlinf.io/v1alpha1/domains/{name}`
+
+Get a Domain resource.
+
+Parameters:
+- `name` (path)
+- `pretty` (query, optional)
+
+Responses:
+- `200` OK → `Domain`
+- `401` Unauthorized
+- `404` Not Found
+
+#### `PUT /api/v1/rlinf.io/v1alpha1/domains/{name}`
+
+Replace a Domain resource.
+
+Parameters:
+- `name` (path)
+- `pretty` (query, optional)
+- `fieldManager` (query, optional)
+- `fieldValidation` (query, optional)
+
+Request body: `Domain`
+
+Responses:
+- `200` OK → `Domain`
+- `401` Unauthorized
+- `404` Not Found
+
+#### `PATCH /api/v1/rlinf.io/v1alpha1/domains/{name}`
+
+Patch a Domain resource.
+
+Parameters:
+- `name` (path)
+- `pretty` (query, optional)
+- `fieldManager` (query, optional)
+- `fieldValidation` (query, optional)
+- `force` (query, optional)
+
+Request body: `Domain`
+
+Responses:
+- `200` OK → `Domain`
+- `401` Unauthorized
+- `404` Not Found
+
+#### `DELETE /api/v1/rlinf.io/v1alpha1/domains/{name}`
+
+Delete a Domain resource.
+
+Parameters:
+- `name` (path)
+- `pretty` (query, optional)
+
+Responses:
+- `200` OK → `Status`
+- `202` Accepted → `Status`
+- `401` Unauthorized
+- `404` Not Found
+
+#### `GET /api/v1/rlinf.io/v1alpha1/domains/{name}/status`
+
+Get the status subresource for Domain.
+
+Parameters:
+- `name` (path)
+- `pretty` (query, optional)
+
+Responses:
+- `200` OK → `Domain`
+- `401` Unauthorized
+- `404` Not Found
+
+#### `PUT /api/v1/rlinf.io/v1alpha1/domains/{name}/status`
+
+Replace the status subresource for Domain.
+
+Parameters:
+- `name` (path)
+- `pretty` (query, optional)
+- `fieldManager` (query, optional)
+- `fieldValidation` (query, optional)
+
+Request body: `Domain`
+
+Responses:
+- `200` OK → `Domain`
+- `202` Accepted → `Domain`
+- `401` Unauthorized
+- `404` Not Found
+
+#### `PATCH /api/v1/rlinf.io/v1alpha1/domains/{name}/status`
+
+Patch the status subresource for Domain.
+
+Parameters:
+- `name` (path)
+- `pretty` (query, optional)
+- `fieldManager` (query, optional)
+- `fieldValidation` (query, optional)
+- `force` (query, optional)
+
+Request body: `Domain`
+
+Responses:
+- `200` OK → `Domain`
+- `202` Accepted → `Domain`
+- `401` Unauthorized
+- `404` Not Found
+
+### Request Schema
+
+- `apiVersion`: `string`, optional - APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schema...
+- `kind`: `string`, optional - Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoin...
+- `metadata`: `object`, optional
+- `spec`: `object`, optional
+  - `cidr`: `string`, optional
+- `status`: `object`, optional
+  - `ipAllocations`: `array`, optional
+    - `items`: `object`, optional
+      - `ip`: `string`, optional
+      - `job`: `string`, optional
+      - `pod`: `string`, optional
+      - `task`: `string`, optional
+
+## DomainPeer
+
+- Group: `rlinf.io`
+- Version: `v1alpha1`
+- Scope: `Cluster`
+- Resource: `domainpeers`
+
+### Operations
+
+#### `GET /api/v1/rlinf.io/v1alpha1/domainpeers`
+
+List domainpeers resources.
+
+Parameters:
+- `pretty` (query, optional)
+- `continue` (query, optional)
+- `limit` (query, optional)
+- `fieldSelector` (query, optional)
+- `labelSelector` (query, optional)
+
+Responses:
+- `200` OK → `DomainPeerList`
+- `401` Unauthorized
+
+#### `POST /api/v1/rlinf.io/v1alpha1/domainpeers`
+
+Create a DomainPeer resource.
+
+Parameters:
+- `pretty` (query, optional)
+- `dryRun` (query, optional)
+- `fieldManager` (query, optional)
+- `fieldValidation` (query, optional)
+
+Request body: `DomainPeer`
+
+Responses:
+- `201` Created → `DomainPeer`
+- `202` Accepted → `DomainPeer`
+- `401` Unauthorized
+
+#### `DELETE /api/v1/rlinf.io/v1alpha1/domainpeers`
+
+Delete a collection of domainpeers resources.
+
+Parameters:
+- `pretty` (query, optional)
+- `continue` (query, optional)
+- `limit` (query, optional)
+- `fieldSelector` (query, optional)
+- `labelSelector` (query, optional)
+
+Responses:
+- `200` OK → `Status`
+- `401` Unauthorized
+
+#### `GET /api/v1/rlinf.io/v1alpha1/domainpeers/{name}`
+
+Get a DomainPeer resource.
+
+Parameters:
+- `name` (path)
+- `pretty` (query, optional)
+
+Responses:
+- `200` OK → `DomainPeer`
+- `401` Unauthorized
+- `404` Not Found
+
+#### `PUT /api/v1/rlinf.io/v1alpha1/domainpeers/{name}`
+
+Replace a DomainPeer resource.
+
+Parameters:
+- `name` (path)
+- `pretty` (query, optional)
+- `fieldManager` (query, optional)
+- `fieldValidation` (query, optional)
+
+Request body: `DomainPeer`
+
+Responses:
+- `200` OK → `DomainPeer`
+- `401` Unauthorized
+- `404` Not Found
+
+#### `PATCH /api/v1/rlinf.io/v1alpha1/domainpeers/{name}`
+
+Patch a DomainPeer resource.
+
+Parameters:
+- `name` (path)
+- `pretty` (query, optional)
+- `fieldManager` (query, optional)
+- `fieldValidation` (query, optional)
+- `force` (query, optional)
+
+Request body: `DomainPeer`
+
+Responses:
+- `200` OK → `DomainPeer`
+- `401` Unauthorized
+- `404` Not Found
+
+#### `DELETE /api/v1/rlinf.io/v1alpha1/domainpeers/{name}`
+
+Delete a DomainPeer resource.
+
+Parameters:
+- `name` (path)
+- `pretty` (query, optional)
+
+Responses:
+- `200` OK → `Status`
+- `202` Accepted → `Status`
+- `401` Unauthorized
+- `404` Not Found
+
+#### `GET /api/v1/rlinf.io/v1alpha1/domainpeers/{name}/status`
+
+Get the status subresource for DomainPeer.
+
+Parameters:
+- `name` (path)
+- `pretty` (query, optional)
+
+Responses:
+- `200` OK → `DomainPeer`
+- `401` Unauthorized
+- `404` Not Found
+
+#### `PUT /api/v1/rlinf.io/v1alpha1/domainpeers/{name}/status`
+
+Replace the status subresource for DomainPeer.
+
+Parameters:
+- `name` (path)
+- `pretty` (query, optional)
+- `fieldManager` (query, optional)
+- `fieldValidation` (query, optional)
+
+Request body: `DomainPeer`
+
+Responses:
+- `200` OK → `DomainPeer`
+- `202` Accepted → `DomainPeer`
+- `401` Unauthorized
+- `404` Not Found
+
+#### `PATCH /api/v1/rlinf.io/v1alpha1/domainpeers/{name}/status`
+
+Patch the status subresource for DomainPeer.
+
+Parameters:
+- `name` (path)
+- `pretty` (query, optional)
+- `fieldManager` (query, optional)
+- `fieldValidation` (query, optional)
+- `force` (query, optional)
+
+Request body: `DomainPeer`
+
+Responses:
+- `200` OK → `DomainPeer`
+- `202` Accepted → `DomainPeer`
+- `401` Unauthorized
+- `404` Not Found
+
+### Request Schema
+
+- `apiVersion`: `string`, optional - APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schema...
+- `kind`: `string`, optional - Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoin...
+- `metadata`: `object`, optional
+- `spec`: `object`, optional
+  - `cert`: `string`, optional
+  - `key`: `string`, optional
+  - `pods`: `array`, optional
+    - `items`: `object`, optional
+      - `globalNamespace`: `string`, optional
+      - `ip`: `string`, optional
+      - `name`: `string`, optional
+      - `namespace`: `string`, optional
+      - `node`: `string`, optional
+- `status`: `object`, optional
+
 ## Job
 
 - Group: `rlinf.io`
@@ -176,10 +544,12 @@ Responses:
 - `kind`: `string`, optional - Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoin...
 - `metadata`: `object`, optional
 - `spec`: `object`, optional
+  - `domain`: `string`, optional
   - `tasks`: `array`, optional
     - `items`: `object`, optional
       - `agentType`: `string`, optional
       - `docker`: `object`, optional
+      - `downstreamName`: `string`, optional
       - `head`: `boolean`, optional
       - `kubernetes`: `object`, optional
       - `name`: `string`, optional
@@ -595,6 +965,7 @@ Responses:
   - `docker`: `object`, optional
     - `containers`: `array`, optional
       - `items`: `object`, optional
+  - `downstreamName`: `string`, optional
   - `kubernetes`: `object`, optional
     - `workload`: `object`, optional
       - `kind`: `string`, optional

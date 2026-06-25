@@ -46,6 +46,8 @@ spec:
             type: object
           spec:
             properties:
+              domain:
+                type: string
               tasks:
                 items:
                   properties:
@@ -89,6 +91,8 @@ spec:
                             type: object
                           type: array
                       type: object
+                    downstreamName:
+                      type: string
                     head:
                       type: boolean
                     kubernetes:
