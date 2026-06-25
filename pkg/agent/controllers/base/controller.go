@@ -5,22 +5,14 @@ import (
 
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
-
-type KubernetesResource struct {
-	Name string
-	Type client.Object
-}
-
-type KubernetesReconciler reconcile.TypedReconciler[reconcile.Request]
 
 type Reconciler interface {
 	KubernetesResource() KubernetesResource
 	AsPullReconciler() KubernetesReconciler
 	AsKubePushReconcilers() map[KubernetesResource]KubernetesReconciler
-	AsDockerPushReconcilers() map[string]any
-	AsRawPushReconcilers() map[string]any
+	AsDockerPushReconcilers() map[DockerResource]DockerReconciler
+	AsRawPushReconcilers() map[RawResource]RawReconciler
 }
 
 type BaseController struct {
@@ -68,25 +60,29 @@ func (c *BaseController) SetupPushController(mgr any) error {
 		}
 		return nil
 	}
-	if dockerMgr, ok := mgr.(interface {
-		/* docker manager */
-	}); ok {
+	if dockerMgr, ok := mgr.(DockerControllerManager); ok {
 		if c.LocalDockerClient == nil {
 			return fmt.Errorf("controller is not running in a Docker environment")
 		}
-		// TODO: setup push controller for Docker resources
-		_ = dockerMgr
-		return fmt.Errorf("SetupPushController for Docker not implemented")
+		for dockerResource, reconciler := range c.C.AsDockerPushReconcilers() {
+			err := dockerMgr.SetupReconciler(reconciler)
+			if err != nil {
+				return fmt.Errorf("failed to setup push controller for %s: %w", dockerResource, err)
+			}
+		}
+		return nil
 	}
-	if rawMgr, ok := mgr.(interface {
-		/* raw manager */
-	}); ok {
+	if rawMgr, ok := mgr.(RawControllerManager); ok {
 		if c.LocalRawClient == nil {
 			return fmt.Errorf("controller is not running in a raw environment")
 		}
-		// TODO: setup push controller for raw resources
-		_ = rawMgr
-		return fmt.Errorf("SetupPushController for raw not implemented")
+		for rawResource, reconciler := range c.C.AsRawPushReconcilers() {
+			err := rawMgr.SetupReconciler(reconciler)
+			if err != nil {
+				return fmt.Errorf("failed to setup push controller for %s: %w", rawResource, err)
+			}
+		}
+		return nil
 	}
 	return fmt.Errorf("unknown manager type: %T", mgr)
 }

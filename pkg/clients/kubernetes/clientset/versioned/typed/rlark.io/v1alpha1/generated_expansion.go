@@ -17,6 +17,10 @@ limitations under the License.
 
 package v1alpha1
 
+type DomainExpansion interface{}
+
+type DomainPeerExpansion interface{}
+
 type JobExpansion interface{}
 
 type NodeExpansion interface{}

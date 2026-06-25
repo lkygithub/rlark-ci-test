@@ -23,6 +23,10 @@ import (
 
 // Interface provides access to all the informers in this group version.
 type Interface interface {
+	// Domains returns a DomainInformer.
+	Domains() DomainInformer
+	// DomainPeers returns a DomainPeerInformer.
+	DomainPeers() DomainPeerInformer
 	// Jobs returns a JobInformer.
 	Jobs() JobInformer
 	// Nodes returns a NodeInformer.
@@ -42,6 +46,16 @@ type version struct {
 // New returns a new Interface.
 func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakListOptions internalinterfaces.TweakListOptionsFunc) Interface {
 	return &version{factory: f, namespace: namespace, tweakListOptions: tweakListOptions}
+}
+
+// Domains returns a DomainInformer.
+func (v *version) Domains() DomainInformer {
+	return &domainInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
+}
+
+// DomainPeers returns a DomainPeerInformer.
+func (v *version) DomainPeers() DomainPeerInformer {
+	return &domainPeerInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // Jobs returns a JobInformer.

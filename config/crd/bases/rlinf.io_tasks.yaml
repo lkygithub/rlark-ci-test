@@ -89,6 +89,8 @@ spec:
                       type: object
                     type: array
                 type: object
+              downstreamName:
+                type: string
               kubernetes:
                 properties:
                   workload:

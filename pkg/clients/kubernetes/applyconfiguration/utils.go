@@ -37,6 +37,20 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 		return &rlarkiov1alpha1.DockerTaskSpecApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("DockerVolumeRef"):
 		return &rlarkiov1alpha1.DockerVolumeRefApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("Domain"):
+		return &rlarkiov1alpha1.DomainApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("DomainIPAllocation"):
+		return &rlarkiov1alpha1.DomainIPAllocationApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("DomainPeer"):
+		return &rlarkiov1alpha1.DomainPeerApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("DomainPeerSpec"):
+		return &rlarkiov1alpha1.DomainPeerSpecApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("DomainPodInfo"):
+		return &rlarkiov1alpha1.DomainPodInfoApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("DomainSpec"):
+		return &rlarkiov1alpha1.DomainSpecApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("DomainStatus"):
+		return &rlarkiov1alpha1.DomainStatusApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("EnvVar"):
 		return &rlarkiov1alpha1.EnvVarApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("Job"):

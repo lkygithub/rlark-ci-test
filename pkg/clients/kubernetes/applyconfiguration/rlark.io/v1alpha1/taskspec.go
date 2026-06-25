@@ -26,6 +26,7 @@ import (
 type TaskSpecApplyConfiguration struct {
 	AgentType      *rlarkiov1alpha1.AgentType            `json:"agentType,omitempty"`
 	Role           *rlarkiov1alpha1.TaskRole             `json:"role,omitempty"`
+	DownstreamName *string                               `json:"downstreamName,omitempty"`
 	NodeSelector   map[string]string                     `json:"nodeSelector,omitempty"`
 	Kubernetes     *KubernetesTaskSpecApplyConfiguration `json:"kubernetes,omitempty"`
 	Docker         *DockerTaskSpecApplyConfiguration     `json:"docker,omitempty"`
@@ -52,6 +53,14 @@ func (b *TaskSpecApplyConfiguration) WithAgentType(value rlarkiov1alpha1.AgentTy
 // If called multiple times, the Role field is set to the value of the last call.
 func (b *TaskSpecApplyConfiguration) WithRole(value rlarkiov1alpha1.TaskRole) *TaskSpecApplyConfiguration {
 	b.Role = &value
+	return b
+}
+
+// WithDownstreamName sets the DownstreamName field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the DownstreamName field is set to the value of the last call.
+func (b *TaskSpecApplyConfiguration) WithDownstreamName(value string) *TaskSpecApplyConfiguration {
+	b.DownstreamName = &value
 	return b
 }
 

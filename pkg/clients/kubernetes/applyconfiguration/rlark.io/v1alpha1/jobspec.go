@@ -20,13 +20,22 @@ package v1alpha1
 // JobSpecApplyConfiguration represents a declarative configuration of the JobSpec type for use
 // with apply.
 type JobSpecApplyConfiguration struct {
-	Tasks []JobTaskTemplateApplyConfiguration `json:"tasks,omitempty"`
+	Domain *string                             `json:"domain,omitempty"`
+	Tasks  []JobTaskTemplateApplyConfiguration `json:"tasks,omitempty"`
 }
 
 // JobSpecApplyConfiguration constructs a declarative configuration of the JobSpec type for use with
 // apply.
 func JobSpec() *JobSpecApplyConfiguration {
 	return &JobSpecApplyConfiguration{}
+}
+
+// WithDomain sets the Domain field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the Domain field is set to the value of the last call.
+func (b *JobSpecApplyConfiguration) WithDomain(value string) *JobSpecApplyConfiguration {
+	b.Domain = &value
+	return b
 }
 
 // WithTasks adds the given value to the Tasks field in the declarative configuration

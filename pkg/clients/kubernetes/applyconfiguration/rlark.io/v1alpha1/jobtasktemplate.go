@@ -67,6 +67,14 @@ func (b *JobTaskTemplateApplyConfiguration) WithRole(value rlarkiov1alpha1.TaskR
 	return b
 }
 
+// WithDownstreamName sets the DownstreamName field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the DownstreamName field is set to the value of the last call.
+func (b *JobTaskTemplateApplyConfiguration) WithDownstreamName(value string) *JobTaskTemplateApplyConfiguration {
+	b.TaskSpecApplyConfiguration.DownstreamName = &value
+	return b
+}
+
 // WithNodeSelector puts the entries into the NodeSelector field in the declarative configuration
 // and returns the receiver, so that objects can be build by chaining "With" function invocations.
 // If called multiple times, the entries provided by each call will be put on the NodeSelector field,
