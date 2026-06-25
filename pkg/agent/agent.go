@@ -10,6 +10,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 
+	rlarkv1alpha1 "github.com/rlinf/rlark/pkg/apis/rlark.io/v1alpha1"
 	"github.com/rlinf/rlark/pkg/clients/kubernetes/clientset/versioned"
 	"github.com/rlinf/rlark/pkg/server"
 	"github.com/rlinf/rlark/pkg/utils"
@@ -22,9 +23,10 @@ type Agent struct {
 
 	managementConfig *rest.Config
 	managementClient versioned.Interface
-	kubeConfig       *rest.Config
-	kubeClient       kubernetes.Interface
-	kubeHandler      http.Handler
+
+	localKubeConfig  *rest.Config
+	localKubeClient  kubernetes.Interface
+	localKubeHandler http.Handler
 
 	localListener net.Listener
 	localDialer   utils.Dial
@@ -55,22 +57,34 @@ func (a *Agent) init(ctx context.Context) error {
 		return fmt.Errorf("create management API client: %w", err)
 	}
 
-	// Initialize Kubernetes client
-	a.kubeConfig, err = a.config.KubeClientConfig.BuildRestConfig()
-	if err != nil {
-		return fmt.Errorf("build Kubernetes REST config: %w", err)
-	}
-	a.kubeClient, err = kubernetes.NewForConfig(a.kubeConfig)
-	if err != nil {
-		return fmt.Errorf("create Kubernetes client: %w", err)
-	}
+	switch rlarkv1alpha1.AgentType(a.config.AgentType) {
+	case rlarkv1alpha1.AgentTypeKubernetes:
+		// Initialize Kubernetes client
+		a.localKubeConfig, err = a.config.KubeClientConfig.BuildRestConfig()
+		if err != nil {
+			return fmt.Errorf("build Kubernetes REST config: %w", err)
+		}
+		a.localKubeClient, err = kubernetes.NewForConfig(a.localKubeConfig)
+		if err != nil {
+			return fmt.Errorf("create Kubernetes client: %w", err)
+		}
 
-	// Initialize Kubernetes Proxy
-	kubeProxy, err := server.NewKubeProxy(a.kubeConfig)
-	if err != nil {
-		return fmt.Errorf("create kube proxy: %w", err)
+		// Initialize Kubernetes Proxy
+		kubeProxy, err := server.NewKubeProxy(a.localKubeConfig)
+		if err != nil {
+			return fmt.Errorf("create kube proxy: %w", err)
+		}
+		a.localKubeHandler = kubeProxy.GetHandler()
+
+	case rlarkv1alpha1.AgentTypeDocker:
+		// TODO: Initialize Docker client
+
+	case rlarkv1alpha1.AgentTypeRaw:
+		// TODO: Initialize Raw client
+
+	default:
+		return fmt.Errorf("unknown AgentType: %s", a.config.AgentType)
 	}
-	a.kubeHandler = kubeProxy.GetHandler()
 
 	// Initialize local listener and dialer
 	a.localListener, a.localDialer = utils.NetPipeWithBuffer(65536)
@@ -84,6 +98,8 @@ func (a *Agent) Run(ctx context.Context) error {
 	}
 
 	var eg errgroup.Group
+
+	// Run tunnel for all modes
 	eg.Go(func() error {
 		role := ""
 		if a.config.Mode == "node" {
@@ -91,14 +107,20 @@ func (a *Agent) Run(ctx context.Context) error {
 		}
 		return a.runTunnel(ctx, role)
 	})
+
+	// Run local HTTP server for all modes
 	eg.Go(func() error {
 		return a.runLocalHTTPServer(ctx)
 	})
+
+	// Run cluster agent (controller manager) based on mode
 	if a.config.Mode == "cluster" || a.config.Mode == "both" {
 		eg.Go(func() error {
 			return (&clusterAgent{a: a}).Run(ctx)
 		})
 	}
+
+	// Run node agent based on mode
 	if a.config.Mode == "node" || a.config.Mode == "both" {
 		eg.Go(func() error {
 			return (&nodeAgent{a: a}).Run(ctx)

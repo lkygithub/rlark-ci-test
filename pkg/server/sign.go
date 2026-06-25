@@ -67,6 +67,7 @@ func (s *Server) parseSignRequest(req *SignRequest) (string, map[string]string, 
 		impersonation := "system:serviceaccount:" + namespace + ":" + apis.RLarkAgentServiceAccountName
 		return "x509", map[string]string{
 			apis.MetaAgentID:                 req.ClientID,
+			apis.MetaNamespace:               namespace,
 			apis.MetaRemoteDialerClientID:    req.ClientID,
 			apis.MetaKubernetesImpersonation: impersonation,
 		}, nil

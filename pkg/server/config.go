@@ -2,13 +2,16 @@ package server
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/spf13/pflag"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/clientcmd/api"
 
+	"github.com/rlinf/rlark/pkg/apis"
 	"github.com/rlinf/rlark/pkg/clients"
+	"github.com/rlinf/rlark/pkg/server/cert"
 )
 
 // Config holds the server configuration parameters.
@@ -75,6 +78,8 @@ type ClientConfig struct {
 	ClientKeyPath         string
 	CAPath                string
 	InsecureSkipTLSVerify bool
+
+	ServerNamespace string // auto load from client cert
 }
 
 func DefaultClientConfig() ClientConfig {
@@ -97,7 +102,36 @@ func (c *ClientConfig) SetupFlags(fs *pflag.FlagSet) {
 	fs.BoolVar(&c.InsecureSkipTLSVerify, "insecure-skip-tls-verify", c.InsecureSkipTLSVerify, "Skip TLS certificate verification (not recommended)")
 }
 
+func (c *ClientConfig) loadNamespace() error {
+	if c.ServerNamespace != "" {
+		return nil
+	}
+
+	certPEM, err := os.ReadFile(c.ClientCertPath)
+	if err != nil {
+		return fmt.Errorf("read client certificate: %w", err)
+	}
+	keyPEM, err := os.ReadFile(c.ClientKeyPath)
+	if err != nil {
+		return fmt.Errorf("read client key: %w", err)
+	}
+	clientCert, err := cert.LoadData(certPEM, keyPEM)
+	if err != nil {
+		return fmt.Errorf("load client certificate: %w", err)
+	}
+	certMeta, _ := cert.GetX509CertMeta(clientCert.Cert)
+	if certMeta == nil || certMeta[apis.MetaNamespace] == "" {
+		return fmt.Errorf("invalid client certificate: missing namespace")
+	}
+	c.ServerNamespace = certMeta[apis.MetaNamespace]
+	return nil
+}
+
 func (c *ClientConfig) BuildKubeAPIConfig() (*api.Config, error) {
+	if err := c.loadNamespace(); err != nil {
+		return nil, err
+	}
+
 	config := api.NewConfig()
 
 	cluster := api.NewCluster()
@@ -117,6 +151,7 @@ func (c *ClientConfig) BuildKubeAPIConfig() (*api.Config, error) {
 	context := api.NewContext()
 	context.Cluster = "management"
 	context.AuthInfo = "agent"
+	context.Namespace = c.ServerNamespace
 	config.Contexts["default"] = context
 	config.CurrentContext = "default"
 	return config, nil
