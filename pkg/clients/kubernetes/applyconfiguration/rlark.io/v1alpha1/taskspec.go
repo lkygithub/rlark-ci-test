@@ -24,8 +24,10 @@ import (
 // TaskSpecApplyConfiguration represents a declarative configuration of the TaskSpec type for use
 // with apply.
 type TaskSpecApplyConfiguration struct {
-	AgentType      *rlarkiov1alpha1.AgentType            `json:"agentType,omitempty"`
-	Role           *rlarkiov1alpha1.TaskRole             `json:"role,omitempty"`
+	AgentType *rlarkiov1alpha1.AgentType `json:"agentType,omitempty"`
+	Role      *rlarkiov1alpha1.TaskRole  `json:"role,omitempty"`
+	Domain    *string                    `json:"domain,omitempty"`
+	// 所属 Domain 名称，从 Job 继承
 	DownstreamName *string                               `json:"downstreamName,omitempty"`
 	NodeSelector   map[string]string                     `json:"nodeSelector,omitempty"`
 	Kubernetes     *KubernetesTaskSpecApplyConfiguration `json:"kubernetes,omitempty"`
@@ -53,6 +55,14 @@ func (b *TaskSpecApplyConfiguration) WithAgentType(value rlarkiov1alpha1.AgentTy
 // If called multiple times, the Role field is set to the value of the last call.
 func (b *TaskSpecApplyConfiguration) WithRole(value rlarkiov1alpha1.TaskRole) *TaskSpecApplyConfiguration {
 	b.Role = &value
+	return b
+}
+
+// WithDomain sets the Domain field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the Domain field is set to the value of the last call.
+func (b *TaskSpecApplyConfiguration) WithDomain(value string) *TaskSpecApplyConfiguration {
+	b.Domain = &value
 	return b
 }
 

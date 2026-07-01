@@ -25,6 +25,8 @@ type JobExpansion interface{}
 
 type NodeExpansion interface{}
 
+type PodExpansion interface{}
+
 type TaskExpansion interface{}
 
 type WorkflowExpansion interface{}

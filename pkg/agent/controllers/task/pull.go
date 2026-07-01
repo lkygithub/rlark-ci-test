@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -18,6 +19,7 @@ const (
 	ManagementTaskNameAnnotation      = "rlark.io/management-task-name"
 	ManagementTaskNamespaceAnnotation = "rlark.io/management-task-namespace"
 	ManagementTaskUIDAnnotation       = "rlark.io/management-task-uid"
+	ManagementTaskDomainAnnotation    = "rlark.io/management-task-domain"
 	ManagementTaskFinalizer           = "rlark.io/agent-cleanup"
 )
 
@@ -205,6 +207,7 @@ func (r *pullReconciler) getWorkloadNamespace(mgmtTask *rlarkv1alpha1.Task) stri
 // --- workload builder functions ---
 
 func buildDeployment(mgmtTask *rlarkv1alpha1.Task, spec *rlarkv1alpha1.KubernetesWorkloadSpec) *appsv1.Deployment {
+	applyDomainAnnotation(&spec.Template, mgmtTask)
 	return &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      mgmtTask.Name,
@@ -226,6 +229,7 @@ func buildDeployment(mgmtTask *rlarkv1alpha1.Task, spec *rlarkv1alpha1.Kubernete
 }
 
 func buildDaemonSet(mgmtTask *rlarkv1alpha1.Task, spec *rlarkv1alpha1.KubernetesWorkloadSpec) *appsv1.DaemonSet {
+	applyDomainAnnotation(&spec.Template, mgmtTask)
 	return &appsv1.DaemonSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      mgmtTask.Name,
@@ -246,6 +250,7 @@ func buildDaemonSet(mgmtTask *rlarkv1alpha1.Task, spec *rlarkv1alpha1.Kubernetes
 }
 
 func buildStatefulSet(mgmtTask *rlarkv1alpha1.Task, spec *rlarkv1alpha1.KubernetesWorkloadSpec) *appsv1.StatefulSet {
+	applyDomainAnnotation(&spec.Template, mgmtTask)
 	return &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      mgmtTask.Name,
@@ -267,6 +272,19 @@ func buildStatefulSet(mgmtTask *rlarkv1alpha1.Task, spec *rlarkv1alpha1.Kubernet
 }
 
 // --- helper functions ---
+
+// applyDomainAnnotation injects the management-task annotations (including domain)
+// into the Pod template spec so that pods created by the workload carry these annotations.
+func applyDomainAnnotation(template *corev1.PodTemplateSpec, mgmtTask *rlarkv1alpha1.Task) {
+	if template.Annotations == nil {
+		template.Annotations = make(map[string]string)
+	}
+	template.Annotations[ManagementTaskNameAnnotation] = mgmtTask.Name
+	template.Annotations[ManagementTaskNamespaceAnnotation] = mgmtTask.Namespace
+	if mgmtTask.Spec.Domain != "" {
+		template.Annotations[ManagementTaskDomainAnnotation] = mgmtTask.Spec.Domain
+	}
+}
 
 func containsString(slice []string, s string) bool {
 	for _, item := range slice {

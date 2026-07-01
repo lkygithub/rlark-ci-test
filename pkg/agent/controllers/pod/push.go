@@ -1,0 +1,143 @@
+package pod
+
+import (
+	"context"
+
+	"github.com/go-logr/logr"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+
+	rlarkv1alpha1 "github.com/rlinf/rlark/pkg/apis/rlark.io/v1alpha1"
+)
+
+// pushPodReconciler watches local K8s Pods and reports their info to management Pod CRs.
+type pushPodReconciler struct {
+	c *PodController
+}
+
+func (r *pushPodReconciler) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
+	logger := log.FromContext(ctx).WithValues("pod", req.NamespacedName)
+
+	var k8sPod corev1.Pod
+	if err := r.c.LocalKubeClient.Get(ctx, req.NamespacedName, &k8sPod); err != nil {
+		if client.IgnoreNotFound(err) != nil {
+			logger.Error(err, "failed to get local K8s Pod")
+			return reconcile.Result{}, err
+		}
+		// Pod deleted — clean up management Pod CR
+		return r.deleteManagementPod(ctx, logger, req.Name, req.Namespace)
+	}
+
+	// Only reconcile pods managed by rlark (have management-task annotation)
+	annotations := k8sPod.Annotations
+	if annotations == nil {
+		return reconcile.Result{}, nil
+	}
+	taskName := annotations["rlark.io/management-task-name"]
+	taskNamespace := annotations["rlark.io/management-task-namespace"]
+	if taskName == "" {
+		return reconcile.Result{}, nil
+	}
+
+	desiredPod := r.buildRLarkPodFromK8sPod(&k8sPod, taskName, taskNamespace)
+	return r.updateManagementPod(ctx, logger, desiredPod)
+}
+
+func (r *pushPodReconciler) buildRLarkPodFromK8sPod(k8sPod *corev1.Pod, taskName, taskNamespace string) *rlarkv1alpha1.Pod {
+	phase := convertK8sPodPhase(k8sPod.Status.Phase)
+
+	podSpec := rlarkv1alpha1.PodSpec{
+		TaskName:      taskName,
+		TaskNamespace: taskNamespace,
+	}
+	// Domain is read from pod annotation set by task pull controller
+	if domain := k8sPod.Annotations["rlark.io/management-task-domain"]; domain != "" {
+		podSpec.Domain = domain
+	}
+
+	podStatus := rlarkv1alpha1.PodStatus{
+		Phase: phase,
+		Node:  k8sPod.Spec.NodeName,
+	}
+	if k8sPod.Status.PodIP != "" {
+		podStatus.IP = k8sPod.Status.PodIP
+	}
+
+	return &rlarkv1alpha1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      k8sPod.Name,
+			Namespace: r.c.ManagementNamespace,
+		},
+		Spec:   podSpec,
+		Status: podStatus,
+	}
+}
+
+func (r *pushPodReconciler) updateManagementPod(ctx context.Context, logger logr.Logger, desiredPod *rlarkv1alpha1.Pod) (reconcile.Result, error) {
+	var mgmtPod rlarkv1alpha1.Pod
+	err := r.c.ManagementClient.Get(ctx, types.NamespacedName{Name: desiredPod.Name, Namespace: desiredPod.Namespace}, &mgmtPod)
+	if err != nil && client.IgnoreNotFound(err) != nil {
+		logger.Error(err, "failed to get management Pod")
+		return reconcile.Result{}, err
+	}
+
+	if err != nil {
+		// Create
+		logger.Info("creating Pod on management cluster")
+		if err := r.c.ManagementClient.Create(ctx, desiredPod); err != nil {
+			logger.Error(err, "failed to create management Pod")
+			return reconcile.Result{}, err
+		}
+		return reconcile.Result{}, nil
+	}
+
+	// Update spec
+	mgmtPod.Spec = desiredPod.Spec
+	if err := r.c.ManagementClient.Update(ctx, &mgmtPod); err != nil {
+		logger.Error(err, "failed to update management Pod spec")
+		return reconcile.Result{}, err
+	}
+
+	// Update status
+	mgmtPod.Status = desiredPod.Status
+	if err := r.c.ManagementClient.Status().Update(ctx, &mgmtPod); err != nil {
+		logger.Error(err, "failed to update management Pod status")
+		return reconcile.Result{}, err
+	}
+
+	logger.V(1).Info("management Pod reported successfully")
+	return reconcile.Result{}, nil
+}
+
+func (r *pushPodReconciler) deleteManagementPod(ctx context.Context, logger logr.Logger, name, namespace string) (reconcile.Result, error) {
+	mgmtPod := &rlarkv1alpha1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: r.c.ManagementNamespace,
+		},
+	}
+	if err := r.c.ManagementClient.Delete(ctx, mgmtPod); err != nil && client.IgnoreNotFound(err) != nil {
+		logger.Error(err, "failed to delete management Pod")
+		return reconcile.Result{}, err
+	}
+	return reconcile.Result{}, nil
+}
+
+func convertK8sPodPhase(phase corev1.PodPhase) rlarkv1alpha1.PodPhase {
+	switch phase {
+	case corev1.PodPending:
+		return rlarkv1alpha1.PodPhasePending
+	case corev1.PodRunning:
+		return rlarkv1alpha1.PodPhaseRunning
+	case corev1.PodSucceeded:
+		return rlarkv1alpha1.PodPhaseSucceeded
+	case corev1.PodFailed:
+		return rlarkv1alpha1.PodPhaseFailed
+	default:
+		return rlarkv1alpha1.PodPhasePending
+	}
+}

@@ -41,6 +41,14 @@ type NodeListerExpansion interface{}
 // NodeNamespaceLister.
 type NodeNamespaceListerExpansion interface{}
 
+// PodListerExpansion allows custom methods to be added to
+// PodLister.
+type PodListerExpansion interface{}
+
+// PodNamespaceListerExpansion allows custom methods to be added to
+// PodNamespaceLister.
+type PodNamespaceListerExpansion interface{}
+
 // TaskListerExpansion allows custom methods to be added to
 // TaskLister.
 type TaskListerExpansion interface{}

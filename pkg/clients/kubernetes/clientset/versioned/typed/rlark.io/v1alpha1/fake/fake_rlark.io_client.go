@@ -43,6 +43,10 @@ func (c *FakeRlinfV1alpha1) Nodes(namespace string) v1alpha1.NodeInterface {
 	return newFakeNodes(c, namespace)
 }
 
+func (c *FakeRlinfV1alpha1) Pods(namespace string) v1alpha1.PodInterface {
+	return newFakePods(c, namespace)
+}
+
 func (c *FakeRlinfV1alpha1) Tasks(namespace string) v1alpha1.TaskInterface {
 	return newFakeTasks(c, namespace)
 }

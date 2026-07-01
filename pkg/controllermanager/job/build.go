@@ -24,6 +24,8 @@ func buildTask(
 	t rlarkv1alpha1.JobTaskTemplate,
 	taskName, namespace string,
 ) *rlarkv1alpha1.Task {
+	taskSpec := t.TaskSpec
+	taskSpec.Domain = job.Spec.Domain // 从 Job 继承 Domain
 	return &rlarkv1alpha1.Task{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      taskName,
@@ -32,6 +34,6 @@ func buildTask(
 				"rlinf.io/job": job.Name,
 			},
 		},
-		Spec: t.TaskSpec,
+		Spec: taskSpec,
 	}
 }

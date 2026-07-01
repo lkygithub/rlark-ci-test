@@ -31,6 +31,7 @@ type RlinfV1alpha1Interface interface {
 	DomainPeersGetter
 	JobsGetter
 	NodesGetter
+	PodsGetter
 	TasksGetter
 	WorkflowsGetter
 }
@@ -54,6 +55,10 @@ func (c *RlinfV1alpha1Client) Jobs() JobInterface {
 
 func (c *RlinfV1alpha1Client) Nodes(namespace string) NodeInterface {
 	return newNodes(c, namespace)
+}
+
+func (c *RlinfV1alpha1Client) Pods(namespace string) PodInterface {
+	return newPods(c, namespace)
 }
 
 func (c *RlinfV1alpha1Client) Tasks(namespace string) TaskInterface {
