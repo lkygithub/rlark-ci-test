@@ -67,6 +67,14 @@ func (b *JobTaskTemplateApplyConfiguration) WithRole(value rlarkiov1alpha1.TaskR
 	return b
 }
 
+// WithDomain sets the Domain field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the Domain field is set to the value of the last call.
+func (b *JobTaskTemplateApplyConfiguration) WithDomain(value string) *JobTaskTemplateApplyConfiguration {
+	b.TaskSpecApplyConfiguration.Domain = &value
+	return b
+}
+
 // WithDownstreamName sets the DownstreamName field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the DownstreamName field is set to the value of the last call.

@@ -1,0 +1,180 @@
+package domain
+
+import (
+	"context"
+
+	"github.com/go-logr/logr"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+
+	rlarkv1alpha1 "github.com/rlinf/rlark/pkg/apis/rlark.io/v1alpha1"
+)
+
+// DomainReconciler watches Domain and Pod CRs, and generates DomainPeer
+// (one per cluster/namespace per domain) containing the pod list.
+//
+// DomainPeer is namespaced: each cluster (represented by a namespace) has its
+// own DomainPeer per domain, named after the domain. The DomainPeer.Spec.Pods
+// field records all pods belonging to that domain in that cluster.
+type DomainReconciler struct {
+	client.Client
+	Scheme *runtime.Scheme
+}
+
+// +kubebuilder:rbac:groups=rlinf.io,resources=domains,verbs=get;list;watch
+// +kubebuilder:rbac:groups=rlinf.io,resources=pods,verbs=get;list;watch
+// +kubebuilder:rbac:groups=rlinf.io,resources=domainpeers,verbs=get;list;watch;create;update;patch;delete
+
+// Reconcile handles a Domain reconciliation request.
+// Triggered by Domain changes or Pod CR changes (mapped to the associated domain).
+func (r *DomainReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	logger := log.FromContext(ctx).WithValues("domain", req.Name)
+
+	// 1. Get Domain
+	var domain rlarkv1alpha1.Domain
+	if err := r.Get(ctx, types.NamespacedName{Name: req.Name}, &domain); err != nil {
+		if client.IgnoreNotFound(err) == nil {
+			// Domain deleted — delete all DomainPeers for this domain
+			return r.deleteDomainPeers(ctx, logger, req.Name)
+		}
+		return ctrl.Result{}, err
+	}
+
+	// 2. List all Pod CRs across all namespaces that belong to this domain
+	var podList rlarkv1alpha1.PodList
+	if err := r.List(ctx, &podList); err != nil {
+		logger.Error(err, "failed to list Pods")
+		return ctrl.Result{}, err
+	}
+
+	// 3. Group pods by namespace (each namespace = one cluster)
+	podsByNamespace := make(map[string][]rlarkv1alpha1.DomainPodInfo)
+	for _, pod := range podList.Items {
+		if pod.Spec.Domain != domain.Name {
+			continue
+		}
+		ns := pod.Namespace
+		podsByNamespace[ns] = append(podsByNamespace[ns], rlarkv1alpha1.DomainPodInfo{
+			GlobalNamespace: ns,
+			Namespace:       pod.Spec.TaskNamespace,
+			Name:            pod.Name,
+			Node:            pod.Status.Node,
+			IP:              pod.Status.IP,
+		})
+	}
+
+	// 4. Create or update DomainPeer per namespace
+	for ns, pods := range podsByNamespace {
+		if err := r.createOrUpdateDomainPeer(ctx, logger, domain.Name, ns, pods); err != nil {
+			return ctrl.Result{}, err
+		}
+	}
+
+	// 5. Delete DomainPeers in namespaces that no longer have pods for this domain
+	if err := r.cleanupStaleDomainPeers(ctx, logger, domain.Name, podsByNamespace); err != nil {
+		return ctrl.Result{}, err
+	}
+
+	return ctrl.Result{}, nil
+}
+
+// SetupWithManager registers the controller with the manager.
+// It watches Domain as the primary resource and Pod as a secondary resource
+// (pod changes trigger reconciliation of the associated domain).
+func (r *DomainReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	return ctrl.NewControllerManagedBy(mgr).
+		For(&rlarkv1alpha1.Domain{}).
+		Named("domain").
+		Watches(
+			&rlarkv1alpha1.Pod{},
+			handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, obj client.Object) []reconcile.Request {
+				pod, ok := obj.(*rlarkv1alpha1.Pod)
+				if !ok || pod.Spec.Domain == "" {
+					return nil
+				}
+				return []reconcile.Request{{
+					NamespacedName: types.NamespacedName{Name: pod.Spec.Domain},
+				}}
+			}),
+		).
+		Complete(r)
+}
+
+func (r *DomainReconciler) createOrUpdateDomainPeer(ctx context.Context, logger logr.Logger, domainName, namespace string, pods []rlarkv1alpha1.DomainPodInfo) error {
+	desiredPeer := &rlarkv1alpha1.DomainPeer{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      domainName,
+			Namespace: namespace,
+		},
+		Spec: rlarkv1alpha1.DomainPeerSpec{
+			Pods: pods,
+		},
+	}
+
+	var existingPeer rlarkv1alpha1.DomainPeer
+	err := r.Get(ctx, types.NamespacedName{Name: domainName, Namespace: namespace}, &existingPeer)
+	if err != nil && client.IgnoreNotFound(err) != nil {
+		logger.Error(err, "failed to get DomainPeer", "namespace", namespace)
+		return err
+	}
+
+	if err != nil {
+		logger.Info("creating DomainPeer", "namespace", namespace, "podCount", len(pods))
+		return r.Create(ctx, desiredPeer)
+	}
+
+	existingPeer.Spec.Pods = pods
+	if err := r.Update(ctx, &existingPeer); err != nil {
+		logger.Error(err, "failed to update DomainPeer", "namespace", namespace)
+		return err
+	}
+
+	logger.V(1).Info("DomainPeer updated", "namespace", namespace, "podCount", len(pods))
+	return nil
+}
+
+func (r *DomainReconciler) deleteDomainPeers(ctx context.Context, logger logr.Logger, domainName string) (ctrl.Result, error) {
+	var peerList rlarkv1alpha1.DomainPeerList
+	if err := r.List(ctx, &peerList); err != nil {
+		logger.Error(err, "failed to list DomainPeers")
+		return ctrl.Result{}, err
+	}
+	for _, peer := range peerList.Items {
+		if peer.Name != domainName {
+			continue
+		}
+		if err := r.Delete(ctx, &peer); err != nil && client.IgnoreNotFound(err) != nil {
+			logger.Error(err, "failed to delete DomainPeer", "namespace", peer.Namespace)
+			return ctrl.Result{}, err
+		}
+	}
+	logger.Info("DomainPeers deleted for domain", "domain", domainName)
+	return ctrl.Result{}, nil
+}
+
+func (r *DomainReconciler) cleanupStaleDomainPeers(ctx context.Context, logger logr.Logger, domainName string, activeNamespaces map[string][]rlarkv1alpha1.DomainPodInfo) error {
+	var peerList rlarkv1alpha1.DomainPeerList
+	if err := r.List(ctx, &peerList); err != nil {
+		return err
+	}
+	for _, peer := range peerList.Items {
+		if peer.Name != domainName {
+			continue
+		}
+		if _, ok := activeNamespaces[peer.Namespace]; ok {
+			continue // still has pods, skip
+		}
+		// Namespace no longer has pods for this domain — delete DomainPeer
+		if err := r.Delete(ctx, &peer); err != nil && client.IgnoreNotFound(err) != nil {
+			logger.Error(err, "failed to delete stale DomainPeer", "namespace", peer.Namespace)
+			return err
+		}
+	}
+	return nil
+}

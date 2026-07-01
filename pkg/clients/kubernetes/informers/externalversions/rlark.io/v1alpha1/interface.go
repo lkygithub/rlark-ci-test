@@ -31,6 +31,8 @@ type Interface interface {
 	Jobs() JobInformer
 	// Nodes returns a NodeInformer.
 	Nodes() NodeInformer
+	// Pods returns a PodInformer.
+	Pods() PodInformer
 	// Tasks returns a TaskInformer.
 	Tasks() TaskInformer
 	// Workflows returns a WorkflowInformer.
@@ -66,6 +68,11 @@ func (v *version) Jobs() JobInformer {
 // Nodes returns a NodeInformer.
 func (v *version) Nodes() NodeInformer {
 	return &nodeInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// Pods returns a PodInformer.
+func (v *version) Pods() PodInformer {
+	return &podInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // Tasks returns a TaskInformer.

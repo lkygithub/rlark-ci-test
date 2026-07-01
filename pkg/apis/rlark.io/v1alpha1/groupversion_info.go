@@ -32,6 +32,9 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&DomainList{},
 		&DomainPeer{},
 		&DomainPeerList{},
+
+		&Pod{},
+		&PodList{},
 	)
 	metav1.AddToGroupVersion(scheme, GroupVersion)
 	return nil

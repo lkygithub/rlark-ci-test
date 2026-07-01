@@ -12,6 +12,7 @@ import (
 	"github.com/rlinf/rlark/pkg/agent/controllers"
 	"github.com/rlinf/rlark/pkg/agent/controllers/base"
 	"github.com/rlinf/rlark/pkg/agent/controllers/node"
+	"github.com/rlinf/rlark/pkg/agent/controllers/pod"
 	"github.com/rlinf/rlark/pkg/agent/controllers/task"
 	rlarkv1alpha1 "github.com/rlinf/rlark/pkg/apis/rlark.io/v1alpha1"
 )
@@ -92,6 +93,15 @@ func (c *clusterAgent) Run(ctx context.Context) error {
 	}
 	if err := nc.SetupPushController(lm); err != nil {
 		return fmt.Errorf("setup node push controller: %w", err)
+	}
+
+	// Setup Pod controllers (push-only: reports local K8s Pods to management Pod CRs)
+	pc := pod.NewPodController(bc)
+	if err := pc.SetupPullController(mm); err != nil {
+		return fmt.Errorf("setup pod pull controller: %w", err)
+	}
+	if err := pc.SetupPushController(lm); err != nil {
+		return fmt.Errorf("setup pod push controller: %w", err)
 	}
 
 	var eg errgroup.Group

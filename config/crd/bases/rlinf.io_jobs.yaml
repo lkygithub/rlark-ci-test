@@ -91,6 +91,8 @@ spec:
                             type: object
                           type: array
                       type: object
+                    domain:
+                      type: string
                     downstreamName:
                       type: string
                     head:

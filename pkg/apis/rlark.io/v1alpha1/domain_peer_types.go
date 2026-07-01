@@ -5,7 +5,8 @@ import metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 // +genclient
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-// +kubebuilder:resource:path=domainpeers,scope=Cluster,shortName=rldpeer
+// +kubebuilder:resource:path=domainpeers,scope=Namespaced,shortName=rldpeer
+// +kubebuilder:printcolumn:name="Domain",type=string,JSONPath=`.spec.domain`
 // +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
 type DomainPeer struct {
 	metav1.TypeMeta   `json:",inline"`

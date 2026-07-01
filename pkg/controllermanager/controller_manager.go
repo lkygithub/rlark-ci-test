@@ -16,6 +16,7 @@ import (
 
 	rlarkv1alpha1 "github.com/rlinf/rlark/pkg/apis/rlark.io/v1alpha1"
 	"github.com/rlinf/rlark/pkg/clients/db"
+	"github.com/rlinf/rlark/pkg/controllermanager/domain"
 	"github.com/rlinf/rlark/pkg/controllermanager/job"
 	"github.com/rlinf/rlark/pkg/controllermanager/node"
 	"github.com/rlinf/rlark/pkg/controllermanager/sync"
@@ -66,6 +67,10 @@ func New(config Config) (manager.Manager, error) {
 			Scheme: scheme,
 		},
 		&node.NodeReconciler{
+			Client: mgr.GetClient(),
+			Scheme: scheme,
+		},
+		&domain.DomainReconciler{
 			Client: mgr.GetClient(),
 			Scheme: scheme,
 		},
