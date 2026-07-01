@@ -1,0 +1,24 @@
+# 控制面部署示例
+# rlarkadm deploy --deploy-conf deploy-control-plane.yaml
+
+apiVersion: rlark.io/v1alpha1
+kind: DeployConfig
+plane: control
+
+# --- 三选一 ---
+
+kubernetes:
+  kubeconfig: /Users/ar/test/kubeconfig.yaml
+  gateway-image: harbor.infini-ai.com/rlark/rlark-gateway:latest
+  controller-manager-image: harbor.infini-ai.com/rlark/rlark-controller-manager:latest
+  server-image: harbor.infini-ai.com/rlark/rlark-server:latest
+
+#docker:
+#  gateway-image: harbor.infini-ai.com/rlark/rlark-gateway:latest
+#  controller-manager-image: harbor.infini-ai.com/rlark/rlark-controller-manager:latest
+#  server-image: harbor.infini-ai.com/rlark/rlark-server:latest
+
+#raw:
+#  gateway-artifact: https://github.com/rlinf/rlark/releases/download/v0.1.0/rlark-gateway
+#  controller-manager-artifact: https://github.com/rlinf/rlark/releases/download/v0.1.0/rlark-controller-manager
+#  server-artifact: https://github.com/rlinf/rlark/releases/download/v0.1.0/rlark-server
