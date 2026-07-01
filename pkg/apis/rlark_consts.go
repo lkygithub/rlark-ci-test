@@ -21,6 +21,8 @@ const (
 
 	MetaAgentID   = "agent-id"
 	MetaNamespace = "namespace"
+
+	MetaDomainID = "domain-id"
 )
 
 const (

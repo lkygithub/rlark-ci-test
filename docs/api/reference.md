@@ -189,7 +189,7 @@ Responses:
 
 - Group: `rlinf.io`
 - Version: `v1alpha1`
-- Scope: `Cluster`
+- Scope: `Namespaced`
 - Resource: `domainpeers`
 
 ### Operations
@@ -199,6 +199,7 @@ Responses:
 List domainpeers resources.
 
 Parameters:
+- `namespace` (query)
 - `pretty` (query, optional)
 - `continue` (query, optional)
 - `limit` (query, optional)
@@ -214,6 +215,7 @@ Responses:
 Create a DomainPeer resource.
 
 Parameters:
+- `namespace` (query)
 - `pretty` (query, optional)
 - `dryRun` (query, optional)
 - `fieldManager` (query, optional)
@@ -231,6 +233,7 @@ Responses:
 Delete a collection of domainpeers resources.
 
 Parameters:
+- `namespace` (query)
 - `pretty` (query, optional)
 - `continue` (query, optional)
 - `limit` (query, optional)
@@ -246,6 +249,7 @@ Responses:
 Get a DomainPeer resource.
 
 Parameters:
+- `namespace` (query)
 - `name` (path)
 - `pretty` (query, optional)
 
@@ -259,6 +263,7 @@ Responses:
 Replace a DomainPeer resource.
 
 Parameters:
+- `namespace` (query)
 - `name` (path)
 - `pretty` (query, optional)
 - `fieldManager` (query, optional)
@@ -276,6 +281,7 @@ Responses:
 Patch a DomainPeer resource.
 
 Parameters:
+- `namespace` (query)
 - `name` (path)
 - `pretty` (query, optional)
 - `fieldManager` (query, optional)
@@ -294,6 +300,7 @@ Responses:
 Delete a DomainPeer resource.
 
 Parameters:
+- `namespace` (query)
 - `name` (path)
 - `pretty` (query, optional)
 
@@ -308,6 +315,7 @@ Responses:
 Get the status subresource for DomainPeer.
 
 Parameters:
+- `namespace` (query)
 - `name` (path)
 - `pretty` (query, optional)
 
@@ -321,6 +329,7 @@ Responses:
 Replace the status subresource for DomainPeer.
 
 Parameters:
+- `namespace` (query)
 - `name` (path)
 - `pretty` (query, optional)
 - `fieldManager` (query, optional)
@@ -339,6 +348,7 @@ Responses:
 Patch the status subresource for DomainPeer.
 
 Parameters:
+- `namespace` (query)
 - `name` (path)
 - `pretty` (query, optional)
 - `fieldManager` (query, optional)
@@ -365,6 +375,7 @@ Responses:
     - `items`: `object`, optional
       - `globalNamespace`: `string`, optional
       - `ip`: `string`, optional
+      - `localIP`: `string`, optional
       - `name`: `string`, optional
       - `namespace`: `string`, optional
       - `node`: `string`, optional
@@ -549,6 +560,7 @@ Responses:
     - `items`: `object`, optional
       - `agentType`: `string`, optional
       - `docker`: `object`, optional
+      - `domain`: `string`, optional
       - `downstreamName`: `string`, optional
       - `head`: `boolean`, optional
       - `kubernetes`: `object`, optional
@@ -777,6 +789,201 @@ Responses:
   - `reason`: `string`, optional
   - `used`: `object`, optional - ResourceList is a set of (resource name, quantity) pairs.
 
+## Pod
+
+- Group: `rlinf.io`
+- Version: `v1alpha1`
+- Scope: `Namespaced`
+- Resource: `pods`
+
+### Operations
+
+#### `GET /api/v1/rlinf.io/v1alpha1/pods`
+
+List pods resources.
+
+Parameters:
+- `namespace` (query)
+- `pretty` (query, optional)
+- `continue` (query, optional)
+- `limit` (query, optional)
+- `fieldSelector` (query, optional)
+- `labelSelector` (query, optional)
+
+Responses:
+- `200` OK → `PodList`
+- `401` Unauthorized
+
+#### `POST /api/v1/rlinf.io/v1alpha1/pods`
+
+Create a Pod resource.
+
+Parameters:
+- `namespace` (query)
+- `pretty` (query, optional)
+- `dryRun` (query, optional)
+- `fieldManager` (query, optional)
+- `fieldValidation` (query, optional)
+
+Request body: `Pod`
+
+Responses:
+- `201` Created → `Pod`
+- `202` Accepted → `Pod`
+- `401` Unauthorized
+
+#### `DELETE /api/v1/rlinf.io/v1alpha1/pods`
+
+Delete a collection of pods resources.
+
+Parameters:
+- `namespace` (query)
+- `pretty` (query, optional)
+- `continue` (query, optional)
+- `limit` (query, optional)
+- `fieldSelector` (query, optional)
+- `labelSelector` (query, optional)
+
+Responses:
+- `200` OK → `Status`
+- `401` Unauthorized
+
+#### `GET /api/v1/rlinf.io/v1alpha1/pods/{name}`
+
+Get a Pod resource.
+
+Parameters:
+- `namespace` (query)
+- `name` (path)
+- `pretty` (query, optional)
+
+Responses:
+- `200` OK → `Pod`
+- `401` Unauthorized
+- `404` Not Found
+
+#### `PUT /api/v1/rlinf.io/v1alpha1/pods/{name}`
+
+Replace a Pod resource.
+
+Parameters:
+- `namespace` (query)
+- `name` (path)
+- `pretty` (query, optional)
+- `fieldManager` (query, optional)
+- `fieldValidation` (query, optional)
+
+Request body: `Pod`
+
+Responses:
+- `200` OK → `Pod`
+- `401` Unauthorized
+- `404` Not Found
+
+#### `PATCH /api/v1/rlinf.io/v1alpha1/pods/{name}`
+
+Patch a Pod resource.
+
+Parameters:
+- `namespace` (query)
+- `name` (path)
+- `pretty` (query, optional)
+- `fieldManager` (query, optional)
+- `fieldValidation` (query, optional)
+- `force` (query, optional)
+
+Request body: `Pod`
+
+Responses:
+- `200` OK → `Pod`
+- `401` Unauthorized
+- `404` Not Found
+
+#### `DELETE /api/v1/rlinf.io/v1alpha1/pods/{name}`
+
+Delete a Pod resource.
+
+Parameters:
+- `namespace` (query)
+- `name` (path)
+- `pretty` (query, optional)
+
+Responses:
+- `200` OK → `Status`
+- `202` Accepted → `Status`
+- `401` Unauthorized
+- `404` Not Found
+
+#### `GET /api/v1/rlinf.io/v1alpha1/pods/{name}/status`
+
+Get the status subresource for Pod.
+
+Parameters:
+- `namespace` (query)
+- `name` (path)
+- `pretty` (query, optional)
+
+Responses:
+- `200` OK → `Pod`
+- `401` Unauthorized
+- `404` Not Found
+
+#### `PUT /api/v1/rlinf.io/v1alpha1/pods/{name}/status`
+
+Replace the status subresource for Pod.
+
+Parameters:
+- `namespace` (query)
+- `name` (path)
+- `pretty` (query, optional)
+- `fieldManager` (query, optional)
+- `fieldValidation` (query, optional)
+
+Request body: `Pod`
+
+Responses:
+- `200` OK → `Pod`
+- `202` Accepted → `Pod`
+- `401` Unauthorized
+- `404` Not Found
+
+#### `PATCH /api/v1/rlinf.io/v1alpha1/pods/{name}/status`
+
+Patch the status subresource for Pod.
+
+Parameters:
+- `namespace` (query)
+- `name` (path)
+- `pretty` (query, optional)
+- `fieldManager` (query, optional)
+- `fieldValidation` (query, optional)
+- `force` (query, optional)
+
+Request body: `Pod`
+
+Responses:
+- `200` OK → `Pod`
+- `202` Accepted → `Pod`
+- `401` Unauthorized
+- `404` Not Found
+
+### Request Schema
+
+- `apiVersion`: `string`, optional - APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schema...
+- `kind`: `string`, optional - Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoin...
+- `metadata`: `object`, optional
+- `spec`: `object`, optional - PodSpec 包含 Pod 的标识和引用信息，由数据面上报时设置。
+  - `domain`: `string`, optional
+  - `podName`: `string`, optional
+  - `podNamespace`: `string`, optional
+  - `taskName`: `string`, optional
+  - `taskNamespace`: `string`, optional
+- `status`: `object`, optional - PodStatus 包含 Pod 的运行状态信息（节点、IP、阶段等）， 对应 k8s 中由调度器和 kubelet 设�...
+  - `ip`: `string`, optional
+  - `message`: `string`, optional
+  - `node`: `string`, optional
+  - `phase`: `string`, optional
+
 ## Task
 
 - Group: `rlinf.io`
@@ -965,6 +1172,7 @@ Responses:
   - `docker`: `object`, optional
     - `containers`: `array`, optional
       - `items`: `object`, optional
+  - `domain`: `string`, optional
   - `downstreamName`: `string`, optional
   - `kubernetes`: `object`, optional
     - `workload`: `object`, optional

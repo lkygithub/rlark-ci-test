@@ -31,6 +31,7 @@ func GetCertMetaFromContext(ctx *gin.Context) map[string]string {
 type SignRequest struct {
 	Role     string `json:"role"`                // 证书角色，例如 "agent" 等
 	ClientID string `json:"client_id,omitempty"` // 可选的客户端 ID
+	DomainID string `json:"domain_id,omitempty"` // 可选的域 ID
 }
 
 type SignResponse struct {
@@ -70,6 +71,12 @@ func (s *Server) parseSignRequest(req *SignRequest) (string, map[string]string, 
 			apis.MetaNamespace:               namespace,
 			apis.MetaRemoteDialerClientID:    req.ClientID,
 			apis.MetaKubernetesImpersonation: impersonation,
+		}, nil
+
+	case "domain":
+		return "ssh", map[string]string{
+			apis.MetaAgentID:  req.ClientID,
+			apis.MetaDomainID: req.DomainID,
 		}, nil
 
 	default:

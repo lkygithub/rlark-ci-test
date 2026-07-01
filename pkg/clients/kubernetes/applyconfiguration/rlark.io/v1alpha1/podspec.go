@@ -24,9 +24,13 @@ package v1alpha1
 type PodSpecApplyConfiguration struct {
 	Domain *string `json:"domain,omitempty"`
 	// 所属 Domain 名称
+	TaskNamespace *string `json:"taskNamespace,omitempty"`
+	// 关联的 Task 命名空间
 	TaskName *string `json:"taskName,omitempty"`
 	// 关联的 Task 名称
-	TaskNamespace *string `json:"taskNamespace,omitempty"`
+	PodNamespace *string `json:"podNamespace,omitempty"`
+	// 数据面 Pod 所在的命名空间
+	PodName *string `json:"podName,omitempty"`
 }
 
 // PodSpecApplyConfiguration constructs a declarative configuration of the PodSpec type for use with
@@ -43,6 +47,14 @@ func (b *PodSpecApplyConfiguration) WithDomain(value string) *PodSpecApplyConfig
 	return b
 }
 
+// WithTaskNamespace sets the TaskNamespace field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the TaskNamespace field is set to the value of the last call.
+func (b *PodSpecApplyConfiguration) WithTaskNamespace(value string) *PodSpecApplyConfiguration {
+	b.TaskNamespace = &value
+	return b
+}
+
 // WithTaskName sets the TaskName field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the TaskName field is set to the value of the last call.
@@ -51,10 +63,18 @@ func (b *PodSpecApplyConfiguration) WithTaskName(value string) *PodSpecApplyConf
 	return b
 }
 
-// WithTaskNamespace sets the TaskNamespace field in the declarative configuration to the given value
+// WithPodNamespace sets the PodNamespace field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
-// If called multiple times, the TaskNamespace field is set to the value of the last call.
-func (b *PodSpecApplyConfiguration) WithTaskNamespace(value string) *PodSpecApplyConfiguration {
-	b.TaskNamespace = &value
+// If called multiple times, the PodNamespace field is set to the value of the last call.
+func (b *PodSpecApplyConfiguration) WithPodNamespace(value string) *PodSpecApplyConfiguration {
+	b.PodNamespace = &value
+	return b
+}
+
+// WithPodName sets the PodName field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the PodName field is set to the value of the last call.
+func (b *PodSpecApplyConfiguration) WithPodName(value string) *PodSpecApplyConfiguration {
+	b.PodName = &value
 	return b
 }

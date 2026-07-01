@@ -25,6 +25,7 @@ type DomainPodInfoApplyConfiguration struct {
 	Name            *string `json:"name,omitempty"`
 	Node            *string `json:"node,omitempty"`
 	IP              *string `json:"ip,omitempty"`
+	LocalIP         *string `json:"localIP,omitempty"`
 }
 
 // DomainPodInfoApplyConfiguration constructs a declarative configuration of the DomainPodInfo type for use with
@@ -70,5 +71,13 @@ func (b *DomainPodInfoApplyConfiguration) WithNode(value string) *DomainPodInfoA
 // If called multiple times, the IP field is set to the value of the last call.
 func (b *DomainPodInfoApplyConfiguration) WithIP(value string) *DomainPodInfoApplyConfiguration {
 	b.IP = &value
+	return b
+}
+
+// WithLocalIP sets the LocalIP field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the LocalIP field is set to the value of the last call.
+func (b *DomainPodInfoApplyConfiguration) WithLocalIP(value string) *DomainPodInfoApplyConfiguration {
+	b.LocalIP = &value
 	return b
 }

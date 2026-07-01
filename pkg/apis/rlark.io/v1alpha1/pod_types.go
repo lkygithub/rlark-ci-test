@@ -14,8 +14,10 @@ const (
 // PodSpec 包含 Pod 的标识和引用信息，由数据面上报时设置。
 type PodSpec struct {
 	Domain        string `json:"domain,omitempty"`        // 所属 Domain 名称
-	TaskName      string `json:"taskName,omitempty"`      // 关联的 Task 名称
 	TaskNamespace string `json:"taskNamespace,omitempty"` // 关联的 Task 命名空间
+	TaskName      string `json:"taskName,omitempty"`      // 关联的 Task 名称
+	PodNamespace  string `json:"podNamespace,omitempty"`  // 数据面 Pod 所在的命名空间
+	PodName       string `json:"podName,omitempty"`       // 数据面 Pod 的名称
 }
 
 // PodStatus 包含 Pod 的运行状态信息（节点、IP、阶段等），
