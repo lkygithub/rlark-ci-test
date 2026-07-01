@@ -57,6 +57,8 @@ spec:
                       type: string
                     ip:
                       type: string
+                    localIP:
+                      type: string
                     name:
                       type: string
                     namespace:

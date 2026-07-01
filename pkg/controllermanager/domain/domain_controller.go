@@ -45,6 +45,11 @@ func (r *DomainReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		}
 		return ctrl.Result{}, err
 	}
+	ippool, err := NewIPPool(domain.Spec.CIDR)
+	if err != nil {
+		logger.Error(err, "invalid CIDR in Domain spec, skip")
+		return ctrl.Result{}, nil
+	}
 
 	// 2. List all Pod CRs across all namespaces that belong to this domain
 	var podList rlarkv1alpha1.PodList
@@ -53,30 +58,96 @@ func (r *DomainReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		return ctrl.Result{}, err
 	}
 
-	// 3. Group pods by namespace (each namespace = one cluster)
+	// 3. Generate IP Allocation Map for the domain
+	oldIPAllocMap := make(map[string]rlarkv1alpha1.DomainIPAllocation)
+	for _, ipAlloc := range domain.Status.IPAllocations {
+		oldIPAllocMap[ipAlloc.Pod] = ipAlloc
+	}
+
+	// 4. Group pods by namespace (each namespace = one cluster)
 	podsByNamespace := make(map[string][]rlarkv1alpha1.DomainPodInfo)
+	nonAllocPodsByNamespace := make(map[string][]rlarkv1alpha1.DomainPodInfo)
 	for _, pod := range podList.Items {
 		if pod.Spec.Domain != domain.Name {
 			continue
 		}
 		ns := pod.Namespace
-		podsByNamespace[ns] = append(podsByNamespace[ns], rlarkv1alpha1.DomainPodInfo{
-			GlobalNamespace: ns,
-			Namespace:       pod.Spec.TaskNamespace,
-			Name:            pod.Name,
-			Node:            pod.Status.Node,
-			IP:              pod.Status.IP,
-		})
+		if alloc, ok := oldIPAllocMap[pod.Namespace+"/"+pod.Name]; ok {
+			podsByNamespace[ns] = append(podsByNamespace[ns], rlarkv1alpha1.DomainPodInfo{
+				GlobalNamespace: ns,
+				Namespace:       pod.Spec.TaskNamespace,
+				Name:            pod.Name,
+				Node:            pod.Status.Node,
+				IP:              alloc.IP,
+				LocalIP:         pod.Status.IP,
+			})
+			ippool.MarkAllocated(alloc.IP)                    // mark IP as allocated
+			delete(oldIPAllocMap, pod.Namespace+"/"+pod.Name) // mark as allocated
+		} else {
+			nonAllocPodsByNamespace[ns] = append(nonAllocPodsByNamespace[ns], rlarkv1alpha1.DomainPodInfo{
+				GlobalNamespace: ns,
+				Namespace:       pod.Spec.TaskNamespace,
+				Name:            pod.Name,
+				Node:            pod.Status.Node,
+				IP:              "",
+				LocalIP:         pod.Status.IP,
+			})
+		}
 	}
 
-	// 4. Create or update DomainPeer per namespace
+	// 5. Clean up expired IP allocations (keep 128 expired IPs for potential reuse)
+	var newIPAllocations []rlarkv1alpha1.DomainIPAllocation
+	expireIPCount := len(oldIPAllocMap) - 128
+	if expireIPCount < 0 {
+		expireIPCount = 0
+	}
+	for _, ipAlloc := range domain.Status.IPAllocations {
+		if _, ok := oldIPAllocMap[ipAlloc.Pod]; ok {
+			if expireIPCount > 0 {
+				expireIPCount--
+			} else {
+				newIPAllocations = append(newIPAllocations, ipAlloc)
+				ippool.MarkAllocated(ipAlloc.IP) // prevent reallocation of retained IPs
+			}
+		} else {
+			newIPAllocations = append(newIPAllocations, ipAlloc)
+		}
+	}
+	domain.Status.IPAllocations = newIPAllocations
+
+	// 6. Allocate IPs for pods that don't have an allocation yet
+	for ns, pods := range nonAllocPodsByNamespace {
+		for _, pod := range pods {
+			ip, err := ippool.Allocate()
+			if err != nil {
+				logger.Error(err, "failed to allocate IP for pod", "namespace", ns, "pod", pod.Name)
+				return ctrl.Result{}, err
+			}
+			pod.IP = ip
+			podsByNamespace[ns] = append(podsByNamespace[ns], pod)
+			domain.Status.IPAllocations = append(domain.Status.IPAllocations, rlarkv1alpha1.DomainIPAllocation{
+				IP:   ip,
+				Job:  "", // TODO
+				Task: "", // TODO
+				Pod:  pod.Namespace + "/" + pod.Name,
+			})
+		}
+	}
+
+	// 7. Update Domain.Status.IPAllocations with the new allocations
+	if err := r.Status().Update(ctx, &domain); err != nil {
+		logger.Error(err, "failed to update Domain status")
+		return ctrl.Result{}, err
+	}
+
+	// 8. Create or update DomainPeer per namespace
 	for ns, pods := range podsByNamespace {
 		if err := r.createOrUpdateDomainPeer(ctx, logger, domain.Name, ns, pods); err != nil {
 			return ctrl.Result{}, err
 		}
 	}
 
-	// 5. Delete DomainPeers in namespaces that no longer have pods for this domain
+	// 9. Delete DomainPeers in namespaces that no longer have pods for this domain
 	if err := r.cleanupStaleDomainPeers(ctx, logger, domain.Name, podsByNamespace); err != nil {
 		return ctrl.Result{}, err
 	}

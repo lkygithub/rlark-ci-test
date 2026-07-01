@@ -14,6 +14,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/rancher/remotedialer"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/rlinf/rlark/pkg/apis"
 	"github.com/rlinf/rlark/pkg/server/reverseproxy"
@@ -44,22 +45,49 @@ func (s *Server) GetDial(ctx context.Context, dialType, address string, certMeta
 		targetID := fields[len(fields)-2]
 		targetType := fields[len(fields)-1]
 		targetHost := strings.Join(fields[:len(fields)-2], ".")
-		targetAddress := fmt.Sprintf("%s:%s", targetHost, port)
 
 		var dialer remotedialer.Dialer
 		switch targetType {
 		case "agent":
-			if !apis.PermissionChecker.HasAgentProxyPermission(certMeta, targetID) {
-				return nil, "", fmt.Errorf("client certificate does not have proxy permission for the agent %s", targetID)
+			hasPermission := apis.PermissionChecker.HasAgentProxyPermission(certMeta, targetID)
+			if !hasPermission {
+				if domainID, ok := apis.PermissionChecker.HasDomainProxyPermission(certMeta); ok {
+					var domainCheckErr error
+					hasPermission, domainCheckErr = s.checkHostInDomain(ctx, &targetHost, domainID, targetID)
+					if domainCheckErr != nil {
+						return nil, "", fmt.Errorf("failed to check domain proxy permission: %w", domainCheckErr)
+					}
+				}
+			}
+			if !hasPermission {
+				return nil, "", fmt.Errorf("client certificate does not have proxy permission for %s on %s", targetHost, targetID)
 			}
 			dialer = s.dialerFactory.GetDialer(ctx, targetID) // TODO: 检测对应主 agent 是否连接，如果没有连接，用其他 agent 来转发请求
 
 		default:
 			return nil, "", fmt.Errorf("unsupported target type: %s", targetType)
 		}
-		return dialer, targetAddress, nil
+		return dialer, net.JoinHostPort(targetHost, port), nil
 	}
 	return nil, "", fmt.Errorf("unsupported dial type: %s", dialType)
+}
+
+func (s *Server) checkHostInDomain(ctx context.Context, host *string, domainID, agentID string) (bool, error) {
+	namespace := apis.RLarkAgentNamespacePrefix + agentID
+	dp, err := s.rlarkClient.RlinfV1alpha1().DomainPeers(namespace).Get(ctx, domainID, metav1.GetOptions{})
+	if err != nil {
+		return false, fmt.Errorf("get domain peer %s: %w", domainID, err)
+	}
+	for _, pod := range dp.Spec.Pods {
+		if pod.IP == *host {
+			if pod.LocalIP == "" {
+				return false, fmt.Errorf("domain peer %s/%s pod %s/%s has no LocalIP", namespace, domainID, pod.Namespace, pod.Name)
+			}
+			*host = pod.LocalIP
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 // handleProxyConnect 处理反向代理隧道的连接请求。它会根据客户端证书中的元数据来确定是代理连接还是 Peer-to-Peer 连接，并设置相应的请求头。

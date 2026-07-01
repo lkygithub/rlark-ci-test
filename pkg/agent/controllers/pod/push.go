@@ -51,8 +51,10 @@ func (r *pushPodReconciler) buildRLarkPodFromK8sPod(k8sPod *corev1.Pod, taskName
 	phase := convertK8sPodPhase(k8sPod.Status.Phase)
 
 	podSpec := rlarkv1alpha1.PodSpec{
-		TaskName:      taskName,
 		TaskNamespace: taskNamespace,
+		TaskName:      taskName,
+		PodNamespace:  k8sPod.Namespace,
+		PodName:       k8sPod.Name,
 	}
 	// Domain is read from pod annotation set by task pull controller
 	if domain := k8sPod.Annotations["rlark.io/management-task-domain"]; domain != "" {
@@ -60,17 +62,22 @@ func (r *pushPodReconciler) buildRLarkPodFromK8sPod(k8sPod *corev1.Pod, taskName
 	}
 
 	podStatus := rlarkv1alpha1.PodStatus{
-		Phase: phase,
-		Node:  k8sPod.Spec.NodeName,
-	}
-	if k8sPod.Status.PodIP != "" {
-		podStatus.IP = k8sPod.Status.PodIP
+		Phase:   phase,
+		Node:    k8sPod.Spec.NodeName,
+		IP:      k8sPod.Status.PodIP,
+		Message: k8sPod.Status.Message,
 	}
 
+	// Labels enable lookup by k8s pod name/namespace (e.g. for deletion when only the
+	// pod name is available, not the UID).
 	return &rlarkv1alpha1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      k8sPod.Name,
+			Name:      string(k8sPod.UID),
 			Namespace: r.c.ManagementNamespace,
+			Labels: map[string]string{
+				"rlark.io/local-pod-name":      k8sPod.Name,
+				"rlark.io/local-pod-namespace": k8sPod.Namespace,
+			},
 		},
 		Spec:   podSpec,
 		Status: podStatus,
@@ -95,10 +102,11 @@ func (r *pushPodReconciler) updateManagementPod(ctx context.Context, logger logr
 		return reconcile.Result{}, nil
 	}
 
-	// Update spec
+	// Update labels + spec in one call
+	mgmtPod.Labels = desiredPod.Labels
 	mgmtPod.Spec = desiredPod.Spec
 	if err := r.c.ManagementClient.Update(ctx, &mgmtPod); err != nil {
-		logger.Error(err, "failed to update management Pod spec")
+		logger.Error(err, "failed to update management Pod")
 		return reconcile.Result{}, err
 	}
 
@@ -114,15 +122,26 @@ func (r *pushPodReconciler) updateManagementPod(ctx context.Context, logger logr
 }
 
 func (r *pushPodReconciler) deleteManagementPod(ctx context.Context, logger logr.Logger, name, namespace string) (reconcile.Result, error) {
-	mgmtPod := &rlarkv1alpha1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: r.c.ManagementNamespace,
-		},
-	}
-	if err := r.c.ManagementClient.Delete(ctx, mgmtPod); err != nil && client.IgnoreNotFound(err) != nil {
-		logger.Error(err, "failed to delete management Pod")
+	// Find management Pod(s) by the k8s pod name/namespace labels (name alone isn't
+	// enough since management Pods are named by k8s UID, not pod name).
+	var mgmtPodList rlarkv1alpha1.PodList
+	if err := r.c.ManagementClient.List(ctx, &mgmtPodList,
+		client.InNamespace(r.c.ManagementNamespace),
+		client.MatchingLabels{
+			"rlark.io/local-pod-name":      name,
+			"rlark.io/local-pod-namespace": namespace,
+		}); err != nil {
+		logger.Error(err, "failed to list management Pods for deletion")
 		return reconcile.Result{}, err
+	}
+	for i := range mgmtPodList.Items {
+		if err := r.c.ManagementClient.Delete(ctx, &mgmtPodList.Items[i]); err != nil && client.IgnoreNotFound(err) != nil {
+			logger.Error(err, "failed to delete management Pod", "managementPod", mgmtPodList.Items[i].Name)
+			return reconcile.Result{}, err
+		}
+	}
+	if len(mgmtPodList.Items) > 0 {
+		logger.V(1).Info("management Pod(s) deleted", "count", len(mgmtPodList.Items))
 	}
 	return reconcile.Result{}, nil
 }

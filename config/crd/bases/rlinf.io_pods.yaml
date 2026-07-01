@@ -55,6 +55,10 @@ spec:
             properties:
               domain:
                 type: string
+              podName:
+                type: string
+              podNamespace:
+                type: string
               taskName:
                 type: string
               taskNamespace:

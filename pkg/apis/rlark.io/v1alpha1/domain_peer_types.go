@@ -21,6 +21,7 @@ type DomainPodInfo struct {
 	Name            string `json:"name,omitempty"`
 	Node            string `json:"node,omitempty"`
 	IP              string `json:"ip,omitempty"`
+	LocalIP         string `json:"localIP,omitempty"`
 }
 
 type DomainPeerSpec struct {
