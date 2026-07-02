@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/sirupsen/logrus"
 )
@@ -33,19 +34,22 @@ func (d *RawDeployer) Deploy(cfg *DeployConfig, certBundle *CertBundle) error {
 		}
 	}
 
-	comps := ComponentsForPlane(cfg.Plane)
+	if cfg.DB != nil {
+		if err := writeDBConfigFile(cfg.DB); err != nil {
+			return err
+		}
+	}
+
+	comps := ComponentsForPlane(cfg)
 	binPaths := make([]string, 0, len(comps))
 
 	for _, c := range comps {
-		binPath, err := downloadArtifact(c.Artifact(cfg), c.Name)
+		binPath, err := downloadArtifact(c.ArtifactFn(cfg), c.Name)
 		if err != nil {
 			return err
 		}
-		controlPlane := ""
-		if c.Name == ComponentAgent {
-			controlPlane = cfg.ControlPlaneAddress
-		}
-		if err := writeSystemdUnit(c.Name, binPath, certDir, c.Port, controlPlane); err != nil {
+		args := c.ArgsFn(cfg)
+		if err := writeSystemdUnit(c.Name, binPath, args); err != nil {
 			return err
 		}
 		binPaths = append(binPaths, c.Name)
@@ -54,6 +58,12 @@ func (d *RawDeployer) Deploy(cfg *DeployConfig, certBundle *CertBundle) error {
 
 	if err := systemctlReloadAndEnable(binPaths...); err != nil {
 		return err
+	}
+
+	for _, c := range comps {
+		if err := waitForHealthy(cfg, c); err != nil {
+			return err
+		}
 	}
 
 	logrus.Infof("%s plane deployed via systemd", cfg.Plane)
@@ -92,28 +102,24 @@ func downloadArtifact(url, binName string) (string, error) {
 	return dest, nil
 }
 
-func writeSystemdUnit(name, binPath, certDir string, port int32, controlPlane string) error {
+func writeSystemdUnit(name, binPath string, args []string) error {
+	execStart := binPath
+	if len(args) > 0 {
+		execStart += " " + strings.Join(args, " ")
+	}
+
 	unit := fmt.Sprintf(`[Unit]
 Description=%s
 After=network.target
 
 [Service]
 ExecStart=%s
-Environment=PORT=%d
-`, name, binPath, port)
-
-	if certDir != "" {
-		unit += fmt.Sprintf("Environment=CERT_DIR=%s\n", certDir)
-	}
-	if controlPlane != "" {
-		unit += fmt.Sprintf("Environment=CONTROL_PLANE=%s\n", controlPlane)
-	}
-	unit += `Restart=always
+Restart=always
 RestartSec=5
 
 [Install]
 WantedBy=multi-user.target
-`
+`, name, execStart)
 
 	path := filepath.Join(systemdDir, name+".service")
 	if err := os.WriteFile(path, []byte(unit), 0644); err != nil {

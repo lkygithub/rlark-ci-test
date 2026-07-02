@@ -5,20 +5,33 @@ apiVersion: rlark.io/v1alpha1
 kind: DeployConfig
 plane: control
 
+#db:
+#  host: 192.168.1.10
+#  port: 5432
+#  database: rlark
+#  user: rlark
+#  password: rlark123
+
 # --- 三选一 ---
 
 kubernetes:
   kubeconfig: /Users/ar/test/kubeconfig.yaml
-  gateway-image: harbor.infini-ai.com/rlark/rlark-gateway:latest
-  controller-manager-image: harbor.infini-ai.com/rlark/rlark-controller-manager:latest
-  server-image: harbor.infini-ai.com/rlark/rlark-server:latest
+  gateway-image: harbor.infini-ai.com/artest/rlark-gateway:v0.0.1
+  controller-manager-image: harbor.infini-ai.com/artest/rlark-controller-manager:v0.0.1
+  server-image: harbor.infini-ai.com/artest/rlark-server:v0.0.1
+  kcp-image: harbor.infini-ai.com/share/kcp:v0.30.0
+  postgresql-image: harbor.infini-ai.com/share/postgres:15
 
 #docker:
-#  gateway-image: harbor.infini-ai.com/rlark/rlark-gateway:latest
-#  controller-manager-image: harbor.infini-ai.com/rlark/rlark-controller-manager:latest
-#  server-image: harbor.infini-ai.com/rlark/rlark-server:latest
+#  gateway-image: harbor.infini-ai.com/share/rlark-gateway:latest
+#  controller-manager-image: harbor.infini-ai.com/share/rlark-controller-manager:latest
+#  server-image: harbor.infini-ai.com/share/rlark-server:latest
+#  kcp-image: harbor.infini-ai.com/share/kcp:v0.30.0
+#  postgresql-image: harbor.infini-ai.com/share/postgres:15
 
 #raw:
 #  gateway-artifact: https://github.com/rlinf/rlark/releases/download/v0.1.0/rlark-gateway
 #  controller-manager-artifact: https://github.com/rlinf/rlark/releases/download/v0.1.0/rlark-controller-manager
 #  server-artifact: https://github.com/rlinf/rlark/releases/download/v0.1.0/rlark-server
+#  kcp-artifact: https://github.com/kcp-dev/kcp/releases/download/v0.30.0/kcp
+#  postgresql-artifact: https://github.com/rlinf/rlark/releases/download/v0.1.0/rlark-postgresql
