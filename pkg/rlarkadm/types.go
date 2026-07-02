@@ -19,6 +19,7 @@ type DeployConfig struct {
 	Kind                string         `yaml:"kind"`
 	Plane               Plane          `yaml:"plane"`
 	ControlPlaneAddress string         `yaml:"control-plane-address,omitempty"`
+	DB                  *DBConfig      `yaml:"db,omitempty"`
 	Kubernetes          *KubernetesEnv `yaml:"kubernetes,omitempty"`
 	Docker              *DockerEnv     `yaml:"docker,omitempty"`
 	Raw                 *RawEnv        `yaml:"raw,omitempty"`
@@ -31,6 +32,8 @@ type KubernetesEnv struct {
 	ControllerManagerImage string `yaml:"controller-manager-image"`
 	ServerImage            string `yaml:"server-image"`
 	AgentImage             string `yaml:"agent-image"`
+	KCPImage               string `yaml:"kcp-image,omitempty"`
+	PostgresqlImage        string `yaml:"postgresql-image,omitempty"`
 }
 
 type DockerEnv struct {
@@ -38,6 +41,8 @@ type DockerEnv struct {
 	ControllerManagerImage string `yaml:"controller-manager-image"`
 	ServerImage            string `yaml:"server-image"`
 	AgentImage             string `yaml:"agent-image"`
+	KCPImage               string `yaml:"kcp-image,omitempty"`
+	PostgresqlImage        string `yaml:"postgresql-image,omitempty"`
 }
 
 type RawEnv struct {
@@ -45,11 +50,21 @@ type RawEnv struct {
 	ControllerManagerArtifact string `yaml:"controller-manager-artifact"`
 	ServerArtifact            string `yaml:"server-artifact"`
 	AgentArtifact             string `yaml:"agent-artifact"`
+	KCPArtifact               string `yaml:"kcp-artifact,omitempty"`
+	PostgresqlArtifact        string `yaml:"postgresql-artifact,omitempty"`
 }
 
 type CertConfig struct {
 	CACert string `yaml:"ca-cert,omitempty"`
 	CAKey  string `yaml:"ca-key,omitempty"`
+}
+
+type DBConfig struct {
+	Host     string `yaml:"host"`
+	Port     int    `yaml:"port"`
+	Database string `yaml:"database"`
+	User     string `yaml:"user"`
+	Password string `yaml:"password"`
 }
 
 func LoadDeployConfig(path string) (*DeployConfig, error) {

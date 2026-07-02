@@ -4,7 +4,7 @@
 apiVersion: rlark.io/v1alpha1
 kind: DeployConfig
 plane: data
-control-plane-address: https://192.168.1.10:8080
+control-plane-address: https://192.168.1.10:8443
 
 cert:
   ca-cert: /etc/rlark/certs/ca.crt
@@ -14,10 +14,10 @@ cert:
 
 kubernetes:
   kubeconfig: /root/.kube/config
-  agent-image: harbor.infini-ai.com/rlark/rlark-agent:latest
+  agent-image: harbor.infini-ai.com/share/rlark-agent:latest
 
 #docker:
-#  agent-image: harbor.infini-ai.com/rlark/rlark-agent:latest
+#  agent-image: harbor.infini-ai.com/share/rlark-agent:latest
 
 #raw:
 #  agent-artifact: https://github.com/rlinf/rlark/releases/download/v0.1.0/rlark-agent

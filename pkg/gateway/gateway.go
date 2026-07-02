@@ -53,18 +53,6 @@ func (g *Gateway) Run(ctx context.Context) error {
 }
 
 func (g *Gateway) init(ctx context.Context) error {
-	// init DB
-	if g.config.DBConfigPath != "" {
-		var err error
-		g.dbClient, err = db.OpenFromFileConfig(g.config.DBConfigPath)
-		if err != nil {
-			return fmt.Errorf("open database: %w", err)
-		}
-	} else {
-		logrus.Warningf("RLark gateway is running without persistent storage.")
-		return nil
-	}
-
 	// init Kubernetes client
 	restConfig, err := g.config.KubeClientConfig.BuildRestConfig()
 	if err != nil {
@@ -75,14 +63,22 @@ func (g *Gateway) init(ctx context.Context) error {
 		return fmt.Errorf("create Kubernetes client: %w", err)
 	}
 
-	// init stores and accessors
-	g.stores = make(map[string]*db.ResourceStore)
+	// init accessors
 	g.accessors = registerAccessors(g.kubeClient)
-	if g.dbClient != nil {
+
+	// init DB (optional)
+	if g.config.DBConfigPath != "" {
+		g.dbClient, err = db.OpenFromFileConfig(g.config.DBConfigPath)
+		if err != nil {
+			return fmt.Errorf("open database: %w", err)
+		}
+		g.stores = make(map[string]*db.ResourceStore)
 		g.stores["nodes"] = db.NewNodeStore(g.dbClient.DB)
 		g.stores["workflows"] = db.NewWorkflowStore(g.dbClient.DB)
 		g.stores["jobs"] = db.NewJobStore(g.dbClient.DB)
 		g.stores["tasks"] = db.NewTaskStore(g.dbClient.DB)
+	} else {
+		logrus.Warningf("RLark gateway is running without persistent storage.")
 	}
 
 	return nil
