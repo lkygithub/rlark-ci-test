@@ -73,6 +73,9 @@ func New(config Config) (manager.Manager, error) {
 		&domain.DomainReconciler{
 			Client: mgr.GetClient(),
 			Scheme: scheme,
+
+			KubeClientConfig: config.KubeClientConfig,
+			ServerAddress:    config.ServerAddress,
 		},
 	}
 

@@ -4,6 +4,7 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"fmt"
+	"time"
 
 	gossh "golang.org/x/crypto/ssh"
 )
@@ -14,6 +15,32 @@ type Data struct {
 	SSHCert *gossh.Certificate
 	KeyPEM  []byte
 	Key     *rsa.PrivateKey
+}
+
+func (data *Data) IsValid() bool {
+	if data.Cert == nil && data.SSHCert == nil {
+		return false
+	}
+	if data.Key == nil {
+		return false
+	}
+	if data.Cert != nil {
+		if data.Cert.NotAfter.Before(time.Now()) {
+			return false
+		}
+		if data.Cert.NotBefore.After(time.Now()) {
+			return false
+		}
+	}
+	if data.SSHCert != nil {
+		if data.SSHCert.ValidBefore < uint64(time.Now().Unix()) {
+			return false
+		}
+		if data.SSHCert.ValidAfter > uint64(time.Now().Unix()) {
+			return false
+		}
+	}
+	return true
 }
 
 func LoadData(certPEM, keyPEM []byte) (*Data, error) {
