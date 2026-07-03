@@ -14,6 +14,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	rlarkv1alpha1 "github.com/rlinf/rlark/pkg/apis/rlark.io/v1alpha1"
+	"github.com/rlinf/rlark/pkg/clients"
+	"github.com/rlinf/rlark/pkg/server/cert"
 )
 
 // DomainReconciler watches Domain and Pod CRs, and generates DomainPeer
@@ -25,6 +27,11 @@ import (
 type DomainReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
+
+	// Kubernetes client configuration.
+	KubeClientConfig clients.KubernetesClientConfig
+	// Server Address
+	ServerAddress string
 }
 
 // +kubebuilder:rbac:groups=rlinf.io,resources=domains,verbs=get;list;watch
@@ -141,8 +148,9 @@ func (r *DomainReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	}
 
 	// 8. Create or update DomainPeer per namespace
+	signer := newSigner(r)
 	for ns, pods := range podsByNamespace {
-		if err := r.createOrUpdateDomainPeer(ctx, logger, domain.Name, ns, pods); err != nil {
+		if err := r.createOrUpdateDomainPeer(ctx, logger, domain.Name, ns, pods, signer); err != nil {
 			return ctrl.Result{}, err
 		}
 	}
@@ -177,7 +185,7 @@ func (r *DomainReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func (r *DomainReconciler) createOrUpdateDomainPeer(ctx context.Context, logger logr.Logger, domainName, namespace string, pods []rlarkv1alpha1.DomainPodInfo) error {
+func (r *DomainReconciler) createOrUpdateDomainPeer(ctx context.Context, logger logr.Logger, domainName, namespace string, pods []rlarkv1alpha1.DomainPodInfo, signer *signer) error {
 	desiredPeer := &rlarkv1alpha1.DomainPeer{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      domainName,
@@ -197,10 +205,29 @@ func (r *DomainReconciler) createOrUpdateDomainPeer(ctx context.Context, logger 
 
 	if err != nil {
 		logger.Info("creating DomainPeer", "namespace", namespace, "podCount", len(pods))
+		cert, key, err := signer.Sign(ctx, domainName, namespace)
+		if err != nil {
+			logger.Error(err, "failed to sign certificate for DomainPeer", "namespace", namespace)
+			return err
+		}
+		desiredPeer.Spec.Cert = string(cert)
+		desiredPeer.Spec.Key = string(key)
 		return r.Create(ctx, desiredPeer)
 	}
 
 	existingPeer.Spec.Pods = pods
+	certData, err := cert.LoadData([]byte(existingPeer.Spec.Cert), []byte(existingPeer.Spec.Key))
+	if err != nil || certData.SSHCert == nil || !certData.IsValid() {
+		// 重新签发证书
+		logger.Info("existing DomainPeer certificate is invalid or expired, re-signing", "namespace", namespace)
+		cert, key, err := signer.Sign(ctx, domainName, namespace)
+		if err != nil {
+			logger.Error(err, "failed to sign certificate for DomainPeer", "namespace", namespace)
+			return err
+		}
+		existingPeer.Spec.Cert = string(cert)
+		existingPeer.Spec.Key = string(key)
+	}
 	if err := r.Update(ctx, &existingPeer); err != nil {
 		logger.Error(err, "failed to update DomainPeer", "namespace", namespace)
 		return err

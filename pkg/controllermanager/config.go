@@ -11,6 +11,9 @@ type Config struct {
 	// Kubernetes client configuration.
 	KubeClientConfig clients.KubernetesClientConfig
 
+	// Server Address
+	ServerAddress string
+
 	// DBConfigPath is the file path to the database configuration (e.g., YAML or JSON).
 	DBConfigPath string
 
