@@ -46,7 +46,7 @@ func (r *pullReconciler) Reconcile(ctx context.Context, req reconcile.Request) (
 	// Handle deletion: clean up local workload and remove finalizer
 	if mgmtTask.DeletionTimestamp != nil {
 		logger.Info("management Task being deleted, cleaning up local workload")
-		workloadNs := r.getWorkloadNamespace(&mgmtTask)
+		workloadNs := getWorkloadNamespace(&mgmtTask)
 		if err := r.cleanupWorkload(ctx, mgmtTask.Name, workloadNs); err != nil {
 			logger.Error(err, "failed to clean up workload")
 			return reconcile.Result{}, err
@@ -197,21 +197,33 @@ func (r *pullReconciler) cleanupWorkload(ctx context.Context, name string, names
 	return nil
 }
 
-func (r *pullReconciler) getWorkloadNamespace(mgmtTask *rlarkv1alpha1.Task) string {
+func getWorkloadNamespace(mgmtTask *rlarkv1alpha1.Task) string {
 	if mgmtTask.Spec.Kubernetes != nil && mgmtTask.Spec.Kubernetes.Workload != nil {
-		return mgmtTask.Spec.Kubernetes.Workload.Template.Namespace
+		if ns := mgmtTask.Spec.Kubernetes.Workload.Template.Namespace; ns != "" {
+			return ns
+		}
 	}
 	return mgmtTask.Namespace
 }
 
 // --- workload builder functions ---
 
+// ensureLabels ensures the pod template has labels, adding a default if none are set.
+func ensureLabels(template *corev1.PodTemplateSpec, name string) {
+	if template.Labels == nil || len(template.Labels) == 0 {
+		template.Labels = map[string]string{
+			"app": name,
+		}
+	}
+}
+
 func buildDeployment(mgmtTask *rlarkv1alpha1.Task, spec *rlarkv1alpha1.KubernetesWorkloadSpec) *appsv1.Deployment {
 	applyDomainAnnotation(&spec.Template, mgmtTask)
+	ensureLabels(&spec.Template, mgmtTask.Name)
 	return &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      mgmtTask.Name,
-			Namespace: spec.Template.Namespace,
+			Namespace: getWorkloadNamespace(mgmtTask),
 			Annotations: map[string]string{
 				ManagementTaskNameAnnotation:      mgmtTask.Name,
 				ManagementTaskNamespaceAnnotation: mgmtTask.Namespace,
@@ -230,10 +242,11 @@ func buildDeployment(mgmtTask *rlarkv1alpha1.Task, spec *rlarkv1alpha1.Kubernete
 
 func buildDaemonSet(mgmtTask *rlarkv1alpha1.Task, spec *rlarkv1alpha1.KubernetesWorkloadSpec) *appsv1.DaemonSet {
 	applyDomainAnnotation(&spec.Template, mgmtTask)
+	ensureLabels(&spec.Template, mgmtTask.Name)
 	return &appsv1.DaemonSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      mgmtTask.Name,
-			Namespace: spec.Template.Namespace,
+			Namespace: getWorkloadNamespace(mgmtTask),
 			Annotations: map[string]string{
 				ManagementTaskNameAnnotation:      mgmtTask.Name,
 				ManagementTaskNamespaceAnnotation: mgmtTask.Namespace,
@@ -251,10 +264,11 @@ func buildDaemonSet(mgmtTask *rlarkv1alpha1.Task, spec *rlarkv1alpha1.Kubernetes
 
 func buildStatefulSet(mgmtTask *rlarkv1alpha1.Task, spec *rlarkv1alpha1.KubernetesWorkloadSpec) *appsv1.StatefulSet {
 	applyDomainAnnotation(&spec.Template, mgmtTask)
+	ensureLabels(&spec.Template, mgmtTask.Name)
 	return &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      mgmtTask.Name,
-			Namespace: spec.Template.Namespace,
+			Namespace: getWorkloadNamespace(mgmtTask),
 			Annotations: map[string]string{
 				ManagementTaskNameAnnotation:      mgmtTask.Name,
 				ManagementTaskNamespaceAnnotation: mgmtTask.Namespace,

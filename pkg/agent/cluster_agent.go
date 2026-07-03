@@ -4,10 +4,14 @@ import (
 	"cmp"
 	"context"
 	"fmt"
+	"os"
+	"strings"
 
+	"github.com/go-logr/logr/funcr"
 	"golang.org/x/sync/errgroup"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
 	"github.com/rlinf/rlark/pkg/agent/controllers"
 	"github.com/rlinf/rlark/pkg/agent/controllers/base"
@@ -23,11 +27,18 @@ type clusterAgent struct {
 }
 
 func (c *clusterAgent) Run(ctx context.Context) error {
+	// 设置 controller-runtime logger
+	logger := funcr.New(func(prefix, args string) {
+		fmt.Fprintln(os.Stdout, "[ctrl-runtime]", strings.TrimSpace(prefix), args)
+	}, funcr.Options{Verbosity: 1})
+	ctrl.SetLogger(logger)
+
 	agentType := c.a.config.AgentType
 	clusterID := cmp.Or(c.a.config.ClientConfig.ServerNamespace, "default")
 
 	mm, err := ctrl.NewManager(c.a.managementConfig, ctrl.Options{
-		Scheme: controllers.MgmtScheme,
+		Scheme:  controllers.MgmtScheme,
+		Metrics: metricsserver.Options{BindAddress: "0"},
 	})
 	if err != nil {
 		return fmt.Errorf("create management manager: %w", err)
@@ -53,7 +64,8 @@ func (c *clusterAgent) Run(ctx context.Context) error {
 			return fmt.Errorf("local kube config is required for kubernetes agent")
 		}
 		m, err := ctrl.NewManager(c.a.localKubeConfig, ctrl.Options{
-			Scheme: controllers.MgmtScheme,
+			Scheme:  controllers.MgmtScheme,
+			Metrics: metricsserver.Options{BindAddress: "0"},
 		})
 		if err != nil {
 			return fmt.Errorf("create local manager: %w", err)
