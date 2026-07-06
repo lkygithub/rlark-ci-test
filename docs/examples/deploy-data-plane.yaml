@@ -4,17 +4,18 @@
 apiVersion: rlark.io/v1alpha1
 kind: DeployConfig
 plane: data
-control-plane-address: https://192.168.1.10:8443
+control-plane-address: https://rlark-server.rlark-system.svc:8443
 
 cert:
-  ca-cert: /etc/rlark/certs/ca.crt
-  ca-key: /etc/rlark/certs/ca.key
+  ca-cert: /Users/ar/test/rlark-deploy/ca.crt
+  agent-cert: /Users/ar/test/rlark-deploy/agent.crt
+  agent-key: /Users/ar/test/rlark-deploy/agent.key
 
 # --- 三选一 ---
 
 kubernetes:
-  kubeconfig: /root/.kube/config
-  agent-image: harbor.infini-ai.com/share/rlark-agent:latest
+  kubeconfig: /Users/ar/test/kubeconfig.yaml # 往 k8s 集群部署平台，访问集群的 kubeconfig
+  agent-image: harbor.infini-ai.com/artest/rlark-agent:v0.0.4
 
 #docker:
 #  agent-image: harbor.infini-ai.com/share/rlark-agent:latest

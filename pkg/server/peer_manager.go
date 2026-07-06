@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sirupsen/logrus"
+	"github.com/rlinf/rlark/pkg/log"
 	coordinationv1 "k8s.io/api/coordination/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"
@@ -102,6 +102,7 @@ func (s *Server) runBroadcaster(ctx context.Context) error {
 }
 
 func (s *Server) runPeerTunnel(ctx context.Context) error {
+	logger := log.FromContext(ctx)
 	var mu sync.Mutex
 	leaseMap := make(map[string]string) // leaseName -> leaseIdentity(ip/peerID/peerToken)
 
@@ -118,14 +119,14 @@ func (s *Server) runPeerTunnel(ctx context.Context) error {
 		}
 		fields := strings.Split(identity, "/")
 		if len(fields) != 3 {
-			logrus.Warnf("Invalid lease identity: %s", identity)
+			logger.Error(nil, "Invalid lease identity", "identity", identity)
 			return
 		}
 		ip, peerID, peerToken := fields[0], fields[1], fields[2]
 		url := fmt.Sprintf("ws://127.0.0.1:%d/api/peer/%s", s.config.UnsafeHTTPPort, ip)
 		s.dialerFactory.AddPeer(url, peerID, peerToken)
 		leaseMap[name] = identity
-		logrus.Infof("Added peer %s from lease %s (%s)", peerID, name, ip)
+		logger.Info("Added peer", "peerID", peerID, "lease", name, "ip", ip)
 	}
 	unsetLease := func(name string) {
 		mu.Lock()
@@ -135,7 +136,7 @@ func (s *Server) runPeerTunnel(ctx context.Context) error {
 			if len(fields) == 3 {
 				peerID := fields[1]
 				s.dialerFactory.RemovePeer(peerID)
-				logrus.Infof("Removed peer %s from lease %s", peerID, name)
+				logger.Info("Removed peer", "peerID", peerID, "lease", name)
 			}
 			delete(leaseMap, name)
 		}
@@ -156,7 +157,7 @@ func (s *Server) runPeerTunnel(ctx context.Context) error {
 		// 列出所有 Lease
 		leaseList, err := client.List(ctx, metav1.ListOptions{})
 		if err != nil {
-			logrus.Errorf("Failed to list leases: %v", err)
+			logger.Error(nil, "Failed to list leases", "err", err)
 			// 等待一段时间后重试，避免频繁请求 Kubernetes API 导致压力过大。
 			select {
 			case <-ctx.Done():
@@ -180,7 +181,7 @@ func (s *Server) runPeerTunnel(ctx context.Context) error {
 				// 如果过期太长时间，删除该 Lease，避免列表中充斥大量过期的 Lease。
 				if lease.Spec.RenewTime != nil && time.Since(lease.Spec.RenewTime.Time) > time.Minute*5 {
 					if err := client.Delete(ctx, lease.Name, metav1.DeleteOptions{}); err != nil {
-						logrus.Warnf("Failed to delete expired lease %s: %v", lease.Name, err)
+						logger.Error(nil, "Failed to delete expired lease", "lease", lease.Name, "err", err)
 					}
 				}
 			}
@@ -198,7 +199,7 @@ func (s *Server) runPeerTunnel(ctx context.Context) error {
 			ResourceVersion: leaseList.ResourceVersion,
 		})
 		if err != nil {
-			logrus.Errorf("Failed to watch leases: %v", err)
+			logger.Error(nil, "Failed to watch leases", "err", err)
 			// 等待一段时间后重试，避免频繁请求 Kubernetes API 导致压力过大。
 			select {
 			case <-ctx.Done():
@@ -208,7 +209,7 @@ func (s *Server) runPeerTunnel(ctx context.Context) error {
 			continue
 		}
 		if err := watchLeases(ctx, watcher, setLease, unsetLease); err != nil {
-			logrus.Warnf("Lease watch ended: %v, re-listing...", err)
+			logger.Error(nil, "Lease watch ended, re-listing", "err", err)
 		}
 	}
 }
@@ -219,6 +220,7 @@ func watchLeases(
 	setLease func(name, identity string),
 	unsetLease func(name string),
 ) error {
+	logger := log.FromContext(ctx)
 	// 设置每次 Watch 的最长时间，超过这个时间后无论如何都要重新 List 和 Watch，避免长时间的 Watch 导致状态不同步。
 	ctx, cancel := context.WithTimeout(ctx, time.Minute*30)
 	defer cancel()
@@ -252,7 +254,7 @@ func watchLeases(
 			case watch.Bookmark:
 				// no-op, just keep the watch alive
 			case watch.Error:
-				logrus.Errorf("Lease watch error event: %v", event.Object)
+				logger.Error(nil, "Lease watch error event", "event", event.Object)
 				return fmt.Errorf("watch error event")
 			}
 		}

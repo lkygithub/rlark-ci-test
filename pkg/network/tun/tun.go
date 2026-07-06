@@ -6,8 +6,8 @@ import (
 	"net"
 	"sync"
 
+	"github.com/rlinf/rlark/pkg/log"
 	"github.com/rlinf/rlark/pkg/utils"
-	"github.com/sirupsen/logrus"
 	"github.com/songgao/water"
 	"github.com/vishvananda/netlink"
 )
@@ -54,6 +54,7 @@ func NewTunClient(name string, ip net.IP, prefixLength int, mtu int, dialProxy u
 //  4. 启动双向转发 goroutine（TUN ↔ gVisor）
 //  5. 等待退出信号（SIGINT/SIGTERM）或转发结束
 func (tc *tunClient) Run(ctx context.Context) error {
+	logger := log.FromContext(ctx)
 	// ─── 1. 创建 TUN 设备 ───
 	if tc.mtu <= 0 {
 		tc.mtu = 1500
@@ -63,7 +64,7 @@ func (tc *tunClient) Run(ctx context.Context) error {
 		return fmt.Errorf("create TUN device: %w", err)
 	}
 	defer func() { _ = iface.Close() }()
-	logrus.Infof("TUN device created: %s", iface.Name())
+	logger.Info("TUN device created", "name", iface.Name())
 
 	// ─── 2. 配置 TUN 设备的 IP 和路由 ───
 	if err := tc.setupTUN(iface.Name()); err != nil {
@@ -82,7 +83,7 @@ func (tc *tunClient) Run(ctx context.Context) error {
 	go func() {
 		err := ns.handleTunnel(c1)
 		if err != nil {
-			logrus.Warningf("Failed to handle tunnel connection: %v", err)
+			logger.Error(nil, "Failed to handle tunnel connection", "err", err)
 		}
 	}()
 
@@ -97,14 +98,14 @@ func (tc *tunClient) Run(ctx context.Context) error {
 	// ─── 5. 等待退出信号 ───
 	select {
 	case <-ctx.Done():
-		logrus.Infof("Context cancelled, shutting down...")
+		logger.Info("Context cancelled, shutting down...")
 		_ = c2.Close()
 		_ = iface.Close()
 	case <-waitDone(&wg):
 		// 自然退出
 	}
 	wg.Wait()
-	logrus.Infof("Client shutdown complete")
+	logger.Info("Client shutdown complete")
 	return nil
 }
 
@@ -152,12 +153,13 @@ func (tc *tunClient) setupTUN(name string) error {
 //
 // 这是物理网络 → 虚拟网络的方向。
 func (tc *tunClient) handleRead(iface *water.Interface, tunnelConn net.Conn, wg *sync.WaitGroup) {
+	logger := log.GetLogger()
 	defer wg.Done()
 	buf := make([]byte, tc.mtu)
 	for {
 		n, err := iface.Read(buf)
 		if err != nil {
-			logrus.Warningf("Failed to read from TUN device: %v", err)
+			logger.Error(nil, "Failed to read from TUN device", "err", err)
 			return
 		}
 		if n == 0 {
@@ -166,7 +168,7 @@ func (tc *tunClient) handleRead(iface *water.Interface, tunnelConn net.Conn, wg 
 
 		// 通过 TCP 隧道发送 IP 包
 		if err := SendPacket(tunnelConn, buf[:n]); err != nil {
-			logrus.Warningf("Failed to send IP packet: %v", err)
+			logger.Error(nil, "Failed to send IP packet", "err", err)
 			return
 		}
 	}
@@ -176,11 +178,12 @@ func (tc *tunClient) handleRead(iface *water.Interface, tunnelConn net.Conn, wg 
 //
 // 这是虚拟网络 → 物理网络的方向。
 func (tc *tunClient) handleWrite(tunnelConn net.Conn, iface *water.Interface, wg *sync.WaitGroup) {
+	logger := log.GetLogger()
 	defer wg.Done()
 	for {
 		data, err := RecvPacket(tunnelConn)
 		if err != nil {
-			logrus.Warningf("Failed to receive IP packet: %v", err)
+			logger.Error(nil, "Failed to receive IP packet", "err", err)
 			return
 		}
 		if data == nil {
@@ -189,7 +192,7 @@ func (tc *tunClient) handleWrite(tunnelConn net.Conn, iface *water.Interface, wg
 
 		// 写入 TUN 设备
 		if _, err := iface.Write(data); err != nil {
-			logrus.Warningf("Failed to write to TUN device: %v", err)
+			logger.Error(nil, "Failed to write to TUN device", "err", err)
 			return
 		}
 	}

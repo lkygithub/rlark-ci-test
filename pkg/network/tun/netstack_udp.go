@@ -4,7 +4,7 @@ import (
 	"context"
 	"sync"
 
-	"github.com/sirupsen/logrus"
+	"github.com/rlinf/rlark/pkg/log"
 	"gvisor.dev/gvisor/pkg/tcpip"
 	"gvisor.dev/gvisor/pkg/tcpip/adapters/gonet"
 	"gvisor.dev/gvisor/pkg/tcpip/stack"
@@ -30,7 +30,8 @@ func (ns *netstack) getUDPHandler(s *stack.Stack) func(id stack.TransportEndpoin
 		var wq waiter.Queue
 		ep, err := r.CreateEndpoint(&wq)
 		if err != nil {
-			logrus.Warningf("Failed to create UDP endpoint for %s:%d: %v", dstIP, dstPort, err)
+			logger := log.GetLogger()
+			logger.Error(nil, "Failed to create UDP endpoint", "dstIP", dstIP, "dstPort", dstPort, "err", err)
 			return
 		}
 		go ns.handleUDPFlow(gonet.NewUDPConn(&wq, ep), srcIP, srcPort, dstIP, dstPort)
@@ -47,10 +48,11 @@ func (ns *netstack) getUDPHandler(s *stack.Stack) func(id stack.TransportEndpoin
 func (ns *netstack) handleUDPFlow(gConn *gonet.UDPConn, srcIP tcpip.Address, srcPort uint16, dstIP tcpip.Address, dstPort uint16) {
 	defer func() { _ = gConn.Close() }()
 
-	logrus.Debugf("Forwarding UDP: %s:%d - %s:%d", srcIP, srcPort, dstIP, dstPort)
+	logger := log.GetLogger()
+	logger.V(1).Info("Forwarding UDP", "srcIP", srcIP, "srcPort", srcPort, "dstIP", dstIP, "dstPort", dstPort)
 	realConn, err := ns.dial(context.Background(), "udp", srcIP, srcPort, dstIP, dstPort)
 	if err != nil {
-		logrus.Errorf("Failed to dial UDP for target %s:%d: %v", dstIP, dstPort, err)
+		logger.Error(nil, "Failed to dial UDP", "dstIP", dstIP, "dstPort", dstPort, "err", err)
 		return
 	}
 	defer func() { _ = realConn.Close() }()

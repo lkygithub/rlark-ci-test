@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -22,6 +21,7 @@ import (
 	"github.com/rlinf/rlark/pkg/controllermanager/sync"
 	"github.com/rlinf/rlark/pkg/controllermanager/task"
 	"github.com/rlinf/rlark/pkg/controllermanager/workflow"
+	"github.com/rlinf/rlark/pkg/log"
 )
 
 type Reconciler interface {
@@ -38,6 +38,9 @@ func init() {
 }
 
 func New(config Config) (manager.Manager, error) {
+	logger := log.GetLogger()
+	ctrl.SetLogger(logger)
+
 	restConfig, err := config.KubeClientConfig.BuildRestConfig()
 	if err != nil {
 		return nil, fmt.Errorf("build Kubernetes client config: %w", err)
@@ -96,7 +99,7 @@ func New(config Config) (manager.Manager, error) {
 		if err := database.Migrate(ctx); err != nil {
 			return nil, fmt.Errorf("run database migrations: %w", err)
 		}
-		logrus.Infof("database connected and migrated")
+		logger.Info("database connected and migrated")
 		reconcilers = append(reconcilers,
 			sync.NewJobReconciler(config.SyncConfig, mgr.GetClient(), database.DB),
 			sync.NewTaskReconciler(config.SyncConfig, mgr.GetClient(), database.DB),
@@ -104,7 +107,7 @@ func New(config Config) (manager.Manager, error) {
 			sync.NewNodeReconciler(config.SyncConfig, mgr.GetClient(), database.DB),
 		)
 	} else {
-		logrus.Warningf("RLark controller manager is running without persistent storage.")
+		logger.Error(nil, "RLark controller manager is running without persistent storage.")
 	}
 
 	for _, r := range reconcilers {

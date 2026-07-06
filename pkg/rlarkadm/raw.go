@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/sirupsen/logrus"
+	"github.com/rlinf/rlark/pkg/log"
 )
 
 const (
@@ -21,6 +21,7 @@ const (
 type RawDeployer struct{}
 
 func (d *RawDeployer) Deploy(cfg *DeployConfig, certBundle *CertBundle) error {
+	logger := log.GetLogger()
 	certDir := filepath.Join(configDir, "certs")
 	if certBundle != nil {
 		if err := certBundle.WriteToDir(certDir); err != nil {
@@ -53,7 +54,7 @@ func (d *RawDeployer) Deploy(cfg *DeployConfig, certBundle *CertBundle) error {
 			return err
 		}
 		binPaths = append(binPaths, c.Name)
-		logrus.Infof("  - %s.service (port %d)", c.Name, c.Port)
+		logger.Info("service deployed", "name", c.Name, "port", c.Port)
 	}
 
 	if err := systemctlReloadAndEnable(binPaths...); err != nil {
@@ -66,16 +67,17 @@ func (d *RawDeployer) Deploy(cfg *DeployConfig, certBundle *CertBundle) error {
 		}
 	}
 
-	logrus.Infof("%s plane deployed via systemd", cfg.Plane)
+	logger.Info("plane deployed via systemd", "plane", cfg.Plane)
 	if cfg.Plane == PlaneData {
-		logrus.Infof("  - agent connecting to control plane: %s", cfg.ControlPlaneAddress)
+		logger.Info("agent connecting to control plane", "address", cfg.ControlPlaneAddress)
 	}
 	return nil
 }
 
 func downloadArtifact(url, binName string) (string, error) {
+	logger := log.GetLogger()
 	dest := filepath.Join(installDir, binName)
-	logrus.Infof("downloading %s from %s", binName, url)
+	logger.Info("downloading binary", "name", binName, "url", url)
 
 	resp, err := http.Get(url)
 	if err != nil {

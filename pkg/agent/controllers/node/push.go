@@ -47,6 +47,7 @@ func (r *pushNodeReconciler) buildRLarkNodeFromK8sNode(k8sNode *corev1.Node) *rl
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      k8sNode.Name,
 			Namespace: r.c.ManagementNamespace,
+			Labels:    k8sNode.Labels,
 		},
 		Spec: rlarkv1alpha1.NodeSpec{
 			AgentType:     rlarkv1alpha1.AgentType(r.c.AgentType),
@@ -85,6 +86,7 @@ func (r *pushNodeReconciler) updateManagementNode(ctx context.Context, logger lo
 	}
 
 	mgmtNode.Spec = desiredNode.Spec
+	mgmtNode.Labels = desiredNode.Labels
 	if err := r.c.ManagementClient.Update(ctx, &mgmtNode); err != nil {
 		logger.Error(err, "failed to update management Node spec")
 		return reconcile.Result{RequeueAfter: HeartbeatInterval}, err

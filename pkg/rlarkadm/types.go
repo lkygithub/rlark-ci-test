@@ -55,8 +55,9 @@ type RawEnv struct {
 }
 
 type CertConfig struct {
-	CACert string `yaml:"ca-cert,omitempty"`
-	CAKey  string `yaml:"ca-key,omitempty"`
+	CACert    string `yaml:"ca-cert,omitempty"`
+	AgentCert string `yaml:"agent-cert,omitempty"`
+	AgentKey  string `yaml:"agent-key,omitempty"`
 }
 
 type DBConfig struct {
@@ -127,10 +128,12 @@ func (c *DeployConfig) Validate() error {
 
 func (c *DeployConfig) EnvMode() string {
 	if c.Kubernetes != nil {
-		return "kubernetes"
+		return "Kubernetes"
 	}
+
 	if c.Docker != nil {
-		return "docker"
+		return "Docker"
 	}
-	return "raw"
+
+	return "Raw"
 }

@@ -1,0 +1,27 @@
+package rlarkadm
+
+const (
+	Namespace = "rlark-system"
+
+	ComponentGateway           = "rlark-gateway"
+	ComponentControllerManager = "rlark-controller-manager"
+	ComponentServer            = "rlark-server"
+	ComponentAgent             = "rlark-agent"
+	ComponentPrometheus        = "prometheus"
+	ComponentPostgresql        = "postgresql"
+	ComponentKCP               = "kcp"
+)
+
+const (
+	DBConfigPath      = "/etc/rlark/db.yaml"
+	CertDir           = "/etc/rlark/certs"
+	KCPDataDir        = "/.kcp"
+	KCPKubeconfigPath = "/etc/kcp/admin.kubeconfig"
+	PostgresqlDataDir = "/var/lib/postgresql/data"
+	PostgresqlInitDir = "/docker-entrypoint-initdb.d"
+)
+
+const initDBSQL = `-- scripts/init-db.sql
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+GRANT ALL PRIVILEGES ON DATABASE rlark TO postgres;
+`

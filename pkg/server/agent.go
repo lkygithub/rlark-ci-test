@@ -6,6 +6,7 @@ import (
 	"time"
 
 	v1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/leaderelection"
@@ -52,9 +53,41 @@ func (s *Server) registerAgent(ctx context.Context, agentID string) error {
 		}
 	}
 
-	// 3. TODO: 创建必要的 RBAC 规则
+	// 3. 创建 RBAC 规则 (ClusterRole + ClusterRoleBinding)
+	// agent 需要集群范围权限来 watch/list 跨 namespace 的 nodes、tasks、pods 等资源
+	rules := []rbacv1.PolicyRule{
+		{APIGroups: []string{"rlinf.io"}, Resources: []string{"nodes", "tasks", "pods"}, Verbs: []string{"get", "list", "watch", "create", "update", "patch", "delete"}},
+		{APIGroups: []string{"rlinf.io"}, Resources: []string{"nodes/status", "tasks/status", "pods/status"}, Verbs: []string{"get", "update", "patch"}},
+		{APIGroups: []string{"coordination.k8s.io"}, Resources: []string{"leases"}, Verbs: []string{"get", "create", "update", "patch"}},
+	}
+	_, err = s.kubeClient.RbacV1().ClusterRoles().Get(ctx, saName, metav1.GetOptions{})
+	if err != nil {
+		if !errors.IsNotFound(err) {
+			return fmt.Errorf("get ClusterRole %s: %w", saName, err)
+		}
+		_, err = s.kubeClient.RbacV1().ClusterRoles().Create(ctx, &rbacv1.ClusterRole{
+			ObjectMeta: metav1.ObjectMeta{Name: saName},
+			Rules:      rules,
+		}, metav1.CreateOptions{})
+		if err != nil {
+			return fmt.Errorf("create ClusterRole %s: %w", saName, err)
+		}
+	}
 
-	// 4. TODO: 其他初始化操作
+	_, err = s.kubeClient.RbacV1().ClusterRoleBindings().Get(ctx, saName, metav1.GetOptions{})
+	if err != nil {
+		if !errors.IsNotFound(err) {
+			return fmt.Errorf("get ClusterRoleBinding %s: %w", saName, err)
+		}
+		_, err = s.kubeClient.RbacV1().ClusterRoleBindings().Create(ctx, &rbacv1.ClusterRoleBinding{
+			ObjectMeta: metav1.ObjectMeta{Name: saName},
+			Subjects:   []rbacv1.Subject{{Kind: "ServiceAccount", Name: saName, Namespace: namespace}},
+			RoleRef:    rbacv1.RoleRef{Kind: "ClusterRole", Name: saName, APIGroup: "rbac.authorization.k8s.io"},
+		}, metav1.CreateOptions{})
+		if err != nil {
+			return fmt.Errorf("create ClusterRoleBinding %s: %w", saName, err)
+		}
+	}
 
 	return nil
 }

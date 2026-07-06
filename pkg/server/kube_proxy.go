@@ -7,7 +7,7 @@ import (
 	"net/url"
 	"path"
 
-	"github.com/sirupsen/logrus"
+	"github.com/rlinf/rlark/pkg/log"
 	"k8s.io/client-go/rest"
 )
 
@@ -36,6 +36,7 @@ func NewKubeProxy(restConfig *rest.Config) (*KubeProxy, error) {
 
 // GetHandler returns an http.Handler that proxies requests to the Kubernetes API server
 func (p *KubeProxy) GetHandler() http.Handler {
+	logger := log.GetLogger()
 	proxy := &httputil.ReverseProxy{}
 	proxy.Transport = p.transport
 	proxy.Rewrite = func(pr *httputil.ProxyRequest) {
@@ -50,7 +51,7 @@ func (p *KubeProxy) GetHandler() http.Handler {
 		req.Header.Set("Accept", "application/json, */*")
 	}
 	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
-		logrus.Errorf("KubeProxy error: %v", err)
+		logger.Error(nil, "KubeProxy error", "err", err)
 		http.Error(w, "KubeProxy error: "+err.Error(), http.StatusBadGateway)
 	}
 	return proxy

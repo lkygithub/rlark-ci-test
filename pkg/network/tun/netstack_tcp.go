@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sirupsen/logrus"
+	"github.com/rlinf/rlark/pkg/log"
 	"gvisor.dev/gvisor/pkg/tcpip"
 	"gvisor.dev/gvisor/pkg/tcpip/adapters/gonet"
 	"gvisor.dev/gvisor/pkg/tcpip/header"
@@ -53,10 +53,11 @@ func (ns *netstack) getTCPHandler(s *stack.Stack) func(id stack.TransportEndpoin
 		go func() {
 			defer func() { _ = conn.Close() }()
 
-			logrus.Debugf("Forwarding TCP: %s:%d - %s:%d", srcIP, srcPort, dstIP, dstPort)
+			logger := log.GetLogger()
+			logger.V(1).Info("Forwarding TCP", "srcIP", srcIP, "srcPort", srcPort, "dstIP", dstIP, "dstPort", dstPort)
 			realConn, derr := ns.dial(context.Background(), "tcp", srcIP, srcPort, dstIP, dstPort)
 			if derr != nil {
-				logrus.Errorf("Failed to dial TCP for target %s:%d: %v", dstIP, dstPort, derr)
+				logger.Error(nil, "Failed to dial TCP", "dstIP", dstIP, "dstPort", dstPort, "err", derr)
 				ep.Close()
 				return
 			}
@@ -71,6 +72,7 @@ func (ns *netstack) getTCPHandler(s *stack.Stack) func(id stack.TransportEndpoin
 
 // handleTCPConnection 在 gVisor TCP 连接和 Proxy TCP 连接之间双向转发数据。
 func (ns *netstack) handleTCPConnection(local, remote net.Conn) {
+	logger := log.GetLogger()
 	var wg sync.WaitGroup
 	wg.Add(2)
 
@@ -78,7 +80,7 @@ func (ns *netstack) handleTCPConnection(local, remote net.Conn) {
 	go func() {
 		defer wg.Done()
 		if _, err := io.Copy(remote, local); err != nil {
-			logrus.Warningf("Error copying from gVisor to Proxy: %v", err)
+			logger.Error(nil, "Error copying from gVisor to Proxy", "err", err)
 		}
 	}()
 
@@ -86,7 +88,7 @@ func (ns *netstack) handleTCPConnection(local, remote net.Conn) {
 	go func() {
 		defer wg.Done()
 		if _, err := io.Copy(local, remote); err != nil {
-			logrus.Warningf("Error copying from Proxy to gVisor: %v", err)
+			logger.Error(nil, "Error copying from Proxy to gVisor", "err", err)
 		}
 	}()
 

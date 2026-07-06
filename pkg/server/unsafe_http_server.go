@@ -7,7 +7,8 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/sirupsen/logrus"
+
+	"github.com/rlinf/rlark/pkg/log"
 )
 
 func (s *Server) registerUnsafeHTTPHandlers(r *gin.Engine) {
@@ -21,6 +22,7 @@ func (s *Server) registerUnsafeHTTPHandlers(r *gin.Engine) {
 }
 
 func (s *Server) runUnsafeHTTPServer(ctx context.Context) error {
+	logger := log.FromContext(ctx)
 	r := gin.Default()
 	s.registerUnsafeHTTPHandlers(r)
 
@@ -36,13 +38,13 @@ func (s *Server) runUnsafeHTTPServer(ctx context.Context) error {
 
 	go func() {
 		<-ctx.Done()
-		logrus.Printf("Shutting down unsafe HTTP server on port %d", s.config.UnsafeHTTPPort)
+		logger.Info("Shutting down unsafe HTTP server", "port", s.config.UnsafeHTTPPort)
 		if err := server.Shutdown(context.Background()); err != nil {
-			logrus.Printf("Unsafe HTTP server shutdown error: %v", err)
+			logger.Error(nil, "Unsafe HTTP server shutdown error", "err", err)
 		}
 	}()
 
-	logrus.Printf("Starting unsafe HTTP server on port %d", s.config.UnsafeHTTPPort)
+	logger.Info("Starting unsafe HTTP server", "port", s.config.UnsafeHTTPPort)
 	return server.Serve(l)
 }
 

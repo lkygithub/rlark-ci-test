@@ -7,8 +7,7 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/sirupsen/logrus"
-
+	"github.com/rlinf/rlark/pkg/log"
 	"github.com/rlinf/rlark/pkg/utils"
 )
 
@@ -30,13 +29,14 @@ func NewNodeServer[C any](config Config, getCred CredGetter[C], getDial DialGett
 }
 
 func (s *NodeServer[C]) Run(ctx context.Context) error {
+	logger := log.FromContext(ctx)
 	l, err := s.config.Listen()
 	if err != nil {
 		return err
 	}
 	defer func() { _ = l.Close() }()
 
-	logrus.Infof("Node server listening on %s", s.config.UnixSocketAddress)
+	logger.Info("Node server listening", "address", s.config.UnixSocketAddress)
 
 	for {
 		select {
@@ -49,13 +49,13 @@ func (s *NodeServer[C]) Run(ctx context.Context) error {
 			}
 			pid, err := GetPeerProcess(conn)
 			if err != nil {
-				logrus.Errorf("Failed to get peer process: %v", err)
+				logger.Error(nil, "Failed to get peer process", "err", err)
 				_ = conn.Close()
 				continue
 			}
 			cred, err := s.getCred(ctx, pid)
 			if err != nil {
-				logrus.Errorf("Failed to get credentials for pid %d: %v", pid, err)
+				logger.Error(nil, "Failed to get credentials", "pid", pid, "err", err)
 				_ = conn.Close()
 				continue
 			}
@@ -65,6 +65,7 @@ func (s *NodeServer[C]) Run(ctx context.Context) error {
 }
 
 func (s *NodeServer[C]) handleConnection(ctx context.Context, conn *utils.WrapConn, cred C) {
+	logger := log.FromContext(ctx)
 	ctx, cancel := context.WithTimeout(ctx, time.Second*30)
 	defer cancel()
 
@@ -72,17 +73,17 @@ func (s *NodeServer[C]) handleConnection(ctx context.Context, conn *utils.WrapCo
 
 	network, host, port, query, err := utils.ReadTargetFromConn(conn)
 	if err != nil {
-		logrus.Errorf("Failed to read target from connection: %v", err)
+		logger.Error(nil, "Failed to read target from connection", "err", err)
 		return
 	}
 	dial, err := s.getDial(ctx, cred, host, query)
 	if err != nil {
-		logrus.Errorf("Failed to get target for host %s: %v", host, err)
+		logger.Error(nil, "Failed to get target", "host", host, "err", err)
 		return
 	}
 	conn2, err := dial(ctx)
 	if err != nil {
-		logrus.Errorf("Failed to connect to target %s:%s: %v", host, port, err)
+		logger.Error(nil, "Failed to connect to target", "host", host, "port", port, "err", err)
 		return
 	}
 	defer func() { _ = conn2.Close() }()
@@ -94,7 +95,7 @@ func (s *NodeServer[C]) handleConnection(ctx context.Context, conn *utils.WrapCo
 	}
 	proxyData := []byte(targetUrl.String() + "\n")
 	if _, err := conn2.Write(proxyData); err != nil {
-		logrus.Errorf("Failed to write target to proxy for %s: %v", targetUrl.String(), err)
+		logger.Error(nil, "Failed to write target to proxy", "target", targetUrl.String(), "err", err)
 		return
 	}
 

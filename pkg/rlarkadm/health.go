@@ -6,7 +6,7 @@ import (
 	"os/exec"
 	"time"
 
-	"github.com/sirupsen/logrus"
+	"github.com/rlinf/rlark/pkg/log"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
@@ -18,11 +18,12 @@ const (
 
 // waitForHealthy retries the component's HealthCheckFn until it passes or times out.
 func waitForHealthy(cfg *DeployConfig, comp Component) error {
+	logger := log.GetLogger()
 	if comp.HealthCheckFn == nil {
 		return nil
 	}
 
-	logrus.Infof("  waiting for %s to become healthy...", comp.Name)
+	logger.Info("waiting for component to become healthy", "name", comp.Name)
 
 	deadline := time.Now().Add(healthCheckTimeout)
 	ticker := time.NewTicker(healthCheckInterval)
@@ -31,7 +32,7 @@ func waitForHealthy(cfg *DeployConfig, comp Component) error {
 	for {
 		err := comp.HealthCheckFn(cfg)
 		if err == nil {
-			logrus.Infof("  %s is healthy", comp.Name)
+			logger.Info("component is healthy", "name", comp.Name)
 			return nil
 		}
 
@@ -39,7 +40,7 @@ func waitForHealthy(cfg *DeployConfig, comp Component) error {
 			return fmt.Errorf("%s health check failed after %v: %w", comp.Name, healthCheckTimeout, err)
 		}
 
-		logrus.Debugf("  %s not ready: %v, retrying in %v...", comp.Name, err, healthCheckInterval)
+		logger.V(1).Info("component not ready, retrying", "name", comp.Name, "err", err, "interval", healthCheckInterval)
 		<-ticker.C
 	}
 }
@@ -49,9 +50,9 @@ func waitForHealthy(cfg *DeployConfig, comp Component) error {
 func modeHealthCheck(comp Component) func(cfg *DeployConfig) error {
 	return func(cfg *DeployConfig) error {
 		switch cfg.EnvMode() {
-		case "docker":
+		case "Docker":
 			return exec.Command("docker", "inspect", "--format", "{{.State.Running}}", comp.Name).Run()
-		case "raw":
+		case "Raw":
 			return exec.Command("systemctl", "is-active", "--quiet", comp.Name).Run()
 		default:
 			return nil

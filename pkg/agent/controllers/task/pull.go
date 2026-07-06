@@ -198,12 +198,8 @@ func (r *pullReconciler) cleanupWorkload(ctx context.Context, name string, names
 }
 
 func getWorkloadNamespace(mgmtTask *rlarkv1alpha1.Task) string {
-	if mgmtTask.Spec.Kubernetes != nil && mgmtTask.Spec.Kubernetes.Workload != nil {
-		if ns := mgmtTask.Spec.Kubernetes.Workload.Template.Namespace; ns != "" {
-			return ns
-		}
-	}
-	return mgmtTask.Namespace
+	// todo workload 具体使用什么 namespace？不能直接使用 task 的
+	return "rlark-system"
 }
 
 // --- workload builder functions ---

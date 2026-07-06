@@ -7,12 +7,13 @@ import (
 	"time"
 
 	"github.com/rancher/remotedialer"
-	"github.com/sirupsen/logrus"
 
 	"github.com/rlinf/rlark/pkg/apis"
+	"github.com/rlinf/rlark/pkg/log"
 )
 
 func (a *Agent) runTunnel(ctx context.Context, role string) error {
+	logger := log.FromContext(ctx)
 	auth := func(proto, address string) bool {
 		return true
 	}
@@ -46,7 +47,7 @@ func (a *Agent) runTunnel(ctx context.Context, role string) error {
 
 	for {
 		if err := connect(); err != nil {
-			logrus.WithError(err).Error("tunnel connection error")
+			logger.Error(err, "tunnel connection error")
 		}
 		select {
 		case <-ctx.Done():
