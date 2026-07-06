@@ -10,6 +10,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 
 	rlarkv1alpha1 "github.com/rlinf/rlark/pkg/apis/rlark.io/v1alpha1"
+	"github.com/rlinf/rlark/pkg/log"
 	"github.com/rlinf/rlark/pkg/utils"
 )
 
@@ -27,7 +28,7 @@ func (r *JobReconciler) syncTaskStatuses(
 		}
 
 		taskName := utils.ChildName(job.Name, t.Name)
-		taskNamespace := resolveTaskNamespace(&t)
+		taskNamespace := r.resolveTaskNamespace(ctx, &t)
 		var task rlarkv1alpha1.Task
 		err := r.Get(ctx, types.NamespacedName{Name: taskName, Namespace: taskNamespace}, &task)
 		if err != nil {
@@ -76,11 +77,7 @@ func (r *JobReconciler) reconcileTask(
 	t rlarkv1alpha1.JobTaskTemplate,
 	logger logr.Logger,
 ) (*rlarkv1alpha1.Task, error) {
-	taskNamespace := resolveTaskNamespace(&t)
-	if taskNamespace == "" {
-		return nil, fmt.Errorf("unable to determine namespace for task %q", t.Name)
-	}
-
+	taskNamespace := r.resolveTaskNamespace(ctx, &t)
 	taskName := utils.ChildName(job.Name, t.Name)
 	var task rlarkv1alpha1.Task
 	err := r.Get(ctx, types.NamespacedName{Name: taskName, Namespace: taskNamespace}, &task)
@@ -128,7 +125,7 @@ func (r *JobReconciler) reconcileWithStateMachine(
 		changed = true
 	}
 
-	dispatchChanged, err := r.dispatchTasks(ctx, job, utils.LoggerFromContext(ctx))
+	dispatchChanged, err := r.dispatchTasks(ctx, job, log.FromContext(ctx))
 	if err != nil {
 		return false, err
 	}

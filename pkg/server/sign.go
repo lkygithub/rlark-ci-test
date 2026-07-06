@@ -8,10 +8,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 	gocache "github.com/patrickmn/go-cache"
-	"github.com/sirupsen/logrus"
 
 	"github.com/rlinf/rlark/pkg/apis"
 	"github.com/rlinf/rlark/pkg/clients/db"
+	"github.com/rlinf/rlark/pkg/log"
 	"github.com/rlinf/rlark/pkg/server/cert"
 )
 
@@ -186,7 +186,8 @@ func (s *Server) handleRevokeCertificate(ctx *gin.Context) {
 			return
 		}
 	} else {
-		logrus.Warnf("RevokedCertificateStore is not configured, only in-memory cache will be used for revocation check")
+		logger := log.GetLogger()
+		logger.Error(nil, "RevokedCertificateStore is not configured, only in-memory cache will be used for revocation check")
 	}
 	key := fmt.Sprintf("%s:%s:%s", req.CertType, req.SerialNumber, req.SubjectKeyID)
 	s.rcCache.Set(key, true, gocache.DefaultExpiration)

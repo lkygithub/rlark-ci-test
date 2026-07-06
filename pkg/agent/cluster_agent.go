@@ -4,10 +4,7 @@ import (
 	"cmp"
 	"context"
 	"fmt"
-	"os"
-	"strings"
 
-	"github.com/go-logr/logr/funcr"
 	"golang.org/x/sync/errgroup"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -19,6 +16,7 @@ import (
 	"github.com/rlinf/rlark/pkg/agent/controllers/pod"
 	"github.com/rlinf/rlark/pkg/agent/controllers/task"
 	rlarkv1alpha1 "github.com/rlinf/rlark/pkg/apis/rlark.io/v1alpha1"
+	"github.com/rlinf/rlark/pkg/log"
 )
 
 // clusterAgent manages cluster-level operations (controller manager)
@@ -27,11 +25,7 @@ type clusterAgent struct {
 }
 
 func (c *clusterAgent) Run(ctx context.Context) error {
-	// 设置 controller-runtime logger
-	logger := funcr.New(func(prefix, args string) {
-		fmt.Fprintln(os.Stdout, "[ctrl-runtime]", strings.TrimSpace(prefix), args)
-	}, funcr.Options{Verbosity: 1})
-	ctrl.SetLogger(logger)
+	ctrl.SetLogger(log.GetLogger())
 
 	agentType := c.a.config.AgentType
 	clusterID := cmp.Or(c.a.config.ClientConfig.ServerNamespace, "default")

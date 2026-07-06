@@ -4,9 +4,9 @@ import (
 	"io"
 	"net"
 
-	"github.com/sirupsen/logrus"
 	"gvisor.dev/gvisor/pkg/tcpip/header"
 
+	"github.com/rlinf/rlark/pkg/log"
 	"github.com/rlinf/rlark/pkg/utils"
 )
 
@@ -46,25 +46,26 @@ func (p *Proxy) Serve(listener net.Listener) error {
 // 首先从连接中读取目标信息（network、host、port），然后根据协议类型
 // 分发到对应的处理函数。连接会在函数返回时自动关闭。
 func (p *Proxy) handleConnection(conn *utils.WrapConn) {
+	logger := log.GetLogger()
 	defer func() { _ = conn.Close() }()
 
 	network, host, port, _, err := utils.ReadTargetFromConn(conn)
 	if err != nil {
-		logrus.Errorf("Failed to read target from connection: %v", err)
+		logger.Error(nil, "Failed to read target from connection", "err", err)
 		return
 	}
 	switch network {
 	case "tcp", "tcp4", "tcp6":
-		logrus.Debugf("Handling TCP proxy connection for %s:%s", host, port)
+		logger.V(1).Info("Handling TCP proxy connection", "host", host, "port", port)
 		p.handleTCP(conn, host, port)
 	case "udp", "udp4", "udp6":
-		logrus.Debugf("Handling UDP proxy connection for %s:%s", host, port)
+		logger.V(1).Info("Handling UDP proxy connection", "host", host, "port", port)
 		p.handleUDP(conn, host, port)
 	case "icmp", "icmp4":
-		logrus.Debugf("Handling ICMP proxy connection for %s", host)
+		logger.V(1).Info("Handling ICMP proxy connection", "host", host)
 		p.handleICMP(conn, host)
 	default:
-		logrus.Errorf("Handling proxy: unsupported network protocol %s", network)
+		logger.Error(nil, "Handling proxy: unsupported network protocol", "network", network)
 	}
 }
 
@@ -76,9 +77,10 @@ func (p *Proxy) handleConnection(conn *utils.WrapConn) {
 //
 // 当任意方向拷贝结束，函数返回，defer 关闭的 target 连接会终止另一侧的 goroutine。
 func (p *Proxy) handleTCP(conn *utils.WrapConn, host, port string) {
+	logger := log.GetLogger()
 	tunConn, err := net.Dial("tcp", net.JoinHostPort(host, port))
 	if err != nil {
-		logrus.Errorf("Failed to connect to tcp target %s:%s: %v", host, port, err)
+		logger.Error(nil, "Failed to connect to tcp target", "host", host, "port", port, "err", err)
 		return
 	}
 	defer func() { _ = tunConn.Close() }()
@@ -97,14 +99,15 @@ func (p *Proxy) handleTCP(conn *utils.WrapConn, host, port string) {
 // udpConn.Read 阻塞；当主循环退出时函数返回，defer 关闭 conn，
 // 从而终止 gVisor 端 goroutine 对 RecvPacket 的阻塞等待。
 func (p *Proxy) handleUDP(conn *utils.WrapConn, host, port string) {
+	logger := log.GetLogger()
 	raddr, err := net.ResolveUDPAddr("udp", net.JoinHostPort(host, port))
 	if err != nil {
-		logrus.Errorf("Failed to resolve udp target %s:%s: %v", host, port, err)
+		logger.Error(nil, "Failed to resolve udp target", "host", host, "port", port, "err", err)
 		return
 	}
 	udpConn, err := net.DialUDP("udp", nil, raddr)
 	if err != nil {
-		logrus.Errorf("Failed to dial udp target %s:%s: %v", host, port, err)
+		logger.Error(nil, "Failed to dial udp target", "host", host, "port", port, "err", err)
 		return
 	}
 	defer func() { _ = udpConn.Close() }()
@@ -146,14 +149,15 @@ func (p *Proxy) handleUDP(conn *utils.WrapConn, host, port string) {
 //
 // 防泄漏机制：当任一端 I/O 失败时，关闭对应 socket 以终止另一侧的阻塞等待。
 func (p *Proxy) handleICMP(conn *utils.WrapConn, dst string) {
+	logger := log.GetLogger()
 	dstAddr, err := net.ResolveIPAddr("ip4", dst)
 	if err != nil {
-		logrus.Errorf("Failed to resolve icmp target %s: %v", dst, err)
+		logger.Error(nil, "Failed to resolve icmp target", "dst", dst, "err", err)
 		return
 	}
 	icmpConn, err := net.DialIP("ip4:icmp", nil, dstAddr)
 	if err != nil {
-		logrus.Errorf("Failed to dial icmp target %s: %v", dst, err)
+		logger.Error(nil, "Failed to dial icmp target", "dst", dst, "err", err)
 		return
 	}
 	defer func() { _ = icmpConn.Close() }()

@@ -3,7 +3,7 @@ package rlarkadm
 import (
 	"fmt"
 
-	"github.com/sirupsen/logrus"
+	"github.com/rlinf/rlark/pkg/log"
 )
 
 type Deployer interface {
@@ -11,17 +11,18 @@ type Deployer interface {
 }
 
 func Deploy(cfg *DeployConfig) error {
-	logrus.Infof("deploying %s plane (%s mode)", cfg.Plane, cfg.EnvMode())
+	logger := log.GetLogger()
+	logger.Info("deploying plane", "plane", cfg.Plane, "mode", cfg.EnvMode())
 
 	var certBundle *CertBundle
 	if cfg.Cert != nil {
-		logrus.Info("preparing certificates")
+		logger.Info("preparing certificates")
 		bundle, err := GenerateCertBundle(cfg.Cert)
 		if err != nil {
 			return fmt.Errorf("generate certs: %w", err)
 		}
 		certBundle = bundle
-		logrus.Info("certificates ready")
+		logger.Info("certificates ready")
 	}
 
 	deployer, err := newDeployer(cfg)
@@ -33,7 +34,7 @@ func Deploy(cfg *DeployConfig) error {
 		return fmt.Errorf("deploy: %w", err)
 	}
 
-	logrus.Infof("%s plane deployed successfully", cfg.Plane)
+	logger.Info("plane deployed successfully", "plane", cfg.Plane)
 	return nil
 }
 

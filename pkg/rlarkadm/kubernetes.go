@@ -6,9 +6,10 @@ import (
 	"fmt"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 
-	"github.com/sirupsen/logrus"
+	"github.com/rlinf/rlark/pkg/log"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -20,6 +21,7 @@ import (
 type KubernetesDeployer struct{}
 
 func (d *KubernetesDeployer) Deploy(cfg *DeployConfig, certBundle *CertBundle) error {
+	logger := log.GetLogger()
 	kubeconfig := cfg.Kubernetes.Kubeconfig
 	if kubeconfig == "" {
 		kubeconfig = clientcmd.NewDefaultClientConfigLoadingRules().GetDefaultFilename()
@@ -61,6 +63,10 @@ func (d *KubernetesDeployer) Deploy(cfg *DeployConfig, certBundle *CertBundle) e
 			c.PostDeployFn = extractKCPKubeconfigFn(ctx, clientset)
 		}
 
+		if err := ensureRBAC(ctx, clientset, &c); err != nil {
+			return err
+		}
+
 		if err := createDeployment(ctx, clientset, c.Deployment(cfg)); err != nil {
 			return err
 		}
@@ -71,9 +77,9 @@ func (d *KubernetesDeployer) Deploy(cfg *DeployConfig, certBundle *CertBundle) e
 			}
 		}
 
-		logrus.Infof("  - %s: Deployment (port %d)", c.Name, c.Port)
+		logger.Info("component deployed", "name", c.Name, "port", c.Port)
 		if c.Service() != nil {
-			logrus.Infof("    + Service (port %d)", c.Port)
+			logger.Info("service created", "port", c.Port)
 		}
 
 		if err := waitForHealthy(cfg, c); err != nil {
@@ -87,7 +93,7 @@ func (d *KubernetesDeployer) Deploy(cfg *DeployConfig, certBundle *CertBundle) e
 		}
 	}
 
-	logrus.Infof("%s plane deployed to namespace %s", cfg.Plane, Namespace)
+	logger.Info("plane deployed", "plane", cfg.Plane, "namespace", Namespace)
 	return nil
 }
 
@@ -108,10 +114,51 @@ func ensureNamespace(ctx context.Context, clientset *kubernetes.Clientset) error
 	return nil
 }
 
+func ensureRBAC(ctx context.Context, clientset *kubernetes.Clientset, c *Component) error {
+	logger := log.FromContext(ctx)
+	sa, cr, crb := c.RBAC()
+	if sa == nil {
+		return nil
+	}
+
+	if _, err := clientset.CoreV1().ServiceAccounts(Namespace).Create(ctx, sa, metav1.CreateOptions{}); err != nil {
+		if !errors.IsAlreadyExists(err) {
+			return fmt.Errorf("create serviceaccount %s: %w", sa.Name, err)
+		}
+		if _, err := clientset.CoreV1().ServiceAccounts(Namespace).Update(ctx, sa, metav1.UpdateOptions{}); err != nil {
+			return fmt.Errorf("update serviceaccount %s: %w", sa.Name, err)
+		}
+	}
+
+	if _, err := clientset.RbacV1().ClusterRoles().Create(ctx, cr, metav1.CreateOptions{}); err != nil {
+		if errors.IsAlreadyExists(err) {
+			if _, err := clientset.RbacV1().ClusterRoles().Update(ctx, cr, metav1.UpdateOptions{}); err != nil {
+				return fmt.Errorf("update clusterrole %s: %w", cr.Name, err)
+			}
+		} else {
+			return fmt.Errorf("create clusterrole %s: %w", cr.Name, err)
+		}
+	}
+
+	if _, err := clientset.RbacV1().ClusterRoleBindings().Create(ctx, crb, metav1.CreateOptions{}); err != nil {
+		if errors.IsAlreadyExists(err) {
+			if _, err := clientset.RbacV1().ClusterRoleBindings().Update(ctx, crb, metav1.UpdateOptions{}); err != nil {
+				return fmt.Errorf("update clusterrolebinding %s: %w", crb.Name, err)
+			}
+		} else {
+			return fmt.Errorf("create clusterrolebinding %s: %w", crb.Name, err)
+		}
+	}
+
+	logger.Info("ensured RBAC", "component", c.Name, "serviceAccount", sa.Name)
+	return nil
+}
+
 // extractKCPKubeconfigFn returns a PostDeployFn that extracts admin.kubeconfig
 // from the KCP pod and creates a ConfigMap for other components to mount.
 func extractKCPKubeconfigFn(ctx context.Context, clientset *kubernetes.Clientset) func(cfg *DeployConfig) error {
 	return func(cfg *DeployConfig) error {
+		logger := log.GetLogger()
 		pods, err := clientset.CoreV1().Pods(Namespace).List(ctx, metav1.ListOptions{
 			LabelSelector: "app=" + ComponentKCP,
 		})
@@ -142,24 +189,23 @@ func extractKCPKubeconfigFn(ctx context.Context, clientset *kubernetes.Clientset
 			time.Sleep(2 * time.Second)
 		}
 
-		_, err = clientset.CoreV1().ConfigMaps(Namespace).Create(ctx, &corev1.ConfigMap{
+		cm := &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{Name: "rlark-kcp-kubeconfig"},
 			Data:       map[string]string{"admin.kubeconfig": kubeconfigData},
-		}, metav1.CreateOptions{})
-		if err != nil && !errors.IsAlreadyExists(err) {
-			return fmt.Errorf("create kcp kubeconfig configmap: %w", err)
 		}
-		if errors.IsAlreadyExists(err) {
-			_, err = clientset.CoreV1().ConfigMaps(Namespace).Update(ctx, &corev1.ConfigMap{
-				ObjectMeta: metav1.ObjectMeta{Name: "rlark-kcp-kubeconfig"},
-				Data:       map[string]string{"admin.kubeconfig": kubeconfigData},
-			}, metav1.UpdateOptions{})
-			if err != nil {
-				return fmt.Errorf("update kcp kubeconfig configmap: %w", err)
+		_, err = clientset.CoreV1().ConfigMaps(Namespace).Create(ctx, cm, metav1.CreateOptions{})
+		if err != nil {
+			if errors.IsAlreadyExists(err) {
+				_, err = clientset.CoreV1().ConfigMaps(Namespace).Update(ctx, cm, metav1.UpdateOptions{})
+				if err != nil {
+					return fmt.Errorf("update kcp kubeconfig configmap: %w", err)
+				}
+			} else {
+				return fmt.Errorf("create kcp kubeconfig configmap: %w", err)
 			}
 		}
 
-		logrus.Info("  - extracted admin.kubeconfig from kcp to ConfigMap rlark-kcp-kubeconfig")
+		logger.Info("extracted admin.kubeconfig to ConfigMap")
 
 		if err := installCRDs(podName); err != nil {
 			return fmt.Errorf("install CRDs to kcp: %w", err)
@@ -172,13 +218,14 @@ func extractKCPKubeconfigFn(ctx context.Context, clientset *kubernetes.Clientset
 // installCRDs copies CRD manifests into the KCP pod and applies them using
 // kubectl inside the pod, since the local machine cannot reach the KCP API directly.
 func installCRDs(podName string) error {
+	logger := log.GetLogger()
 	crdDir := filepath.Join("config", "crd", "bases")
 	matches, err := filepath.Glob(filepath.Join(crdDir, "*.yaml"))
 	if err != nil {
 		return fmt.Errorf("glob crd files: %w", err)
 	}
 	if len(matches) == 0 {
-		logrus.Warn("  - no CRD files found in config/crd/bases/, skipping CRD install")
+		logger.Error(nil, "no CRD files found, skipping CRD install")
 		return nil
 	}
 
@@ -211,7 +258,27 @@ func installCRDs(podName string) error {
 				lastErr = nil
 				break
 			}
-			lastErr = fmt.Errorf("apply %s: create: %s | replace: %s", filepath.Base(crdFile), createErr.String(), replaceErr.String())
+			if strings.Contains(replaceErr.String(), "field is immutable") {
+				deleteCmd := exec.Command("kubectl", "-n", Namespace, "exec", podName, "--",
+					"kubectl", "--kubeconfig", kc, "delete", "--ignore-not-found", "-f", tmpPath)
+				var deleteErr bytes.Buffer
+				deleteCmd.Stderr = &deleteErr
+				if err := deleteCmd.Run(); err == nil {
+					recreateCmd := exec.Command("kubectl", "-n", Namespace, "exec", podName, "--",
+						"kubectl", "--kubeconfig", kc, "create", "--validate=false", "-f", tmpPath)
+					var recreateErr bytes.Buffer
+					recreateCmd.Stderr = &recreateErr
+					if err := recreateCmd.Run(); err == nil {
+						lastErr = nil
+						break
+					}
+					lastErr = fmt.Errorf("apply %s: recreate after delete: %s", filepath.Base(crdFile), recreateErr.String())
+				} else {
+					lastErr = fmt.Errorf("apply %s: delete before recreate: %s", filepath.Base(crdFile), deleteErr.String())
+				}
+			} else {
+				lastErr = fmt.Errorf("apply %s: create: %s | replace: %s", filepath.Base(crdFile), createErr.String(), replaceErr.String())
+			}
 			if attempt < 2 {
 				time.Sleep(5 * time.Second)
 			}
@@ -219,7 +286,7 @@ func installCRDs(podName string) error {
 		if lastErr != nil {
 			return lastErr
 		}
-		logrus.Infof("  - applied CRD %s", filepath.Base(crdFile))
+		logger.Info("applied CRD", "file", filepath.Base(crdFile))
 	}
 
 	return nil
@@ -230,25 +297,19 @@ func createDBConfigMap(ctx context.Context, clientset *kubernetes.Clientset, cfg
 	if err != nil {
 		return err
 	}
-	_, err = clientset.CoreV1().ConfigMaps(Namespace).Create(ctx, &corev1.ConfigMap{
+	cm := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{Name: "rlark-db-config"},
 		Data:       map[string]string{"db.yaml": string(yamlData)},
-	}, metav1.CreateOptions{})
-	if err != nil && !errors.IsAlreadyExists(err) {
-		return fmt.Errorf("create db configmap: %w", err)
 	}
-	return nil
+	return createOrUpdateConfigMap(ctx, clientset, cm)
 }
 
 func createPostgresInitConfigMap(ctx context.Context, clientset *kubernetes.Clientset) error {
-	_, err := clientset.CoreV1().ConfigMaps(Namespace).Create(ctx, &corev1.ConfigMap{
+	cm := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{Name: "rlark-postgres-init"},
 		Data:       map[string]string{"init-db.sql": initDBSQL},
-	}, metav1.CreateOptions{})
-	if err != nil && !errors.IsAlreadyExists(err) {
-		return fmt.Errorf("create postgres init configmap: %w", err)
 	}
-	return nil
+	return createOrUpdateConfigMap(ctx, clientset, cm)
 }
 
 func createCertSecret(ctx context.Context, clientset *kubernetes.Clientset, cfg *DeployConfig, bundle *CertBundle) error {
@@ -256,16 +317,24 @@ func createCertSecret(ctx context.Context, clientset *kubernetes.Clientset, cfg 
 	if cfg.Plane == PlaneData {
 		name = "rlark-agent-cert"
 	}
-	_, err := clientset.CoreV1().Secrets(Namespace).Create(ctx, &corev1.Secret{
+	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{Name: name},
 		Data: map[string][]byte{
 			"ca.crt":  bundle.CACertPEM,
 			"tls.crt": bundle.CertPEM,
 			"tls.key": bundle.KeyPEM,
 		},
-	}, metav1.CreateOptions{})
-	if err != nil && !errors.IsAlreadyExists(err) {
-		return fmt.Errorf("create cert secret: %w", err)
+	}
+	_, err := clientset.CoreV1().Secrets(Namespace).Create(ctx, secret, metav1.CreateOptions{})
+	if err != nil {
+		if errors.IsAlreadyExists(err) {
+			_, err = clientset.CoreV1().Secrets(Namespace).Update(ctx, secret, metav1.UpdateOptions{})
+			if err != nil {
+				return fmt.Errorf("update cert secret %s: %w", name, err)
+			}
+			return nil
+		}
+		return fmt.Errorf("create cert secret %s: %w", name, err)
 	}
 	return nil
 }
@@ -287,8 +356,30 @@ func createDeployment(ctx context.Context, clientset *kubernetes.Clientset, dep 
 
 func createService(ctx context.Context, clientset *kubernetes.Clientset, svc *corev1.Service) error {
 	_, err := clientset.CoreV1().Services(Namespace).Create(ctx, svc, metav1.CreateOptions{})
-	if err != nil && !errors.IsAlreadyExists(err) {
+	if err != nil {
+		if errors.IsAlreadyExists(err) {
+			_, err = clientset.CoreV1().Services(Namespace).Update(ctx, svc, metav1.UpdateOptions{})
+			if err != nil {
+				return fmt.Errorf("update service %s: %w", svc.Name, err)
+			}
+			return nil
+		}
 		return fmt.Errorf("create service %s: %w", svc.Name, err)
+	}
+	return nil
+}
+
+func createOrUpdateConfigMap(ctx context.Context, clientset *kubernetes.Clientset, cm *corev1.ConfigMap) error {
+	_, err := clientset.CoreV1().ConfigMaps(Namespace).Create(ctx, cm, metav1.CreateOptions{})
+	if err != nil {
+		if errors.IsAlreadyExists(err) {
+			_, err = clientset.CoreV1().ConfigMaps(Namespace).Update(ctx, cm, metav1.UpdateOptions{})
+			if err != nil {
+				return fmt.Errorf("update configmap %s: %w", cm.Name, err)
+			}
+			return nil
+		}
+		return fmt.Errorf("create configmap %s: %w", cm.Name, err)
 	}
 	return nil
 }

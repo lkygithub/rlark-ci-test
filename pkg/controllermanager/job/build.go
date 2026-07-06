@@ -1,14 +1,32 @@
 package job
 
 import (
+	"context"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	rlarkv1alpha1 "github.com/rlinf/rlark/pkg/apis/rlark.io/v1alpha1"
 )
 
-func resolveTaskNamespace(t *rlarkv1alpha1.JobTaskTemplate) string {
-	// todo 需要根据 node 找到 cluster id
-	return "default"
+func (r *JobReconciler) resolveTaskNamespace(ctx context.Context, t *rlarkv1alpha1.JobTaskTemplate) string {
+	if len(t.NodeSelector) == 0 {
+		return "default"
+	}
+
+	selector := labels.SelectorFromSet(t.NodeSelector)
+
+	var nodeList rlarkv1alpha1.NodeList
+	if err := r.List(ctx, &nodeList, &client.ListOptions{LabelSelector: selector}); err != nil {
+		return "default"
+	}
+
+	if len(nodeList.Items) == 0 {
+		return "default"
+	}
+
+	return nodeList.Items[0].Namespace
 }
 
 func buildTaskStatusMap(job *rlarkv1alpha1.Job) map[string]*rlarkv1alpha1.JobTaskStatus {

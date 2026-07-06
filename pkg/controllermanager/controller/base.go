@@ -5,9 +5,8 @@ import (
 
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	"github.com/rlinf/rlark/pkg/utils"
+	"github.com/rlinf/rlark/pkg/log"
 )
 
 type Reconciler interface {
@@ -34,7 +33,7 @@ func ReconcileWith(
 		return ctrl.Result{}, nil
 	}
 
-	ctx = utils.WithLogger(ctx, logger)
+	ctx = log.WithLogger(ctx, logger)
 
 	changed, err := r.ReconcileStateMachine(ctx, obj)
 	if err != nil {

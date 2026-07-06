@@ -10,12 +10,11 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/sirupsen/logrus"
+	"github.com/rlinf/rlark/pkg/log"
+	"github.com/rlinf/rlark/pkg/server/cert"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	"github.com/rlinf/rlark/pkg/server/cert"
 )
 
 const (
@@ -26,13 +25,14 @@ const (
 )
 
 func (s *Server) loadTLSCA(ctx context.Context) error {
+	logger := log.FromContext(ctx)
 	// 读取 Kubernetes Secret 中保存的 TLS CA 证书和私钥，如果不存在则跳过（因为 TLS 证书可能是由外部 CA 签发的，不需要服务器自己管理 CA）。
 
 	secret, err := s.kubeClient.CoreV1().Secrets(s.config.KubeClientConfig.DefaultNamespace()).Get(ctx, defaultTLSCASecretName, metav1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
 			if s.config.AutoSignTLSCACert {
-				logrus.Infof("TLS CA secret %s/%s not found, creating a self-signed TLS CA certificate", s.config.KubeClientConfig.DefaultNamespace(), defaultTLSCASecretName)
+				logger.Info("TLS CA secret not found, creating a self-signed TLS CA certificate", "namespace", s.config.KubeClientConfig.DefaultNamespace(), "name", defaultTLSCASecretName)
 				return s.createAndStoreCA(ctx, defaultTLSCASecretName, func(d *cert.Data) {
 					s.tlsCA = d
 				})
@@ -54,6 +54,7 @@ func (s *Server) loadTLSCA(ctx context.Context) error {
 }
 
 func (s *Server) loadTLSConfig(ctx context.Context) error {
+	logger := log.FromContext(ctx)
 	// 读取 Kubernetes Secret 中保存的 TLS 证书和私钥，如果不存在则尝试使用 TLS CA 生成一个自签名的 TLS 证书并保存到 Kubernetes 中。
 
 	secret, err := s.kubeClient.CoreV1().Secrets(s.config.KubeClientConfig.DefaultNamespace()).Get(ctx, defaultTLSSecretName, metav1.GetOptions{})
@@ -62,7 +63,7 @@ func (s *Server) loadTLSConfig(ctx context.Context) error {
 			if s.tlsCA == nil {
 				return fmt.Errorf("TLS secret %s/%s not found, please create it with the server certificate and key", s.config.KubeClientConfig.DefaultNamespace(), defaultTLSSecretName)
 			}
-			logrus.Infof("TLS secret %s/%s not found, creating a self-signed TLS certificate using the CA", s.config.KubeClientConfig.DefaultNamespace(), defaultTLSSecretName)
+			logger.Info("TLS secret not found, creating a self-signed TLS certificate using the CA", "namespace", s.config.KubeClientConfig.DefaultNamespace(), "name", defaultTLSSecretName)
 			return s.createAndStoreTLSConfig(ctx, s.tlsCA)
 		}
 		return err

@@ -15,10 +15,10 @@ plane: control
 # --- 三选一 ---
 
 kubernetes:
-  kubeconfig: /Users/ar/test/kubeconfig.yaml
+  kubeconfig: /Users/ar/test/kubeconfig.yaml # 往 k8s 集群部署平台，访问集群的 kubeconfig
   gateway-image: harbor.infini-ai.com/artest/rlark-gateway:v0.0.1
-  controller-manager-image: harbor.infini-ai.com/artest/rlark-controller-manager:v0.0.1
-  server-image: harbor.infini-ai.com/artest/rlark-server:v0.0.1
+  controller-manager-image: harbor.infini-ai.com/artest/rlark-controller-manager:v0.0.3
+  server-image: harbor.infini-ai.com/artest/rlark-server:v0.0.2
   kcp-image: harbor.infini-ai.com/share/kcp:v0.30.0
   postgresql-image: harbor.infini-ai.com/share/postgres:15
 

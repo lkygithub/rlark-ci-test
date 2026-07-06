@@ -5,10 +5,11 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/sirupsen/logrus"
+	"github.com/rlinf/rlark/pkg/log"
 )
 
 func (a *Agent) runLocalHTTPServer(ctx context.Context) error {
+	logger := log.FromContext(ctx)
 	r := gin.Default()
 	r.Any("/api/kubernetes/*path", a.handleKubernetesProxy)
 
@@ -18,13 +19,13 @@ func (a *Agent) runLocalHTTPServer(ctx context.Context) error {
 
 	go func() {
 		<-ctx.Done()
-		logrus.Print("Shutting down local HTTP server")
+		logger.Info("Shutting down local HTTP server")
 		if err := server.Shutdown(context.Background()); err != nil {
-			logrus.Printf("Local HTTP server shutdown error: %v", err)
+			logger.Error(nil, "Local HTTP server shutdown error", "err", err)
 		}
 	}()
 
-	logrus.Print("Starting local HTTP server")
+	logger.Info("Starting local HTTP server")
 	return server.Serve(a.localListener)
 }
 

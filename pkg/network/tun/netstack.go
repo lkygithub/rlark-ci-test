@@ -8,8 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/rlinf/rlark/pkg/log"
 	"github.com/rlinf/rlark/pkg/utils"
-	"github.com/sirupsen/logrus"
 	"gvisor.dev/gvisor/pkg/buffer"
 	"gvisor.dev/gvisor/pkg/tcpip"
 	"gvisor.dev/gvisor/pkg/tcpip/header"
@@ -159,11 +159,12 @@ func (ns *netstack) handleTunnel(tunnelConn net.Conn) error {
 // 这是远端 → 本地虚拟机的方向：远端 Proxy 返回的数据经由 TCP 隧道，
 // 在此函数中被还原为 IP 包并注入 gVisor 栈，最终由虚拟机接收。
 func (ns *netstack) handleRecv(tunnelConn net.Conn, ep *channel.Endpoint, wg *sync.WaitGroup) {
+	logger := log.GetLogger()
 	defer wg.Done()
 	for {
 		data, err := RecvPacket(tunnelConn)
 		if err != nil {
-			logrus.Warningf("Failed to receive packet from tunnel: %v", err)
+			logger.Error(nil, "Failed to receive packet from tunnel", "err", err)
 			return
 		}
 		// 最小 IPv4 头长度为 20 字节，不足则丢弃
@@ -190,6 +191,7 @@ func (ns *netstack) handleRecv(tunnelConn net.Conn, ep *channel.Endpoint, wg *sy
 // 这是本地虚拟机 → 远端的方向：虚拟机发出的 IP 包经 gVisor 协议栈处理，
 // 未匹配地址的包被路由到此函数，帧封装后通过 TCP 隧道发往远端 Proxy。
 func (ns *netstack) handleSend(ep *channel.Endpoint, tunnelConn net.Conn, wg *sync.WaitGroup) {
+	logger := log.GetLogger()
 	defer wg.Done()
 	for {
 		// 从通道链路层读取出去的 IP 包
@@ -207,7 +209,7 @@ func (ns *netstack) handleSend(ep *channel.Endpoint, tunnelConn net.Conn, wg *sy
 
 		// 通过隧道发回客户端
 		if err := SendPacket(tunnelConn, data); err != nil {
-			logrus.Warningf("Failed to send packet to tunnel: %v", err)
+			logger.Error(nil, "Failed to send packet to tunnel", "err", err)
 			return
 		}
 	}

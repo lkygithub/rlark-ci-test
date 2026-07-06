@@ -3,9 +3,9 @@ package commands
 import (
 	"fmt"
 
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
+	"github.com/rlinf/rlark/pkg/log"
 	"github.com/rlinf/rlark/pkg/rlarkadm"
 )
 
@@ -26,9 +26,7 @@ func DeployCommand() *cobra.Command {
 			}
 
 			if level, _ := cmd.Flags().GetString("log-level"); level != "" {
-				if lvl, err := logrus.ParseLevel(level); err == nil {
-					logrus.SetLevel(lvl)
-				}
+				log.InitLogger(level)
 			}
 
 			return rlarkadm.Deploy(cfg)

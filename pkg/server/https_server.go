@@ -9,7 +9,8 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/sirupsen/logrus"
+
+	"github.com/rlinf/rlark/pkg/log"
 )
 
 func (s *Server) registerHTTPSHandlers(r *gin.Engine) {
@@ -29,6 +30,7 @@ func (s *Server) registerHTTPSHandlers(r *gin.Engine) {
 }
 
 func (s *Server) runHTTPSServer(ctx context.Context) error {
+	logger := log.FromContext(ctx)
 	r := gin.Default()
 	s.registerHTTPSHandlers(r)
 
@@ -63,12 +65,12 @@ func (s *Server) runHTTPSServer(ctx context.Context) error {
 
 	go func() {
 		<-ctx.Done()
-		logrus.Printf("Shutting down HTTP server on port %d", s.config.HTTPSPort)
+		logger.Info("Shutting down HTTP server", "port", s.config.HTTPSPort)
 		if err := server.Shutdown(context.Background()); err != nil {
-			logrus.Printf("HTTP server shutdown error: %v", err)
+			logger.Error(nil, "HTTP server shutdown error", "err", err)
 		}
 	}()
 
-	logrus.Printf("Starting HTTPS server on port %d", s.config.HTTPSPort)
+	logger.Info("Starting HTTPS server", "port", s.config.HTTPSPort)
 	return server.Serve(tlsListener)
 }

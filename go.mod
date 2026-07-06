@@ -7,6 +7,7 @@ require (
 	github.com/charmbracelet/wish v1.4.7
 	github.com/gin-gonic/gin v1.12.0
 	github.com/go-logr/logr v1.4.3
+	github.com/go-logr/zapr v1.3.0
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674
 	github.com/looplab/fsm v1.0.3
@@ -22,6 +23,7 @@ require (
 	github.com/uptrace/bun/extra/bundebug v1.2.18
 	github.com/vishvananda/netlink v1.1.1-0.20211118161826-650dca95af54
 	github.com/xjasonlyu/tun2socks/v2 v2.6.0
+	go.uber.org/zap v1.27.1
 	go.yaml.in/yaml/v2 v2.4.3
 	golang.org/x/crypto v0.48.0
 	golang.org/x/sync v0.19.0
@@ -114,6 +116,7 @@ require (
 	go.mongodb.org/mongo-driver/v2 v2.5.0 // indirect
 	go.opentelemetry.io/otel v1.41.0 // indirect
 	go.opentelemetry.io/otel/trace v1.41.0 // indirect
+	go.uber.org/multierr v1.11.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/arch v0.22.0 // indirect
 	golang.org/x/exp v0.0.0-20251219203646-944ab1f22d93 // indirect

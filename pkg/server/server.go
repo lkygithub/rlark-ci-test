@@ -10,7 +10,6 @@ import (
 	"time"
 
 	gocache "github.com/patrickmn/go-cache"
-	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -19,6 +18,7 @@ import (
 
 	"github.com/rlinf/rlark/pkg/clients/db"
 	"github.com/rlinf/rlark/pkg/clients/kubernetes/clientset/versioned"
+	"github.com/rlinf/rlark/pkg/log"
 	"github.com/rlinf/rlark/pkg/server/cert"
 	"github.com/rlinf/rlark/pkg/server/reverseproxy"
 )
@@ -194,7 +194,8 @@ func (s *Server) initKubeClient(ctx context.Context) error {
 
 func (s *Server) initDatabase(ctx context.Context) error {
 	if s.config.DBConfigPath == "" {
-		logrus.Warningf("RLark server is running without persistent storage.")
+		logger := log.FromContext(ctx)
+		logger.Error(nil, "RLark server is running without persistent storage.")
 		return nil
 	}
 	var err error

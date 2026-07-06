@@ -7,11 +7,11 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/rlinf/rlark/pkg/clients/db"
 	versioned "github.com/rlinf/rlark/pkg/clients/kubernetes/clientset/versioned"
+	"github.com/rlinf/rlark/pkg/log"
 )
 
 // Gateway provides HTTP handlers for resource CRUD APIs.
@@ -53,6 +53,7 @@ func (g *Gateway) Run(ctx context.Context) error {
 }
 
 func (g *Gateway) init(ctx context.Context) error {
+	logger := log.FromContext(ctx)
 	// init Kubernetes client
 	restConfig, err := g.config.KubeClientConfig.BuildRestConfig()
 	if err != nil {
@@ -78,13 +79,14 @@ func (g *Gateway) init(ctx context.Context) error {
 		g.stores["jobs"] = db.NewJobStore(g.dbClient.DB)
 		g.stores["tasks"] = db.NewTaskStore(g.dbClient.DB)
 	} else {
-		logrus.Warningf("RLark gateway is running without persistent storage.")
+		logger.Error(nil, "RLark gateway is running without persistent storage.")
 	}
 
 	return nil
 }
 
 func (g *Gateway) runHTTPServer(ctx context.Context) error {
+	logger := log.FromContext(ctx)
 	r := gin.Default()
 	g.RegisterRoutes(r)
 
@@ -100,12 +102,12 @@ func (g *Gateway) runHTTPServer(ctx context.Context) error {
 
 	go func() {
 		<-ctx.Done()
-		logrus.Printf("Shutting down unsafe HTTP server on %s", g.config.Address)
+		logger.Info("Shutting down unsafe HTTP server", "address", g.config.Address)
 		if err := server.Shutdown(context.Background()); err != nil {
-			logrus.Printf("Unsafe HTTP server shutdown error: %v", err)
+			logger.Error(nil, "Unsafe HTTP server shutdown error", "err", err)
 		}
 	}()
 
-	logrus.Printf("Starting unsafe HTTP server on %s", g.config.Address)
+	logger.Info("Starting unsafe HTTP server", "address", g.config.Address)
 	return server.Serve(l)
 }

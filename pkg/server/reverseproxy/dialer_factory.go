@@ -8,7 +8,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/rancher/remotedialer"
-	"github.com/sirupsen/logrus"
+
+	"github.com/rlinf/rlark/pkg/log"
 )
 
 var (
@@ -101,6 +102,7 @@ func (f *DialerFactory) removeClient(clientKey string) {
 }
 
 func (f *DialerFactory) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
+	logger := log.GetLogger()
 	if req.Header.Get(PeerIDHeader) != "" && req.Header.Get(PeerTokenHeader) != "" {
 		f.dialerServer.ServeHTTP(rw, req)
 		return
@@ -118,7 +120,7 @@ func (f *DialerFactory) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	}
 	defer f.removeClient(clientKey)
 
-	logrus.Infof("Client connected: %s", clientKey)
+	logger.Info("Client connected", "clientKey", clientKey)
 
 	f.dialerServer.ServeHTTP(rw, req)
 }

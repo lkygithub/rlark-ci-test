@@ -3,7 +3,7 @@ package tun
 import (
 	"context"
 
-	"github.com/sirupsen/logrus"
+	"github.com/rlinf/rlark/pkg/log"
 	"gvisor.dev/gvisor/pkg/buffer"
 	"gvisor.dev/gvisor/pkg/tcpip"
 	"gvisor.dev/gvisor/pkg/tcpip/header"
@@ -72,17 +72,18 @@ func (ns *netstack) getICMPHandler(_ *stack.Stack, ep *channel.Endpoint) func(id
 // 此函数运行在独立的 goroutine 中，通过网络阻塞等待 Echo Reply，
 // 收到后构造完整的 IPv4+ICMP 包注入回 gVisor 协议栈，使 ping 命令能收到回复。
 func (ns *netstack) handleICMPEcho(ep *channel.Endpoint, srcAddr, dstAddr tcpip.Address, reqData []byte) {
-	logrus.Debugf("Forwarding ICMP Echo: %s - %s", srcAddr.String(), dstAddr.String())
+	logger := log.GetLogger()
+	logger.V(1).Info("Forwarding ICMP Echo", "src", srcAddr.String(), "dst", dstAddr.String())
 	realConn, err := ns.dial(context.Background(), "icmp", srcAddr, 0, dstAddr, 0)
 	if err != nil {
-		logrus.Errorf("Failed to dial ICMP for target %s: %v", dstAddr.String(), err)
+		logger.Error(nil, "Failed to dial ICMP", "dst", dstAddr.String(), "err", err)
 		return
 	}
 	defer func() { _ = realConn.Close() }()
 
 	// 将 Echo Request 帧封装后发送到 Proxy
 	if err := SendPacket(realConn, reqData); err != nil {
-		logrus.Warningf("Failed to send ICMP Echo Request to proxy for target %s: %v", dstAddr.String(), err)
+		logger.Error(nil, "Failed to send ICMP Echo Request to proxy", "dst", dstAddr.String(), "err", err)
 		return
 	}
 
@@ -91,7 +92,7 @@ func (ns *netstack) handleICMPEcho(ep *channel.Endpoint, srcAddr, dstAddr tcpip.
 	for {
 		replyData, err := RecvPacket(realConn)
 		if err != nil {
-			logrus.Warningf("Failed to receive ICMP Echo Reply from proxy for target %s: %v", dstAddr.String(), err)
+			logger.Error(nil, "Failed to receive ICMP Echo Reply from proxy", "dst", dstAddr.String(), "err", err)
 			return
 		}
 		if len(replyData) < header.ICMPv4MinimumSize {
@@ -144,8 +145,7 @@ func (ns *netstack) handleICMPEcho(ep *channel.Endpoint, srcAddr, dstAddr tcpip.
 	if ns.writeToTUN != nil {
 		// ★ 直接写入 TUN 设备（绕过 gVisor），使 Echo Reply 到达 VM
 		if err := ns.writeToTUN(ipBuf); err != nil {
-			logrus.Warningf("Failed to write ICMP Echo Reply to TUN for %s: %v",
-				dstAddr.String(), err)
+			logger.Error(nil, "Failed to write ICMP Echo Reply to TUN", "dst", dstAddr.String(), "err", err)
 		}
 	} else {
 		// Fallback：注入 gVisor 协议栈（通常不可用，因为 gVisor 会将包作为本地包消费）

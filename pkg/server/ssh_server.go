@@ -9,15 +9,16 @@ import (
 
 	"github.com/charmbracelet/ssh"
 	"github.com/charmbracelet/wish"
-	"github.com/sirupsen/logrus"
 	gossh "golang.org/x/crypto/ssh"
 
 	"github.com/rlinf/rlark/pkg/apis/protocol"
+	"github.com/rlinf/rlark/pkg/log"
 	"github.com/rlinf/rlark/pkg/server/cert"
 	"github.com/rlinf/rlark/pkg/server/reverseproxy"
 )
 
 func (s *Server) runSSHServer(ctx context.Context) error {
+	logger := log.FromContext(ctx)
 	server, err := wish.NewServer(
 		wish.WithAddress(fmt.Sprintf(":%d", s.config.SSHPort)),
 		wish.WithHostKeyPEM(s.tlsCA.KeyPEM),
@@ -31,13 +32,13 @@ func (s *Server) runSSHServer(ctx context.Context) error {
 
 	go func() {
 		<-ctx.Done()
-		logrus.Printf("Shutting down SSH server on port %d", s.config.SSHPort)
+		logger.Info("Shutting down SSH server", "port", s.config.SSHPort)
 		if err := server.Shutdown(context.Background()); err != nil {
-			logrus.Printf("SSH server shutdown error: %v", err)
+			logger.Error(nil, "SSH server shutdown error", "err", err)
 		}
 	}()
 
-	logrus.Printf("Starting SSH server on port %d", s.config.SSHPort)
+	logger.Info("Starting SSH server", "port", s.config.SSHPort)
 	return server.ListenAndServe()
 }
 
@@ -75,6 +76,7 @@ func (m wrapSSHMetadata) ServerVersion() []byte {
 }
 
 func (s *Server) sshPublicKeyAuth() ssh.PublicKeyHandler {
+	logger := log.GetLogger()
 	// 从 s.caRootPEM 加载受信任的 CA 公钥
 	var caKeys []gossh.PublicKey
 	for _, ca := range s.ca {
@@ -86,7 +88,7 @@ func (s *Server) sshPublicKeyAuth() ssh.PublicKeyHandler {
 		}
 	}
 	if len(caKeys) == 0 {
-		logrus.Warning("No SSH CA keys found in caRootPEM, all certificate auth will be rejected")
+		logger.Error(nil, "No SSH CA keys found in caRootPEM, all certificate auth will be rejected")
 	}
 
 	cc := &gossh.CertChecker{
@@ -130,23 +132,25 @@ func (s *Server) channelOption(srv *ssh.Server) error {
 }
 
 func (s *Server) rejectSSHChannel(newChan gossh.NewChannel, message string) {
+	logger := log.GetLogger()
 	if err := newChan.Reject(gossh.Prohibited, message); err != nil {
-		logrus.Errorf("Cannot reject channel: %v", err)
+		logger.Error(nil, "Cannot reject channel", "err", err)
 	}
 }
 
 func (s *Server) handleSSHChannel(srv *ssh.Server, conn *gossh.ServerConn, newChan gossh.NewChannel, ctx ssh.Context) {
-	logrus.Debugf("Handle direct-tcpip for user %v in %v", ctx.User(), ctx.SessionID())
+	logger := log.GetLogger()
+	logger.V(1).Info("Handle direct-tcpip", "user", ctx.User(), "sessionID", ctx.SessionID())
 
 	permissions := ctx.Permissions()
 	if permissions == nil || permissions.Permissions == nil {
-		logrus.Errorf("No permissions found for session %v", ctx.SessionID())
+		logger.Error(nil, "No permissions found for session", "sessionID", ctx.SessionID())
 		s.rejectSSHChannel(newChan, "No permissions found")
 		return
 	}
 	certMeta, ok := cert.GetSSHCertMeta(&gossh.Certificate{Permissions: *permissions.Permissions})
 	if !ok {
-		logrus.Errorf("No metadata found for session %v", ctx.SessionID())
+		logger.Error(nil, "No metadata found for session", "sessionID", ctx.SessionID())
 		s.rejectSSHChannel(newChan, "No metadata found in certificate")
 		return
 	}
@@ -154,7 +158,7 @@ func (s *Server) handleSSHChannel(srv *ssh.Server, conn *gossh.ServerConn, newCh
 	var payload protocol.DirectPayload
 	err := gossh.Unmarshal(newChan.ExtraData(), &payload)
 	if err != nil {
-		logrus.Errorf("Cannot accept extra data for %v: %v", ctx.SessionID(), err)
+		logger.Error(nil, "Cannot accept extra data", "sessionID", ctx.SessionID(), "err", err)
 		s.rejectSSHChannel(newChan, fmt.Sprintf("Invalid channel payload: %v", err))
 		return
 	}
@@ -162,14 +166,14 @@ func (s *Server) handleSSHChannel(srv *ssh.Server, conn *gossh.ServerConn, newCh
 	address := net.JoinHostPort(payload.Host, fmt.Sprint(payload.Port))
 	dialer, target, err := s.GetDial(ctx, "ssh", address, certMeta)
 	if err != nil {
-		logrus.Errorf("Cannot get dialer for %v: %v", ctx.SessionID(), err)
+		logger.Error(nil, "Cannot get dialer", "sessionID", ctx.SessionID(), "err", err)
 		s.rejectSSHChannel(newChan, fmt.Sprintf("Cannot get dialer: %v", err))
 		return
 	}
 
 	ch, _, err := newChan.Accept()
 	if err != nil {
-		logrus.Errorf("Cannot accept channel for %v: %v", ctx.SessionID(), err)
+		logger.Error(nil, "Cannot accept channel", "sessionID", ctx.SessionID(), "err", err)
 		s.rejectSSHChannel(newChan, fmt.Sprintf("Failed to accept channel: %v", err))
 		return
 	}
@@ -177,7 +181,7 @@ func (s *Server) handleSSHChannel(srv *ssh.Server, conn *gossh.ServerConn, newCh
 
 	c, err := dialer(ctx, "tcp", target)
 	if err != nil {
-		logrus.Errorf("Cannot dial for %v: %v", ctx.SessionID(), err)
+		logger.Error(nil, "Cannot dial", "sessionID", ctx.SessionID(), "err", err)
 		s.rejectSSHChannel(newChan, fmt.Sprintf("Failed to connect to target: %v", err))
 		return
 	}

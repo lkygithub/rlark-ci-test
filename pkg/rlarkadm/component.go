@@ -3,40 +3,14 @@ package rlarkadm
 import (
 	"fmt"
 
-	"github.com/sirupsen/logrus"
+	"github.com/rlinf/rlark/pkg/log"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
 	"go.yaml.in/yaml/v2"
-)
-
-const (
-	DBConfigPath      = "/etc/rlark/db.yaml"
-	CertDir           = "/etc/rlark/certs"
-	KCPDataDir        = "/.kcp"
-	KCPKubeconfigPath = "/etc/kcp/admin.kubeconfig"
-	PostgresqlDataDir = "/var/lib/postgresql/data"
-	PostgresqlInitDir = "/docker-entrypoint-initdb.d"
-)
-
-const initDBSQL = `-- scripts/init-db.sql
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-GRANT ALL PRIVILEGES ON DATABASE rlark TO postgres;
-`
-
-const (
-	Namespace = "rlark-system"
-
-	ComponentGateway           = "rlark-gateway"
-	ComponentControllerManager = "rlark-controller-manager"
-	ComponentServer            = "rlark-server"
-	ComponentAgent             = "rlark-agent"
-
-	ComponentPrometheus = "prometheus"
-	ComponentPostgresql = "postgresql"
-	ComponentKCP        = "kcp"
 )
 
 type Component struct {
@@ -44,6 +18,9 @@ type Component struct {
 	Port         int32
 	Plane        Plane
 	NeedsService bool
+
+	ServiceAccount string
+	RBACRules      []rbacv1.PolicyRule
 
 	Dependencies  []string
 	EnabledFn     func(cfg *DeployConfig) bool
@@ -220,7 +197,7 @@ var components = []Component{
 				"--unsafe-http-port=8888",
 				"--ssh-port=2222",
 				"--auto-sign-tls-ca-cert",
-				"--tls-domains=localhost,rlark-server",
+				"--tls-domains=localhost,rlark-server,rlark-server." + Namespace + ",rlark-server." + Namespace + ".svc",
 			}
 			if cfg.DB != nil {
 				args = append(args, "--db-config="+DBConfigPath)
@@ -239,13 +216,19 @@ var components = []Component{
 	},
 	{
 		Name: ComponentAgent, Port: 8081, Plane: PlaneData,
-		HealthCheckFn: modeHealthCheck(Component{Name: ComponentAgent}),
+		HealthCheckFn:  modeHealthCheck(Component{Name: ComponentAgent}),
+		ServiceAccount: "rlark-agent",
+		RBACRules: []rbacv1.PolicyRule{
+			{APIGroups: []string{""}, Resources: []string{"nodes", "pods"}, Verbs: []string{"get", "list", "watch"}},
+			{APIGroups: []string{""}, Resources: []string{"pods"}, Verbs: []string{"create", "update", "delete"}},
+			{APIGroups: []string{"apps"}, Resources: []string{"deployments", "daemonsets", "statefulsets"}, Verbs: []string{"get", "list", "watch", "create", "update", "delete"}},
+		},
 		ImageFn: func(cfg *DeployConfig) string {
 			return imageByMode(cfg, func(k *KubernetesEnv) string { return k.AgentImage }, func(d *DockerEnv) string { return d.AgentImage })
 		},
 		ArtifactFn: func(cfg *DeployConfig) string { return cfg.Raw.AgentArtifact },
 		ArgsFn: func(cfg *DeployConfig) []string {
-			return append([]string{
+			args := []string{
 				"--server-address=" + cfg.ControlPlaneAddress,
 				"--agent-type=" + cfg.EnvMode(),
 				"--client-cert=" + CertDir + "/tls.crt",
@@ -253,7 +236,11 @@ var components = []Component{
 				"--ca-cert=" + CertDir + "/ca.crt",
 				"--leader-election=false",
 				"--mode=cluster",
-			}, commonArgs()...)
+			}
+			if cfg.Kubernetes != nil {
+				args = append(args, "--in-cluster")
+			}
+			return args
 		},
 		VolumeFn: func(cfg *DeployConfig) ([]corev1.Volume, []corev1.VolumeMount) {
 			return certVolume()
@@ -300,11 +287,11 @@ var components = []Component{
 
 func imageByMode(cfg *DeployConfig, k8sFn func(*KubernetesEnv) string, dockerFn func(*DockerEnv) string) string {
 	switch cfg.EnvMode() {
-	case "kubernetes":
+	case "Kubernetes":
 		if cfg.Kubernetes != nil {
 			return k8sFn(cfg.Kubernetes)
 		}
-	case "docker":
+	case "Docker":
 		if cfg.Docker != nil {
 			return dockerFn(cfg.Docker)
 		}
@@ -313,6 +300,7 @@ func imageByMode(cfg *DeployConfig, k8sFn func(*KubernetesEnv) string, dockerFn 
 }
 
 func ComponentsForPlane(cfg *DeployConfig) []Component {
+	logger := log.GetLogger()
 	var result []Component
 	for _, c := range components {
 		if c.Plane != cfg.Plane {
@@ -326,7 +314,7 @@ func ComponentsForPlane(cfg *DeployConfig) []Component {
 
 	sorted, err := topologicalSort(result)
 	if err != nil {
-		logrus.Warnf("topological sort failed, using original order: %v", err)
+		logger.Error(nil, "topological sort failed, using original order", "err", err)
 		return result
 	}
 
@@ -348,6 +336,7 @@ func (c *Component) Deployment(cfg *DeployConfig) *appsv1.Deployment {
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{Labels: labels},
 				Spec: corev1.PodSpec{
+					ServiceAccountName: c.ServiceAccountName(),
 					Containers: []corev1.Container{{
 						Name:            c.Name,
 						Image:           c.ImageFn(cfg),
@@ -378,6 +367,32 @@ func (c *Component) Deployment(cfg *DeployConfig) *appsv1.Deployment {
 	}
 
 	return dep
+}
+
+func (c *Component) ServiceAccountName() string {
+	if c.ServiceAccount != "" {
+		return c.ServiceAccount
+	}
+	return "default"
+}
+
+func (c *Component) RBAC() (*corev1.ServiceAccount, *rbacv1.ClusterRole, *rbacv1.ClusterRoleBinding) {
+	if len(c.RBACRules) == 0 {
+		return nil, nil, nil
+	}
+	sa := &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{Name: c.ServiceAccount, Namespace: Namespace},
+	}
+	cr := &rbacv1.ClusterRole{
+		ObjectMeta: metav1.ObjectMeta{Name: c.ServiceAccount},
+		Rules:      c.RBACRules,
+	}
+	crb := &rbacv1.ClusterRoleBinding{
+		ObjectMeta: metav1.ObjectMeta{Name: c.ServiceAccount},
+		Subjects:   []rbacv1.Subject{{Kind: "ServiceAccount", Name: c.ServiceAccount, Namespace: Namespace}},
+		RoleRef:    rbacv1.RoleRef{Kind: "ClusterRole", Name: c.ServiceAccount, APIGroup: "rbac.authorization.k8s.io"},
+	}
+	return sa, cr, crb
 }
 
 func (c *Component) Service() *corev1.Service {

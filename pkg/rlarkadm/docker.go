@@ -5,12 +5,13 @@ import (
 	"os"
 	"os/exec"
 
-	"github.com/sirupsen/logrus"
+	"github.com/rlinf/rlark/pkg/log"
 )
 
 type DockerDeployer struct{}
 
 func (d *DockerDeployer) Deploy(cfg *DeployConfig, certBundle *CertBundle) error {
+	logger := log.GetLogger()
 	certDir := ""
 	if certBundle != nil {
 		certDir = CertDir
@@ -43,22 +44,23 @@ func (d *DockerDeployer) Deploy(cfg *DeployConfig, certBundle *CertBundle) error
 		if err := dockerRun(c.Name, c.ImageFn(cfg), c.Port, certDir, dbDir, env, args, volMounts); err != nil {
 			return err
 		}
-		logrus.Infof("  - %s container (port %d)", c.Name, c.Port)
+		logger.Info("container started", "name", c.Name, "port", c.Port)
 		if err := waitForHealthy(cfg, c); err != nil {
 			return err
 		}
 	}
 
-	logrus.Infof("%s plane deployed via Docker", cfg.Plane)
+	logger.Info("plane deployed via Docker", "plane", cfg.Plane)
 	if cfg.Plane == PlaneData {
-		logrus.Infof("  - agent connecting to control plane: %s", cfg.ControlPlaneAddress)
+		logger.Info("agent connecting to control plane", "address", cfg.ControlPlaneAddress)
 	}
 	return nil
 }
 
 func dockerRun(name, image string, port int32, certDir, dbDir string, env map[string]string, args []string, volMounts [][2]string) error {
+	logger := log.GetLogger()
 	if err := exec.Command("docker", "rm", "-f", name).Run(); err != nil {
-		logrus.Debugf("remove existing container %s: %v", name, err)
+		logger.V(1).Info("removed existing container", "name", name, "err", err)
 	}
 	dockerArgs := []string{
 		"run", "-d", "--name", name,

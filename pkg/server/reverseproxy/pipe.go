@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sirupsen/logrus"
+	"github.com/rlinf/rlark/pkg/log"
 	"github.com/xjasonlyu/tun2socks/v2/buffer"
 )
 
@@ -26,29 +26,30 @@ func PipeConnections(origin, remote io.ReadWriteCloser) {
 }
 
 func unidirectionalStream(dst, src io.ReadWriteCloser, dir string, wg *sync.WaitGroup) {
+	logger := log.GetLogger()
 	defer wg.Done()
 	buf := buffer.Get(buffer.RelayBufferSize)
 	if _, err := io.CopyBuffer(dst, src, buf); err != nil {
-		logrus.Debugf("[TCP] copy data for %s: %v", dir, err)
+		logger.V(1).Info("[TCP] copy data", "dir", dir, "err", err)
 	}
 	if err := buffer.Put(buf); err != nil {
-		logrus.Debugf("[TCP] put buffer for %s: %v", dir, err)
+		logger.V(1).Info("[TCP] put buffer", "dir", dir, "err", err)
 	}
 	// Do the upload/download side TCP half-close.
 	if cr, ok := src.(interface{ CloseRead() error }); ok {
 		if err := cr.CloseRead(); err != nil {
-			logrus.Debugf("[TCP] close read for %s: %v", dir, err)
+			logger.V(1).Info("[TCP] close read", "dir", dir, "err", err)
 		}
 	}
 	if cw, ok := dst.(interface{ CloseWrite() error }); ok {
 		if err := cw.CloseWrite(); err != nil {
-			logrus.Debugf("[TCP] close write for %s: %v", dir, err)
+			logger.V(1).Info("[TCP] close write", "dir", dir, "err", err)
 		}
 	}
 	// Set TCP half-close timeout.
 	if srd, ok := dst.(interface{ SetReadDeadline(time.Time) error }); ok {
 		if err := srd.SetReadDeadline(time.Now().Add(tcpWaitTimeout)); err != nil {
-			logrus.Debugf("[TCP] set read deadline for %s: %v", dir, err)
+			logger.V(1).Info("[TCP] set read deadline", "dir", dir, "err", err)
 		}
 	}
 }
