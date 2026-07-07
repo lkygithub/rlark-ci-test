@@ -110,10 +110,21 @@ func (s *Server) checkHostInDomain(ctx context.Context, host *string, domainID, 
 	return false, nil
 }
 
-// getPodInfoByUser 根据 podName 和 userName 获取对应的 Pod 信息，包括 Pod 所在的 agentID 和 LocalIP。
+// getPodInfoByUser 根据 podName 和 userName 获取对应的 Pod 信息，包括 Pod 所在的 agentID 和 IP。
 func (s *Server) getPodDialInfoByUser(ctx context.Context, podName, userName string) (string, string, error) {
-	// TODO: 实现根据 podName 和 userName 获取对应的 Pod 信息，包括 Pod 所在的 agentID 和 LocalIP。
-	return "", "", fmt.Errorf("not implemented")
+	pod, ok := s.podCache.GetPodByName(podName)
+	if !ok {
+		return "", "", fmt.Errorf("pod %s not found", podName)
+	}
+	if pod.Status.IP == "" {
+		return "", "", fmt.Errorf("pod %s not ready", podName)
+	}
+	// TODO: 根据 userName 来检查该用户是否有权限访问该 Pod。
+	// 暂时完全放行
+	if agentID, ok := strings.CutPrefix(pod.Namespace, apis.RLarkAgentNamespacePrefix); ok {
+		return agentID, pod.Status.IP, nil
+	}
+	return "", "", fmt.Errorf("unknown error")
 }
 
 // handleProxyConnect 处理反向代理隧道的连接请求。它会根据客户端证书中的元数据来确定是代理连接还是 Peer-to-Peer 连接，并设置相应的请求头。

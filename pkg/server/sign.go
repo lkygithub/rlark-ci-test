@@ -32,6 +32,7 @@ type SignRequest struct {
 	Role     string `json:"role"`                // 证书角色，例如 "agent" 等
 	ClientID string `json:"client_id,omitempty"` // 可选的客户端 ID
 	DomainID string `json:"domain_id,omitempty"` // 可选的域 ID
+	KeyID    string `json:"key_id,omitempty"`    // 可选的密钥 ID
 }
 
 type SignResponse struct {
@@ -85,8 +86,9 @@ func (s *Server) parseSignRequest(req *SignRequest) (string, map[string]string, 
 
 	case "ssh-guest":
 		return "ssh", map[string]string{
-			apis.MetaCertRole: "ssh-guest",
-			apis.MetaUserID:   req.ClientID,
+			apis.MetaCertRole:  "ssh-guest",
+			apis.MetaUserID:    req.ClientID,
+			apis.MetaUserKeyID: req.KeyID,
 		}, nil
 
 	default:

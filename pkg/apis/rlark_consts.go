@@ -26,7 +26,8 @@ const (
 
 	MetaDomainID = "domain-id"
 
-	MetaUserID = "user-id"
+	MetaUserID    = "user-id"
+	MetaUserKeyID = "user-key-id"
 )
 
 const (

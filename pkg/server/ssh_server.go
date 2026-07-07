@@ -12,6 +12,7 @@ import (
 	gossh "golang.org/x/crypto/ssh"
 
 	"github.com/rlinf/rlark/pkg/apis/protocol"
+	"github.com/rlinf/rlark/pkg/clients/db"
 	"github.com/rlinf/rlark/pkg/log"
 	"github.com/rlinf/rlark/pkg/server/cert"
 	"github.com/rlinf/rlark/pkg/server/reverseproxy"
@@ -109,11 +110,35 @@ func (s *Server) sshPublicKeyAuth() ssh.PublicKeyHandler {
 		},
 		UserKeyFallback: func(conn gossh.ConnMetadata, key gossh.PublicKey) (*gossh.Permissions, error) {
 			// 如果证书验证失败，尝试使用普通公钥进行验证
-			if false /* TODO: check if the key is in the allowed list */ {
+			var authedKey *db.SSHUserKeyModel
+			if s.userKeyStore != nil {
+				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				defer cancel()
+				keys, err := s.userKeyStore.GetSSHUserKeysByUser(ctx, conn.User())
+				if err != nil {
+					return nil, fmt.Errorf("failed to get user keys: %w", err)
+				}
+				for _, k := range keys {
+					pubKey, _, _, _, err := ssh.ParseAuthorizedKey([]byte(k.PublicKey))
+					if err == nil && ssh.KeysEqual(key, pubKey) {
+						authedKey = k
+						break
+					}
+				}
+			} else {
+				// 该功能要求数据库支持 SSHUserKeyStore，如果没有启用数据库，则无法使用该功能
+				// TODO: 可以提供静态配置的公钥列表来支持该功能，例如提供一个 SSHKeys 文件等
+				return nil, fmt.Errorf("UserKey not supported")
+			}
+			if authedKey == nil {
 				return nil, fmt.Errorf("public key authentication failed for user %s", conn.User())
 			}
 			// 如果验证成功，临时签一个 ssh-guest 证书 Meta，并返回 Permissions
-			_, meta, _ := s.parseSignRequest(&SignRequest{Role: "ssh-guest", ClientID: conn.User()})
+			_, meta, _ := s.parseSignRequest(&SignRequest{
+				Role:     "ssh-guest",
+				ClientID: conn.User(),
+				KeyID:    fmt.Sprint(authedKey.ID),
+			})
 			sshCert := &gossh.Certificate{}
 			cert.SetSSHCertMeta(sshCert, meta)
 			return &sshCert.Permissions, nil
