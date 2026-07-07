@@ -283,6 +283,15 @@ var components = []Component{
 			return append(dv, iv...), append(dm, im...)
 		},
 	},
+	{
+		Name: ComponentUI, Port: 80, Plane: PlaneControl, NeedsService: true,
+		Dependencies:  []string{ComponentGateway},
+		HealthCheckFn: modeHealthCheck(Component{Name: ComponentUI}),
+		ImageFn: func(cfg *DeployConfig) string {
+			return imageByMode(cfg, func(k *KubernetesEnv) string { return k.UIImage }, func(d *DockerEnv) string { return d.UIImage })
+		},
+		ArgsFn: func(cfg *DeployConfig) []string { return []string{} },
+	},
 }
 
 func imageByMode(cfg *DeployConfig, k8sFn func(*KubernetesEnv) string, dockerFn func(*DockerEnv) string) string {

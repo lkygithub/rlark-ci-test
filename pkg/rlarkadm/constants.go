@@ -10,6 +10,7 @@ const (
 	ComponentPrometheus        = "prometheus"
 	ComponentPostgresql        = "postgresql"
 	ComponentKCP               = "kcp"
+	ComponentUI                = "rlark-ui"
 )
 
 const (

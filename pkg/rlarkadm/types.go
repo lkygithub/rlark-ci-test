@@ -34,6 +34,7 @@ type KubernetesEnv struct {
 	AgentImage             string `yaml:"agent-image"`
 	KCPImage               string `yaml:"kcp-image,omitempty"`
 	PostgresqlImage        string `yaml:"postgresql-image,omitempty"`
+	UIImage                string `yaml:"ui-image,omitempty"`
 }
 
 type DockerEnv struct {
@@ -43,6 +44,7 @@ type DockerEnv struct {
 	AgentImage             string `yaml:"agent-image"`
 	KCPImage               string `yaml:"kcp-image,omitempty"`
 	PostgresqlImage        string `yaml:"postgresql-image,omitempty"`
+	UIImage                string `yaml:"ui-image,omitempty"`
 }
 
 type RawEnv struct {

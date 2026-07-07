@@ -46,6 +46,8 @@ func (g *Gateway) RegisterRoutes(r gin.IRouter) {
 		tasks.PATCH("/:name", g.rlinfv1alpha1PatchTask)
 		tasks.DELETE("/:name", g.rlinfv1alpha1DeleteTask)
 	}
+
+	r.POST("/api/v1/certificates/agent", g.handleSignAgentCert)
 }
 
 // --- Node handlers ---

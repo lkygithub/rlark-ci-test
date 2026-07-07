@@ -32,6 +32,12 @@ func (d *DockerDeployer) Deploy(cfg *DeployConfig, certBundle *CertBundle) error
 	}
 
 	for _, c := range ComponentsForPlane(cfg) {
+		// 如果组件已存在且健康，跳过部署
+		if c.HealthCheckFn != nil && c.HealthCheckFn(cfg) == nil {
+			logger.Info("component already healthy, skipping", "name", c.Name)
+			continue
+		}
+
 		var env map[string]string
 		if c.EnvFn != nil {
 			env = c.EnvFn(cfg)

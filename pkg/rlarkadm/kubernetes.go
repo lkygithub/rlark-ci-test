@@ -63,6 +63,12 @@ func (d *KubernetesDeployer) Deploy(cfg *DeployConfig, certBundle *CertBundle) e
 			c.PostDeployFn = extractKCPKubeconfigFn(ctx, clientset)
 		}
 
+		// 如果组件已存在且健康，跳过部署
+		if c.HealthCheckFn != nil && c.HealthCheckFn(cfg) == nil {
+			logger.Info("component already healthy, skipping", "name", c.Name)
+			continue
+		}
+
 		if err := ensureRBAC(ctx, clientset, &c); err != nil {
 			return err
 		}
