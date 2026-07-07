@@ -90,6 +90,10 @@ func (p *IPPool) Allocate() (string, error) {
 	return "", fmt.Errorf("no available IP in pool %s", p.cidr)
 }
 
+func (p *IPPool) PrefixLength() int {
+	return p.prefix.Bits()
+}
+
 // lastAddr computes the last (broadcast for IPv4) address in the given prefix.
 func lastAddr(p netip.Prefix) netip.Addr {
 	addr := p.Addr()

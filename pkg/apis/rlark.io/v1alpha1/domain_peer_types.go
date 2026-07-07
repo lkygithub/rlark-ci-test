@@ -19,15 +19,17 @@ type DomainPodInfo struct {
 	GlobalNamespace string `json:"globalNamespace,omitempty"`
 	Namespace       string `json:"namespace,omitempty"`
 	Name            string `json:"name,omitempty"`
+	UID             string `json:"uid,omitempty"`
 	Node            string `json:"node,omitempty"`
 	IP              string `json:"ip,omitempty"`
 	LocalIP         string `json:"localIP,omitempty"`
 }
 
 type DomainPeerSpec struct {
-	Pods []DomainPodInfo `json:"pods,omitempty"`
-	Cert string          `json:"cert,omitempty"`
-	Key  string          `json:"key,omitempty"`
+	PrefixLen int             `json:"prefixLen,omitempty"`
+	Pods      []DomainPodInfo `json:"pods,omitempty"`
+	Cert      string          `json:"cert,omitempty"`
+	Key       string          `json:"key,omitempty"`
 }
 
 type DomainPeerStatus struct {

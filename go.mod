@@ -11,6 +11,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674
 	github.com/looplab/fsm v1.0.3
+	github.com/moby/sys/mountinfo v0.7.2
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/rancher/remotedialer v0.6.1
 	github.com/songgao/water v0.0.0-20200317203138-2b4b6d7c09d8

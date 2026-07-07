@@ -26,7 +26,9 @@ type Config struct {
 	LeaderElectionKey string // namespace/name
 	LeaderElectionID  string // unique identifier for this agent instance, usually hostname
 
-	NodeServerConfig nodeserver.Config
+	NodeServerConfig      nodeserver.Config
+	RLarkServerSSHAddress string
+	RLarkServerSSHHostKey string
 }
 
 func DefaultConfig() Config {
@@ -51,4 +53,7 @@ func (c *Config) SetupFlags(fs *pflag.FlagSet) {
 	fs.BoolVar(&c.LeaderElection, "leader-election", c.LeaderElection, "enable leader election for agent")
 	fs.StringVar(&c.LeaderElectionKey, "leader-election-key", c.LeaderElectionKey, "leader election key (namespace/name)")
 	fs.StringVar(&c.LeaderElectionID, "leader-election-id", c.LeaderElectionID, "leader election id (unique identifier for this agent instance)")
+
+	fs.StringVar(&c.RLarkServerSSHAddress, "rlark-server-ssh-address", c.RLarkServerSSHAddress, "RLark server SSH address (user@host:port)")
+	fs.StringVar(&c.RLarkServerSSHHostKey, "rlark-server-ssh-host-key", c.RLarkServerSSHHostKey, "RLark server SSH host key")
 }

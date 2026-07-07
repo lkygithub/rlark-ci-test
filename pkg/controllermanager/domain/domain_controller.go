@@ -84,6 +84,7 @@ func (r *DomainReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 				GlobalNamespace: ns,
 				Namespace:       pod.Spec.TaskNamespace,
 				Name:            pod.Name,
+				UID:             string(pod.UID),
 				Node:            pod.Status.Node,
 				IP:              alloc.IP,
 				LocalIP:         pod.Status.IP,
@@ -95,6 +96,7 @@ func (r *DomainReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 				GlobalNamespace: ns,
 				Namespace:       pod.Spec.TaskNamespace,
 				Name:            pod.Name,
+				UID:             string(pod.UID),
 				Node:            pod.Status.Node,
 				IP:              "",
 				LocalIP:         pod.Status.IP,
@@ -150,7 +152,7 @@ func (r *DomainReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	// 8. Create or update DomainPeer per namespace
 	signer := newSigner(r)
 	for ns, pods := range podsByNamespace {
-		if err := r.createOrUpdateDomainPeer(ctx, logger, domain.Name, ns, pods, signer); err != nil {
+		if err := r.createOrUpdateDomainPeer(ctx, logger, domain.Name, ns, pods, signer, ippool.PrefixLength()); err != nil {
 			return ctrl.Result{}, err
 		}
 	}
@@ -185,14 +187,19 @@ func (r *DomainReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func (r *DomainReconciler) createOrUpdateDomainPeer(ctx context.Context, logger logr.Logger, domainName, namespace string, pods []rlarkv1alpha1.DomainPodInfo, signer *signer) error {
+func (r *DomainReconciler) createOrUpdateDomainPeer(
+	ctx context.Context, logger logr.Logger,
+	domainName, namespace string, pods []rlarkv1alpha1.DomainPodInfo,
+	signer *signer, prefixLen int,
+) error {
 	desiredPeer := &rlarkv1alpha1.DomainPeer{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      domainName,
 			Namespace: namespace,
 		},
 		Spec: rlarkv1alpha1.DomainPeerSpec{
-			Pods: pods,
+			PrefixLen: prefixLen,
+			Pods:      pods,
 		},
 	}
 

@@ -379,6 +379,8 @@ Responses:
       - `name`: `string`, optional
       - `namespace`: `string`, optional
       - `node`: `string`, optional
+      - `uid`: `string`, optional
+  - `prefixLen`: `integer`, optional
 - `status`: `object`, optional
 
 ## Job
