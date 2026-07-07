@@ -12,6 +12,7 @@ func init() {
 		// Create tables for each resource type
 		models := []any{
 			(*RevokedCertificateModel)(nil),
+			(*SSHUserKeyModel)(nil),
 			(*JobModel)(nil),
 			(*LatestJobModel)(nil),
 			(*NodeModel)(nil),
@@ -29,6 +30,10 @@ func init() {
 
 		// Indexes: cluster-scoped resources use (name), namespace-scoped use (namespace, name)
 		commonIndexes := map[string][]string{
+			"ssh_user_keys": {
+				"CREATE INDEX IF NOT EXISTS idx_ssh_user_keys_user_added_at ON ssh_user_keys (user, added_at)",
+				"CREATE INDEX IF NOT EXISTS idx_ssh_user_keys_added_at ON ssh_user_keys (added_at)",
+			},
 			"jobs": {
 				"CREATE INDEX IF NOT EXISTS idx_jobs_name ON jobs (name)",
 				"CREATE INDEX IF NOT EXISTS idx_jobs_deleted_at ON jobs (deleted_at)",

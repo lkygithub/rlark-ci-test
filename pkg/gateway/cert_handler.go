@@ -154,3 +154,11 @@ func (g *Gateway) signCertViaServer(adminCertPEM, adminKeyPEM, caCertPEM []byte,
 
 	return signResp.CertPEM, signResp.KeyPEM, nil
 }
+
+func (g *Gateway) handleRevokeCertificate(c *gin.Context) {
+	if g.dbClient == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "revocation not supported: database not configured"})
+		return
+	}
+	// TODO: Implement certificate revocation logic
+}

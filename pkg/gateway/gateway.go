@@ -22,7 +22,9 @@ type Gateway struct {
 	kubeClient versioned.Interface
 	rawClient  kubernetes.Interface
 
-	dbClient *db.DB // may be nil if DBConfigPath is not provided, should be checked before use
+	dbClient     *db.DB // may be nil if DBConfigPath is not provided, should be checked before use
+	rcStore      *db.RevokedCertificateStore
+	userKeyStore *db.SSHUserKeyStore
 
 	stores    map[string]*db.ResourceStore
 	accessors map[string]*resourceAccessor
@@ -79,6 +81,8 @@ func (g *Gateway) init(ctx context.Context) error {
 		if err != nil {
 			return fmt.Errorf("open database: %w", err)
 		}
+		g.rcStore = db.NewRevokedCertificateStore(g.dbClient.DB)
+		g.userKeyStore = db.NewSSHUserKeyStore(g.dbClient.DB)
 		g.stores = make(map[string]*db.ResourceStore)
 		g.stores["nodes"] = db.NewNodeStore(g.dbClient.DB)
 		g.stores["workflows"] = db.NewWorkflowStore(g.dbClient.DB)

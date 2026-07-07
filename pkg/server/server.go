@@ -13,12 +13,16 @@ import (
 	"golang.org/x/sync/errgroup"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/leaderelection"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 
 	"github.com/rlinf/rlark/pkg/clients/db"
 	"github.com/rlinf/rlark/pkg/clients/kubernetes/clientset/versioned"
+	"github.com/rlinf/rlark/pkg/clients/kubernetes/informers/externalversions"
+	listerv1alpha1 "github.com/rlinf/rlark/pkg/clients/kubernetes/listers/rlark.io/v1alpha1"
 	"github.com/rlinf/rlark/pkg/log"
+	"github.com/rlinf/rlark/pkg/server/caches"
 	"github.com/rlinf/rlark/pkg/server/cert"
 	"github.com/rlinf/rlark/pkg/server/reverseproxy"
 )
@@ -35,9 +39,15 @@ type Server struct {
 
 	// DB Client and Stores
 	// may be nil if DBConfigPath is not provided, should be checked before use
-	dbClient *db.DB
-	rcStore  *db.RevokedCertificateStore
-	rcCache  *gocache.Cache
+	dbClient     *db.DB
+	rcStore      *db.RevokedCertificateStore
+	rcCache      *gocache.Cache
+	userKeyStore *db.SSHUserKeyStore
+
+	// resource informers/listers/cache
+	podInformer cache.SharedIndexInformer
+	podLister   listerv1alpha1.PodLister
+	podCache    *caches.PodCache
 
 	tlsCA *cert.Data
 	tls   cert.Data
@@ -189,6 +199,13 @@ func (s *Server) initKubeClient(ctx context.Context) error {
 		return fmt.Errorf("create Kubernetes proxy: %w", err)
 	}
 	s.kubeHandler = kubeProxy.GetHandler()
+
+	// init listers
+	factory := externalversions.NewSharedInformerFactory(s.rlarkClient, 30*time.Minute)
+	s.podInformer = factory.Rlinf().V1alpha1().Pods().Informer()
+	s.podLister = factory.Rlinf().V1alpha1().Pods().Lister()
+	s.podCache = caches.NewPodCache(s.podInformer)
+	factory.Start(ctx.Done())
 	return nil
 }
 
@@ -204,6 +221,7 @@ func (s *Server) initDatabase(ctx context.Context) error {
 		return fmt.Errorf("open database: %w", err)
 	}
 	s.rcStore = db.NewRevokedCertificateStore(s.dbClient.DB)
+	s.userKeyStore = db.NewSSHUserKeyStore(s.dbClient.DB)
 	return nil
 }
 
@@ -241,5 +259,19 @@ func (s *Server) initSelfInstance(ctx context.Context) error {
 	if err := s.initPeerTransport(ctx); err != nil {
 		return fmt.Errorf("initialize peer transport: %w", err)
 	}
+
+	// wait for informers to sync
+	for {
+		if !s.podInformer.HasSynced() {
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-time.After(100 * time.Millisecond):
+				continue
+			}
+		}
+		break
+	}
+
 	return nil
 }

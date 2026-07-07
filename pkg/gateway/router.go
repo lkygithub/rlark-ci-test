@@ -48,6 +48,14 @@ func (g *Gateway) RegisterRoutes(r gin.IRouter) {
 	}
 
 	r.POST("/api/v1/certificates/agent", g.handleSignAgentCert)
+	r.POST("/api/v1/certificates/revoke", g.handleRevokeCertificate)
+
+	sshUserKeys := r.Group("/api/v1/ssh-user-keys")
+	{
+		sshUserKeys.GET("", g.handleListSSHUserKeys)
+		sshUserKeys.POST("", g.handleCreateSSHUserKey)
+		sshUserKeys.DELETE("/:id", g.handleDeleteSSHUserKey)
+	}
 }
 
 // --- Node handlers ---
