@@ -6,6 +6,8 @@ const (
 )
 
 const (
+	MetaCertRole = "cert-role"
+
 	MetaPermissionPrefix     = "permission:"
 	MetaPermissionAdmin      = MetaPermissionPrefix + "admin"       // value: "true"
 	MetaPermissionAgentProxy = MetaPermissionPrefix + "agent-proxy" // value: agent1,agent2,agent3
@@ -23,6 +25,8 @@ const (
 	MetaNamespace = "namespace"
 
 	MetaDomainID = "domain-id"
+
+	MetaUserID = "user-id"
 )
 
 const (

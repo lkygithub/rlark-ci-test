@@ -34,44 +34,64 @@ func (s *Server) GetDial(ctx context.Context, dialType, address string, certMeta
 		// 这种情况下，host 即为 agent ID，此时应该返回 agent 对应的 dialer 和 agent 的 local server 地址
 		// 这种情况下不会将请求的 certMeta 传进来，因此需要在外层完成权限检查
 		agentID := host
-		dialer := s.dialerFactory.GetDialer(ctx, agentID) // TODO: 检测对应主 agent 是否连接，如果没有连接，用其他 agent 来转发请求
-		return dialer, "0.0.0.0:1", nil                   // 约定 local server 地址为 0.0.0.0:1
+		dialer := s.getAgentDialer(ctx, agentID) // TODO: 检测对应主 agent 是否连接，如果没有连接，用其他 agent 来转发请求
+		return dialer, "0.0.0.0:1", nil          // 约定 local server 地址为 0.0.0.0:1
 
 	case "ssh":
-		fields := strings.Split(host, ".")
-		if len(fields) < 3 {
-			return nil, "", fmt.Errorf("invalid address format: %s", host)
+		if certMeta == nil || certMeta[apis.MetaCertRole] == "" {
+			return nil, "", fmt.Errorf("client certificate does not contain required role for ssh proxying")
 		}
-		targetID := fields[len(fields)-2]
-		targetType := fields[len(fields)-1]
-		targetHost := strings.Join(fields[:len(fields)-2], ".")
-
-		var dialer remotedialer.Dialer
-		switch targetType {
-		case "agent":
-			hasPermission := apis.PermissionChecker.HasAgentProxyPermission(certMeta, targetID)
-			if !hasPermission {
-				if domainID, ok := apis.PermissionChecker.HasDomainProxyPermission(certMeta); ok {
-					var domainCheckErr error
-					hasPermission, domainCheckErr = s.checkHostInDomain(ctx, &targetHost, domainID, targetID)
-					if domainCheckErr != nil {
-						return nil, "", fmt.Errorf("failed to check domain proxy permission: %w", domainCheckErr)
-					}
+		switch certMeta[apis.MetaCertRole] {
+		case "domain":
+			// 以 domain 角色连接的客户端，允许连接到同一个 domain 下的 pod
+			// 连接目标格式：<targetHost>.<targetAgentID>.agent
+			fields := strings.Split(host, ".")
+			if len(fields) < 3 {
+				return nil, "", fmt.Errorf("invalid address format: %s", host)
+			}
+			targetID := fields[len(fields)-2]
+			targetType := fields[len(fields)-1]
+			targetHost := strings.Join(fields[:len(fields)-2], ".")
+			if targetType != "agent" {
+				return nil, "", fmt.Errorf("invalid target type: %s", targetType)
+			}
+			// 检查证书的 domain 身份是否具有访问目标的权限
+			if domainID, ok := apis.PermissionChecker.HasDomainProxyPermission(certMeta); ok {
+				hasPermission, domainCheckErr := s.checkHostInDomain(ctx, &targetHost, domainID, targetID)
+				if domainCheckErr != nil {
+					return nil, "", fmt.Errorf("failed to check domain proxy permission: %w", domainCheckErr)
+				}
+				if !hasPermission {
+					return nil, "", fmt.Errorf("client certificate does not have proxy permission for %s on %s", targetHost, targetID)
 				}
 			}
-			if !hasPermission {
-				return nil, "", fmt.Errorf("client certificate does not have proxy permission for %s on %s", targetHost, targetID)
-			}
-			dialer = s.dialerFactory.GetDialer(ctx, targetID) // TODO: 检测对应主 agent 是否连接，如果没有连接，用其他 agent 来转发请求
+			dialer := s.getAgentDialer(ctx, targetID)
 
-		default:
-			return nil, "", fmt.Errorf("unsupported target type: %s", targetType)
+			return dialer, net.JoinHostPort(targetHost, port), nil
+
+		case "ssh-guest":
+			// 以 ssh-guest 角色连接的客户端，允许连接到该用户有权限访问的 Pod
+			// 连接目标格式：podName
+			// 需要自动识别目标 Pod 所在的 agent，并使用该 agent 的 dialer 来连接
+			agentID, targetHost, err := s.getPodDialInfoByUser(ctx, host, certMeta[apis.MetaUserID])
+			if err != nil {
+				return nil, "", fmt.Errorf("failed to get pod %v: %w", host, err)
+			}
+			dialer := s.getAgentDialer(ctx, agentID)
+			return dialer, net.JoinHostPort(targetHost, port), nil
 		}
-		return dialer, net.JoinHostPort(targetHost, port), nil
+		return nil, "", fmt.Errorf("unsupported role %s for ssh proxying", certMeta[apis.MetaCertRole])
 	}
 	return nil, "", fmt.Errorf("unsupported dial type: %s", dialType)
 }
 
+func (s *Server) getAgentDialer(ctx context.Context, agentID string) remotedialer.Dialer {
+	// TODO: 检测对应主 agent 是否连接，如果没有连接，用其他 agent 来转发请求
+	dialer := s.dialerFactory.GetDialer(ctx, agentID)
+	return dialer
+}
+
+// checkHostInDomain 检查指定的 host 是否在指定的 domain 下，并返回该 host 的 LocalIP（如果存在）。
 func (s *Server) checkHostInDomain(ctx context.Context, host *string, domainID, agentID string) (bool, error) {
 	namespace := apis.RLarkAgentNamespacePrefix + agentID
 	dp, err := s.rlarkClient.RlinfV1alpha1().DomainPeers(namespace).Get(ctx, domainID, metav1.GetOptions{})
@@ -88,6 +108,12 @@ func (s *Server) checkHostInDomain(ctx context.Context, host *string, domainID, 
 		}
 	}
 	return false, nil
+}
+
+// getPodInfoByUser 根据 podName 和 userName 获取对应的 Pod 信息，包括 Pod 所在的 agentID 和 LocalIP。
+func (s *Server) getPodDialInfoByUser(ctx context.Context, podName, userName string) (string, string, error) {
+	// TODO: 实现根据 podName 和 userName 获取对应的 Pod 信息，包括 Pod 所在的 agentID 和 LocalIP。
+	return "", "", fmt.Errorf("not implemented")
 }
 
 // handleProxyConnect 处理反向代理隧道的连接请求。它会根据客户端证书中的元数据来确定是代理连接还是 Peer-to-Peer 连接，并设置相应的请求头。

@@ -53,12 +53,14 @@ func (s *Server) parseSignRequest(req *SignRequest) (string, map[string]string, 
 	switch req.Role {
 	case "admin":
 		return "x509", map[string]string{
+			apis.MetaCertRole:                "admin",
 			apis.MetaPermissionAdmin:         "true", // TODO
 			apis.MetaKubernetesImpersonation: "-",
 		}, nil
 
 	case "peer":
 		return "x509", map[string]string{
+			apis.MetaCertRole:              "peer",
 			apis.MetaRemoteDialerPeerID:    s.dialerFactory.GetPeerID(),
 			apis.MetaRemoteDialerPeerToken: s.dialerFactory.GetPeerToken(),
 		}, nil
@@ -67,6 +69,7 @@ func (s *Server) parseSignRequest(req *SignRequest) (string, map[string]string, 
 		namespace := apis.RLarkAgentNamespacePrefix + req.ClientID
 		impersonation := "system:serviceaccount:" + namespace + ":" + apis.RLarkAgentServiceAccountName
 		return "x509", map[string]string{
+			apis.MetaCertRole:                "agent",
 			apis.MetaAgentID:                 req.ClientID,
 			apis.MetaNamespace:               namespace,
 			apis.MetaRemoteDialerClientID:    req.ClientID,
@@ -75,8 +78,15 @@ func (s *Server) parseSignRequest(req *SignRequest) (string, map[string]string, 
 
 	case "domain":
 		return "ssh", map[string]string{
+			apis.MetaCertRole: "domain",
 			apis.MetaAgentID:  req.ClientID,
 			apis.MetaDomainID: req.DomainID,
+		}, nil
+
+	case "ssh-guest":
+		return "ssh", map[string]string{
+			apis.MetaCertRole: "ssh-guest",
+			apis.MetaUserID:   req.ClientID,
 		}, nil
 
 	default:

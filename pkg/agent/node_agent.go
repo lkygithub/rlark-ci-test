@@ -35,7 +35,16 @@ func (n *nodeAgent) Run(ctx context.Context) error {
 	return nodeserver.Run(ctx)
 }
 
+// TODO: 完善 Cred 凭证
 type containerNetworkCred struct{}
+
+func (c containerNetworkCred) IP() string {
+	return "0.0.0.0"
+}
+
+func (c containerNetworkCred) IPPrefixLength() int {
+	return 0
+}
 
 func (n *nodeAgent) getContainerNetworkCred(ctx context.Context, pid int32) (*containerNetworkCred, error) {
 	// TODO: 根据 pid 获取容器网络的凭证信息

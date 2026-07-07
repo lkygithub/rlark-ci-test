@@ -108,13 +108,21 @@ func (s *Server) sshPublicKeyAuth() ssh.PublicKeyHandler {
 			return s.checkCertRevoked(ctx, "ssh", fmt.Sprint(cert.Serial), cert.KeyId)
 		},
 		UserKeyFallback: func(conn gossh.ConnMetadata, key gossh.PublicKey) (*gossh.Permissions, error) {
-			return nil, fmt.Errorf("certificate authentication required")
+			// 如果证书验证失败，尝试使用普通公钥进行验证
+			if false /* TODO: check if the key is in the allowed list */ {
+				return nil, fmt.Errorf("public key authentication failed for user %s", conn.User())
+			}
+			// 如果验证成功，临时签一个 ssh-guest 证书 Meta，并返回 Permissions
+			_, meta, _ := s.parseSignRequest(&SignRequest{Role: "ssh-guest", ClientID: conn.User()})
+			sshCert := &gossh.Certificate{}
+			cert.SetSSHCertMeta(sshCert, meta)
+			return &sshCert.Permissions, nil
 		},
 	}
 
 	return func(ctx ssh.Context, key ssh.PublicKey) bool {
 		perm, err := cc.Authenticate(wrapSSHMetadata{ctx}, key)
-		if err != nil {
+		if err != nil || perm == nil {
 			return false
 		}
 		ctx.Permissions().Permissions = perm
