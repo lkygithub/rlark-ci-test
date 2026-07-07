@@ -2,25 +2,34 @@ package nodeserver
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"net"
+	"net/http"
 	"net/url"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/rlinf/rlark/pkg/log"
 	"github.com/rlinf/rlark/pkg/utils"
 )
 
-type CredGetter[C any] func(ctx context.Context, pid int32) (C, error)
-type DialGetter[C any] func(ctx context.Context, cred C, host string, query url.Values) (utils.Dial, error)
-
-type NodeServer[C any] struct {
-	config  Config
-	getCred CredGetter[C]
-	getDial DialGetter[C]
+type PodCred interface {
+	IP() string
+	IPPrefixLength() int
 }
 
-func NewNodeServer[C any](config Config, getCred CredGetter[C], getDial DialGetter[C]) *NodeServer[C] {
+type CredGetter[C PodCred] func(ctx context.Context, pid int32) (C, error)
+type DialGetter[C PodCred] func(ctx context.Context, cred C, host string, query url.Values) (utils.Dial, error)
+
+type NodeServer[C PodCred] struct {
+	config             Config
+	getCred            CredGetter[C]
+	getDial            DialGetter[C]
+	localServiceDialer utils.Dial
+}
+
+func NewNodeServer[C PodCred](config Config, getCred CredGetter[C], getDial DialGetter[C]) *NodeServer[C] {
 	return &NodeServer[C]{
 		config:  config,
 		getCred: getCred,
@@ -28,8 +37,25 @@ func NewNodeServer[C any](config Config, getCred CredGetter[C], getDial DialGett
 	}
 }
 
+func (s *NodeServer[C]) startLocalService(ctx context.Context) error {
+	l, d := utils.NetPipeWithBuffer(65536)
+	s.localServiceDialer = d
+	r := gin.New()
+	r.Use(gin.Recovery())
+	r.GET("/get_ip", s.handleGetIP)
+
+	srv := http.Server{Handler: r}
+	go func() {
+		_ = srv.Serve(l)
+	}()
+	return nil
+}
+
 func (s *NodeServer[C]) Run(ctx context.Context) error {
 	logger := log.FromContext(ctx)
+	if err := s.startLocalService(ctx); err != nil {
+		return fmt.Errorf("start local service: %w", err)
+	}
 	l, err := s.config.Listen()
 	if err != nil {
 		return err
@@ -64,6 +90,7 @@ func (s *NodeServer[C]) Run(ctx context.Context) error {
 	}
 }
 
+// handleConnection 处理来自本地进程的连接请求，读取目标地址并通过 dialer 连接到目标。
 func (s *NodeServer[C]) handleConnection(ctx context.Context, conn *utils.WrapConn, cred C) {
 	logger := log.FromContext(ctx)
 	ctx, cancel := context.WithTimeout(ctx, time.Second*30)
@@ -76,31 +103,60 @@ func (s *NodeServer[C]) handleConnection(ctx context.Context, conn *utils.WrapCo
 		logger.Error(nil, "Failed to read target from connection", "err", err)
 		return
 	}
-	dial, err := s.getDial(ctx, cred, host, query)
-	if err != nil {
-		logger.Error(nil, "Failed to get target", "host", host, "err", err)
-		return
-	}
-	conn2, err := dial(ctx)
-	if err != nil {
-		logger.Error(nil, "Failed to connect to target", "host", host, "port", port, "err", err)
-		return
-	}
-	defer func() { _ = conn2.Close() }()
+	var conn2 net.Conn
+	// 如果 host 为 0.0.0.0，则表示连接的是本地服务，此时使用 localServiceDialer 连接本地服务。
+	// 否则，使用 getDial 获取到目标的 dialer，并连接到目标。
+	if host == "0.0.0.0" {
+		ctx = utils.WithRemoteAddr(ctx, &net.UnixAddr{
+			Net:  "pod",
+			Name: fmt.Sprintf("%v/%v", cred.IP(), cred.IPPrefixLength()),
+		})
+		conn2, err = s.localServiceDialer(ctx)
+		if err != nil {
+			logger.Error(nil, "Failed to connect to local service", "err", err)
+			return
+		}
+	} else {
+		dial, err := s.getDial(ctx, cred, host, query)
+		if err != nil {
+			logger.Error(nil, "Failed to get target", "host", host, "err", err)
+			return
+		}
+		conn2, err = dial(ctx)
+		if err != nil {
+			logger.Error(nil, "Failed to connect to target", "host", host, "port", port, "err", err)
+			return
+		}
+		defer func() { _ = conn2.Close() }()
 
-	targetUrl := &url.URL{
-		Scheme:   network,
-		Host:     net.JoinHostPort(host, port),
-		RawQuery: query.Encode(),
-	}
-	proxyData := []byte(targetUrl.String() + "\n")
-	if _, err := conn2.Write(proxyData); err != nil {
-		logger.Error(nil, "Failed to write target to proxy", "target", targetUrl.String(), "err", err)
-		return
+		targetUrl := &url.URL{
+			Scheme:   network,
+			Host:     net.JoinHostPort(host, port),
+			RawQuery: query.Encode(),
+		}
+		proxyData := []byte(targetUrl.String() + "\n")
+		if _, err := conn2.Write(proxyData); err != nil {
+			logger.Error(nil, "Failed to write target to proxy", "target", targetUrl.String(), "err", err)
+			return
+		}
 	}
 
 	go func() {
 		_, _ = io.Copy(conn2, conn)
 	}()
 	_, _ = io.Copy(conn, conn2)
+}
+
+func (s *NodeServer[C]) handleGetIP(ctx *gin.Context) {
+	// 按照上面 Dial 的逻辑，这里 RemoteAddr 获取到的格式为：ip/prefixLength，即 Pod 的 CIDR 地址。
+	ip, ipNet, err := net.ParseCIDR(ctx.Request.RemoteAddr)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	prefixLength, _ := ipNet.Mask.Size()
+	ctx.JSON(http.StatusOK, PodIPInfo{
+		IP:           ip.String(),
+		PrefixLength: prefixLength,
+	})
 }

@@ -7,6 +7,36 @@ import (
 	"sync"
 )
 
+type localAddrContextKey struct{}
+type remoteAddrContextKey struct{}
+
+func WithLocalAddr(ctx context.Context, addr net.Addr) context.Context {
+	return context.WithValue(ctx, localAddrContextKey{}, addr)
+}
+
+func WithRemoteAddr(ctx context.Context, addr net.Addr) context.Context {
+	return context.WithValue(ctx, remoteAddrContextKey{}, addr)
+}
+
+type netConnWithValues struct {
+	net.Conn
+	ctx context.Context
+}
+
+func (c *netConnWithValues) LocalAddr() net.Addr {
+	if addr, ok := c.ctx.Value(localAddrContextKey{}).(net.Addr); ok {
+		return addr
+	}
+	return c.Conn.LocalAddr()
+}
+
+func (c *netConnWithValues) RemoteAddr() net.Addr {
+	if addr, ok := c.ctx.Value(remoteAddrContextKey{}).(net.Addr); ok {
+		return addr
+	}
+	return c.Conn.RemoteAddr()
+}
+
 type Dial func(ctx context.Context) (net.Conn, error)
 
 type netPipe struct {
@@ -54,7 +84,7 @@ func (p *netPipe) DialContext(ctx context.Context) (net.Conn, error) {
 
 	c1, c2 := net.Pipe()
 	select {
-	case p.c <- c1:
+	case p.c <- &netConnWithValues{Conn: c1, ctx: ctx}:
 		return c2, nil
 
 	case <-ctx.Done():
