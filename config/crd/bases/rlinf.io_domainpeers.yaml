@@ -65,8 +65,12 @@ spec:
                       type: string
                     node:
                       type: string
+                    uid:
+                      type: string
                   type: object
                 type: array
+              prefixLen:
+                type: integer
             type: object
           status:
             type: object

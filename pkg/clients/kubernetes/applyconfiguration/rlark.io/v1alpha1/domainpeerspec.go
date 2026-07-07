@@ -20,15 +20,24 @@ package v1alpha1
 // DomainPeerSpecApplyConfiguration represents a declarative configuration of the DomainPeerSpec type for use
 // with apply.
 type DomainPeerSpecApplyConfiguration struct {
-	Pods []DomainPodInfoApplyConfiguration `json:"pods,omitempty"`
-	Cert *string                           `json:"cert,omitempty"`
-	Key  *string                           `json:"key,omitempty"`
+	PrefixLen *int                              `json:"prefixLen,omitempty"`
+	Pods      []DomainPodInfoApplyConfiguration `json:"pods,omitempty"`
+	Cert      *string                           `json:"cert,omitempty"`
+	Key       *string                           `json:"key,omitempty"`
 }
 
 // DomainPeerSpecApplyConfiguration constructs a declarative configuration of the DomainPeerSpec type for use with
 // apply.
 func DomainPeerSpec() *DomainPeerSpecApplyConfiguration {
 	return &DomainPeerSpecApplyConfiguration{}
+}
+
+// WithPrefixLen sets the PrefixLen field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the PrefixLen field is set to the value of the last call.
+func (b *DomainPeerSpecApplyConfiguration) WithPrefixLen(value int) *DomainPeerSpecApplyConfiguration {
+	b.PrefixLen = &value
+	return b
 }
 
 // WithPods adds the given value to the Pods field in the declarative configuration

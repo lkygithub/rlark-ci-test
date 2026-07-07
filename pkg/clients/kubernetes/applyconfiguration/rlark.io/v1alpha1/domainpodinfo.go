@@ -23,6 +23,7 @@ type DomainPodInfoApplyConfiguration struct {
 	GlobalNamespace *string `json:"globalNamespace,omitempty"`
 	Namespace       *string `json:"namespace,omitempty"`
 	Name            *string `json:"name,omitempty"`
+	UID             *string `json:"uid,omitempty"`
 	Node            *string `json:"node,omitempty"`
 	IP              *string `json:"ip,omitempty"`
 	LocalIP         *string `json:"localIP,omitempty"`
@@ -55,6 +56,14 @@ func (b *DomainPodInfoApplyConfiguration) WithNamespace(value string) *DomainPod
 // If called multiple times, the Name field is set to the value of the last call.
 func (b *DomainPodInfoApplyConfiguration) WithName(value string) *DomainPodInfoApplyConfiguration {
 	b.Name = &value
+	return b
+}
+
+// WithUID sets the UID field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the UID field is set to the value of the last call.
+func (b *DomainPodInfoApplyConfiguration) WithUID(value string) *DomainPodInfoApplyConfiguration {
+	b.UID = &value
 	return b
 }
 
