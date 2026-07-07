@@ -45,6 +45,12 @@ func (d *RawDeployer) Deploy(cfg *DeployConfig, certBundle *CertBundle) error {
 	binPaths := make([]string, 0, len(comps))
 
 	for _, c := range comps {
+		// 如果组件已存在且健康，跳过部署
+		if c.HealthCheckFn != nil && c.HealthCheckFn(cfg) == nil {
+			logger.Info("component already healthy, skipping", "name", c.Name)
+			continue
+		}
+
 		binPath, err := downloadArtifact(c.ArtifactFn(cfg), c.Name)
 		if err != nil {
 			return err

@@ -8,6 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"golang.org/x/sync/errgroup"
+	"k8s.io/client-go/kubernetes"
 
 	"github.com/rlinf/rlark/pkg/clients/db"
 	versioned "github.com/rlinf/rlark/pkg/clients/kubernetes/clientset/versioned"
@@ -19,6 +20,7 @@ type Gateway struct {
 	config Config
 
 	kubeClient versioned.Interface
+	rawClient  kubernetes.Interface
 
 	dbClient *db.DB // may be nil if DBConfigPath is not provided, should be checked before use
 
@@ -62,6 +64,10 @@ func (g *Gateway) init(ctx context.Context) error {
 	g.kubeClient, err = versioned.NewForConfig(restConfig)
 	if err != nil {
 		return fmt.Errorf("create Kubernetes client: %w", err)
+	}
+	g.rawClient, err = kubernetes.NewForConfig(restConfig)
+	if err != nil {
+		return fmt.Errorf("create raw Kubernetes client: %w", err)
 	}
 
 	// init accessors

@@ -7,7 +7,7 @@ IMAGE_REGISTRY ?= harbor.infini-ai.com/share
 IMAGE_TAG ?= latest
 IMAGE_PLATFORMS ?= linux/amd64
 
-COMPONENTS = server controller-manager gateway agent
+COMPONENTS = server controller-manager gateway agent ui
 
 .PHONY: generate generate-manifests generate-clients generate-crd generate-api-docs samples clean-samples
 
@@ -35,9 +35,9 @@ clean-samples:
 GOOS ?= linux
 GOARCH ?= amd64
 
-.PHONY: build build-controller-manager build-gateway build-server build-agent build-rlarkadm
+.PHONY: build build-controller-manager build-gateway build-server build-agent build-ui build-rlarkadm
 
-build: build-server build-controller-manager build-gateway build-agent build-rlarkadm
+build: build-server build-controller-manager build-gateway build-agent build-ui build-rlarkadm
 
 build-server:
 	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build -o bin/server ./cmd/server/...
@@ -50,6 +50,9 @@ build-gateway:
 
 build-agent:
 	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build -o bin/agent ./cmd/agent/...
+
+build-ui:
+	cd web && npm install && npm run build
 
 build-rlarkadm:
 	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build -o bin/rlarkadm ./cmd/rlarkadm

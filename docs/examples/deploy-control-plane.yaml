@@ -16,11 +16,12 @@ plane: control
 
 kubernetes:
   kubeconfig: /Users/ar/test/kubeconfig.yaml # 往 k8s 集群部署平台，访问集群的 kubeconfig
-  gateway-image: harbor.infini-ai.com/artest/rlark-gateway:v0.0.1
+  gateway-image: harbor.infini-ai.com/artest/rlark-gateway:v0.0.2
   controller-manager-image: harbor.infini-ai.com/artest/rlark-controller-manager:v0.0.3
-  server-image: harbor.infini-ai.com/artest/rlark-server:v0.0.2
+  server-image: harbor.infini-ai.com/artest/rlark-server:v0.0.3
   kcp-image: harbor.infini-ai.com/share/kcp:v0.30.0
   postgresql-image: harbor.infini-ai.com/share/postgres:15
+  ui-image: harbor.infini-ai.com/artest/rlark-ui:v0.0.1
 
 #docker:
 #  gateway-image: harbor.infini-ai.com/share/rlark-gateway:latest
@@ -28,6 +29,7 @@ kubernetes:
 #  server-image: harbor.infini-ai.com/share/rlark-server:latest
 #  kcp-image: harbor.infini-ai.com/share/kcp:v0.30.0
 #  postgresql-image: harbor.infini-ai.com/share/postgres:15
+#  ui-image: harbor.infini-ai.com/share/rlark-ui:latest
 
 #raw:
 #  gateway-artifact: https://github.com/rlinf/rlark/releases/download/v0.1.0/rlark-gateway
