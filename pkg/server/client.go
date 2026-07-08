@@ -19,8 +19,8 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/rancher/remotedialer"
+	"github.com/rlinf/rlark/pkg/auth/cert"
 	"github.com/rlinf/rlark/pkg/configs"
-	"github.com/rlinf/rlark/pkg/server/cert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )

@@ -17,6 +17,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/rlinf/rlark/pkg/apis"
+	"github.com/rlinf/rlark/pkg/auth"
 	"github.com/rlinf/rlark/pkg/server/reverseproxy"
 )
 
@@ -56,7 +57,7 @@ func (s *Server) GetDial(ctx context.Context, dialType, address string, certMeta
 				return nil, "", fmt.Errorf("invalid target type: %s", targetType)
 			}
 			// 检查证书的 domain 身份是否具有访问目标的权限
-			if domainID, ok := apis.PermissionChecker.HasDomainProxyPermission(certMeta); ok {
+			if domainID, ok := auth.PermissionChecker.HasDomainProxyPermission(certMeta); ok {
 				hasPermission, domainCheckErr := s.checkHostInDomain(ctx, &targetHost, domainID, targetID)
 				if domainCheckErr != nil {
 					return nil, "", fmt.Errorf("failed to check domain proxy permission: %w", domainCheckErr)
@@ -191,7 +192,7 @@ func (s *Server) handleProxy(ctx *gin.Context) {
 	// - address = ctx.Param("target")
 	target := ctx.Param("target")
 	certMeta := GetCertMetaFromContext(ctx)
-	if !apis.PermissionChecker.HasAgentProxyPermission(certMeta, target) {
+	if !auth.PermissionChecker.HasAgentProxyPermission(certMeta, target) {
 		ctx.JSON(http.StatusForbidden, gin.H{"error": "client certificate does not have proxy permission for the target"})
 		return
 	}
@@ -215,7 +216,7 @@ func (s *Server) handleKubernetesProxy(ctx *gin.Context) {
 	// 如果证书中 "kubernetes-impersonation" 的值为 "-"，则表示不进行任何 impersonation
 
 	certMeta := GetCertMetaFromContext(ctx)
-	isAdmin := apis.PermissionChecker.IsAdmin(certMeta)
+	isAdmin := auth.PermissionChecker.IsAdmin(certMeta)
 	if certMeta[apis.MetaKubernetesImpersonation] == "" {
 		if isAdmin {
 			certMeta[apis.MetaKubernetesImpersonation] = "-"

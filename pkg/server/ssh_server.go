@@ -11,10 +11,10 @@ import (
 	"github.com/charmbracelet/wish"
 	gossh "golang.org/x/crypto/ssh"
 
-	"github.com/rlinf/rlark/pkg/apis/protocol"
+	"github.com/rlinf/rlark/pkg/apis"
+	"github.com/rlinf/rlark/pkg/auth/cert"
 	"github.com/rlinf/rlark/pkg/db"
 	"github.com/rlinf/rlark/pkg/log"
-	"github.com/rlinf/rlark/pkg/server/cert"
 	"github.com/rlinf/rlark/pkg/server/reverseproxy"
 )
 
@@ -188,7 +188,7 @@ func (s *Server) handleSSHChannel(srv *ssh.Server, conn *gossh.ServerConn, newCh
 		return
 	}
 
-	var payload protocol.DirectPayload
+	var payload apis.SSHDirectPayload
 	err := gossh.Unmarshal(newChan.ExtraData(), &payload)
 	if err != nil {
 		logger.Error(nil, "Cannot accept extra data", "sessionID", ctx.SessionID(), "err", err)

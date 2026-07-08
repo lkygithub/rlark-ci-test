@@ -20,10 +20,10 @@ import (
 	"github.com/rlinf/rlark/kubeclients/clientset/versioned"
 	"github.com/rlinf/rlark/kubeclients/informers/externalversions"
 	listerv1alpha1 "github.com/rlinf/rlark/kubeclients/listers/rlark.io/v1alpha1"
+	"github.com/rlinf/rlark/pkg/auth/cert"
 	"github.com/rlinf/rlark/pkg/db"
 	"github.com/rlinf/rlark/pkg/log"
 	"github.com/rlinf/rlark/pkg/server/caches"
-	"github.com/rlinf/rlark/pkg/server/cert"
 	"github.com/rlinf/rlark/pkg/server/reverseproxy"
 )
 
