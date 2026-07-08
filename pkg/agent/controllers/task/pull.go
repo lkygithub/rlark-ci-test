@@ -206,7 +206,7 @@ func getWorkloadNamespace(mgmtTask *rlarkv1alpha1.Task) string {
 
 // ensureLabels ensures the pod template has labels, adding a default if none are set.
 func ensureLabels(template *corev1.PodTemplateSpec, name string) {
-	if template.Labels == nil || len(template.Labels) == 0 {
+	if template == nil || len(template.Labels) == 0 {
 		template.Labels = map[string]string{
 			"app": name,
 		}

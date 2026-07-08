@@ -16,7 +16,7 @@ import (
 )
 
 type containerNetworkCred struct {
-	containerID        string
+	// containerID        string
 	podID              string
 	domainID           string
 	domainIP           string

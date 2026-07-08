@@ -19,7 +19,7 @@ func NewPodCache(podInformer cache.SharedIndexInformer) *PodCache {
 		podInformer: podInformer,
 		pods:        make(map[string]*v1alpha1.Pod),
 	}
-	podInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+	_, _ = podInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    c.onAdd,
 		UpdateFunc: c.onUpdate,
 		DeleteFunc: c.onDelete,

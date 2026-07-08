@@ -35,10 +35,10 @@ func TestPodUIDFromResolvSource(t *testing.T) {
 	validUUID := "01234567-89ab-cdef-0123-456789abcdef"
 
 	tests := []struct {
-		name        string
-		source      string
-		wantUID     string
-		wantOK      bool
+		name    string
+		source  string
+		wantUID string
+		wantOK  bool
 	}{
 		{
 			name:    "standard kubelet path",

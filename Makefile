@@ -9,6 +9,19 @@ IMAGE_PLATFORMS ?= linux/amd64
 
 COMPONENTS = server controller-manager gateway agent ui
 
+lint-go:
+	@echo "Running golangci-lint..."
+	@golangci-lint run
+
+fmt-go:
+	@echo "Running gofmt..."
+	@go fmt ./cmd
+	@go fmt ./pkg
+
+fmt-web:
+	@echo "Running prettier..."
+	@cd web && npm install && npx prettier --write .
+
 .PHONY: generate generate-manifests generate-clients generate-crd generate-api-docs samples clean-samples
 
 generate: generate-crd generate-api-docs samples
