@@ -39,20 +39,14 @@ func podUIDFromResolvSource(mountSource string) (string, bool) {
 	return podUID, true
 }
 
-// isUUID 校验标准 UUID 格式 xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+// isUUID 简单校验 UUID 格式 xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 func isUUID(s string) bool {
 	if len(s) != 36 {
 		return false
 	}
 	for i := 0; i < 36; i++ {
-		ch := s[i]
-		switch {
-		case i == 8 || i == 13 || i == 18 || i == 23:
-			if ch != '-' {
-				return false
-			}
-		default:
-			if !((ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'f') || (ch >= 'A' && ch <= 'F')) {
+		if i == 8 || i == 13 || i == 18 || i == 23 {
+			if s[i] != '-' {
 				return false
 			}
 		}

@@ -154,7 +154,7 @@ func TestSSHDialer_ConcurrentSafety(t *testing.T) {
 		InitialReconnectBackoff: 1 * time.Millisecond,
 		MaxReconnectBackoff:     10 * time.Millisecond,
 	})
-	defer d.Close()
+	defer func() { _ = d.Close() }()
 
 	var wg sync.WaitGroup
 	for i := 0; i < 50; i++ {
@@ -176,7 +176,7 @@ func TestSSHDialer_ConcurrentReconnect(t *testing.T) {
 		InitialReconnectBackoff: 1 * time.Millisecond,
 		MaxReconnectBackoff:     10 * time.Millisecond,
 	})
-	defer d.Close()
+	defer func() { _ = d.Close() }()
 	entry := d.getOrCreate("test-domain")
 
 	// 模拟连接断开
@@ -216,7 +216,7 @@ func TestSSHDialer_ReconnectCoordination(t *testing.T) {
 		InitialReconnectBackoff: 1 * time.Millisecond,
 		MaxReconnectBackoff:     10 * time.Millisecond,
 	})
-	defer d.Close()
+	defer func() { _ = d.Close() }()
 	entry := d.getOrCreate("test-domain")
 
 	// 启动一个真实的 SSH 服务器，慢速握手
@@ -278,7 +278,7 @@ func TestSSHDialer_Close(t *testing.T) {
 	d := NewSSHDialer(SSHDialerConfig{})
 	entry := d.getOrCreate("test-domain")
 	entry.client = newSSHClient(t)
-	d.Close()
+	_ = d.Close()
 }
 
 // TestSSHDialer_CloseRacesReconnect 测试 Close 与重连的竞态：
@@ -296,7 +296,7 @@ func TestSSHDialer_CloseRacesReconnect(t *testing.T) {
 
 	// 立即 Close
 	time.Sleep(5 * time.Millisecond)
-	d.Close()
+	_ = d.Close()
 
 	// 等待重连返回
 	<-done
@@ -316,7 +316,7 @@ func TestSSHDialer_CloseRacesReconnect(t *testing.T) {
 // TestSSHDialer_Stats 测试统计。
 func TestSSHDialer_Stats(t *testing.T) {
 	d := NewSSHDialer(SSHDialerConfig{})
-	defer d.Close()
+	defer func() { _ = d.Close() }()
 
 	entry1 := d.getOrCreate("a")
 	entry1.client = newSSHClient(t)
@@ -339,7 +339,7 @@ func TestSSHDialer_GC(t *testing.T) {
 		IdleTimeout:     50 * time.Millisecond,
 		CleanupInterval: 20 * time.Millisecond,
 	})
-	defer d.Close()
+	defer func() { _ = d.Close() }()
 
 	entry := d.getOrCreate("test-domain")
 	entry.client = newSSHClient(t)
@@ -360,7 +360,7 @@ func TestSSHDialer_GC(t *testing.T) {
 // TestSSHDialer_GetOrCreate 测试 domain 创建和复用。
 func TestSSHDialer_GetOrCreate(t *testing.T) {
 	d := NewSSHDialer(SSHDialerConfig{})
-	defer d.Close()
+	defer func() { _ = d.Close() }()
 
 	e1 := d.getOrCreate("test")
 	e2 := d.getOrCreate("test")
@@ -399,7 +399,7 @@ func TestReconnectCoord_Parallelism(t *testing.T) {
 		InitialReconnectBackoff: 1 * time.Millisecond,
 		MaxReconnectBackoff:     10 * time.Millisecond,
 	})
-	defer d.Close()
+	defer func() { _ = d.Close() }()
 
 	entry := &domainEntry{domainID: "test"}
 	blockCh := make(chan struct{})
