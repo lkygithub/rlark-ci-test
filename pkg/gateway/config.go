@@ -1,8 +1,9 @@
 package gateway
 
 import (
-	"github.com/rlinf/rlark/pkg/clients"
 	"github.com/spf13/pflag"
+
+	"github.com/rlinf/rlark/pkg/configs"
 )
 
 // Config holds the configuration for the API gateway.
@@ -11,7 +12,7 @@ type Config struct {
 	Address string
 
 	// KubeClientConfig is the Kubernetes client configuration.
-	KubeClientConfig clients.KubernetesClientConfig
+	KubeClientConfig configs.KubernetesClientConfig
 
 	// DBConfigPath is the file path to the database configuration (e.g., YAML or JSON).
 	DBConfigPath string
@@ -25,7 +26,7 @@ func DefaultConfig() Config {
 	return Config{
 		Address:          ":8080",
 		ServerAddress:    "https://rlark-server.rlark-system.svc:8443",
-		KubeClientConfig: clients.DefaultKubernetesClientConfig(),
+		KubeClientConfig: configs.DefaultKubernetesClientConfig(),
 	}
 }
 

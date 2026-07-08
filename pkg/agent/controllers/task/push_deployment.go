@@ -13,7 +13,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	rlarkv1alpha1 "github.com/rlinf/rlark/pkg/apis/rlark.io/v1alpha1"
+	rlarkv1alpha1 "github.com/rlinf/rlark/api/rlark.io/v1alpha1"
 )
 
 // pushDeploymentReconciler watches local Deployments and reports status to management Task.

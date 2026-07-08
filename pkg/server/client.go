@@ -19,7 +19,7 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/rancher/remotedialer"
-	"github.com/rlinf/rlark/pkg/clients"
+	"github.com/rlinf/rlark/pkg/configs"
 	"github.com/rlinf/rlark/pkg/server/cert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -113,7 +113,7 @@ func NewClientFromConfig(config ClientConfig) (*Client, error) {
 // and retrieving the client certificate from Kubernetes secrets. It can only be
 // used when the client is running inside the same network as the server and has
 // access to the Kubernetes API.
-func NewClientFromKubernetes(ctx context.Context, serverAddr string, kubeConfig clients.KubernetesClientConfig) (*Client, error) {
+func NewClientFromKubernetes(ctx context.Context, serverAddr string, kubeConfig configs.KubernetesClientConfig) (*Client, error) {
 	restConfig, err := kubeConfig.BuildRestConfig()
 	if err != nil {
 		return nil, fmt.Errorf("build rest config: %w", err)

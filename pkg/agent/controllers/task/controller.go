@@ -3,8 +3,8 @@ package task
 import (
 	appsv1 "k8s.io/api/apps/v1"
 
+	rlarkv1alpha1 "github.com/rlinf/rlark/api/rlark.io/v1alpha1"
 	"github.com/rlinf/rlark/pkg/agent/controllers/base"
-	rlarkv1alpha1 "github.com/rlinf/rlark/pkg/apis/rlark.io/v1alpha1"
 )
 
 type TaskController struct {

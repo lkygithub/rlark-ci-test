@@ -7,7 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/rlinf/rlark/pkg/clients/db"
+	"github.com/rlinf/rlark/pkg/db"
 )
 
 // --- Query parameter parsing ---

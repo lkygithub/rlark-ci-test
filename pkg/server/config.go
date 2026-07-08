@@ -10,7 +10,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd/api"
 
 	"github.com/rlinf/rlark/pkg/apis"
-	"github.com/rlinf/rlark/pkg/clients"
+	"github.com/rlinf/rlark/pkg/configs"
 	"github.com/rlinf/rlark/pkg/server/cert"
 )
 
@@ -31,7 +31,7 @@ type Config struct {
 	TLSDomains []string
 
 	// Kubernetes client configuration.
-	KubeClientConfig clients.KubernetesClientConfig
+	KubeClientConfig configs.KubernetesClientConfig
 
 	// DBConfigPath is the file path to the database configuration (e.g., YAML or JSON).
 	DBConfigPath string
@@ -50,7 +50,7 @@ func DefaultConfig() Config {
 		UnsafeHTTPPort:    8888,
 		AutoSignTLSCACert: false,
 		TLSDomains:        []string{"localhost"},
-		KubeClientConfig:  clients.DefaultKubernetesClientConfig(),
+		KubeClientConfig:  configs.DefaultKubernetesClientConfig(),
 		DBConfigPath:      "",
 		PeerServiceName:   "",
 		Peers:             []string{},

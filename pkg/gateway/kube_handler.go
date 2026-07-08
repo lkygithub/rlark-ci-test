@@ -11,8 +11,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	rlarkiov1alpha1 "github.com/rlinf/rlark/pkg/apis/rlark.io/v1alpha1"
-	versioned "github.com/rlinf/rlark/pkg/clients/kubernetes/clientset/versioned"
+	rlarkiov1alpha1 "github.com/rlinf/rlark/api/rlark.io/v1alpha1"
+	versioned "github.com/rlinf/rlark/kubeclients/clientset/versioned"
 )
 
 // resourceAccessor encapsulates Kubernetes client operations for a specific resource type.

@@ -10,7 +10,7 @@ import (
 	gocache "github.com/patrickmn/go-cache"
 
 	"github.com/rlinf/rlark/pkg/apis"
-	"github.com/rlinf/rlark/pkg/clients/db"
+	"github.com/rlinf/rlark/pkg/db"
 	"github.com/rlinf/rlark/pkg/log"
 	"github.com/rlinf/rlark/pkg/server/cert"
 )

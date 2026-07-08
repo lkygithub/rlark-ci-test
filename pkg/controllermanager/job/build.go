@@ -7,7 +7,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	rlarkv1alpha1 "github.com/rlinf/rlark/pkg/apis/rlark.io/v1alpha1"
+	rlarkv1alpha1 "github.com/rlinf/rlark/api/rlark.io/v1alpha1"
 )
 
 func (r *JobReconciler) resolveTaskNamespace(ctx context.Context, t *rlarkv1alpha1.JobTaskTemplate) string {

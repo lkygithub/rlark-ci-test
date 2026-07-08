@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/rlinf/rlark/kubeclients/informers/externalversions"
 	"github.com/rlinf/rlark/pkg/agent/container"
-	"github.com/rlinf/rlark/pkg/clients/kubernetes/informers/externalversions"
 	"github.com/rlinf/rlark/pkg/network/nodeserver"
 )
 

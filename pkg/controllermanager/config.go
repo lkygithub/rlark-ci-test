@@ -3,13 +3,13 @@ package controllermanager
 import (
 	"github.com/spf13/pflag"
 
-	"github.com/rlinf/rlark/pkg/clients"
+	"github.com/rlinf/rlark/pkg/configs"
 	"github.com/rlinf/rlark/pkg/controllermanager/sync"
 )
 
 type Config struct {
 	// Kubernetes client configuration.
-	KubeClientConfig clients.KubernetesClientConfig
+	KubeClientConfig configs.KubernetesClientConfig
 
 	// Server Address
 	ServerAddress string
@@ -28,7 +28,7 @@ type Config struct {
 
 func DefaultConfig() Config {
 	return Config{
-		KubeClientConfig: clients.DefaultKubernetesClientConfig(),
+		KubeClientConfig: configs.DefaultKubernetesClientConfig(),
 		DBConfigPath:     "",
 
 		LeaderElection:   true,
