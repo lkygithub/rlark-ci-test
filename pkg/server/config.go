@@ -10,8 +10,8 @@ import (
 	"k8s.io/client-go/tools/clientcmd/api"
 
 	"github.com/rlinf/rlark/pkg/apis"
+	"github.com/rlinf/rlark/pkg/auth/cert"
 	"github.com/rlinf/rlark/pkg/configs"
-	"github.com/rlinf/rlark/pkg/server/cert"
 )
 
 // Config holds the server configuration parameters.

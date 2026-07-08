@@ -1,4 +1,4 @@
-package servercli
+package rlarkctl
 
 import (
 	"encoding/json"

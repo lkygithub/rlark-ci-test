@@ -10,9 +10,10 @@ import (
 	gocache "github.com/patrickmn/go-cache"
 
 	"github.com/rlinf/rlark/pkg/apis"
+	"github.com/rlinf/rlark/pkg/auth"
+	"github.com/rlinf/rlark/pkg/auth/cert"
 	"github.com/rlinf/rlark/pkg/db"
 	"github.com/rlinf/rlark/pkg/log"
-	"github.com/rlinf/rlark/pkg/server/cert"
 )
 
 const (
@@ -97,7 +98,7 @@ func (s *Server) parseSignRequest(req *SignRequest) (string, map[string]string, 
 }
 
 func (s *Server) handleSignCertificate(ctx *gin.Context) {
-	if !apis.PermissionChecker.IsAdmin(GetCertMetaFromContext(ctx)) {
+	if !auth.PermissionChecker.IsAdmin(GetCertMetaFromContext(ctx)) {
 		ctx.JSON(http.StatusForbidden, gin.H{"error": "admin permission required"})
 		return
 	}
@@ -175,7 +176,7 @@ func (s *Server) handleCertCheck(ctx *gin.Context) {
 }
 
 func (s *Server) handleRevokeCertificate(ctx *gin.Context) {
-	if !apis.PermissionChecker.IsAdmin(GetCertMetaFromContext(ctx)) {
+	if !auth.PermissionChecker.IsAdmin(GetCertMetaFromContext(ctx)) {
 		ctx.JSON(http.StatusForbidden, gin.H{"error": "admin permission required"})
 		return
 	}

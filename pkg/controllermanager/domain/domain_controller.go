@@ -14,8 +14,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	rlarkv1alpha1 "github.com/rlinf/rlark/api/rlark.io/v1alpha1"
+	"github.com/rlinf/rlark/pkg/auth/cert"
 	"github.com/rlinf/rlark/pkg/configs"
-	"github.com/rlinf/rlark/pkg/server/cert"
 )
 
 // DomainReconciler watches Domain and Pod CRs, and generates DomainPeer

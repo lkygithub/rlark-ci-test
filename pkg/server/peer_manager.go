@@ -18,7 +18,7 @@ import (
 	"k8s.io/client-go/tools/leaderelection"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 
-	"github.com/rlinf/rlark/pkg/server/cert"
+	"github.com/rlinf/rlark/pkg/auth/cert"
 )
 
 var (
