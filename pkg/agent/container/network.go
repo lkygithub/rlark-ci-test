@@ -9,9 +9,9 @@ import (
 
 	"golang.org/x/crypto/ssh"
 
+	"github.com/rlinf/rlark/api/rlark.io/v1alpha1"
+	listerv1alpha1 "github.com/rlinf/rlark/kubeclients/listers/rlark.io/v1alpha1"
 	"github.com/rlinf/rlark/pkg/apis"
-	"github.com/rlinf/rlark/pkg/apis/rlark.io/v1alpha1"
-	listerv1alpha1 "github.com/rlinf/rlark/pkg/clients/kubernetes/listers/rlark.io/v1alpha1"
 	"github.com/rlinf/rlark/pkg/utils"
 )
 

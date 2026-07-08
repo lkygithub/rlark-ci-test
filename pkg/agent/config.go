@@ -6,14 +6,14 @@ import (
 
 	"github.com/spf13/pflag"
 
-	"github.com/rlinf/rlark/pkg/clients"
+	"github.com/rlinf/rlark/pkg/configs"
 	"github.com/rlinf/rlark/pkg/network/nodeserver"
 	"github.com/rlinf/rlark/pkg/server"
 )
 
 type Config struct {
 	ClientConfig     server.ClientConfig
-	KubeClientConfig clients.KubernetesClientConfig
+	KubeClientConfig configs.KubernetesClientConfig
 
 	// AgentType is the type of agent (Kubernetes/Docker/Raw)
 	AgentType string
@@ -34,7 +34,7 @@ type Config struct {
 func DefaultConfig() Config {
 	return Config{
 		ClientConfig:      server.DefaultClientConfig(),
-		KubeClientConfig:  clients.DefaultKubernetesClientConfig(),
+		KubeClientConfig:  configs.DefaultKubernetesClientConfig(),
 		AgentType:         "Kubernetes",
 		Mode:              "cluster",
 		LeaderElectionKey: "default/rlark-agent",

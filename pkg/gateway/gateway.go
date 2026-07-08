@@ -10,8 +10,8 @@ import (
 	"golang.org/x/sync/errgroup"
 	"k8s.io/client-go/kubernetes"
 
-	"github.com/rlinf/rlark/pkg/clients/db"
-	versioned "github.com/rlinf/rlark/pkg/clients/kubernetes/clientset/versioned"
+	versioned "github.com/rlinf/rlark/kubeclients/clientset/versioned"
+	"github.com/rlinf/rlark/pkg/db"
 	"github.com/rlinf/rlark/pkg/log"
 )
 

@@ -13,8 +13,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	rlarkv1alpha1 "github.com/rlinf/rlark/pkg/apis/rlark.io/v1alpha1"
-	"github.com/rlinf/rlark/pkg/clients"
+	rlarkv1alpha1 "github.com/rlinf/rlark/api/rlark.io/v1alpha1"
+	"github.com/rlinf/rlark/pkg/configs"
 	"github.com/rlinf/rlark/pkg/server/cert"
 )
 
@@ -29,7 +29,7 @@ type DomainReconciler struct {
 	Scheme *runtime.Scheme
 
 	// Kubernetes client configuration.
-	KubeClientConfig clients.KubernetesClientConfig
+	KubeClientConfig configs.KubernetesClientConfig
 	// Server Address
 	ServerAddress string
 }

@@ -6,7 +6,7 @@ import (
 	"github.com/looplab/fsm"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	rlarkv1alpha1 "github.com/rlinf/rlark/pkg/apis/rlark.io/v1alpha1"
+	rlarkv1alpha1 "github.com/rlinf/rlark/api/rlark.io/v1alpha1"
 )
 
 const (
@@ -73,4 +73,3 @@ func newWorkflowStateMachine() *fsm.FSM {
 		},
 	})
 }
-

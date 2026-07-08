@@ -12,7 +12,7 @@ import (
 	gossh "golang.org/x/crypto/ssh"
 
 	"github.com/rlinf/rlark/pkg/apis/protocol"
-	"github.com/rlinf/rlark/pkg/clients/db"
+	"github.com/rlinf/rlark/pkg/db"
 	"github.com/rlinf/rlark/pkg/log"
 	"github.com/rlinf/rlark/pkg/server/cert"
 	"github.com/rlinf/rlark/pkg/server/reverseproxy"

@@ -10,12 +10,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
+	rlarkv1alpha1 "github.com/rlinf/rlark/api/rlark.io/v1alpha1"
 	"github.com/rlinf/rlark/pkg/agent/controllers"
 	"github.com/rlinf/rlark/pkg/agent/controllers/base"
 	"github.com/rlinf/rlark/pkg/agent/controllers/node"
 	"github.com/rlinf/rlark/pkg/agent/controllers/pod"
 	"github.com/rlinf/rlark/pkg/agent/controllers/task"
-	rlarkv1alpha1 "github.com/rlinf/rlark/pkg/apis/rlark.io/v1alpha1"
 	"github.com/rlinf/rlark/pkg/log"
 )
 

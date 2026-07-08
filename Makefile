@@ -15,8 +15,8 @@ generate: generate-crd generate-api-docs samples
 
 generate-manifests: $(CONTROLLER_GEN)
 	mkdir -p $(CRD_DIR)
-	$(CONTROLLER_GEN) object paths=./pkg/apis/rlark.io/...
-	$(CONTROLLER_GEN) crd paths=./pkg/apis/rlark.io/... output:crd:artifacts:config=$(CRD_DIR)
+	$(CONTROLLER_GEN) object paths=./api/rlark.io/...
+	$(CONTROLLER_GEN) crd paths=./api/rlark.io/... output:crd:artifacts:config=$(CRD_DIR)
 
 generate-clients:
 	./hack/generate-clients.sh --with-watch

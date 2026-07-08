@@ -13,14 +13,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
-	rlarkv1alpha1 "github.com/rlinf/rlark/pkg/apis/rlark.io/v1alpha1"
-	"github.com/rlinf/rlark/pkg/clients/db"
+	rlarkv1alpha1 "github.com/rlinf/rlark/api/rlark.io/v1alpha1"
 	"github.com/rlinf/rlark/pkg/controllermanager/domain"
 	"github.com/rlinf/rlark/pkg/controllermanager/job"
 	"github.com/rlinf/rlark/pkg/controllermanager/node"
 	"github.com/rlinf/rlark/pkg/controllermanager/sync"
 	"github.com/rlinf/rlark/pkg/controllermanager/task"
 	"github.com/rlinf/rlark/pkg/controllermanager/workflow"
+	"github.com/rlinf/rlark/pkg/db"
 	"github.com/rlinf/rlark/pkg/log"
 )
 

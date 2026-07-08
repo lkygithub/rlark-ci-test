@@ -10,8 +10,8 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 
-	rlarkv1alpha1 "github.com/rlinf/rlark/pkg/apis/rlark.io/v1alpha1"
-	"github.com/rlinf/rlark/pkg/clients/kubernetes/clientset/versioned"
+	rlarkv1alpha1 "github.com/rlinf/rlark/api/rlark.io/v1alpha1"
+	"github.com/rlinf/rlark/kubeclients/clientset/versioned"
 	"github.com/rlinf/rlark/pkg/server"
 	"github.com/rlinf/rlark/pkg/utils"
 )

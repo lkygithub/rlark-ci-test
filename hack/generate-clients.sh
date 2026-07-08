@@ -44,9 +44,9 @@ for arg in "$@"; do
     esac
 done
 
-API_PKG="github.com/rlinf/rlark/pkg/apis/rlark.io"
-OUTPUT_PKG="github.com/rlinf/rlark/pkg/clients/kubernetes"
-OUTPUT_DIR="${SCRIPT_ROOT}/pkg/clients/kubernetes"
+API_PKG="github.com/rlinf/rlark/api/rlark.io"
+OUTPUT_PKG="github.com/rlinf/rlark/kubeclients"
+OUTPUT_DIR="${SCRIPT_ROOT}/kubeclients"
 
 echo ">>> Generating typed clients..."
 
@@ -57,7 +57,7 @@ if [ "$WITH_WATCH" = true ]; then
 fi
 
 kube::codegen::gen_client \
-    "${SCRIPT_ROOT}/pkg/apis" \
+    "${SCRIPT_ROOT}/api" \
     --output-dir "${OUTPUT_DIR}" \
     --output-pkg "${OUTPUT_PKG}" \
     --boilerplate "${SCRIPT_ROOT}/hack/boilerplate.go.txt" \
