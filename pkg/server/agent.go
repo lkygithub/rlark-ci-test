@@ -53,39 +53,51 @@ func (s *Server) registerAgent(ctx context.Context, agentID string) error {
 		}
 	}
 
-	// 3. 创建 RBAC 规则 (ClusterRole + ClusterRoleBinding)
-	// agent 需要集群范围权限来 watch/list 跨 namespace 的 nodes、tasks、pods 等资源
+	// 3. 创建 RBAC 规则
+	// 每个 agent 有自己的 RoleBinding（名称含 agentID），避免多 agent 接入时互相覆盖 subject
 	rules := []rbacv1.PolicyRule{
 		{APIGroups: []string{"rlinf.io"}, Resources: []string{"nodes", "tasks", "pods"}, Verbs: []string{"get", "list", "watch", "create", "update", "patch", "delete"}},
 		{APIGroups: []string{"rlinf.io"}, Resources: []string{"nodes/status", "tasks/status", "pods/status"}, Verbs: []string{"get", "update", "patch"}},
 		{APIGroups: []string{"coordination.k8s.io"}, Resources: []string{"leases"}, Verbs: []string{"get", "create", "update", "patch"}},
 	}
-	_, err = s.kubeClient.RbacV1().ClusterRoles().Get(ctx, saName, metav1.GetOptions{})
+	roleName := saName
+	role := &rbacv1.Role{
+		ObjectMeta: metav1.ObjectMeta{Name: roleName, Namespace: namespace},
+		Rules:      rules,
+	}
+	_, err = s.kubeClient.RbacV1().Roles(namespace).Get(ctx, roleName, metav1.GetOptions{})
 	if err != nil {
 		if !errors.IsNotFound(err) {
-			return fmt.Errorf("get ClusterRole %s: %w", saName, err)
+			return fmt.Errorf("get Role %s/%s: %w", namespace, roleName, err)
 		}
-		_, err = s.kubeClient.RbacV1().ClusterRoles().Create(ctx, &rbacv1.ClusterRole{
-			ObjectMeta: metav1.ObjectMeta{Name: saName},
-			Rules:      rules,
-		}, metav1.CreateOptions{})
+		_, err = s.kubeClient.RbacV1().Roles(namespace).Create(ctx, role, metav1.CreateOptions{})
 		if err != nil {
-			return fmt.Errorf("create ClusterRole %s: %w", saName, err)
+			return fmt.Errorf("create Role %s/%s: %w", namespace, roleName, err)
+		}
+	} else {
+		if _, err := s.kubeClient.RbacV1().Roles(namespace).Update(ctx, role, metav1.UpdateOptions{}); err != nil {
+			return fmt.Errorf("update Role %s/%s: %w", namespace, roleName, err)
 		}
 	}
 
-	_, err = s.kubeClient.RbacV1().ClusterRoleBindings().Get(ctx, saName, metav1.GetOptions{})
+	rbName := roleName + "-binding"
+	rb := &rbacv1.RoleBinding{
+		ObjectMeta: metav1.ObjectMeta{Name: rbName, Namespace: namespace},
+		Subjects:   []rbacv1.Subject{{Kind: "ServiceAccount", Name: saName, Namespace: namespace}},
+		RoleRef:    rbacv1.RoleRef{Kind: "Role", Name: roleName, APIGroup: "rbac.authorization.k8s.io"},
+	}
+	_, err = s.kubeClient.RbacV1().RoleBindings(namespace).Get(ctx, rbName, metav1.GetOptions{})
 	if err != nil {
 		if !errors.IsNotFound(err) {
-			return fmt.Errorf("get ClusterRoleBinding %s: %w", saName, err)
+			return fmt.Errorf("get RoleBinding %s/%s: %w", namespace, rbName, err)
 		}
-		_, err = s.kubeClient.RbacV1().ClusterRoleBindings().Create(ctx, &rbacv1.ClusterRoleBinding{
-			ObjectMeta: metav1.ObjectMeta{Name: saName},
-			Subjects:   []rbacv1.Subject{{Kind: "ServiceAccount", Name: saName, Namespace: namespace}},
-			RoleRef:    rbacv1.RoleRef{Kind: "ClusterRole", Name: saName, APIGroup: "rbac.authorization.k8s.io"},
-		}, metav1.CreateOptions{})
+		_, err = s.kubeClient.RbacV1().RoleBindings(namespace).Create(ctx, rb, metav1.CreateOptions{})
 		if err != nil {
-			return fmt.Errorf("create ClusterRoleBinding %s: %w", saName, err)
+			return fmt.Errorf("create RoleBinding %s/%s: %w", namespace, rbName, err)
+		}
+	} else {
+		if _, err := s.kubeClient.RbacV1().RoleBindings(namespace).Update(ctx, rb, metav1.UpdateOptions{}); err != nil {
+			return fmt.Errorf("update RoleBinding %s/%s: %w", namespace, rbName, err)
 		}
 	}
 

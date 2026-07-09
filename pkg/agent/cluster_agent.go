@@ -1,12 +1,12 @@
 package agent
 
 import (
-	"cmp"
 	"context"
 	"fmt"
 
 	"golang.org/x/sync/errgroup"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
@@ -25,14 +25,24 @@ type clusterAgent struct {
 }
 
 func (c *clusterAgent) Run(ctx context.Context) error {
-	ctrl.SetLogger(log.GetLogger())
+	logger := log.FromContext(ctx).WithName("clusterAgent")
+	ctrl.SetLogger(logger)
 
 	agentType := c.a.config.AgentType
-	clusterID := cmp.Or(c.a.config.ClientConfig.ServerNamespace, "default")
+	clusterID := c.a.config.ClientConfig.ServerNamespace
+	logger.Info(fmt.Sprintf("agentType=%s, clusterID=%s", agentType, clusterID))
+	if clusterID == "" {
+		return fmt.Errorf("cluster ID is empty")
+	}
 
 	mm, err := ctrl.NewManager(c.a.managementConfig, ctrl.Options{
 		Scheme:  controllers.MgmtScheme,
 		Metrics: metricsserver.Options{BindAddress: "0"},
+		Cache: cache.Options{
+			DefaultNamespaces: map[string]cache.Config{
+				clusterID: {},
+			},
+		},
 	})
 	if err != nil {
 		return fmt.Errorf("create management manager: %w", err)
