@@ -81,6 +81,7 @@ func (r *pullReconciler) Reconcile(ctx context.Context, req reconcile.Request) (
 	}
 
 	workloadSpec := mgmtTask.Spec.Kubernetes.Workload
+	workloadSpec.Template.Spec.NodeSelector = mgmtTask.Spec.NodeSelector // pod 继承 task 的 node label
 
 	switch workloadSpec.Kind {
 	case rlarkv1alpha1.KubernetesWorkloadDeployment:
