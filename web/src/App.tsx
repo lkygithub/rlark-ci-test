@@ -60,13 +60,11 @@ type Theme = 'light' | 'dark'
 function useIsAdminPath() {
     const [isAdmin, setIsAdmin] = useState(() => {
         if (typeof window === "undefined") return false;
-        const p = window.location.pathname.replace(/\/+$/, "");
-        return p === "/admin" || p.endsWith("/admin");
+        return window.location.pathname.startsWith("/admin");
     });
     useEffect(() => {
         const onPop = () => {
-            const p = window.location.pathname.replace(/\/+$/, "");
-            setIsAdmin(p === "/admin" || p.endsWith("/admin"));
+            setIsAdmin(window.location.pathname.startsWith("/admin"));
         };
         window.addEventListener("popstate", onPop);
         return () => window.removeEventListener("popstate", onPop);
@@ -324,7 +322,6 @@ const navItems: { id: Page; icon: typeof LayoutDashboard }[] = [
     {id: 'overview', icon: LayoutDashboard},
     {id: 'clusters', icon: Network},
     {id: 'jobs', icon: Workflow},
-    {id: 'api', icon: Braces},
 ]
 
 function Logo() {
@@ -1158,7 +1155,6 @@ interface CRDWorkload {
             containers: Array<{
                 name: string;
                 image: string;
-                command: string[];
                 env: Array<{ name: string; value: string }>;
                 volumeMounts?: Array<{ name: string; mountPath: string }>;
                 resources?: {
@@ -1177,6 +1173,8 @@ interface CRDJobTask {
     agentType: string;
     role: string;
     nodeSelector: Record<string, string>;
+    prepareScript?: string;
+    runScript?: string;
     kubernetes?: {
         workload?: CRDWorkload;
     };
@@ -1189,7 +1187,7 @@ interface CRDJob {
     spec: { domain?: string; tasks: CRDJobTask[] };
     status?: {
         phase: string;
-        tasks?: Array<{ name: string; phase: string; message: string }>;
+        tasks?: Array<{ name: string; phase: string; message: string; observedNodes?: string[] }>;
     };
 }
 
@@ -1225,7 +1223,7 @@ function crdToJob(crd: CRDJob): Job {
             memory: res.memory ?? "",
             gpu,
             image: c?.image ?? '',
-            command: (c?.command ?? []).join(' '),
+            prepareScript: t.prepareScript ?? '',
             env: taskEnv,
             mounts: taskMounts,
         }
@@ -1266,7 +1264,7 @@ function crdToJob(crd: CRDJob): Job {
                     : 0,
         defaultRoles: roles,
         image: container?.image ?? "",
-        command: (container?.command ?? []).join(" "),
+        command: headerTask?.runScript ?? "",
         env,
         mounts,
         headerRole: headerTask?.name ?? "",
@@ -1278,15 +1276,18 @@ function crdToJob(crd: CRDJob): Job {
 }
 
 function mapRoleToJobType(tasks: CRDJobTask[]): JobType {
-    const roles = tasks.map((t) => t.role);
-    if (roles.includes("Rollout")) return "RL";
-    if (roles.some((r) => r.toLowerCase().includes("collect")))
-        return "DataCollection";
-    if (roles.some((r) => r.toLowerCase().includes("eval"))) return "Evaluation";
+    const roles = new Set(tasks.map((t) => t.role.toLowerCase()));
+    const hasEnv = roles.has("env");
+    const hasRollout = roles.has("rollout");
+    const hasActor = roles.has("actor");
+    if (hasActor) return "RL";
+    if (hasEnv && hasRollout) return "Evaluation";
+    if (hasEnv) return "DataCollection";
+    if (hasRollout) return "RL";
     return "Custom";
 }
 
-function JobsPage({copy: c, onCreate, onClone}: { copy: Copy; onCreate: () => void; onClone: (job: Job) => void }) {
+function JobsPage({copy: c, onCreate, onClone, onEdit}: { copy: Copy; onCreate: () => void; onClone: (job: Job) => void; onEdit: (job: Job) => void }) {
     const zh = c.nav.overview === '总览'
     const [query, setQuery] = useState('')
     const [selected, setSelected] = useState<Job | null>(null)
@@ -1382,9 +1383,7 @@ function JobsPage({copy: c, onCreate, onClone}: { copy: Copy; onCreate: () => vo
                     <td>{job.duration}</td>
                     <td>
                         <div className="row-actions">
-                            <button className="secondary-button"
-                                    onClick={() => setSelected(job)}>{zh ? '详情' : 'Details'}<ChevronRight size={14}/>
-                            </button>
+                            <button className="icon-button" onClick={() => onEdit(job)} title={zh ? '编辑' : 'Edit'}><Pencil size={15}/></button>
                             <button className="icon-button" onClick={() => onClone(job)} title={zh ? '复制' : 'Clone'}>
                                 <Copy size={15}/></button>
                             <button className="icon-button danger" onClick={() => handleDelete(job)}
@@ -1410,19 +1409,42 @@ function JobDetailPage({
     const [activeTab, setActiveTab] = useState<
         "config" | "workers" | "logs" | "monitor"
     >("config");
+    const [taskNodes, setTaskNodes] = useState<Record<string, string>>({});
+
+    useEffect(() => {
+        const labelSelector = `rlinf.io/job=${job.name}`;
+        fetch(`/api/v1/rlinf.io/v1alpha1/tasks?labelSelector=${encodeURIComponent(labelSelector)}`)
+            .then(resp => resp.ok ? resp.json() : Promise.reject(new Error(`HTTP ${resp.status}`)))
+            .then(data => {
+                const items = data.items ?? [];
+                const nodeMap: Record<string, string> = {};
+                for (const item of items) {
+                    const taskName = item.metadata?.name ?? "";
+                    const observedNodes = item.status?.observedNodes ?? [];
+                    nodeMap[taskName] = observedNodes.join(", ") || "—";
+                }
+                setTaskNodes(nodeMap);
+            })
+            .catch(() => {});
+    }, [job.name]);
+
     const jobWorkers: WorkerItem[] =
         job.taskStatuses.length > 0
-            ? job.taskStatuses.map((ts, i) => ({
-                id: `${job.id}-${i}`,
-                name: ts.name,
-                jobId: job.id,
-                role: ts.name,
-                node: "—",
-                phase: (ts.phase || "Pending") as Phase,
-                cpu: 0,
-                memory: 0,
-                logs: ts.message ? [ts.message] : [],
-            }))
+            ? job.taskStatuses.map((ts, i) => {
+                const childTaskName = ts.name.toLowerCase().replace(/\s+/g, "-");
+                const jobChildName = `${job.name}-${childTaskName}`.toLowerCase().replace(/\s+/g, "-");
+                return {
+                    id: `${job.id}-${i}`,
+                    name: ts.name,
+                    jobId: job.id,
+                    role: ts.name,
+                    node: taskNodes[jobChildName] ?? taskNodes[ts.name] ?? ts.observedNodes?.join(", ") ?? "—",
+                    phase: (ts.phase || "Pending") as Phase,
+                    cpu: 0,
+                    memory: 0,
+                    logs: ts.message ? [ts.message] : [],
+                };
+            })
             : workers.filter((w) => w.jobId === job.id);
     const tabs: Array<{ id: typeof activeTab; label: string }> = [
         {id: 'config', label: zh ? '配置' : 'Config'},
@@ -1492,11 +1514,11 @@ function JobConfigSummary({job}: { job: Job }) {
         <div>
             <span>Header Worker</span><strong>{job.headerRole} / {job.headerWorker}</strong><code>{job.sshAddress}</code>
         </div>
-        <div><span>Command</span>
+        <div><span>Run Script</span>
             <pre>{job.command}</pre>
         </div>
         {job.resources.map(item => <div key={item.role}>
-            <span>{item.role} · {item.replicas} × {item.cpu} CPU / {item.memory} / {item.gpu} GPU · {item.nodeSelector}</span><strong>{item.image}</strong><code>{item.command}</code>{item.env.length > 0 && item.env.map(e =>
+            <span>{item.role} · {item.replicas} × {item.cpu} CPU / {item.memory} / {item.gpu} GPU · {item.nodeSelector}</span><strong>{item.image}</strong>{item.prepareScript && <code>{item.prepareScript}</code>}{item.env.length > 0 && item.env.map(e =>
             <code key={e.key}>{e.key}={e.value}</code>)}{item.mounts.length > 0 && item.mounts.map(m => <code
             key={m.mountPath}>{m.objectStorage} → {m.mountPath}</code>)}</div>)}
     </div>
@@ -1651,17 +1673,19 @@ interface RoleResource {
     memory: string
     gpu: string
     image: string
-    command: string
+    prepareScript: string
     envs: Array<{ key: string; value: string }>
     mounts: Array<{ objectStorage: string; mountPath: string }>
 }
 
 function mapTaskRole(role: string): "Actor" | "Rollout" | "Env" {
-    return TASK_ROLE_MAP[role] ?? "Actor";
-}
-
-function parseCommand(cmd: string): string[] {
-    return cmd.trim().split(/\s+/).filter(Boolean);
+    if (TASK_ROLE_MAP[role]) return TASK_ROLE_MAP[role];
+    const lower = role.toLowerCase();
+    if (lower.includes("env") || lower.includes("uploader") || lower.includes("quality") || lower.includes("metrics worker")) return "Env";
+    if (lower.includes("rollout") || lower.includes("camera") || lower.includes("robot operator")) return "Rollout";
+    if (lower.includes("robot")) return "Env";
+    if (lower.includes("collect") || lower.includes("eval")) return "Actor";
+    return "Actor";
 }
 
 function parseNodeSelector(s: string): Record<string, string> {
@@ -1679,7 +1703,7 @@ function generateJobCRD(opts: {
     headerRole: string
     roles: string[]
     roleResources: Record<string, RoleResource>
-    command: string
+    runScript: string
 }) {
     const tasks = opts.roles.map(role => {
         const res = opts.roleResources[role]
@@ -1701,6 +1725,8 @@ function generateJobCRD(opts: {
             agentType: "Kubernetes",
             role: mapTaskRole(role),
             nodeSelector: res ? parseNodeSelector(res.nodeSelector) : {},
+            prepareScript: res?.prepareScript ?? '',
+            ...(isHead ? {runScript: opts.runScript} : {}),
             kubernetes: {
                 workload: {
                     kind: "Deployment",
@@ -1710,7 +1736,6 @@ function generateJobCRD(opts: {
                             containers: [{
                                 name: 'main',
                                 image: res?.image ?? '',
-                                command: parseCommand(res?.command ?? opts.command),
                                 env: envVars,
                                 volumeMounts: volumeMounts.length > 0 ? volumeMounts : undefined,
                                 resources: res ? {
@@ -1735,7 +1760,7 @@ function generateJobCRD(opts: {
     });
 
     return {
-        apiVersion: "rlark.io/v1alpha1",
+        apiVersion: "rlinf.io/v1alpha1",
         kind: "Job",
         metadata: {name: opts.name},
         spec: {tasks},
@@ -1790,23 +1815,25 @@ function toYaml(obj: unknown, indent = 0): string {
     return String(obj);
 }
 
-function CreateJobModal({onClose, copy: c, cloneJob}: { onClose: () => void; copy: Copy; cloneJob?: Job | null }) {
+function CreateJobModal({onClose, copy: c, cloneJob, editJob}: { onClose: () => void; copy: Copy; cloneJob?: Job | null; editJob?: Job | null }) {
     const zh = c.nav.overview === '总览'
-    const [type, setType] = useState<JobType>(cloneJob?.type ?? 'RL')
+    const isEdit = !!editJob
+    const sourceJob = editJob ?? cloneJob
+    const [type, setType] = useState<JobType>(sourceJob?.type ?? 'RL')
     const [step, setStep] = useState(1)
     const [submitting, setSubmitting] = useState(false)
     const [error, setError] = useState('')
 
-    const [roles, setRoles] = useState<string[]>(cloneJob?.defaultRoles ?? ROLE_TEMPLATES[type])
-    const [jobName, setJobName] = useState(cloneJob ? cloneJob.name + '-copy' : 'robot-policy-training')
-    const [headerRole, setHeaderRole] = useState(cloneJob?.headerRole ?? roles[0])
+    const [roles, setRoles] = useState<string[]>(sourceJob?.defaultRoles ?? ROLE_TEMPLATES[type])
+    const [jobName, setJobName] = useState(sourceJob ? (editJob ? sourceJob.name : sourceJob.name + '-copy') : 'robot-policy-training')
+    const [headerRole, setHeaderRole] = useState(sourceJob?.headerRole ?? roles[0])
     const effectiveHeader = roles.includes(headerRole) ? headerRole : roles[0]
 
-    const [command, setCommand] = useState(cloneJob?.command ?? 'python train.py --config /mnt/config/train.yaml --dataset /mnt/dataset --output /mnt/checkpoints')
+    const [runScript, setRunScript] = useState(sourceJob?.command ?? 'python train.py --config /mnt/config/train.yaml --dataset /mnt/dataset --output /mnt/checkpoints')
 
     const cloneRR: Record<string, RoleResource> = {}
-    if (cloneJob) {
-        cloneJob.resources.forEach(res => {
+    if (sourceJob) {
+        sourceJob.resources.forEach(res => {
             cloneRR[res.role] = {
                 role: res.role,
                 cluster: res.cluster,
@@ -1816,14 +1843,14 @@ function CreateJobModal({onClose, copy: c, cloneJob}: { onClose: () => void; cop
                 memory: res.memory,
                 gpu: res.gpu,
                 image: res.image,
-                command: res.command,
+                prepareScript: res.prepareScript ?? '',
                 envs: res.env.map(e => ({...e})),
                 mounts: res.mounts.map(m => ({...m})),
             }
         })
     }
     const defaultRoleResources: Record<string, RoleResource> = {}
-    if (!cloneJob) {
+    if (!sourceJob) {
         roles.forEach((role, index) => {
             defaultRoleResources[role] = {
                 role,
@@ -1834,13 +1861,13 @@ function CreateJobModal({onClose, copy: c, cloneJob}: { onClose: () => void; cop
                 memory: index === 0 ? '256Gi' : '16Gi',
                 gpu: index === 0 ? '4' : '0',
                 image: 'registry.rlark.ai/rl/policy-trainer:v0.42',
-                command: 'python train.py --config /mnt/config/train.yaml',
+                prepareScript: '',
                 envs: [{key: 'RLARK_TASK_ROLE', value: role}],
                 mounts: [{objectStorage: '/host/dataset', mountPath: '/mnt/dataset'}],
             }
         })
     }
-    const [roleResources, setRoleResources] = useState<Record<string, RoleResource>>(cloneJob ? cloneRR : defaultRoleResources)
+    const [roleResources, setRoleResources] = useState<Record<string, RoleResource>>(sourceJob ? cloneRR : defaultRoleResources)
     const [activeRoleTab, setActiveRoleTab] = useState<string>(roles[0] ?? '')
 
     const onTypeChange = (next: JobType) => {
@@ -1869,7 +1896,7 @@ function CreateJobModal({onClose, copy: c, cloneJob}: { onClose: () => void; cop
                 memory: index === 0 ? '256Gi' : '16Gi',
                 gpu: index === 0 ? '4' : '0',
                 image: 'registry.rlark.ai/rl/policy-trainer:v0.42',
-                command: 'python train.py --config /mnt/config/train.yaml',
+                prepareScript: '',
                 envs: [{key: 'RLARK_TASK_ROLE', value: role}],
                 mounts: [{objectStorage: '/host/dataset', mountPath: '/mnt/dataset'}],
             }
@@ -1890,7 +1917,7 @@ function CreateJobModal({onClose, copy: c, cloneJob}: { onClose: () => void; cop
                 memory: '16Gi',
                 gpu: '0',
                 image: 'registry.rlark.ai/rl/policy-trainer:v0.42',
-                command: 'python train.py',
+                prepareScript: '',
                 envs: [{key: 'RLARK_TASK_ROLE', value: name}],
                 mounts: [],
             }
@@ -1975,7 +2002,7 @@ function CreateJobModal({onClose, copy: c, cloneJob}: { onClose: () => void; cop
 
     const crd = generateJobCRD({
         name: jobName, type, headerRole: effectiveHeader, roles,
-        roleResources, command,
+        roleResources, runScript,
     })
     const yaml = toYaml(crd)
     const steps = zh ? ['角色和资源', 'Worker 配置', '公共配置', 'YAML 预览'] : ['Roles & Resources', 'Worker Config', 'Common Config', 'YAML Preview']
@@ -1984,8 +2011,12 @@ function CreateJobModal({onClose, copy: c, cloneJob}: { onClose: () => void; cop
         setSubmitting(true);
         setError("");
         try {
-            const resp = await fetch("/api/v1/rlinf.io/v1alpha1/jobs", {
-                method: "POST",
+            const url = isEdit
+                ? `/api/v1/rlinf.io/v1alpha1/jobs/${editJob!.name}`
+                : "/api/v1/rlinf.io/v1alpha1/jobs";
+            const method = isEdit ? "PUT" : "POST";
+            const resp = await fetch(url, {
+                method,
                 headers: {"Content-Type": "application/json"},
                 body: JSON.stringify(crd),
             });
@@ -2005,7 +2036,7 @@ function CreateJobModal({onClose, copy: c, cloneJob}: { onClose: () => void; cop
         <div className="modal-backdrop" onMouseDown={e => e.target === e.currentTarget && onClose()}>
             <div className="modal create-job-modal">
                 <div className="modal-head">
-                    <div><span className="eyebrow">NEW JOB</span><h2>{c.jobs.createTitle}</h2></div>
+                    <div><span className="eyebrow">{isEdit ? (zh ? '编辑任务' : 'EDIT JOB') : 'NEW JOB'}</span><h2>{isEdit ? (zh ? '编辑任务' : 'Edit Job') : c.jobs.createTitle}</h2></div>
                     <button className="icon-button" onClick={onClose}>×</button>
                 </div>
                 <div className="create-stepper">{steps.map((label, index) => <button key={label}
@@ -2015,7 +2046,7 @@ function CreateJobModal({onClose, copy: c, cloneJob}: { onClose: () => void; cop
                 <div className="modal-body create-job-body">
                     {step === 1 && <>
                         <div className="form-row"><label>{zh ? '任务名称' : 'Job Name'}<input value={jobName}
-                                                                                              onChange={e => setJobName(e.target.value)}/></label><label>{zh ? '任务类型' : 'Job Type'}<select
+                                                                                              onChange={e => setJobName(e.target.value)} disabled={isEdit}/></label><label>{zh ? '任务类型' : 'Job Type'}<select
                             value={type} onChange={e => onTypeChange(e.target.value as JobType)}>
                             <option value="RL">{c.jobType.RL}</option>
                             <option value="DataCollection">{c.jobType.DataCollection}</option>
@@ -2077,10 +2108,10 @@ function CreateJobModal({onClose, copy: c, cloneJob}: { onClose: () => void; cop
                                 <input value={rr.image} onChange={e => updateRR(role, 'image', e.target.value)}
                                        placeholder="registry.rlark.ai/rl/policy-trainer:v0.42"/></div>
                             <div className="form-section" style={{marginTop: 12}}>
-                                <div className="form-section-head"><small>{zh ? '启动命令' : 'Command'}</small></div>
-                                <textarea className="code-textarea" style={{minHeight: 60}} value={rr.command}
-                                          onChange={e => updateRR(role, 'command', e.target.value)}
-                                          placeholder="python train.py --config /mnt/config/train.yaml"/></div>
+                                <div className="form-section-head"><small>{zh ? '准备脚本 (Ray 启动前)' : 'Prepare Script (before Ray starts)'}</small></div>
+                                <textarea className="code-textarea" style={{minHeight: 60}} value={rr.prepareScript}
+                                          onChange={e => updateRR(role, 'prepareScript', e.target.value)}
+                                          placeholder={zh ? 'pip install ray[default] or other setup commands' : 'pip install ray[default] or other setup commands'}/></div>
                             <div className="form-section" style={{marginTop: 12}}>
                                 <div className="form-section-head">
                                     <small>{zh ? '环境变量' : 'Environment Variables'}</small>
@@ -2123,8 +2154,12 @@ function CreateJobModal({onClose, copy: c, cloneJob}: { onClose: () => void; cop
                                 <Check size={13}/>{role}<small>{effectiveHeader === role ? 'Header' : 'Worker'}</small>
                             </button>)}</div>
                         </div>
-                        <label>{zh ? '启动命令' : 'Command'}<textarea className="code-textarea" value={command}
-                                                                      onChange={e => setCommand(e.target.value)}/></label></>}
+                        <div className="form-section">
+                            <div className="form-section-head"><small>{zh ? '运行脚本 (Ray 集群就绪后, 仅 Head 节点)' : 'Run Script (after Ray cluster ready, head only)'}</small></div>
+                            <textarea className="code-textarea" style={{minHeight: 80}} value={runScript}
+                                      onChange={e => setRunScript(e.target.value)}
+                                      placeholder="python train.py --config /mnt/config/train.yaml"/></div>
+                    </>}
                     {step === 4 && <div className="yaml-preview">
                         <div>
                             <strong>{zh ? '任务 YAML 预览' : 'Job YAML Preview'}</strong><small>{zh ? '提交前可检查最终资源定义。' : 'Review the final resource definition before submitting.'}</small>
@@ -2137,7 +2172,7 @@ function CreateJobModal({onClose, copy: c, cloneJob}: { onClose: () => void; cop
                         {step < 4
                             ? <button className="primary-button" onClick={() => setStep(step + 1)} disabled={step === 1 && roles.length === 0}>{zh ? '下一步' : 'Next'}</button>
                             : <button className="primary-button" disabled={submitting || roles.length === 0} onClick={handleSubmit}>
-                                {submitting ? (zh ? '提交中…' : 'Submitting…') : (zh ? '提交任务' : 'Submit Job')}
+                                {submitting ? (zh ? '提交中…' : 'Submitting…') : (zh ? (isEdit ? '保存修改' : '提交任务') : (isEdit ? 'Save Changes' : 'Submit Job'))}
                             </button>}
                     </div>
                 </div>
@@ -2664,15 +2699,36 @@ const adminNavItems: { id: string; icon: typeof Activity; zh: string; en: string
     {id: 'nodes', icon: Server, zh: '节点管理', en: 'Nodes'},
     {id: 'jobs', icon: Boxes, zh: '任务管理', en: 'Jobs'},
     {id: 'certificates', icon: Shield, zh: '证书管理', en: 'Certificates'},
+    {id: 'api', icon: Braces, zh: '接口参考', en: 'API Reference'},
     {id: 'config', icon: Settings, zh: '系统配置', en: 'Config'},
 ]
 
 function AdminApp() {
     const [lang, setLang] = useState<Lang>("zh");
     const [theme, setTheme] = useState<Theme>("light");
-    const [adminPage, setAdminPage] = useState("nodes");
+    const [adminPage, setAdminPage] = useState(() => {
+        const p = window.location.pathname.replace(/^\/admin\/?/, "").replace(/\/+$/, "");
+        const valid = ['nodes', 'jobs', 'certificates', 'api', 'config'];
+        return valid.includes(p) ? p : 'nodes';
+    });
     const c = copy[lang];
     const zh = lang === "zh";
+
+    const navigate = (id: string) => {
+        setAdminPage(id);
+        const path = id === 'nodes' ? '/admin' : `/admin/${id}`;
+        window.history.pushState({}, '', path);
+    };
+
+    useEffect(() => {
+        const onPop = () => {
+            const p = window.location.pathname.replace(/^\/admin\/?/, "").replace(/\/+$/, "");
+            const valid = ['nodes', 'jobs', 'certificates', 'api', 'config'];
+            setAdminPage(valid.includes(p) ? p : 'nodes');
+        };
+        window.addEventListener("popstate", onPop);
+        return () => window.removeEventListener("popstate", onPop);
+    }, []);
     return (
         <div className={"app-shell theme-" + theme + " admin-shell"}>
             <header className="topbar admin-topbar">
@@ -2729,7 +2785,7 @@ function AdminApp() {
                         <button
                             key={id}
                             className={adminPage === id ? "active" : ""}
-                            onClick={() => setAdminPage(id)}
+                            onClick={() => navigate(id)}
                         >
                             <Icon size={18}/>
                             <span>{zh ? zhLabel : enLabel}</span>
@@ -2745,6 +2801,7 @@ function AdminApp() {
                             <h2>{zh ? '任务管理' : 'Jobs'}</h2></div>
                     </div>
                     <p className="muted">{zh ? '即将推出' : 'Coming soon'}</p></div>}
+                {adminPage === 'api' && <ApiPage copy={c}/>}
                 {adminPage === 'certificates' && <CertificatesPage copy={c} lang={lang}/>}
                 {adminPage === 'config' && <div className="page-content">
                     <div className="section-heading">
@@ -2759,27 +2816,44 @@ function AdminApp() {
 
 export default function App() {
     const isAdmin = useIsAdminPath()
-    const [page, setPage] = useState<Page>('overview')
+    const [page, setPage] = useState<Page>(() => {
+        const p = window.location.pathname.replace(/^\/+/, '').replace(/\/+$/, '');
+        const valid: Page[] = ['overview', 'clusters', 'jobs'];
+        return valid.includes(p as Page) ? p as Page : 'overview';
+    })
     const [collapsed, setCollapsed] = useState(false)
     const [createOpen, setCreateOpen] = useState(false)
     const [cloneJob, setCloneJob] = useState<Job | null>(null)
+    const [editJob, setEditJob] = useState<Job | null>(null)
     const [lang, setLang] = useState<Lang>('zh')
     const [theme, setTheme] = useState<Theme>('light')
     const c = copy[lang]
     const pageTitle = useMemo(() => c.nav[page], [c, page])
 
+    const navigate = (next: Page) => {
+        setPage(next);
+        const path = next === 'overview' ? '/' : `/${next}`;
+        window.history.pushState({}, '', path);
+    };
+
+    useEffect(() => {
+        const onPop = () => {
+            const p = window.location.pathname.replace(/^\/+/, '').replace(/\/+$/, '');
+            const valid: Page[] = ['overview', 'clusters', 'jobs'];
+            setPage(valid.includes(p as Page) ? p as Page : 'overview');
+        };
+        window.addEventListener("popstate", onPop);
+        return () => window.removeEventListener("popstate", onPop);
+    }, []);
+
     if (isAdmin) return <AdminApp/>;
 
     return <div className={"app-shell theme-" + theme + (collapsed ? ' sidebar-collapsed' : '')}>
         <aside className="sidebar"><Logo/>
-            <nav><span className="nav-label">{c.nav.workspace}</span>{navItems.slice(0, 3).map(({id, icon: Icon}) =>
-                <button key={id} className={page === id ? 'active' : ''} onClick={() => setPage(id)}><Icon
+            <nav><span className="nav-label">{c.nav.workspace}</span>{navItems.map(({id, icon: Icon}) =>
+                <button key={id} className={page === id ? 'active' : ''} onClick={() => navigate(id)}><Icon
                     size={18}/><span>{c.nav[id]}</span>{id === 'jobs' &&
-                    <em>{jobs.filter(j => j.phase === 'Running').length}</em>}</button>)}<span
-                className="nav-label">{c.nav.developers}</span>
-                <button className={page === 'api' ? 'active' : ''} onClick={() => setPage('api')}><Braces
-                    size={18}/><span>{c.nav.api}</span></button>
-            </nav>
+                    <em>{jobs.filter(j => j.phase === 'Running').length}</em>}</button>)}</nav>
             <div className="sidebar-bottom">
                 <div className="environment-card"><span><CloudCog size={16}/></span>
                     <div><small>{c.common.env}</small><strong>{c.common.production}</strong><b
@@ -2792,15 +2866,25 @@ export default function App() {
         <main className="main-area"><Header title={pageTitle} lang={lang} theme={theme} copy={c} onLangChange={setLang}
                                             onThemeChange={setTheme}
                                             onCreate={() => setCreateOpen(true)}/>{page === 'overview' &&
-            <Overview navigate={setPage} copy={c}/>} {page === 'clusters' &&
+            <Overview navigate={navigate} copy={c}/>} {page === 'clusters' &&
             <ClustersPage copy={c}/>} {page === 'jobs' &&
-            <JobsPage copy={c} onCreate={() => setCreateOpen(true)} onClone={(job) => {
-                setCloneJob(job);
+            <JobsPage copy={c} onCreate={() => {
+                setCloneJob(null);
+                setEditJob(null);
                 setCreateOpen(true)
-            }}/>} {page === 'api' && <ApiPage copy={c}/>}</main>
+            }} onClone={(job) => {
+                setCloneJob(job);
+                setEditJob(null);
+                setCreateOpen(true)
+            }} onEdit={(job) => {
+                setEditJob(job);
+                setCloneJob(null);
+                setCreateOpen(true)
+            }}/>}</main>
         {createOpen && <CreateJobModal onClose={() => {
             setCreateOpen(false);
-            setCloneJob(null)
-        }} copy={c} cloneJob={cloneJob}/>}
+            setCloneJob(null);
+            setEditJob(null)
+        }} copy={c} cloneJob={cloneJob} editJob={editJob}/>}
     </div>
 }

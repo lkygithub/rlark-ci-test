@@ -80,6 +80,8 @@ type TaskSpec struct {
 	Docker         *DockerTaskSpec     `json:"docker,omitempty"`
 	Raw            *RawTaskSpec        `json:"raw,omitempty"`
 	TensorBoardDir *string             `json:"tensorBoardDir,omitempty"`
+	PrepareScript  string              `json:"prepareScript,omitempty"` // Ray 集群启动前执行的脚本
+	RunScript      string              `json:"runScript,omitempty"`     // Ray 集群就绪后执行的脚本（仅 head 节点）
 }
 
 type TaskStatus struct {

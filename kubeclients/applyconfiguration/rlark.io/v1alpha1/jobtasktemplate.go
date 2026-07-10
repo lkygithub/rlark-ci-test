@@ -128,3 +128,19 @@ func (b *JobTaskTemplateApplyConfiguration) WithTensorBoardDir(value string) *Jo
 	b.TaskSpecApplyConfiguration.TensorBoardDir = &value
 	return b
 }
+
+// WithPrepareScript sets the PrepareScript field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the PrepareScript field is set to the value of the last call.
+func (b *JobTaskTemplateApplyConfiguration) WithPrepareScript(value string) *JobTaskTemplateApplyConfiguration {
+	b.TaskSpecApplyConfiguration.PrepareScript = &value
+	return b
+}
+
+// WithRunScript sets the RunScript field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the RunScript field is set to the value of the last call.
+func (b *JobTaskTemplateApplyConfiguration) WithRunScript(value string) *JobTaskTemplateApplyConfiguration {
+	b.TaskSpecApplyConfiguration.RunScript = &value
+	return b
+}

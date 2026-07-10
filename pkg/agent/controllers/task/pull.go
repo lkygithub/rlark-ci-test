@@ -3,16 +3,19 @@ package task
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	rlarkv1alpha1 "github.com/rlinf/rlark/api/rlark.io/v1alpha1"
+	"github.com/rlinf/rlark/pkg/agent/controllers"
 )
 
 const (
@@ -51,7 +54,9 @@ func (r *pullReconciler) Reconcile(ctx context.Context, req reconcile.Request) (
 			logger.Error(err, "failed to clean up workload")
 			return reconcile.Result{}, err
 		}
-		mgmtTask.Finalizers = removeString(mgmtTask.Finalizers, ManagementTaskFinalizer)
+		mgmtTask.Finalizers = slices.DeleteFunc(mgmtTask.Finalizers, func(s string) bool {
+			return s == ManagementTaskFinalizer
+		})
 		if err := r.c.ManagementClient.Update(ctx, &mgmtTask); err != nil {
 			logger.Error(err, "failed to remove finalizer")
 			return reconcile.Result{}, err
@@ -60,7 +65,7 @@ func (r *pullReconciler) Reconcile(ctx context.Context, req reconcile.Request) (
 	}
 
 	// Add finalizer if not present
-	if !containsString(mgmtTask.Finalizers, ManagementTaskFinalizer) {
+	if !slices.Contains(mgmtTask.Finalizers, ManagementTaskFinalizer) {
 		mgmtTask.Finalizers = append(mgmtTask.Finalizers, ManagementTaskFinalizer)
 		if err := r.c.ManagementClient.Update(ctx, &mgmtTask); err != nil {
 			logger.Error(err, "failed to add finalizer")
@@ -82,6 +87,11 @@ func (r *pullReconciler) Reconcile(ctx context.Context, req reconcile.Request) (
 
 	workloadSpec := mgmtTask.Spec.Kubernetes.Workload
 	workloadSpec.Template.Spec.NodeSelector = mgmtTask.Spec.NodeSelector // pod 继承 task 的 node label
+
+	if err := r.ensureRayResources(ctx, &mgmtTask, nil); err != nil {
+		logger.Error(err, "failed to ensure ray resources")
+		return reconcile.Result{}, err
+	}
 
 	switch workloadSpec.Kind {
 	case rlarkv1alpha1.KubernetesWorkloadDeployment:
@@ -116,7 +126,6 @@ func (r *pullReconciler) createOrUpdateWorkload(
 	}
 
 	if err != nil {
-		// NotFound — create
 		logger.Info(fmt.Sprintf("creating %s", workloadKind))
 		if err := r.c.LocalKubeClient.Create(ctx, newObj); err != nil {
 			logger.Error(err, fmt.Sprintf("failed to create %s", workloadKind))
@@ -125,7 +134,6 @@ func (r *pullReconciler) createOrUpdateWorkload(
 		return reconcile.Result{}, nil
 	}
 
-	// Found — check UID annotation and apply update if mismatch
 	annotations := existingObj.GetAnnotations()
 	if annotations == nil || annotations[ManagementTaskUIDAnnotation] != string(mgmtTask.UID) {
 		logger.Info(fmt.Sprintf("%s UID mismatch, updating", workloadKind))
@@ -198,6 +206,61 @@ func (r *pullReconciler) cleanupWorkload(ctx context.Context, name string, names
 	return nil
 }
 
+func (r *pullReconciler) ensureRayResources(ctx context.Context, mgmtTask *rlarkv1alpha1.Task, owner client.Object) error {
+	annotations := mgmtTask.Annotations
+	if annotations == nil || annotations[rlarkv1alpha1.RayRoleAnnotation] == "" {
+		return nil
+	}
+	role := annotations[rlarkv1alpha1.RayRoleAnnotation]
+	namespace := getWorkloadNamespace(mgmtTask)
+
+	cm := buildRayConfigMap(namespace, role)
+	if owner != nil {
+		if err := ctrl.SetControllerReference(owner, cm, controllers.MgmtScheme); err != nil {
+			return fmt.Errorf("set owner reference on ConfigMap %s: %w", cm.Name, err)
+		}
+	}
+	var existingCM corev1.ConfigMap
+	err := r.c.LocalKubeClient.Get(ctx, types.NamespacedName{Name: cm.Name, Namespace: cm.Namespace}, &existingCM)
+	if err != nil && client.IgnoreNotFound(err) != nil {
+		return fmt.Errorf("get ray ConfigMap %s: %w", cm.Name, err)
+	}
+	if err != nil {
+		if err := r.c.LocalKubeClient.Create(ctx, cm); err != nil {
+			return fmt.Errorf("create ray ConfigMap %s: %w", cm.Name, err)
+		}
+	} else {
+		existingCM.Data = cm.Data
+		if owner != nil {
+			existingCM.OwnerReferences = cm.OwnerReferences
+		}
+		if err := r.c.LocalKubeClient.Update(ctx, &existingCM); err != nil {
+			return fmt.Errorf("update ray ConfigMap %s: %w", cm.Name, err)
+		}
+	}
+
+	if role == rlarkv1alpha1.RayRoleHead {
+		svc := buildRayHeadService(namespace, mgmtTask.Name)
+		if owner != nil {
+			if err := ctrl.SetControllerReference(owner, svc, controllers.MgmtScheme); err != nil {
+				return fmt.Errorf("set owner reference on Service %s: %w", svc.Name, err)
+			}
+		}
+		var existingSvc corev1.Service
+		err := r.c.LocalKubeClient.Get(ctx, types.NamespacedName{Name: svc.Name, Namespace: svc.Namespace}, &existingSvc)
+		if err != nil && client.IgnoreNotFound(err) != nil {
+			return fmt.Errorf("get ray head Service %s: %w", svc.Name, err)
+		}
+		if err != nil {
+			if err := r.c.LocalKubeClient.Create(ctx, svc); err != nil {
+				return fmt.Errorf("create ray head Service %s: %w", svc.Name, err)
+			}
+		}
+	}
+
+	return nil
+}
+
 func getWorkloadNamespace(mgmtTask *rlarkv1alpha1.Task) string {
 	// todo workload 具体使用什么 namespace？不能直接使用 task 的
 	return "rlark-system"
@@ -216,6 +279,7 @@ func ensureLabels(template *corev1.PodTemplateSpec, name string) {
 
 func buildDeployment(mgmtTask *rlarkv1alpha1.Task, spec *rlarkv1alpha1.KubernetesWorkloadSpec) *appsv1.Deployment {
 	applyDomainAnnotation(&spec.Template, mgmtTask)
+	applyRayInit(&spec.Template, mgmtTask)
 	ensureLabels(&spec.Template, mgmtTask.Name)
 	return &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
@@ -239,6 +303,7 @@ func buildDeployment(mgmtTask *rlarkv1alpha1.Task, spec *rlarkv1alpha1.Kubernete
 
 func buildDaemonSet(mgmtTask *rlarkv1alpha1.Task, spec *rlarkv1alpha1.KubernetesWorkloadSpec) *appsv1.DaemonSet {
 	applyDomainAnnotation(&spec.Template, mgmtTask)
+	applyRayInit(&spec.Template, mgmtTask)
 	ensureLabels(&spec.Template, mgmtTask.Name)
 	return &appsv1.DaemonSet{
 		ObjectMeta: metav1.ObjectMeta{
@@ -261,6 +326,7 @@ func buildDaemonSet(mgmtTask *rlarkv1alpha1.Task, spec *rlarkv1alpha1.Kubernetes
 
 func buildStatefulSet(mgmtTask *rlarkv1alpha1.Task, spec *rlarkv1alpha1.KubernetesWorkloadSpec) *appsv1.StatefulSet {
 	applyDomainAnnotation(&spec.Template, mgmtTask)
+	applyRayInit(&spec.Template, mgmtTask)
 	ensureLabels(&spec.Template, mgmtTask.Name)
 	return &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
@@ -295,23 +361,4 @@ func applyDomainAnnotation(template *corev1.PodTemplateSpec, mgmtTask *rlarkv1al
 	if mgmtTask.Spec.Domain != "" {
 		template.Annotations[ManagementTaskDomainAnnotation] = mgmtTask.Spec.Domain
 	}
-}
-
-func containsString(slice []string, s string) bool {
-	for _, item := range slice {
-		if item == s {
-			return true
-		}
-	}
-	return false
-}
-
-func removeString(slice []string, s string) []string {
-	result := make([]string, 0, len(slice))
-	for _, item := range slice {
-		if item != s {
-			result = append(result, item)
-		}
-	}
-	return result
 }
