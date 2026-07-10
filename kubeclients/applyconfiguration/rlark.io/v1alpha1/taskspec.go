@@ -34,6 +34,9 @@ type TaskSpecApplyConfiguration struct {
 	Docker         *DockerTaskSpecApplyConfiguration     `json:"docker,omitempty"`
 	Raw            *RawTaskSpecApplyConfiguration        `json:"raw,omitempty"`
 	TensorBoardDir *string                               `json:"tensorBoardDir,omitempty"`
+	PrepareScript  *string                               `json:"prepareScript,omitempty"`
+	// Ray 集群启动前执行的脚本
+	RunScript *string `json:"runScript,omitempty"`
 }
 
 // TaskSpecApplyConfiguration constructs a declarative configuration of the TaskSpec type for use with
@@ -117,5 +120,21 @@ func (b *TaskSpecApplyConfiguration) WithRaw(value *RawTaskSpecApplyConfiguratio
 // If called multiple times, the TensorBoardDir field is set to the value of the last call.
 func (b *TaskSpecApplyConfiguration) WithTensorBoardDir(value string) *TaskSpecApplyConfiguration {
 	b.TensorBoardDir = &value
+	return b
+}
+
+// WithPrepareScript sets the PrepareScript field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the PrepareScript field is set to the value of the last call.
+func (b *TaskSpecApplyConfiguration) WithPrepareScript(value string) *TaskSpecApplyConfiguration {
+	b.PrepareScript = &value
+	return b
+}
+
+// WithRunScript sets the RunScript field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the RunScript field is set to the value of the last call.
+func (b *TaskSpecApplyConfiguration) WithRunScript(value string) *TaskSpecApplyConfiguration {
+	b.RunScript = &value
 	return b
 }

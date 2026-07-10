@@ -63,7 +63,7 @@ func (d *KubernetesDeployer) Deploy(cfg *DeployConfig, certBundle *CertBundle) e
 			c.PostDeployFn = extractKCPKubeconfigFn(ctx, clientset)
 		}
 
-		// 如果组件已存在且健康，跳过部署
+		// 如果组件已存在且健康，跳过部署（CRD apply 在循环结束后统一执行）
 		if c.HealthCheckFn != nil && c.HealthCheckFn(cfg) == nil {
 			logger.Info("component already healthy, skipping", "name", c.Name)
 			continue
@@ -96,6 +96,13 @@ func (d *KubernetesDeployer) Deploy(cfg *DeployConfig, certBundle *CertBundle) e
 			if err := c.PostDeployFn(cfg); err != nil {
 				return err
 			}
+		}
+	}
+
+	// 始终 apply CRD，无论 KCP 是否新部署
+	if cfg.Plane == PlaneControl {
+		if err := applyKCP(ctx, clientset); err != nil {
+			return err
 		}
 	}
 
@@ -164,61 +171,69 @@ func ensureRBAC(ctx context.Context, clientset *kubernetes.Clientset, c *Compone
 // from the KCP pod and creates a ConfigMap for other components to mount.
 func extractKCPKubeconfigFn(ctx context.Context, clientset *kubernetes.Clientset) func(cfg *DeployConfig) error {
 	return func(cfg *DeployConfig) error {
-		logger := log.GetLogger()
-		pods, err := clientset.CoreV1().Pods(Namespace).List(ctx, metav1.ListOptions{
-			LabelSelector: "app=" + ComponentKCP,
-		})
-		if err != nil {
-			return fmt.Errorf("list kcp pods: %w", err)
-		}
-		if len(pods.Items) == 0 {
-			return fmt.Errorf("no kcp pods found")
-		}
-
-		podName := pods.Items[0].Name
-
-		// Wait for admin.kubeconfig to be available, then extract via kubectl exec
-		deadline := time.Now().Add(60 * time.Second)
-		var kubeconfigData string
-		for {
-			cmd := exec.Command("kubectl", "-n", Namespace, "exec", podName, "--", "cat", KCPDataDir+"/admin.kubeconfig")
-			var buf bytes.Buffer
-			cmd.Stdout = &buf
-			err := cmd.Run()
-			if err == nil && buf.Len() > 0 {
-				kubeconfigData = buf.String()
-				break
-			}
-			if time.Now().After(deadline) {
-				return fmt.Errorf("timeout waiting for kcp admin.kubeconfig: %w", err)
-			}
-			time.Sleep(2 * time.Second)
-		}
-
-		cm := &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: "rlark-kcp-kubeconfig"},
-			Data:       map[string]string{"admin.kubeconfig": kubeconfigData},
-		}
-		_, err = clientset.CoreV1().ConfigMaps(Namespace).Create(ctx, cm, metav1.CreateOptions{})
-		if err != nil {
-			if errors.IsAlreadyExists(err) {
-				_, err = clientset.CoreV1().ConfigMaps(Namespace).Update(ctx, cm, metav1.UpdateOptions{})
-				if err != nil {
-					return fmt.Errorf("update kcp kubeconfig configmap: %w", err)
-				}
-			} else {
-				return fmt.Errorf("create kcp kubeconfig configmap: %w", err)
-			}
-		}
-
-		logger.Info("extracted admin.kubeconfig to ConfigMap")
-
-		if err := installCRDs(podName); err != nil {
-			return fmt.Errorf("install CRDs to kcp: %w", err)
-		}
-
-		return nil
+		return extractAndApplyKCP(ctx, clientset)
 	}
+}
+
+func applyKCP(ctx context.Context, clientset *kubernetes.Clientset) error {
+	return extractAndApplyKCP(ctx, clientset)
+}
+
+func extractAndApplyKCP(ctx context.Context, clientset *kubernetes.Clientset) error {
+	logger := log.GetLogger()
+	pods, err := clientset.CoreV1().Pods(Namespace).List(ctx, metav1.ListOptions{
+		LabelSelector: "app=" + ComponentKCP,
+	})
+	if err != nil {
+		return fmt.Errorf("list kcp pods: %w", err)
+	}
+	if len(pods.Items) == 0 {
+		return fmt.Errorf("no kcp pods found")
+	}
+
+	podName := pods.Items[0].Name
+
+	// Wait for admin.kubeconfig to be available, then extract via kubectl exec
+	deadline := time.Now().Add(60 * time.Second)
+	var kubeconfigData string
+	for {
+		cmd := exec.Command("kubectl", "-n", Namespace, "exec", podName, "--", "cat", KCPDataDir+"/admin.kubeconfig")
+		var buf bytes.Buffer
+		cmd.Stdout = &buf
+		err := cmd.Run()
+		if err == nil && buf.Len() > 0 {
+			kubeconfigData = buf.String()
+			break
+		}
+		if time.Now().After(deadline) {
+			return fmt.Errorf("timeout waiting for kcp admin.kubeconfig: %w", err)
+		}
+		time.Sleep(2 * time.Second)
+	}
+
+	cm := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Name: "rlark-kcp-kubeconfig"},
+		Data:       map[string]string{"admin.kubeconfig": kubeconfigData},
+	}
+	_, err = clientset.CoreV1().ConfigMaps(Namespace).Create(ctx, cm, metav1.CreateOptions{})
+	if err != nil {
+		if errors.IsAlreadyExists(err) {
+			_, err = clientset.CoreV1().ConfigMaps(Namespace).Update(ctx, cm, metav1.UpdateOptions{})
+			if err != nil {
+				return fmt.Errorf("update kcp kubeconfig configmap: %w", err)
+			}
+		} else {
+			return fmt.Errorf("create kcp kubeconfig configmap: %w", err)
+		}
+	}
+
+	logger.Info("extracted admin.kubeconfig to ConfigMap")
+
+	if err := installCRDs(podName); err != nil {
+		return fmt.Errorf("install CRDs to kcp: %w", err)
+	}
+
+	return nil
 }
 
 // installCRDs copies CRD manifests into the KCP pod and applies them using

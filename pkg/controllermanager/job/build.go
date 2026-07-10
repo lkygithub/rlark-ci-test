@@ -2,12 +2,14 @@ package job
 
 import (
 	"context"
+	"strconv"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	rlarkv1alpha1 "github.com/rlinf/rlark/api/rlark.io/v1alpha1"
+	"github.com/rlinf/rlark/pkg/utils"
 )
 
 func (r *JobReconciler) resolveTaskNamespace(ctx context.Context, t *rlarkv1alpha1.JobTaskTemplate) string {
@@ -43,7 +45,8 @@ func buildTask(
 	taskName, namespace string,
 ) *rlarkv1alpha1.Task {
 	taskSpec := t.TaskSpec
-	taskSpec.Domain = job.Spec.Domain // 从 Job 继承 Domain
+	taskSpec.Domain = job.Spec.Domain
+
 	return &rlarkv1alpha1.Task{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      taskName,
@@ -51,7 +54,44 @@ func buildTask(
 			Labels: map[string]string{
 				"rlinf.io/job": job.Name,
 			},
+			Annotations: buildRayAnnotations(job, t),
 		},
 		Spec: taskSpec,
 	}
+}
+
+func buildRayAnnotations(job *rlarkv1alpha1.Job, t rlarkv1alpha1.JobTaskTemplate) map[string]string {
+	annotations := map[string]string{
+		rlarkv1alpha1.RayTotalNodesAnnotation: strconv.Itoa(totalNodeCount(job.Spec.Tasks)),
+	}
+	if t.Head {
+		annotations[rlarkv1alpha1.RayRoleAnnotation] = rlarkv1alpha1.RayRoleHead
+	} else {
+		annotations[rlarkv1alpha1.RayRoleAnnotation] = rlarkv1alpha1.RayRoleWorker
+	}
+	if headTaskName := findHeadTaskName(job); headTaskName != "" {
+		annotations[rlarkv1alpha1.RayHeadTaskNameAnnotation] = headTaskName
+	}
+	return annotations
+}
+
+func findHeadTaskName(job *rlarkv1alpha1.Job) string {
+	for _, t := range job.Spec.Tasks {
+		if t.Head {
+			return utils.ChildName(job.Name, t.Name)
+		}
+	}
+	return ""
+}
+
+func totalNodeCount(tasks []rlarkv1alpha1.JobTaskTemplate) int {
+	total := 0
+	for _, t := range tasks {
+		if t.Kubernetes != nil && t.Kubernetes.Workload != nil && t.Kubernetes.Workload.Replicas != nil {
+			total += int(*t.Kubernetes.Workload.Replicas)
+		} else {
+			total += 1
+		}
+	}
+	return total
 }

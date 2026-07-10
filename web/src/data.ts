@@ -94,11 +94,11 @@ export interface Job {
         memory: string;
         gpu: string;
         image: string;
-        command: string;
+        prepareScript: string;
         env: Array<{ key: string; value: string }>;
         mounts: Array<{ objectStorage: string; mountPath: string }>
     }>
-    taskStatuses: Array<{ name: string; phase: string; message: string }>
+    taskStatuses: Array<{ name: string; phase: string; message: string; observedNodes?: string[] }>
 }
 
 export const clusters: Cluster[] = [
@@ -319,7 +319,7 @@ export const jobs: Job[] = [
             memory: '256Gi',
             gpu: '4',
             image: 'registry.rlark.ai/rl/policy-trainer:v0.42',
-            command: 'python train.py --config /mnt/config/bimanual.yaml',
+            prepareScript: '',
             env: [{key: 'WANDB_PROJECT', value: 'bimanual-assembly'}],
             mounts: [{objectStorage: 's3://rlark-datasets/bimanual', mountPath: '/mnt/dataset'}]
         }, {
@@ -331,7 +331,7 @@ export const jobs: Job[] = [
             memory: '16Gi',
             gpu: '0',
             image: 'registry.rlark.ai/rl/env-worker:v0.42',
-            command: 'python env.py --robot g1',
+            prepareScript: '',
             env: [{key: 'ROBOT_MODEL', value: 'unitree-g1'}],
             mounts: [{objectStorage: 's3://rlark-datasets/bimanual', mountPath: '/mnt/dataset'}]
         }],
@@ -367,7 +367,7 @@ export const jobs: Job[] = [
             memory: '8Gi',
             gpu: '0',
             image: 'registry.rlark.ai/data/collector:v1.8',
-            command: 'python collect.py --route A2',
+            prepareScript: '',
             env: [{key: 'DATASET_NAME', value: 'warehouse-a2'}],
             mounts: [{objectStorage: 's3://rlark-datasets/warehouse-a2', mountPath: '/mnt/output'}]
         }],
@@ -403,7 +403,7 @@ export const jobs: Job[] = [
             memory: '64Gi',
             gpu: '1',
             image: 'registry.rlark.ai/eval/nav-evaluator:v2.1',
-            command: 'python evaluate.py --suite nav-regression',
+            prepareScript: '',
             env: [{key: 'EVAL_SUITE', value: 'nav-regression'}],
             mounts: [{objectStorage: 's3://rlark-reports/nav', mountPath: '/mnt/report'}]
         }],
@@ -439,7 +439,7 @@ export const jobs: Job[] = [
             memory: '16Gi',
             gpu: '0',
             image: 'registry.rlark.ai/custom/handeye:v0.6',
-            command: 'python calibrate.py --robot franka',
+            prepareScript: '',
             env: [{key: 'CALIBRATION_MODE', value: 'hand-eye'}],
             mounts: [{objectStorage: 's3://rlark-calibration/franka', mountPath: '/mnt/calibration'}]
         }],

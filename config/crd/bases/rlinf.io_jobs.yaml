@@ -8877,6 +8877,8 @@ spec:
                       additionalProperties:
                         type: string
                       type: object
+                    prepareScript:
+                      type: string
                     raw:
                       properties:
                         artifact:
@@ -8896,6 +8898,8 @@ spec:
                           type: array
                       type: object
                     role:
+                      type: string
+                    runScript:
                       type: string
                     tensorBoardDir:
                       type: string
