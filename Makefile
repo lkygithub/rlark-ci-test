@@ -7,7 +7,7 @@ IMAGE_REGISTRY ?= harbor.infini-ai.com/share
 IMAGE_TAG ?= latest
 IMAGE_PLATFORMS ?= linux/amd64
 
-COMPONENTS = server controller-manager gateway agent ui
+COMPONENTS = server controller-manager gateway agent ui network-sidecar
 
 lint-go:
 	@echo "Running golangci-lint..."
@@ -48,9 +48,9 @@ clean-samples:
 GOOS ?= linux
 GOARCH ?= amd64
 
-.PHONY: build build-controller-manager build-gateway build-server build-agent build-ui build-rlarkadm
+.PHONY: build build-controller-manager build-gateway build-server build-agent build-ui build-rlarkadm build-network-sidecar
 
-build: build-server build-controller-manager build-gateway build-agent build-ui build-rlarkadm
+build: build-server build-controller-manager build-gateway build-agent build-ui build-rlarkadm build-network-sidecar
 
 build-server:
 	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build -o bin/server ./cmd/server/...
@@ -66,6 +66,9 @@ build-agent:
 
 build-ui:
 	cd web && npm install && npm run build
+
+build-network-sidecar:
+	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build -o bin/network-sidecar ./cmd/network-sidecar/...
 
 build-rlarkadm:
 	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build -o bin/rlarkadm ./cmd/rlarkadm

@@ -85,6 +85,7 @@ export interface Job {
     headerRole: string
     headerWorker: string
     sshAddress: string
+    domain?: string
     resources: Array<{
         role: string;
         cluster: string;
@@ -99,6 +100,14 @@ export interface Job {
         mounts: Array<{ objectStorage: string; mountPath: string }>
     }>
     taskStatuses: Array<{ name: string; phase: string; message: string; observedNodes?: string[] }>
+}
+
+export interface Domain {
+    id: string;
+    name: string;
+    cidr: string;
+    ipAllocations: Array<{ ip: string; job: string; task: string; pod: string }>;
+    createdAt: string;
 }
 
 export const clusters: Cluster[] = [

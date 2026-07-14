@@ -7,6 +7,7 @@ const (
 	ComponentControllerManager = "rlark-controller-manager"
 	ComponentServer            = "rlark-server"
 	ComponentAgent             = "rlark-agent"
+	ComponentAgentNode         = "rlark-agent-node"
 	ComponentPrometheus        = "prometheus"
 	ComponentPostgresql        = "postgresql"
 	ComponentKCP               = "kcp"

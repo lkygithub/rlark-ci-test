@@ -2,6 +2,8 @@ package gateway
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"net"
 	"net/http"
@@ -28,6 +30,8 @@ type Gateway struct {
 
 	stores    map[string]*db.ResourceStore
 	accessors map[string]*resourceAccessor
+
+	serverTransport *http.Transport
 }
 
 // NewGateway creates a Gateway with database-backed stores for read operations
@@ -90,6 +94,28 @@ func (g *Gateway) init(ctx context.Context) error {
 		g.stores["tasks"] = db.NewTaskStore(g.dbClient.DB)
 	} else {
 		logger.Error(nil, "RLark gateway is running without persistent storage.")
+	}
+
+	adminCertPEM, adminKeyPEM, caCertPEM, err := g.getKCPAdminCerts()
+	if err != nil {
+		return fmt.Errorf("get admin certs: %w", err)
+	}
+
+	cert, err := tls.X509KeyPair(adminCertPEM, adminKeyPEM)
+	if err != nil {
+		return fmt.Errorf("load admin keypair: %w", err)
+	}
+
+	caPool := x509.NewCertPool()
+	if !caPool.AppendCertsFromPEM(caCertPEM) {
+		return fmt.Errorf("failed to parse CA cert")
+	}
+
+	g.serverTransport = &http.Transport{
+		TLSClientConfig: &tls.Config{
+			Certificates: []tls.Certificate{cert},
+			RootCAs:      caPool,
+		},
 	}
 
 	return nil

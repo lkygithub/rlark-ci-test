@@ -47,6 +47,16 @@ func (g *Gateway) RegisterRoutes(r gin.IRouter) {
 		tasks.DELETE("/:name", g.rlinfv1alpha1DeleteTask)
 	}
 
+	domains := rlinfv1alpha1.Group("/domains")
+	{
+		domains.GET("", g.rlinfv1alpha1ListDomains)
+		domains.POST("", g.rlinfv1alpha1CreateDomain)
+		domains.GET("/:name", g.rlinfv1alpha1GetDomain)
+		domains.PUT("/:name", g.rlinfv1alpha1UpdateDomain)
+		domains.PATCH("/:name", g.rlinfv1alpha1PatchDomain)
+		domains.DELETE("/:name", g.rlinfv1alpha1DeleteDomain)
+	}
+
 	r.POST("/api/v1/certificates/agent", g.handleSignAgentCert)
 	r.POST("/api/v1/certificates/revoke", g.handleRevokeCertificate)
 
@@ -90,9 +100,6 @@ func (g *Gateway) rlinfv1alpha1DeleteJob(c *gin.Context) { g.handleKubeDelete("j
 func (g *Gateway) rlinfv1alpha1JobMetrics(c *gin.Context) {
 	c.JSON(501, gin.H{"message": "not implemented"})
 }
-func (g *Gateway) rlinfv1alpha1JobLogs(c *gin.Context) {
-	c.JSON(501, gin.H{"message": "not implemented"})
-}
 
 // --- Task handlers ---
 
@@ -102,3 +109,12 @@ func (g *Gateway) rlinfv1alpha1GetTask(c *gin.Context)    { g.handleGet("tasks")
 func (g *Gateway) rlinfv1alpha1UpdateTask(c *gin.Context) { g.handleKubeUpdate("tasks")(c) }
 func (g *Gateway) rlinfv1alpha1PatchTask(c *gin.Context)  { g.handleKubePatch("tasks")(c) }
 func (g *Gateway) rlinfv1alpha1DeleteTask(c *gin.Context) { g.handleKubeDelete("tasks")(c) }
+
+// --- Domain handlers ---
+
+func (g *Gateway) rlinfv1alpha1ListDomains(c *gin.Context)  { g.handleList("domains")(c) }
+func (g *Gateway) rlinfv1alpha1CreateDomain(c *gin.Context) { g.handleKubeCreate("domains")(c) }
+func (g *Gateway) rlinfv1alpha1GetDomain(c *gin.Context)    { g.handleGet("domains")(c) }
+func (g *Gateway) rlinfv1alpha1UpdateDomain(c *gin.Context) { g.handleKubeUpdate("domains")(c) }
+func (g *Gateway) rlinfv1alpha1PatchDomain(c *gin.Context)  { g.handleKubePatch("domains")(c) }
+func (g *Gateway) rlinfv1alpha1DeleteDomain(c *gin.Context) { g.handleKubeDelete("domains")(c) }

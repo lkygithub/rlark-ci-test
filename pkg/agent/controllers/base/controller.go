@@ -24,6 +24,8 @@ type BaseController struct {
 	LocalDockerClient any // TODO
 	LocalRawClient    any // TODO
 
+	NetworkSidecarImage string
+
 	C Reconciler
 }
 

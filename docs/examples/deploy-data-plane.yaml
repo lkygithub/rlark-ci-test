@@ -15,7 +15,7 @@ cert:
 
 kubernetes:
   kubeconfig: /Users/ar/test/kubeconfig.yaml # 往 k8s 集群部署平台，访问集群的 kubeconfig
-  agent-image: harbor.infini-ai.com/artest/rlark-agent:v0.0.5
+  agent-image: harbor.infini-ai.com/artest/rlark-agent:v0.0.16
 
 #docker:
 #  agent-image: harbor.infini-ai.com/share/rlark-agent:latest

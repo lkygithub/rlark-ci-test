@@ -43,6 +43,7 @@ import {
     activity,
     type Cluster,
     clusters,
+    type Domain,
     type Job,
     jobs,
     type JobType,
@@ -53,7 +54,7 @@ import {
     workers,
 } from "./data";
 
-type Page = 'overview' | 'clusters' | 'jobs' | 'api'
+type Page = 'overview' | 'clusters' | 'jobs' | 'domains' | 'api'
 type Lang = 'zh' | 'en'
 type Theme = 'light' | 'dark'
 
@@ -78,6 +79,7 @@ const copy = {
             overview: "总览",
             clusters: "集群及节点",
             jobs: "任务",
+            domains: "网络域",
             api: "接口参考",
             certificates: "证书管理",
             admin: "运维管理",
@@ -195,6 +197,7 @@ const copy = {
             overview: "Overview",
             clusters: "Clusters & Nodes",
             jobs: "Jobs",
+            domains: "Domains",
             api: "API Reference",
             certificates: "Certificates",
             admin: "Admin",
@@ -322,18 +325,15 @@ const navItems: { id: Page; icon: typeof LayoutDashboard }[] = [
     {id: 'overview', icon: LayoutDashboard},
     {id: 'clusters', icon: Network},
     {id: 'jobs', icon: Workflow},
+    {id: 'domains', icon: CloudCog},
 ]
 
 function Logo() {
     return (
         <div className="brand">
-            <div className="brand-mark">
-                <span/>
-                <span/>
-                <span/>
-            </div>
+            <img src="/rlark-logo.png" alt="RLark" className="brand-logo"/>
             <div>
-                <strong>rlark</strong>
+                <strong>RLark</strong>
                 <small>CONTROL CENTER</small>
             </div>
         </div>
@@ -1270,6 +1270,7 @@ function crdToJob(crd: CRDJob): Job {
         headerRole: headerTask?.name ?? "",
         headerWorker: headerTask?.name ?? "",
         sshAddress: "",
+        domain: crd.spec.domain ?? "",
         resources,
         taskStatuses: allTaskStatuses,
     };
@@ -1410,6 +1411,17 @@ function JobDetailPage({
         "config" | "workers" | "logs" | "monitor"
     >("config");
     const [taskNodes, setTaskNodes] = useState<Record<string, string>>({});
+    const [podLogs, setPodLogs] = useState<Array<{
+        taskName: string;
+        podName: string;
+        phase: string;
+        node: string;
+        logs: string;
+    }>>([]);
+    const [logsLoading, setLogsLoading] = useState(false);
+    const [logsError, setLogsError] = useState<string | null>(null);
+    const [selectedRole, setSelectedRole] = useState<string | null>(null);
+    const [selectedPodName, setSelectedPodName] = useState<string | null>(null);
 
     useEffect(() => {
         const labelSelector = `rlinf.io/job=${job.name}`;
@@ -1427,6 +1439,29 @@ function JobDetailPage({
             })
             .catch(() => {});
     }, [job.name]);
+
+    useEffect(() => {
+        if (activeTab !== 'logs') return;
+        setLogsLoading(true);
+        setLogsError(null);
+        fetch(`/api/v1/rlinf.io/v1alpha1/jobs/${encodeURIComponent(job.name)}/logs`)
+            .then(resp => resp.ok ? resp.json() : Promise.reject(new Error(`HTTP ${resp.status}`)))
+            .then(data => {
+                const pods = data.pods ?? [];
+                setPodLogs(pods);
+                const roles = [...new Set(pods.map((p: { taskName: string }) => p.taskName))];
+                if (roles.length > 0) {
+                    setSelectedRole(roles[0] as string);
+                    const firstPod = pods.find((p: { taskName: string }) => p.taskName === roles[0]);
+                    if (firstPod) setSelectedPodName(firstPod.podName);
+                }
+                setLogsLoading(false);
+            })
+            .catch(err => {
+                setLogsError(err.message);
+                setLogsLoading(false);
+            });
+    }, [activeTab, job.name]);
 
     const jobWorkers: WorkerItem[] =
         job.taskStatuses.length > 0
@@ -1496,10 +1531,43 @@ function JobDetailPage({
                 <tbody>{jobWorkers.map(worker => <WorkerRow key={worker.id} worker={worker} copy={c}/>)}</tbody>
             </table>
         </div>}
-        {activeTab === 'logs' && <div className="embodied-channel">
-            <div className="log-stream"
-                 style={{width: '100%'}}>{jobWorkers.flatMap(w => w.logs).length > 0 ? jobWorkers.flatMap(w => w.logs).map((log, i) =>
-                <code key={i}>[{i + 1}] {log}</code>) : <code>{zh ? '暂无日志' : 'No logs available'}</code>}</div>
+        {activeTab === 'logs' && <div className="embodied-channel" style={{flexDirection: 'column', gap: 12}}>
+            {logsLoading ? <code>{zh ? '加载日志中…' : 'Loading logs…'}</code>
+            : logsError ? <code className="log-error">{logsError}</code>
+            : podLogs.length === 0 ? <code>{zh ? '暂无日志' : 'No logs available'}</code>
+            : <>
+                <div className="log-toolbar">
+                    <div className="log-role-tabs">
+                        {[...new Set(podLogs.map(p => p.taskName))].map(role => <button
+                            key={role}
+                            className={"log-role-tab" + (selectedRole === role ? " active" : "")}
+                            onClick={() => {
+                                setSelectedRole(role);
+                                const firstPod = podLogs.find(p => p.taskName === role);
+                                setSelectedPodName(firstPod ? firstPod.podName : null);
+                            }}>{role}</button>)}
+                    </div>
+                    <select
+                        className="log-pod-select"
+                        value={selectedPodName ?? ""}
+                        onChange={e => setSelectedPodName(e.target.value)}>
+                        {podLogs.filter(p => p.taskName === selectedRole).map(pod => <option
+                            key={pod.podName}
+                            value={pod.podName}>{pod.podName} ({pod.phase})</option>)}
+                    </select>
+                </div>
+                {(() => { const pod = podLogs.find(p => p.podName === selectedPodName);
+                    if (!pod) return <code>{zh ? '请选择 Pod' : 'Select a pod'}</code>;
+                    return <div className="log-stream" style={{width: '100%'}}>
+                        <div className="log-stream-head">
+                            <strong>{pod.podName}</strong>
+                            <span className={"status status-" + pod.phase.toLowerCase()}><i/>{pod.phase}</span>
+                            <small>{pod.taskName} · {pod.node}</small>
+                        </div>
+                        <pre className="log-content">{pod.logs}</pre>
+                    </div>;
+                })()}
+            </>}
         </div>}
         {activeTab === 'monitor' && <div className="embodied-channel">
             <div className="channel-screen" style={{width: '100%'}}><GaugeIcon
@@ -1574,6 +1642,142 @@ function WorkerRow({worker, copy: c}: { worker: WorkerItem; copy: Copy }) {
                 </div>
             </div>}
     </>
+}
+
+interface CRDDomain {
+    apiVersion: string;
+    kind: string;
+    metadata: { name: string; creationTimestamp?: string };
+    spec: { cidr: string };
+    status?: {
+        ipAllocations?: Array<{ ip: string; job: string; task: string; pod: string }>;
+    };
+}
+
+function DomainsPage({copy: c}: { copy: Copy }) {
+    const zh = c.nav.overview === '总览'
+    const [domains, setDomains] = useState<CRDDomain[]>([])
+    const [loading, setLoading] = useState(true)
+    const [error, setError] = useState('')
+    const [showCreate, setShowCreate] = useState(false)
+    const [newName, setNewName] = useState('')
+    const [newCidr, setNewCidr] = useState('10.244.0.0/16')
+    const [creating, setCreating] = useState(false)
+
+    const fetchDomains = async () => {
+        setLoading(true);
+        setError("");
+        try {
+            const resp = await fetch("/api/v1/rlinf.io/v1alpha1/domains");
+            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+            const data = await resp.json();
+            setDomains(data.items ?? []);
+        } catch (e) {
+            setError(e instanceof Error ? e.message : String(e));
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => { fetchDomains(); }, []);
+
+    const handleCreate = async () => {
+        setCreating(true);
+        setError("");
+        try {
+            const resp = await fetch("/api/v1/rlinf.io/v1alpha1/domains", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({
+                    apiVersion: "rlinf.io/v1alpha1",
+                    kind: "Domain",
+                    metadata: {name: newName.trim()},
+                    spec: {cidr: newCidr.trim()},
+                }),
+            });
+            if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${await resp.text()}`);
+            setShowCreate(false);
+            setNewName('');
+            setNewCidr('10.244.0.0/16');
+            fetchDomains();
+        } catch (e) {
+            setError(e instanceof Error ? e.message : String(e));
+        } finally {
+            setCreating(false);
+        }
+    };
+
+    const handleDelete = async (name: string) => {
+        if (!confirm(zh ? `确定删除域 "${name}" 吗?` : `Delete domain "${name}"?`)) return;
+        try {
+            const resp = await fetch(`/api/v1/rlinf.io/v1alpha1/domains/${name}`, {method: "DELETE"});
+            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+            setDomains(prev => prev.filter(d => d.metadata.name !== name));
+        } catch (e) {
+            setError(e instanceof Error ? e.message : String(e));
+        }
+    };
+
+    return <div className="page-content resource-page">
+        <div className="section-heading">
+            <div><span className="eyebrow">{zh ? '跨集群网络' : 'Cross-cluster Network'}</span><h2>{c.nav.domains}</h2><p>{zh ? '管理跨集群网络域，为 Pod 分配跨集群可达的 IP 地址。' : 'Manage cross-cluster network domains for pod IP allocation.'}</p></div>
+            <button className="primary-button" onClick={() => setShowCreate(true)}><Plus size={17}/>{zh ? '创建域' : 'Create Domain'}</button>
+        </div>
+        <PageToolbar placeholder={zh ? '搜索域...' : 'Search domains...'} value="" onChange={() => {}} count={domains.length} copy={c} onRefresh={fetchDomains}/>
+        {error && <div className="cert-error" style={{marginBottom: 12}}>{error}</div>}
+        <div className="table-panel">
+            <table>
+                <thead>
+                <tr>
+                    <th>{zh ? '域名' : 'Name'}</th>
+                    <th>CIDR</th>
+                    <th>{zh ? 'IP 分配' : 'IP Allocations'}</th>
+                    <th>{zh ? '创建时间' : 'Created'}</th>
+                    <th/>
+                </tr>
+                </thead>
+                <tbody>{domains.map(d => <tr key={d.metadata.name}>
+                    <td><strong>{d.metadata.name}</strong></td>
+                    <td><code className="inline-code">{d.spec.cidr}</code></td>
+                    <td><small>{d.status?.ipAllocations?.length ?? 0} {zh ? '个分配' : 'allocated'}</small></td>
+                    <td><small>{d.metadata.creationTimestamp ?? '—'}</small></td>
+                    <td>
+                        <div className="row-actions">
+                            <button className="icon-button danger" onClick={() => handleDelete(d.metadata.name)} title={zh ? '删除' : 'Delete'}><Trash2 size={15}/></button>
+                        </div>
+                    </td>
+                </tr>)}
+                {domains.length === 0 && !loading && <tr><td colSpan={5} style={{textAlign: 'center', padding: '32px'}}><small className="muted">{zh ? '暂无域' : 'No domains'}</small></td></tr>}
+                </tbody>
+            </table>
+        </div>
+        {showCreate && <div className="modal-backdrop" onMouseDown={e => e.target === e.currentTarget && setShowCreate(false)}>
+            <div className="modal" style={{maxWidth: 480}}>
+                <div className="modal-head">
+                    <div><span className="eyebrow">NEW DOMAIN</span><h2>{zh ? '创建网络域' : 'Create Domain'}</h2></div>
+                    <button className="icon-button" onClick={() => setShowCreate(false)}>×</button>
+                </div>
+                <div className="modal-body">
+                    <div className="form-section">
+                        <div className="form-section-head"><small>{zh ? '域名' : 'Domain Name'}</small></div>
+                        <input value={newName} onChange={e => setNewName(e.target.value)} placeholder={zh ? 'my-domain' : 'my-domain'}/>
+                    </div>
+                    <div className="form-section">
+                        <div className="form-section-head"><small>CIDR</small></div>
+                        <input value={newCidr} onChange={e => setNewCidr(e.target.value)} placeholder="10.244.0.0/16"/>
+                        <small className="muted" style={{display: 'block', marginTop: 4}}>{zh ? 'Pod 跨集群 IP 将从此网段中分配' : 'Cross-cluster pod IPs will be allocated from this subnet'}</small>
+                    </div>
+                    {error && <div className="cert-error" style={{marginBottom: 12}}>{error}</div>}
+                    <div className="step-actions">
+                        <button className="secondary-button" onClick={() => setShowCreate(false)}>{zh ? '取消' : 'Cancel'}</button>
+                        <button className="primary-button" disabled={creating || !newName.trim() || !newCidr.trim()} onClick={handleCreate}>
+                            {creating ? (zh ? '创建中…' : 'Creating…') : (zh ? '创建' : 'Create')}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>}
+    </div>
 }
 
 function ApiPage({copy: c}: { copy: Copy }) {
@@ -1704,6 +1908,7 @@ function generateJobCRD(opts: {
     roles: string[]
     roleResources: Record<string, RoleResource>
     runScript: string
+    domain: string
 }) {
     const tasks = opts.roles.map(role => {
         const res = opts.roleResources[role]
@@ -1740,14 +1945,12 @@ function generateJobCRD(opts: {
                                 volumeMounts: volumeMounts.length > 0 ? volumeMounts : undefined,
                                 resources: res ? {
                                     requests: {
-                                        cpu: res.cpu,
-                                        memory: res.memory,
-                                        ...(res.gpu !== '0' ? {'nvidia.com/gpu': res.gpu} : {}),
+                                        ...(res.cpu ? {cpu: res.cpu} : {}),
+                                        ...(res.memory ? {memory: res.memory} : {}),
+                                        ...(res.gpu && res.gpu !== '0' ? {'nvidia.com/gpu': res.gpu} : {}),
                                     },
                                     limits: {
-                                        cpu: res.cpu,
-                                        memory: res.memory,
-                                        ...(res.gpu !== '0' ? {'nvidia.com/gpu': res.gpu} : {}),
+                                        ...(res.gpu && res.gpu !== '0' ? {'nvidia.com/gpu': res.gpu} : {}),
                                     },
                                 } : undefined,
                             }],
@@ -1763,7 +1966,7 @@ function generateJobCRD(opts: {
         apiVersion: "rlinf.io/v1alpha1",
         kind: "Job",
         metadata: {name: opts.name},
-        spec: {tasks},
+        spec: {tasks, ...(opts.domain ? {domain: opts.domain} : {})},
     };
 }
 
@@ -1815,6 +2018,131 @@ function toYaml(obj: unknown, indent = 0): string {
     return String(obj);
 }
 
+interface CRDNodeLite {
+    metadata: { name: string; labels?: Record<string, string> };
+    status?: { phase?: string };
+}
+
+function parseNodeSelectorStr(s: string): Record<string, string> {
+    const result: Record<string, string> = {};
+    for (const part of s.split(",")) {
+        const [k, v] = part.split("=");
+        if (k && v !== undefined) result[k.trim()] = v.trim();
+    }
+    return result;
+}
+
+function selectorToStr(sel: Record<string, string>): string {
+    return Object.entries(sel).map(([k, v]) => `${k}=${v}`).join(",");
+}
+
+function useNodeLabels() {
+    const [nodes, setNodes] = useState<CRDNodeLite[]>([]);
+    const [loading, setLoading] = useState(false);
+    useEffect(() => {
+        setLoading(true);
+        fetch("/api/v1/rlinf.io/v1alpha1/nodes")
+            .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
+            .then(data => setNodes(data.items ?? []))
+            .catch(() => {})
+            .finally(() => setLoading(false));
+    }, []);
+    return {nodes, loading};
+}
+
+function NodeSelectorPicker({value, onChange, zh, onMatchedCount}: { value: string; onChange: (v: string) => void; zh: boolean; onMatchedCount?: (n: number) => void }) {
+    const {nodes, loading} = useNodeLabels();
+    const [open, setOpen] = useState(false);
+    const selectorMap = parseNodeSelectorStr(value);
+
+    const labelMap: Record<string, Set<string>> = {};
+    for (const n of nodes) {
+        const labels = n.metadata.labels ?? {};
+        for (const [k, v] of Object.entries(labels)) {
+            if (!labelMap[k]) labelMap[k] = new Set();
+            labelMap[k].add(v);
+        }
+    }
+
+    const matchedNodes = nodes.filter(n => {
+        const labels = n.metadata.labels ?? {};
+        return Object.entries(selectorMap).every(([k, v]) => labels[k] === v);
+    });
+
+    useEffect(() => {
+        onMatchedCount?.(matchedNodes.length);
+    }, [matchedNodes.length]);
+
+    const toggleLabel = (key: string, val: string) => {
+        const next = {...selectorMap};
+        if (next[key] === val) {
+            delete next[key];
+        } else {
+            next[key] = val;
+        }
+        onChange(selectorToStr(next));
+    };
+
+    const removeLabel = (key: string) => {
+        const next = {...selectorMap};
+        delete next[key];
+        onChange(selectorToStr(next));
+    };
+
+    const labelKeys = Object.keys(labelMap).sort();
+
+    return <div className="node-selector-picker">
+        <div className="selector-chips-area" onClick={() => setOpen(!open)}>
+            {Object.keys(selectorMap).length === 0
+                ? <span className="selector-placeholder">{zh ? '点击选择节点标签…' : 'Click to select node labels…'}</span>
+                : Object.entries(selectorMap).map(([k, v]) =>
+                    <span key={k} className="selector-chip" onClick={e => { e.stopPropagation(); removeLabel(k); }}>
+                        {k}={v}<X size={12}/>
+                    </span>)
+            }
+            <ChevronDown size={14} className="selector-chevron"/>
+        </div>
+        {open && <div className="selector-dropdown">
+            {loading
+                ? <div className="selector-loading">{zh ? '加载中…' : 'Loading…'}</div>
+                : labelKeys.length === 0
+                    ? <div className="selector-empty">{zh ? '暂无节点标签数据' : 'No node labels available'}</div>
+                    : labelKeys.map(key =>
+                        <div key={key} className="selector-group">
+                            <div className="selector-group-head"><code>{key}</code></div>
+                            <div className="selector-group-values">
+                                {Array.from(labelMap[key]).sort().map(val =>
+                                    <button key={val}
+                                            className={"selector-value-chip " + (selectorMap[key] === val ? "active" : "")}
+                                            onClick={e => { e.stopPropagation(); toggleLabel(key, val); }}>
+                                        {val}
+                                    </button>)
+                                }
+                            </div>
+                        </div>)
+            }
+        </div>}
+        <input className="selector-text-input"
+               value={value}
+               onChange={e => onChange(e.target.value)}
+               placeholder={zh ? '或手动输入，如 gpu=h800,robot=online' : 'Or type manually, e.g. gpu=h800,robot=online'}/>
+        {!loading && Object.keys(selectorMap).length > 0 && (
+            matchedNodes.length > 0
+                ? <div className="selector-matched selector-matched-inline">
+                    <div className="selector-matched-head">{zh ? `匹配节点 (${matchedNodes.length})` : `Matched nodes (${matchedNodes.length})`}</div>
+                    <div className="selector-matched-list">
+                        {matchedNodes.map(n =>
+                            <div key={n.metadata.name} className="selector-matched-node">
+                                <span className={"node-dot " + (n.status?.phase ?? "").toLowerCase()}/>
+                                <code>{n.metadata.name}</code>
+                            </div>)}
+                    </div>
+                </div>
+                : labelKeys.length > 0 && <div className="selector-no-match">{zh ? '⚠ 没有匹配的节点' : '⚠ No matching nodes'}</div>
+        )}
+    </div>;
+}
+
 function CreateJobModal({onClose, copy: c, cloneJob, editJob}: { onClose: () => void; copy: Copy; cloneJob?: Job | null; editJob?: Job | null }) {
     const zh = c.nav.overview === '总览'
     const isEdit = !!editJob
@@ -1830,6 +2158,15 @@ function CreateJobModal({onClose, copy: c, cloneJob, editJob}: { onClose: () => 
     const effectiveHeader = roles.includes(headerRole) ? headerRole : roles[0]
 
     const [runScript, setRunScript] = useState(sourceJob?.command ?? 'python train.py --config /mnt/config/train.yaml --dataset /mnt/dataset --output /mnt/checkpoints')
+    const [domain, setDomain] = useState(sourceJob?.domain ?? '')
+    const [domains, setDomains] = useState<{name: string; cidr: string}[]>([])
+
+    useEffect(() => {
+        fetch('/api/v1/rlinf.io/v1alpha1/domains')
+            .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
+            .then(data => setDomains((data.items ?? []).map((d: any) => ({name: d.metadata?.name ?? '', cidr: d.spec?.cidr ?? ''}))))
+            .catch(() => {})
+    }, [])
 
     const cloneRR: Record<string, RoleResource> = {}
     if (sourceJob) {
@@ -1839,8 +2176,8 @@ function CreateJobModal({onClose, copy: c, cloneJob, editJob}: { onClose: () => 
                 cluster: res.cluster,
                 nodeSelector: res.nodeSelector,
                 replicas: res.replicas,
-                cpu: res.cpu,
-                memory: res.memory,
+                cpu: '',
+                memory: '',
                 gpu: res.gpu,
                 image: res.image,
                 prepareScript: res.prepareScript ?? '',
@@ -1856,9 +2193,9 @@ function CreateJobModal({onClose, copy: c, cloneJob, editJob}: { onClose: () => 
                 role,
                 cluster: index === 0 ? clusters[0].name : clusters[2]?.name ?? clusters[0].name,
                 nodeSelector: index === 0 ? 'gpu=h800' : role.toLowerCase().includes('robot') || role.toLowerCase().includes('env') ? 'robot=online' : 'any=true',
-                replicas: index === 0 ? 1 : 4,
-                cpu: index === 0 ? '32' : '4',
-                memory: index === 0 ? '256Gi' : '16Gi',
+                replicas: 0,
+                cpu: '',
+                memory: '',
                 gpu: index === 0 ? '4' : '0',
                 image: 'registry.rlark.ai/rl/policy-trainer:v0.42',
                 prepareScript: '',
@@ -1891,9 +2228,9 @@ function CreateJobModal({onClose, copy: c, cloneJob, editJob}: { onClose: () => 
                         role.toLowerCase().includes("env")
                             ? "robot=online"
                             : "any=true",
-                replicas: index === 0 ? 1 : 4,
-                cpu: index === 0 ? '32' : '4',
-                memory: index === 0 ? '256Gi' : '16Gi',
+                replicas: 0,
+                cpu: '',
+                memory: '',
                 gpu: index === 0 ? '4' : '0',
                 image: 'registry.rlark.ai/rl/policy-trainer:v0.42',
                 prepareScript: '',
@@ -1912,9 +2249,9 @@ function CreateJobModal({onClose, copy: c, cloneJob, editJob}: { onClose: () => 
                 role: name,
                 cluster: clusters[0].name,
                 nodeSelector: 'any=true',
-                replicas: 1,
-                cpu: '4',
-                memory: '16Gi',
+                replicas: 0,
+                cpu: '',
+                memory: '',
                 gpu: '0',
                 image: 'registry.rlark.ai/rl/policy-trainer:v0.42',
                 prepareScript: '',
@@ -2002,7 +2339,7 @@ function CreateJobModal({onClose, copy: c, cloneJob, editJob}: { onClose: () => 
 
     const crd = generateJobCRD({
         name: jobName, type, headerRole: effectiveHeader, roles,
-        roleResources, runScript,
+        roleResources, runScript, domain,
     })
     const yaml = toYaml(crd)
     const steps = zh ? ['角色和资源', 'Worker 配置', '公共配置', 'YAML 预览'] : ['Roles & Resources', 'Worker Config', 'Common Config', 'YAML Preview']
@@ -2083,24 +2420,22 @@ function CreateJobModal({onClose, copy: c, cloneJob, editJob}: { onClose: () => 
                         return <div className="role-resource-card" key={role}>
                             <div className="form-section-head"><strong>{role}</strong>{effectiveHeader === role &&
                                 <span className="role-chip"
-                                      style={{background: '#edf4ff', color: 'var(--blue)'}}>Header</span>}</div>
+                                      style={{background: '#f3eefe', color: 'var(--blue)'}}>Header</span>}</div>
                             <div className="form-row"><label>{zh ? '集群' : 'Cluster'}<select value={rr.cluster}
                                                                                               onChange={e => updateRR(role, 'cluster', e.target.value)}>
                                 <option>{clusters[0].name}</option>
                                 <option>{clusters[1].name}</option>
                                 <option>{clusters[2].name}</option>
                                 <option>{clusters[3].name}</option>
-                            </select></label><label className="label-with-hint"><span className="label-text">{zh ? '节点选择' : 'Node Selector'} <small
-                                className="input-hint-inline">{zh ? '（多标签使用逗号分隔，如 gpu=h800,robot=online）' : ' (multi-label comma-separated, e.g. gpu=h800,robot=online)'}</small></span><input value={rr.nodeSelector}
-                                                                                              onChange={e => updateRR(role, 'nodeSelector', e.target.value)}
-                                                                                              placeholder="gpu=h800,any=true"/></label>
+                            </select></label></div>
+                            <div className="form-section" style={{marginTop: 12}}>
+                                <div className="form-section-head"><small>{zh ? '节点选择' : 'Node Selector'}</small></div>
+                                <NodeSelectorPicker value={rr.nodeSelector} onChange={v => updateRR(role, 'nodeSelector', v)} zh={zh} onMatchedCount={n => updateRR(role, 'replicas', n)}/>
                             </div>
-                            <div className="resource-input-row"><label>{zh ? '副本' : 'Replicas'}<input type="number"
+                            <div className="resource-input-row" style={{gridTemplateColumns: '1fr 1fr'}}><label>{zh ? '副本（自动匹配节点数）' : 'Replicas (auto from nodes)'}<input type="number"
                                                                                                         value={rr.replicas}
-                                                                                                        onChange={e => updateRR(role, 'replicas', Number(e.target.value))}/></label><label>CPU<input
-                                value={rr.cpu} onChange={e => updateRR(role, 'cpu', e.target.value)} placeholder="32"/></label><label>Memory<input
-                                value={rr.memory} onChange={e => updateRR(role, 'memory', e.target.value)}
-                                placeholder="256Gi"/></label><label>GPU<input value={rr.gpu}
+                                                                                                        readOnly
+                                                                                                        style={{opacity: 0.6}}/></label><label>GPU<input value={rr.gpu}
                                                                               onChange={e => updateRR(role, 'gpu', e.target.value)}
                                                                               placeholder="4"/></label></div>
                             <div className="form-section" style={{marginTop: 12}}>
@@ -2153,6 +2488,13 @@ function CreateJobModal({onClose, copy: c, cloneJob, editJob}: { onClose: () => 
                                                                                                  onClick={() => setHeaderRole(role)}>
                                 <Check size={13}/>{role}<small>{effectiveHeader === role ? 'Header' : 'Worker'}</small>
                             </button>)}</div>
+                        </div>
+                        <div className="form-section">
+                            <div className="form-section-head"><small>{zh ? '跨集群网络域 (可选)' : 'Cross-cluster Network Domain (optional)'}</small></div>
+                            <select value={domain} onChange={e => setDomain(e.target.value)}>
+                                <option value="">{zh ? '不使用跨集群网络' : 'No cross-cluster network'}</option>
+                                {domains.map(d => <option key={d.name} value={d.name}>{d.name} ({d.cidr})</option>)}
+                            </select>
                         </div>
                         <div className="form-section">
                             <div className="form-section-head"><small>{zh ? '运行脚本 (Ray 集群就绪后, 仅 Head 节点)' : 'Run Script (after Ray cluster ready, head only)'}</small></div>
@@ -2733,13 +3075,9 @@ function AdminApp() {
         <div className={"app-shell theme-" + theme + " admin-shell"}>
             <header className="topbar admin-topbar">
                 <div className="admin-brand">
-                    <div className="brand-mark">
-                        <span/>
-                        <span/>
-                        <span/>
-                    </div>
+                    <img src="/rlark-logo.png" alt="RLark" className="brand-logo"/>
                     <div className="admin-brand-text">
-                        <strong>rlark</strong>
+                        <strong>RLark</strong>
                         <small>ADMIN</small>
                     </div>
                 </div>
@@ -2818,7 +3156,7 @@ export default function App() {
     const isAdmin = useIsAdminPath()
     const [page, setPage] = useState<Page>(() => {
         const p = window.location.pathname.replace(/^\/+/, '').replace(/\/+$/, '');
-        const valid: Page[] = ['overview', 'clusters', 'jobs'];
+        const valid: Page[] = ['overview', 'clusters', 'jobs', 'domains'];
         return valid.includes(p as Page) ? p as Page : 'overview';
     })
     const [collapsed, setCollapsed] = useState(false)
@@ -2839,7 +3177,7 @@ export default function App() {
     useEffect(() => {
         const onPop = () => {
             const p = window.location.pathname.replace(/^\/+/, '').replace(/\/+$/, '');
-            const valid: Page[] = ['overview', 'clusters', 'jobs'];
+            const valid: Page[] = ['overview', 'clusters', 'jobs', 'domains'];
             setPage(valid.includes(p as Page) ? p as Page : 'overview');
         };
         window.addEventListener("popstate", onPop);
@@ -2880,7 +3218,8 @@ export default function App() {
                 setEditJob(job);
                 setCloneJob(null);
                 setCreateOpen(true)
-            }}/>}</main>
+            }}/>} {page === 'domains' &&
+            <DomainsPage copy={c}/>}</main>
         {createOpen && <CreateJobModal onClose={() => {
             setCreateOpen(false);
             setCloneJob(null);

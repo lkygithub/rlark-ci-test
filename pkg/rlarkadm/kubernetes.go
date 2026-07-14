@@ -56,7 +56,6 @@ func (d *KubernetesDeployer) Deploy(cfg *DeployConfig, certBundle *CertBundle) e
 	}
 
 	// todo 可以并发部署
-
 	for _, c := range ComponentsForPlane(cfg) {
 		c.HealthCheckFn = k8sDeploymentHealthCheck(clientset, c.Name)
 		if c.Name == ComponentKCP {
@@ -73,7 +72,7 @@ func (d *KubernetesDeployer) Deploy(cfg *DeployConfig, certBundle *CertBundle) e
 			return err
 		}
 
-		if err := createDeployment(ctx, clientset, c.Deployment(cfg)); err != nil {
+		if err := createWorkload(ctx, clientset, &c, cfg); err != nil {
 			return err
 		}
 
@@ -371,6 +370,30 @@ func createDeployment(ctx context.Context, clientset *kubernetes.Clientset, dep 
 			return nil
 		}
 		return fmt.Errorf("create deployment %s: %w", dep.Name, err)
+	}
+	return nil
+}
+
+func createWorkload(ctx context.Context, clientset *kubernetes.Clientset, c *Component, cfg *DeployConfig) error {
+	switch c.WorkloadKind {
+	case "DaemonSet":
+		return createDaemonSet(ctx, clientset, c.DaemonSet(cfg))
+	default:
+		return createDeployment(ctx, clientset, c.Deployment(cfg))
+	}
+}
+
+func createDaemonSet(ctx context.Context, clientset *kubernetes.Clientset, ds *appsv1.DaemonSet) error {
+	_, err := clientset.AppsV1().DaemonSets(Namespace).Create(ctx, ds, metav1.CreateOptions{})
+	if err != nil {
+		if errors.IsAlreadyExists(err) {
+			_, err = clientset.AppsV1().DaemonSets(Namespace).Update(ctx, ds, metav1.UpdateOptions{})
+			if err != nil {
+				return fmt.Errorf("update daemonset %s: %w", ds.Name, err)
+			}
+			return nil
+		}
+		return fmt.Errorf("create daemonset %s: %w", ds.Name, err)
 	}
 	return nil
 }

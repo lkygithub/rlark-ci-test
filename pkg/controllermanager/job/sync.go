@@ -3,6 +3,7 @@ package job
 import (
 	"context"
 	"fmt"
+	"reflect"
 
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -55,9 +56,6 @@ func (r *JobReconciler) dispatchTasks(
 
 	for _, t := range job.Spec.Tasks {
 		ts := statusMap[t.Name]
-		if ts != nil && ts.Phase != "" {
-			continue
-		}
 
 		task, err := r.reconcileTask(ctx, job, t, logger)
 		if err != nil {
@@ -82,6 +80,15 @@ func (r *JobReconciler) reconcileTask(
 	var task rlarkv1alpha1.Task
 	err := r.Get(ctx, types.NamespacedName{Name: taskName, Namespace: taskNamespace}, &task)
 	if err == nil {
+		if !taskSpecEqual(&task, job, t) {
+			desired := buildTask(job, t, taskName, taskNamespace)
+			task.Spec = desired.Spec
+			task.Annotations = desired.Annotations
+			if err := r.Update(ctx, &task); err != nil {
+				return nil, fmt.Errorf("update Task %s/%s: %w", taskNamespace, taskName, err)
+			}
+			logger.Info("Updated Task for job", "task", taskName, "namespace", taskNamespace)
+		}
 		return &task, nil
 	}
 	if !errors.IsNotFound(err) {
@@ -99,6 +106,17 @@ func (r *JobReconciler) reconcileTask(
 	logger.Info("Created Task for job", "task", taskName, "namespace", taskNamespace)
 	newTask.Status.Phase = rlarkv1alpha1.TaskPhasePending
 	return newTask, nil
+}
+
+func taskSpecEqual(existing *rlarkv1alpha1.Task, job *rlarkv1alpha1.Job, t rlarkv1alpha1.JobTaskTemplate) bool {
+	desired := buildTask(job, t, existing.Name, existing.Namespace)
+	if !reflect.DeepEqual(existing.Spec, desired.Spec) {
+		return false
+	}
+	if !reflect.DeepEqual(existing.Annotations, desired.Annotations) {
+		return false
+	}
+	return true
 }
 
 func (r *JobReconciler) reconcileWithStateMachine(
