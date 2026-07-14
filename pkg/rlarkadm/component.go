@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/rlinf/rlark/pkg/log"
+	"github.com/rlinf/rlark/pkg/utils"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -18,6 +19,7 @@ type Component struct {
 	Port         int32
 	Plane        Plane
 	NeedsService bool
+	WorkloadKind string
 
 	ServiceAccount string
 	RBACRules      []rbacv1.PolicyRule
@@ -31,6 +33,14 @@ type Component struct {
 	VolumeFn      func(cfg *DeployConfig) ([]corev1.Volume, []corev1.VolumeMount)
 	HealthCheckFn func(cfg *DeployConfig) error
 	PostDeployFn  func(cfg *DeployConfig) error
+}
+
+func (c *Component) GetName() string {
+	return c.Name
+}
+
+func (c *Component) GetDependencies() []string {
+	return c.Dependencies
 }
 
 func commonArgs() []string {
@@ -221,6 +231,7 @@ var components = []Component{
 		RBACRules: []rbacv1.PolicyRule{
 			{APIGroups: []string{""}, Resources: []string{"nodes", "pods"}, Verbs: []string{"get", "list", "watch"}},
 			{APIGroups: []string{""}, Resources: []string{"pods"}, Verbs: []string{"create", "update", "delete"}},
+			{APIGroups: []string{""}, Resources: []string{"pods/log"}, Verbs: []string{"get"}},
 			{APIGroups: []string{""}, Resources: []string{"configmaps", "services"}, Verbs: []string{"get", "list", "watch", "create", "update", "delete"}},
 			{APIGroups: []string{"apps"}, Resources: []string{"deployments", "daemonsets", "statefulsets"}, Verbs: []string{"get", "list", "watch", "create", "update", "delete"}},
 		},
@@ -245,6 +256,47 @@ var components = []Component{
 		},
 		VolumeFn: func(cfg *DeployConfig) ([]corev1.Volume, []corev1.VolumeMount) {
 			return certVolume()
+		},
+	},
+	{
+		Name: ComponentAgentNode, Port: 8081, Plane: PlaneData, WorkloadKind: "DaemonSet",
+		HealthCheckFn:  modeHealthCheck(Component{Name: ComponentAgentNode}),
+		ServiceAccount: "rlark-agent",
+		ImageFn: func(cfg *DeployConfig) string {
+			return imageByMode(cfg, func(k *KubernetesEnv) string { return k.AgentImage }, func(d *DockerEnv) string { return d.AgentImage })
+		},
+		ArtifactFn: func(cfg *DeployConfig) string { return cfg.Raw.AgentArtifact },
+		ArgsFn: func(cfg *DeployConfig) []string {
+			args := []string{
+				"--server-address=" + cfg.ControlPlaneAddress,
+				"--agent-type=" + cfg.EnvMode(),
+				"--client-cert=" + CertDir + "/tls.crt",
+				"--client-key=" + CertDir + "/tls.key",
+				"--ca-cert=" + CertDir + "/ca.crt",
+				"--leader-election=false",
+				"--mode=node",
+			}
+			if cfg.Kubernetes != nil {
+				args = append(args, "--in-cluster")
+			}
+			return args
+		},
+		VolumeFn: func(cfg *DeployConfig) ([]corev1.Volume, []corev1.VolumeMount) {
+			vols, mounts := certVolume()
+			vols = append(vols, corev1.Volume{
+				Name: "nodeserver-socket",
+				VolumeSource: corev1.VolumeSource{
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: "/run/rlark",
+						Type: &[]corev1.HostPathType{corev1.HostPathDirectoryOrCreate}[0],
+					},
+				},
+			})
+			mounts = append(mounts, corev1.VolumeMount{
+				Name:      "nodeserver-socket",
+				MountPath: "/run/rlark",
+			})
+			return vols, mounts
 		},
 	},
 	{
@@ -312,23 +364,30 @@ func imageByMode(cfg *DeployConfig, k8sFn func(*KubernetesEnv) string, dockerFn 
 func ComponentsForPlane(cfg *DeployConfig) []Component {
 	logger := log.GetLogger()
 	var result []Component
-	for _, c := range components {
+	var topos []utils.Topo
+	for i := range components {
+		c := &components[i]
 		if c.Plane != cfg.Plane {
 			continue
 		}
 		if c.EnabledFn != nil && !c.EnabledFn(cfg) {
 			continue
 		}
-		result = append(result, c)
+		result = append(result, *c)
+		topos = append(topos, c)
 	}
 
-	sorted, err := topologicalSort(result)
+	sorted, err := utils.TopologicalSort(topos)
 	if err != nil {
 		logger.Error(nil, "topological sort failed, using original order", "err", err)
 		return result
 	}
 
-	return sorted
+	var sortedComps []Component
+	for _, t := range sorted {
+		sortedComps = append(sortedComps, *t.(*Component))
+	}
+	return sortedComps
 }
 
 func (c *Component) Deployment(cfg *DeployConfig) *appsv1.Deployment {
@@ -341,7 +400,7 @@ func (c *Component) Deployment(cfg *DeployConfig) *appsv1.Deployment {
 			Labels:    labels,
 		},
 		Spec: appsv1.DeploymentSpec{
-			Replicas: ptr(int32(1)),
+			Replicas: utils.Ptr(int32(1)),
 			Selector: &metav1.LabelSelector{MatchLabels: labels},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{Labels: labels},
@@ -377,6 +436,56 @@ func (c *Component) Deployment(cfg *DeployConfig) *appsv1.Deployment {
 	}
 
 	return dep
+}
+
+func (c *Component) DaemonSet(cfg *DeployConfig) *appsv1.DaemonSet {
+	labels := map[string]string{"app": c.Name}
+
+	ds := &appsv1.DaemonSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      c.Name,
+			Namespace: Namespace,
+			Labels:    labels,
+		},
+		Spec: appsv1.DaemonSetSpec{
+			Selector: &metav1.LabelSelector{MatchLabels: labels},
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{Labels: labels},
+				Spec: corev1.PodSpec{
+					ServiceAccountName: c.ServiceAccountName(),
+					Containers: []corev1.Container{{
+						Name:            c.Name,
+						Image:           c.ImageFn(cfg),
+						ImagePullPolicy: corev1.PullIfNotPresent,
+						Ports: []corev1.ContainerPort{{
+							ContainerPort: c.Port,
+						}},
+						Args: c.ArgsFn(cfg),
+						SecurityContext: &corev1.SecurityContext{
+							Privileged: utils.Ptr(true),
+						},
+					}},
+				},
+			},
+		},
+	}
+
+	if c.EnvFn != nil {
+		envMap := c.EnvFn(cfg)
+		var envs []corev1.EnvVar
+		for k, v := range envMap {
+			envs = append(envs, corev1.EnvVar{Name: k, Value: v})
+		}
+		ds.Spec.Template.Spec.Containers[0].Env = envs
+	}
+
+	if c.VolumeFn != nil {
+		vols, mounts := c.VolumeFn(cfg)
+		ds.Spec.Template.Spec.Volumes = append(ds.Spec.Template.Spec.Volumes, vols...)
+		ds.Spec.Template.Spec.Containers[0].VolumeMounts = append(ds.Spec.Template.Spec.Containers[0].VolumeMounts, mounts...)
+	}
+
+	return ds
 }
 
 func (c *Component) ServiceAccountName() string {
@@ -426,8 +535,6 @@ func (c *Component) Service() *corev1.Service {
 		},
 	}
 }
-
-func ptr[T any](v T) *T { return &v }
 
 func DBConfigYAML(cfg *DBConfig) ([]byte, error) {
 	data, err := yaml.Marshal(cfg)

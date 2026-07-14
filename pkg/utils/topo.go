@@ -1,39 +1,44 @@
-package rlarkadm
+package utils
 
 import (
 	"fmt"
 	"strings"
 )
 
-// topologicalSort returns components in deployment order (dependencies first).
+type Topo interface {
+	GetName() string
+	GetDependencies() []string
+}
+
+// TopologicalSort returns components in deployment order (dependencies first).
 // Uses Kahn's algorithm. Returns error on cyclic dependencies.
-func topologicalSort(comps []Component) ([]Component, error) {
-	compMap := make(map[string]*Component, len(comps))
+func TopologicalSort(comps []Topo) ([]Topo, error) {
+	compMap := make(map[string]*Topo, len(comps))
 	for i := range comps {
-		compMap[comps[i].Name] = &comps[i]
+		compMap[comps[i].GetName()] = &comps[i]
 	}
 
 	inDegree := make(map[string]int, len(comps))
 	dependents := make(map[string][]string)
 	for _, c := range comps {
-		inDegree[c.Name] = len(c.Dependencies)
-		for _, dep := range c.Dependencies {
+		inDegree[c.GetName()] = len(c.GetDependencies())
+		for _, dep := range c.GetDependencies() {
 			if _, ok := compMap[dep]; ok {
-				dependents[dep] = append(dependents[dep], c.Name)
+				dependents[dep] = append(dependents[dep], c.GetName())
 			} else {
-				inDegree[c.Name]--
+				inDegree[c.GetName()]--
 			}
 		}
 	}
 
 	var queue []string
 	for _, c := range comps {
-		if inDegree[c.Name] == 0 {
-			queue = append(queue, c.Name)
+		if inDegree[c.GetName()] == 0 {
+			queue = append(queue, c.GetName())
 		}
 	}
 
-	var sorted []Component
+	var sorted []Topo
 	for len(queue) > 0 {
 		name := queue[0]
 		queue = queue[1:]
@@ -50,8 +55,8 @@ func topologicalSort(comps []Component) ([]Component, error) {
 	if len(sorted) != len(comps) {
 		var cyclic []string
 		for _, c := range comps {
-			if inDegree[c.Name] > 0 {
-				cyclic = append(cyclic, c.Name)
+			if inDegree[c.GetName()] > 0 {
+				cyclic = append(cyclic, c.GetName())
 			}
 		}
 		return nil, fmt.Errorf("cyclic dependency detected among: %s", strings.Join(cyclic, ", "))

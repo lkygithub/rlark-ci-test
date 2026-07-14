@@ -27,6 +27,7 @@ type Config struct {
 	LeaderElectionID  string // unique identifier for this agent instance, usually hostname
 
 	NodeServerConfig      nodeserver.Config
+	NetworkSidecarImage   string
 	RLarkServerSSHAddress string
 	RLarkServerSSHHostKey string
 }
@@ -56,4 +57,5 @@ func (c *Config) SetupFlags(fs *pflag.FlagSet) {
 
 	fs.StringVar(&c.RLarkServerSSHAddress, "rlark-server-ssh-address", c.RLarkServerSSHAddress, "RLark server SSH address (user@host:port)")
 	fs.StringVar(&c.RLarkServerSSHHostKey, "rlark-server-ssh-host-key", c.RLarkServerSSHHostKey, "RLark server SSH host key")
+	fs.StringVar(&c.NetworkSidecarImage, "network-sidecar-image", c.NetworkSidecarImage, "Network sidecar container image (empty=disabled)")
 }

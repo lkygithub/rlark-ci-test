@@ -3,8 +3,6 @@ package gateway
 import (
 	"bytes"
 	"context"
-	"crypto/tls"
-	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -49,14 +47,14 @@ func (g *Gateway) handleSignAgentCert(c *gin.Context) {
 		return
 	}
 
-	adminCertPEM, adminKeyPEM, caCertPEM, err := g.getKCPAdminCerts()
+	_, _, caCertPEM, err := g.getKCPAdminCerts()
 	if err != nil {
 		logger.Error(err, "failed to get KCP admin certificates")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("get admin cert: %v", err)})
 		return
 	}
 
-	agentCertPEM, agentKeyPEM, err := g.signCertViaServer(adminCertPEM, adminKeyPEM, caCertPEM, req.ClusterID)
+	agentCertPEM, agentKeyPEM, err := g.signCertViaServer(req.ClusterID)
 	if err != nil {
 		logger.Error(err, "failed to sign agent certificate")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("sign agent cert: %v", err)})
@@ -100,28 +98,8 @@ func (g *Gateway) getKCPAdminCerts() (certPEM, keyPEM, caPEM []byte, err error) 
 	return certPEM, keyPEM, caPEM, nil
 }
 
-func (g *Gateway) signCertViaServer(adminCertPEM, adminKeyPEM, caCertPEM []byte, clusterID string) (certPEM, keyPEM string, err error) {
-	cert, err := tls.X509KeyPair(adminCertPEM, adminKeyPEM)
-	if err != nil {
-		return "", "", fmt.Errorf("load admin keypair: %w", err)
-	}
-
-	caPool := x509.NewCertPool()
-	if !caPool.AppendCertsFromPEM(caCertPEM) {
-		return "", "", fmt.Errorf("failed to parse CA cert")
-	}
-
-	tlsConfig := &tls.Config{
-		Certificates: []tls.Certificate{cert},
-		RootCAs:      caPool,
-	}
-
-	httpClient := &http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: tlsConfig,
-		},
-	}
-
+func (g *Gateway) signCertViaServer(clusterID string) (certPEM, keyPEM string, err error) {
+	httpClient := &http.Client{Transport: g.serverTransport}
 	signReq := map[string]string{
 		"role":      "agent",
 		"client_id": clusterID,
