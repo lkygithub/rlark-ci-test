@@ -50,10 +50,14 @@ func buildRayConfigMap(namespace, role string) *corev1.ConfigMap {
 	}
 }
 
+func rayHeadServiceName(taskName string) string {
+	return fmt.Sprintf("%s-ray-head", taskName)
+}
+
 func buildRayHeadService(namespace, taskName string) *corev1.Service {
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-ray-head", taskName),
+			Name:      rayHeadServiceName(taskName),
 			Namespace: namespace,
 		},
 		Spec: corev1.ServiceSpec{
@@ -117,8 +121,7 @@ func applyRayInit(template *corev1.PodTemplateSpec, mgmtTask *rlarkv1alpha1.Task
 		} else {
 			headTaskName := annotations[rlarkv1alpha1.RayHeadTaskNameAnnotation]
 			if headTaskName != "" {
-				// todo address 需要考虑跨集群，目前通过 service 访问
-				envs = append(envs, corev1.EnvVar{Name: "RLARK_HEAD_ADDRESS", Value: headTaskName + "-ray-head"})
+				envs = append(envs, corev1.EnvVar{Name: "RLARK_HEAD_ADDRESS", Value: rayHeadServiceName(headTaskName)})
 			}
 		}
 

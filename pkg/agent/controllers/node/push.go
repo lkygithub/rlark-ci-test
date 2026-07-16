@@ -43,18 +43,25 @@ func (r *pushNodeReconciler) Reconcile(ctx context.Context, req reconcile.Reques
 }
 
 func (r *pushNodeReconciler) buildRLarkNodeFromK8sNode(k8sNode *corev1.Node) *rlarkv1alpha1.Node {
+	labels := make(map[string]string)
+	for k, v := range k8sNode.Labels {
+		labels[k] = v
+	}
+	labels[rlarkv1alpha1.LabelClusterID] = r.c.ManagementNamespace
+	labels[rlarkv1alpha1.LabelAgentType] = r.c.AgentType
+
 	return &rlarkv1alpha1.Node{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      k8sNode.Name,
 			Namespace: r.c.ManagementNamespace,
-			Labels:    k8sNode.Labels,
+			Labels:    labels,
 		},
 		Spec: rlarkv1alpha1.NodeSpec{
 			AgentType:     rlarkv1alpha1.AgentType(r.c.AgentType),
 			Unschedulable: k8sNode.Spec.Unschedulable,
 		},
 		Status: rlarkv1alpha1.NodeStatus{
-			Phase:       rlarkv1alpha1.NodeOnline,
+			Phase:       r.getPhase(k8sNode),
 			Capacity:    k8sNode.Status.Capacity,
 			Allocatable: k8sNode.Status.Allocatable,
 			Addresses:   k8sNode.Status.Addresses,
@@ -66,6 +73,27 @@ func (r *pushNodeReconciler) buildRLarkNodeFromK8sNode(k8sNode *corev1.Node) *rl
 			},
 		},
 	}
+}
+
+func (r *pushNodeReconciler) getPhase(k8sNode *corev1.Node) rlarkv1alpha1.NodePhase {
+	if k8sNode == nil {
+		return rlarkv1alpha1.NodeOffline
+	}
+
+	if k8sNode.Spec.Unschedulable {
+		return rlarkv1alpha1.NodeOffline
+	}
+
+	for _, cond := range k8sNode.Status.Conditions {
+		if cond.Type == corev1.NodeReady {
+			if cond.Status == corev1.ConditionTrue {
+				return rlarkv1alpha1.NodeOnline
+			}
+			return rlarkv1alpha1.NodeOffline
+		}
+	}
+
+	return rlarkv1alpha1.NodeOffline
 }
 
 func (r *pushNodeReconciler) updateManagementNode(ctx context.Context, logger logr.Logger, desiredNode *rlarkv1alpha1.Node) (reconcile.Result, error) {

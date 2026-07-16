@@ -5,6 +5,20 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const (
+	LabelClusterID    = "rlark.io/cluster-id"
+	LabelAgentType    = "rlark.io/agent-type"
+	LabelNodeCategory = "rlark.io/node-category"
+)
+
+type NodeCategory string
+
+const (
+	NodeCategoryCloud NodeCategory = "cloud" // 云算力节点
+	NodeCategoryEdge  NodeCategory = "edge"  // 端算力节点
+	NodeCategoryRobot NodeCategory = "robot" // 端真机节点
+)
+
 type NodePhase string
 
 const (

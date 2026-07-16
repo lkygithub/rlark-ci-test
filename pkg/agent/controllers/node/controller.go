@@ -30,8 +30,7 @@ func (c *NodeController) KubernetesResource() base.KubernetesResource {
 }
 
 func (c *NodeController) AsPullReconciler() base.KubernetesReconciler {
-	// Node pull is nil — no need to watch management Node CRs to create local resources
-	return nil
+	return &pullNodeReconciler{c: c}
 }
 
 func (c *NodeController) AsKubePushReconcilers() map[base.KubernetesResource]base.KubernetesReconciler {

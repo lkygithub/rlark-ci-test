@@ -57,8 +57,13 @@ func (g *Gateway) RegisterRoutes(r gin.IRouter) {
 		domains.DELETE("/:name", g.rlinfv1alpha1DeleteDomain)
 	}
 
-	r.POST("/api/v1/certificates/agent", g.handleSignAgentCert)
-	r.POST("/api/v1/certificates/revoke", g.handleRevokeCertificate)
+	certificates := r.Group("/api/v1/certificates")
+	{
+		certificates.GET("/agent", g.handleListAgentCerts)
+		certificates.GET("/agent/:cluster_id", g.handleGetAgentCert)
+		certificates.POST("/agent", g.handleSignAgentCert)
+		certificates.POST("/revoke", g.handleRevokeCertificate)
+	}
 
 	sshUserKeys := r.Group("/api/v1/ssh-user-keys")
 	{

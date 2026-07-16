@@ -1,5 +1,9 @@
 # 数据面部署示例
 # rlarkadm deploy --deploy-conf deploy-data-plane.yaml
+#
+# cert 字段支持两种写法：
+#   1. 直接填入证书内容（推荐，从管理面"创建集群"页面复制）
+#   2. 填入文件路径（兼容旧方式）
 
 apiVersion: rlark.io/v1alpha1
 kind: DeployConfig
@@ -7,9 +11,18 @@ plane: data
 control-plane-address: https://rlark-server.rlark-system.svc:8443
 
 cert:
-  ca-cert: /Users/ar/test/rlark-deploy/ca.crt
-  agent-cert: /Users/ar/test/rlark-deploy/agent.crt
-  agent-key: /Users/ar/test/rlark-deploy/agent.key
+  ca-cert: |
+    -----BEGIN CERTIFICATE-----
+    <CA 证书内容>
+    -----END CERTIFICATE-----
+  agent-cert: |
+    -----BEGIN CERTIFICATE-----
+    <Agent 证书内容>
+    -----END CERTIFICATE-----
+  agent-key: |
+    -----BEGIN PRIVATE KEY-----
+    <Agent 私钥内容>
+    -----END PRIVATE KEY-----
 
 # --- 三选一 ---
 

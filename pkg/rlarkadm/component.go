@@ -229,8 +229,8 @@ var components = []Component{
 		HealthCheckFn:  modeHealthCheck(Component{Name: ComponentAgent}),
 		ServiceAccount: "rlark-agent",
 		RBACRules: []rbacv1.PolicyRule{
-			{APIGroups: []string{""}, Resources: []string{"nodes", "pods"}, Verbs: []string{"get", "list", "watch"}},
-			{APIGroups: []string{""}, Resources: []string{"pods"}, Verbs: []string{"create", "update", "delete"}},
+			{APIGroups: []string{""}, Resources: []string{"nodes"}, Verbs: []string{"get", "list", "watch", "update"}},
+			{APIGroups: []string{""}, Resources: []string{"pods"}, Verbs: []string{"get", "list", "watch", "create", "update", "delete"}},
 			{APIGroups: []string{""}, Resources: []string{"pods/log"}, Verbs: []string{"get"}},
 			{APIGroups: []string{""}, Resources: []string{"configmaps", "services"}, Verbs: []string{"get", "list", "watch", "create", "update", "delete"}},
 			{APIGroups: []string{"apps"}, Resources: []string{"deployments", "daemonsets", "statefulsets"}, Verbs: []string{"get", "list", "watch", "create", "update", "delete"}},

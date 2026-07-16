@@ -9,6 +9,8 @@ IMAGE_PLATFORMS ?= linux/amd64
 
 COMPONENTS = server controller-manager gateway agent ui network-sidecar
 
+lint: lint-go
+
 lint-go:
 	@echo "Running golangci-lint..."
 	@golangci-lint run
