@@ -1,0 +1,9 @@
+include:
+  - project: 'mizar/ci-templates'
+    ref: main
+    file: 'common.yml'
+
+variables:
+  PROJECT: rlark
+  VERSION: v0.1.0
+  CI_IMAGE: harbor.infini-ai.com/share/mizar-ci:1.26.5-bookworm

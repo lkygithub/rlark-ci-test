@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 type CertBundle struct {
@@ -13,19 +14,36 @@ type CertBundle struct {
 	KeyPEM    []byte
 }
 
+func resolveCertData(field string, label string) ([]byte, error) {
+	if field == "" {
+		return nil, fmt.Errorf("%s is empty", label)
+	}
+	if _, err := os.Stat(field); err == nil {
+		data, err := os.ReadFile(field)
+		if err != nil {
+			return nil, fmt.Errorf("read %s file: %w", label, err)
+		}
+		return data, nil
+	}
+	if filepath.IsAbs(field) || strings.HasPrefix(field, ".") || strings.HasPrefix(field, "~") {
+		return nil, fmt.Errorf("%s file not found: %s", label, field)
+	}
+	return []byte(field), nil
+}
+
 func GenerateCertBundle(cfg *CertConfig) (*CertBundle, error) {
-	caCertPEM, err := os.ReadFile(cfg.CACert)
+	caCertPEM, err := resolveCertData(cfg.CACert, "ca-cert")
 	if err != nil {
-		return nil, fmt.Errorf("read CA cert: %w", err)
+		return nil, err
 	}
 
-	certPEM, err := os.ReadFile(cfg.AgentCert)
+	certPEM, err := resolveCertData(cfg.AgentCert, "agent-cert")
 	if err != nil {
-		return nil, fmt.Errorf("read agent cert: %w", err)
+		return nil, err
 	}
-	keyPEM, err := os.ReadFile(cfg.AgentKey)
+	keyPEM, err := resolveCertData(cfg.AgentKey, "agent-key")
 	if err != nil {
-		return nil, fmt.Errorf("read agent key: %w", err)
+		return nil, err
 	}
 
 	return &CertBundle{

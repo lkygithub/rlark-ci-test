@@ -1,6 +1,10 @@
 package container
 
-import "strings"
+import (
+	"strings"
+
+	"github.com/google/uuid"
+)
 
 // podUIDFromResolvSource 尝试从容器的 resolv.conf 挂载来源路径中提取 Kubernetes Pod UID。
 // mountSource 格式应为 .../pods/<pod-uid>/etc/resolv.conf，其中 <pod-uid> 是标准 UUID。
@@ -44,12 +48,7 @@ func isUUID(s string) bool {
 	if len(s) != 36 {
 		return false
 	}
-	for i := 0; i < 36; i++ {
-		if i == 8 || i == 13 || i == 18 || i == 23 {
-			if s[i] != '-' {
-				return false
-			}
-		}
-	}
-	return true
+
+	_, err := uuid.Parse(s)
+	return err == nil
 }

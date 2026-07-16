@@ -205,6 +205,15 @@ func (r *pullReconciler) cleanupWorkload(ctx context.Context, name string, names
 			}
 		}
 	}
+
+	svcKey := types.NamespacedName{Name: rayHeadServiceName(name), Namespace: namespace}
+	var svc corev1.Service
+	if err := r.c.LocalKubeClient.Get(ctx, svcKey, &svc); err == nil {
+		if err := r.c.LocalKubeClient.Delete(ctx, &svc); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
