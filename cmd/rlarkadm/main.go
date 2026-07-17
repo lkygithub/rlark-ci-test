@@ -15,7 +15,8 @@ func main() {
 	}
 	root.PersistentFlags().String("log-level", "info", "log level (debug/info/warn/error)")
 
-	root.AddCommand(commands.DeployCommand())
+	root.AddCommand(commands.InstallCommand())
+	root.AddCommand(commands.UninstallCommand())
 
 	if err := root.Execute(); err != nil {
 		os.Exit(1)

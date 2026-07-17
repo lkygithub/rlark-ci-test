@@ -1,4 +1,4 @@
-package rlarkadm
+package constants
 
 const (
 	Namespace = "rlark-system"
@@ -23,7 +23,7 @@ const (
 	PostgresqlInitDir = "/docker-entrypoint-initdb.d"
 )
 
-const initDBSQL = `-- scripts/init-db.sql
+const InitDBSQL = `-- scripts/init-db.sql
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 GRANT ALL PRIVILEGES ON DATABASE rlark TO postgres;
 `
