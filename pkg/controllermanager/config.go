@@ -29,6 +29,7 @@ type Config struct {
 func DefaultConfig() Config {
 	return Config{
 		KubeClientConfig: configs.DefaultKubernetesClientConfig(),
+		ServerAddress:    "https://rlark-server.rlark-system.svc:8443",
 		DBConfigPath:     "",
 
 		LeaderElection:   true,
@@ -44,6 +45,7 @@ func DefaultConfig() Config {
 func (c *Config) SetupFlags(fs *pflag.FlagSet) {
 	c.KubeClientConfig.SetupFlags(fs)
 
+	fs.StringVar(&c.ServerAddress, "server-address", c.ServerAddress, "The address for the RLark server to listen on (e.g., https://:8443)")
 	fs.StringVar(&c.DBConfigPath, "db-config", c.DBConfigPath, "Path to database configuration file")
 	fs.BoolVar(&c.LeaderElection, "leader-elect", c.LeaderElection, "Enable leader election for controller manager")
 	fs.StringVar(&c.LeaderElectionID, "leader-election-id", c.LeaderElectionID, "Leader election ID for controller manager")

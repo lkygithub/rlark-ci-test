@@ -58,6 +58,7 @@ func (s *Server) registerAgent(ctx context.Context, agentID string) error {
 	rules := []rbacv1.PolicyRule{
 		{APIGroups: []string{"rlinf.io"}, Resources: []string{"nodes", "tasks", "pods"}, Verbs: []string{"get", "list", "watch", "create", "update", "patch", "delete"}},
 		{APIGroups: []string{"rlinf.io"}, Resources: []string{"nodes/status", "tasks/status", "pods/status"}, Verbs: []string{"get", "update", "patch"}},
+		{APIGroups: []string{"rlinf.io"}, Resources: []string{"domainpeers"}, Verbs: []string{"get", "list", "watch"}},
 		{APIGroups: []string{"coordination.k8s.io"}, Resources: []string{"leases"}, Verbs: []string{"get", "create", "update", "patch"}},
 	}
 	roleName := saName
