@@ -7,3 +7,62 @@ variables:
   PROJECT: rlark
   VERSION: v0.1.0
   CI_IMAGE: harbor.infini-ai.com/share/mizar-ci:1.26.5-bookworm
+
+build-images-dev:
+  image: ${CI_IMAGE}
+  services:
+    - !reference [.docker, services]
+  stage: build
+  needs: []
+  tags:
+    - mizar-cpu-runner
+  extends: .only-default-manual
+  parallel:
+    matrix:
+      - APP:
+        - server
+        - controller-manager
+        - gateway
+        - agent
+        - ui
+        - network-sidecar
+  before_script:
+    - !reference [.golang, prepare_script]
+    - !reference [.docker, prepare_script]
+    - !reference [.makefile, prepare_script]
+  script:
+    - docker login harbor.infini-ai.com --username "$DOCKER_REGISTRY_USER" --password "$DOCKER_REGISTRY_PASS"
+    - make IMAGE_TAG=$DEV_VERSION docker-build-$APP
+    - make IMAGE_TAG=$DEV_VERSION docker-push-$APP
+  after_script:
+    - docker image prune -f
+
+build-images-rel:
+  image: ${CI_IMAGE}
+  services:
+    - !reference [.docker, services]
+  stage: build
+  needs: []
+  tags:
+    - mizar-cpu-runner
+  only:
+    - tags
+  parallel:
+    matrix:
+      - APP:
+        - server
+        - controller-manager
+        - gateway
+        - agent
+        - ui
+        - network-sidecar
+  before_script:
+    - !reference [.golang, prepare_script]
+    - !reference [.docker, prepare_script]
+    - !reference [.makefile, prepare_script]
+  script:
+    - docker login harbor.infini-ai.com --username "$DOCKER_REGISTRY_USER" --password "$DOCKER_REGISTRY_PASS"
+    - make IMAGE_TAG=$REL_VERSION docker-build-$APP
+    - make IMAGE_TAG=$REL_VERSION docker-push-$APP
+  after_script:
+    - docker image prune -f

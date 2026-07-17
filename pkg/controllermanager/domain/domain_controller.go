@@ -82,9 +82,9 @@ func (r *DomainReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		if alloc, ok := oldIPAllocMap[pod.Namespace+"/"+pod.Name]; ok {
 			podsByNamespace[ns] = append(podsByNamespace[ns], rlarkv1alpha1.DomainPodInfo{
 				GlobalNamespace: ns,
-				Namespace:       pod.Spec.TaskNamespace,
-				Name:            pod.Name,
-				UID:             string(pod.UID),
+				Namespace:       pod.Spec.PodNamespace,
+				Name:            pod.Spec.PodName,
+				UID:             pod.Name, // 控制面的 Name 即为数据面的 UID
 				Node:            pod.Status.Node,
 				IP:              alloc.IP,
 				LocalIP:         pod.Status.IP,
@@ -94,9 +94,9 @@ func (r *DomainReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		} else {
 			nonAllocPodsByNamespace[ns] = append(nonAllocPodsByNamespace[ns], rlarkv1alpha1.DomainPodInfo{
 				GlobalNamespace: ns,
-				Namespace:       pod.Spec.TaskNamespace,
-				Name:            pod.Name,
-				UID:             string(pod.UID),
+				Namespace:       pod.Spec.PodNamespace,
+				Name:            pod.Spec.PodName,
+				UID:             pod.Name, // 控制面的 Name 即为数据面的 UID
 				Node:            pod.Status.Node,
 				IP:              "",
 				LocalIP:         pod.Status.IP,

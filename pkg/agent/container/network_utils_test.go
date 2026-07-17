@@ -31,7 +31,7 @@ func TestIsUUID(t *testing.T) {
 	}
 }
 
-func TestPodUIDFromResolvSource(t *testing.T) {
+func TestPodUIDFromHostsSource(t *testing.T) {
 	validUUID := "01234567-89ab-cdef-0123-456789abcdef"
 
 	tests := []struct {
@@ -42,37 +42,37 @@ func TestPodUIDFromResolvSource(t *testing.T) {
 	}{
 		{
 			name:    "standard kubelet path",
-			source:  "/var/lib/kubelet/pods/" + validUUID + "/etc/resolv.conf",
+			source:  "/var/lib/kubelet/pods/" + validUUID + "/etc/hosts",
 			wantUID: validUUID,
 			wantOK:  true,
 		},
 		{
 			name:    "kubelet on custom mount",
-			source:  "/data/kubelet/pods/" + validUUID + "/etc/resolv.conf",
+			source:  "/data/kubelet/pods/" + validUUID + "/etc/hosts",
 			wantUID: validUUID,
 			wantOK:  true,
 		},
 		{
 			name:    "kubelet on symlinked path",
-			source:  "/mnt/ssd1/kubelet/pods/" + validUUID + "/etc/resolv.conf",
+			source:  "/mnt/ssd1/kubelet/pods/" + validUUID + "/etc/hosts",
 			wantUID: validUUID,
 			wantOK:  true,
 		},
 		{
 			name:    "short custom path",
-			source:  "/opt/kubelet/pods/" + validUUID + "/etc/resolv.conf",
+			source:  "/opt/kubelet/pods/" + validUUID + "/etc/hosts",
 			wantUID: validUUID,
 			wantOK:  true,
 		},
 		{
 			name:    "no trailing components",
-			source:  "/pods/" + validUUID + "/etc/resolv.conf",
+			source:  "/pods/" + validUUID + "/etc/hosts",
 			wantUID: validUUID,
 			wantOK:  true,
 		},
 		{
 			name:    "invalid uuid in path",
-			source:  "/var/lib/kubelet/pods/not-a-uuid/etc/resolv.conf",
+			source:  "/var/lib/kubelet/pods/not-a-uuid/etc/hosts",
 			wantUID: "",
 			wantOK:  false,
 		},
@@ -83,14 +83,14 @@ func TestPodUIDFromResolvSource(t *testing.T) {
 			wantOK:  false,
 		},
 		{
-			name:    "missing /etc/resolv.conf suffix",
-			source:  "/var/lib/kubelet/pods/" + validUUID + "/etc/resolv",
+			name:    "missing /etc/hosts suffix",
+			source:  "/var/lib/kubelet/pods/" + validUUID + "/etc/host",
 			wantUID: "",
 			wantOK:  false,
 		},
 		{
 			name:    "no pods segment",
-			source:  "/var/lib/kubelet/containers/" + validUUID + "/resolv.conf",
+			source:  "/var/lib/kubelet/containers/" + validUUID + "/hosts",
 			wantUID: "",
 			wantOK:  false,
 		},
@@ -102,13 +102,13 @@ func TestPodUIDFromResolvSource(t *testing.T) {
 		},
 		{
 			name:    "multiple uuid-like segments but no pods",
-			source:  "/var/lib/foo/" + validUUID + "/bar/" + validUUID + "/etc/resolv.conf",
+			source:  "/var/lib/foo/" + validUUID + "/bar/" + validUUID + "/etc/hosts",
 			wantUID: "",
 			wantOK:  false,
 		},
 		{
 			name:    "deep path with long prefix",
-			source:  "/var/lib/kubelet/plugins/kubernetes.io/csi/pv/pvc-xxx/pods/" + validUUID + "/etc/resolv.conf",
+			source:  "/var/lib/kubelet/plugins/kubernetes.io/csi/pv/pvc-xxx/pods/" + validUUID + "/etc/hosts",
 			wantUID: validUUID,
 			wantOK:  true,
 		},
@@ -116,12 +116,12 @@ func TestPodUIDFromResolvSource(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotUID, gotOK := podUIDFromResolvSource(tt.source)
+			gotUID, gotOK := podUIDFromHostsSource(tt.source)
 			if gotOK != tt.wantOK {
-				t.Errorf("podUIDFromResolvSource(%q) ok = %v, want %v", tt.source, gotOK, tt.wantOK)
+				t.Errorf("podUIDFromHostsSource(%q) ok = %v, want %v", tt.source, gotOK, tt.wantOK)
 			}
 			if gotUID != tt.wantUID {
-				t.Errorf("podUIDFromResolvSource(%q) uid = %q, want %q", tt.source, gotUID, tt.wantUID)
+				t.Errorf("podUIDFromHostsSource(%q) uid = %q, want %q", tt.source, gotUID, tt.wantUID)
 			}
 		})
 	}

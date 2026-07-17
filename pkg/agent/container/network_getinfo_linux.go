@@ -17,18 +17,18 @@ func (a *containerNetworkAdapter) getProcessNetworkInfo(ctx context.Context, pid
 	}
 	defer func() { _ = f.Close() }()
 
-	mounts, err := mountinfo.GetMountsFromReader(f, mountinfo.SingleEntryFilter("/etc/resolv.conf"))
+	mounts, err := mountinfo.GetMountsFromReader(f, mountinfo.SingleEntryFilter("/etc/hosts"))
 	if err != nil {
 		return "", "", fmt.Errorf("parse mountinfo for pid %d: %w", pid, err)
 	}
 	if len(mounts) == 0 {
-		return "", "", fmt.Errorf("no /etc/resolv.conf mount found for pid %d", pid)
+		return "", "", fmt.Errorf("no /etc/hosts mount found for pid %d", pid)
 	}
 
-	podUID, ok := podUIDFromResolvSource(mounts[0].Source)
+	podUID, ok := podUIDFromHostsSource(mounts[0].Root)
 	if ok {
 		return "pod", podUID, nil
 	}
 
-	return "", "", fmt.Errorf("unsupported container runtime (resolv.conf source: %s)", mounts[0].Source)
+	return "", "", fmt.Errorf("unsupported container runtime (hosts source: %s)", mounts[0].Root)
 }

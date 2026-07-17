@@ -30,26 +30,25 @@ func (a *containerNetworkAdapter) getProcessNetworkInfo(ctx context.Context, pid
 		}
 
 		leftFields := strings.Fields(parts[0])
-		rightFields := strings.Fields(parts[1])
 
-		if len(leftFields) < 5 || len(rightFields) < 2 {
+		if len(leftFields) < 5 {
 			continue
 		}
 
-		if leftFields[4] != "/etc/resolv.conf" {
+		if leftFields[4] != "/etc/hosts" { // mount point
 			continue
 		}
 
-		podUID, ok := podUIDFromResolvSource(rightFields[1])
+		podUID, ok := podUIDFromHostsSource(leftFields[3]) // root
 		if ok {
 			return "pod", podUID, nil
 		}
 
-		return "", "", fmt.Errorf("unsupported container runtime (resolv.conf source: %s)", rightFields[1])
+		return "", "", fmt.Errorf("unsupported container runtime (/etc/hosts source: %s)", leftFields[3])
 	}
 	if err := scanner.Err(); err != nil {
 		return "", "", fmt.Errorf("scan mountinfo for pid %d: %w", pid, err)
 	}
 
-	return "", "", fmt.Errorf("no /etc/resolv.conf mount found for pid %d", pid)
+	return "", "", fmt.Errorf("no /etc/hosts mount found for pid %d", pid)
 }

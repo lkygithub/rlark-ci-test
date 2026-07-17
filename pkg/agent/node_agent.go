@@ -16,7 +16,11 @@ type nodeAgent struct {
 }
 
 func (n *nodeAgent) Run(ctx context.Context) error {
-	factory := externalversions.NewSharedInformerFactory(n.a.managementClient, 30*time.Minute)
+	factory := externalversions.NewSharedInformerFactoryWithOptions(
+		n.a.managementClient,
+		30*time.Minute,
+		externalversions.WithNamespace(n.a.config.ClientConfig.ServerNamespace),
+	)
 	domainPeerInformer := factory.Rlinf().V1alpha1().DomainPeers().Informer()
 	domainPeerLister := factory.Rlinf().V1alpha1().DomainPeers().Lister()
 	managementPodInformer := factory.Rlinf().V1alpha1().Pods().Informer()
