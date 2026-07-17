@@ -1,13 +1,15 @@
-package rlarkadm
+package cert
 
 import (
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/rlinf/rlark/pkg/rlarkadm/types"
 )
 
-type CertBundle struct {
+type Bundle struct {
 	CACertPEM []byte
 	CAKeyPEM  []byte
 	CertPEM   []byte
@@ -31,7 +33,7 @@ func resolveCertData(field string, label string) ([]byte, error) {
 	return []byte(field), nil
 }
 
-func GenerateCertBundle(cfg *CertConfig) (*CertBundle, error) {
+func GenerateBundle(cfg *types.CertConfig) (*Bundle, error) {
 	caCertPEM, err := resolveCertData(cfg.CACert, "ca-cert")
 	if err != nil {
 		return nil, err
@@ -46,14 +48,14 @@ func GenerateCertBundle(cfg *CertConfig) (*CertBundle, error) {
 		return nil, err
 	}
 
-	return &CertBundle{
+	return &Bundle{
 		CACertPEM: caCertPEM,
 		CertPEM:   certPEM,
 		KeyPEM:    keyPEM,
 	}, nil
 }
 
-func (b *CertBundle) WriteToDir(dir string) error {
+func (b *Bundle) WriteToDir(dir string) error {
 	if err := os.MkdirAll(dir, 0700); err != nil {
 		return fmt.Errorf("create cert dir: %w", err)
 	}

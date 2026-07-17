@@ -1,4 +1,4 @@
-package rlarkadm
+package raw
 
 import (
 	"fmt"
@@ -10,6 +10,11 @@ import (
 	"strings"
 
 	"github.com/rlinf/rlark/pkg/log"
+	"github.com/rlinf/rlark/pkg/rlarkadm/cert"
+	"github.com/rlinf/rlark/pkg/rlarkadm/component"
+	"github.com/rlinf/rlark/pkg/rlarkadm/constants"
+	"github.com/rlinf/rlark/pkg/rlarkadm/health"
+	"github.com/rlinf/rlark/pkg/rlarkadm/types"
 )
 
 const (
@@ -18,9 +23,9 @@ const (
 	systemdDir = "/etc/systemd/system"
 )
 
-type RawDeployer struct{}
+type Installer struct{}
 
-func (d *RawDeployer) Deploy(cfg *DeployConfig, certBundle *CertBundle) error {
+func (d *Installer) Install(cfg *types.DeployConfig, certBundle *cert.Bundle) error {
 	logger := log.GetLogger()
 	certDir := filepath.Join(configDir, "certs")
 	if certBundle != nil {
@@ -41,7 +46,7 @@ func (d *RawDeployer) Deploy(cfg *DeployConfig, certBundle *CertBundle) error {
 		}
 	}
 
-	comps := ComponentsForPlane(cfg)
+	comps := component.ComponentsForPlane(cfg)
 	binPaths := make([]string, 0, len(comps))
 
 	for _, c := range comps {
@@ -68,13 +73,13 @@ func (d *RawDeployer) Deploy(cfg *DeployConfig, certBundle *CertBundle) error {
 	}
 
 	for _, c := range comps {
-		if err := waitForHealthy(cfg, c); err != nil {
+		if err := health.WaitForHealthy(cfg, c); err != nil {
 			return err
 		}
 	}
 
 	logger.Info("plane deployed via systemd", "plane", cfg.Plane)
-	if cfg.Plane == PlaneData {
+	if cfg.Plane == types.PlaneData {
 		logger.Info("agent connecting to control plane", "address", cfg.ControlPlaneAddress)
 	}
 	return nil
@@ -144,6 +149,20 @@ func systemctlReloadAndEnable(units ...string) error {
 		if err := exec.Command("systemctl", "enable", "--now", u).Run(); err != nil {
 			return fmt.Errorf("systemctl enable --now %s: %w", u, err)
 		}
+	}
+	return nil
+}
+
+func writeDBConfigFile(cfg *types.DBConfig) error {
+	if err := os.MkdirAll(configDir, 0755); err != nil {
+		return fmt.Errorf("create config dir: %w", err)
+	}
+	yamlData, err := component.DBConfigYAML(cfg)
+	if err != nil {
+		return err
+	}
+	if err := os.WriteFile(constants.DBConfigPath, yamlData, 0644); err != nil {
+		return fmt.Errorf("write db config file: %w", err)
 	}
 	return nil
 }

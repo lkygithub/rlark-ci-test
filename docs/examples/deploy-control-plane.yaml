@@ -23,6 +23,31 @@ kubernetes:
   postgresql-image: harbor.infini-ai.com/share/postgres:15
   ui-image: harbor.infini-ai.com/artest/rlark-ui:v0.0.1
 
+  # 全局默认，所有有状态组件继承（可被组件级覆盖）
+  #replicas: 1
+  #storage:
+  #  type: emptyDir   # emptyDir | hostPath | pvc
+  #  host-path: /data/rlark
+  #  storage-class: ""  # 空表示用集群默认 StorageClass
+  #  size: 10Gi
+  #  node-selector:
+  #    rlark-node: "true"
+
+  # 组件级配置（覆盖全局默认）
+  #kcp:
+  #  replicas: 1
+  #  storage:
+  #    type: hostPath
+  #    host-path: /data/kcp
+  #    node-selector:
+  #      kcp-node: "true"
+  #postgresql:
+  #  replicas: 1
+  #  storage:
+  #    type: pvc
+  #    storage-class: ""
+  #    size: 30Gi
+
 #docker:
 #  gateway-image: harbor.infini-ai.com/share/rlark-gateway:latest
 #  controller-manager-image: harbor.infini-ai.com/share/rlark-controller-manager:latest
