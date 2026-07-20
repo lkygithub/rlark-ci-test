@@ -7,6 +7,7 @@ variables:
   PROJECT: rlark
   VERSION: v0.1.0
   CI_IMAGE: harbor.infini-ai.com/share/mizar-ci:1.26.5-bookworm
+  DOCKER_CLIENT_TIMEOUT: "300"
 
 build-images-dev:
   image: ${CI_IMAGE}

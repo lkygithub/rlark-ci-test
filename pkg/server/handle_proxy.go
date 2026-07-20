@@ -58,7 +58,7 @@ func (s *Server) GetDial(ctx context.Context, dialType, address string, certMeta
 			}
 			// 检查证书的 domain 身份是否具有访问目标的权限
 			if domainID, ok := auth.PermissionChecker.HasDomainProxyPermission(certMeta); ok {
-				hasPermission, domainCheckErr := s.checkHostInDomain(ctx, &targetHost, domainID, targetID)
+				hasPermission, domainCheckErr := s.checkHostInDomain(ctx, targetHost, domainID, targetID)
 				if domainCheckErr != nil {
 					return nil, "", fmt.Errorf("failed to check domain proxy permission: %w", domainCheckErr)
 				}
@@ -93,18 +93,14 @@ func (s *Server) getAgentDialer(ctx context.Context, agentID string) remotediale
 }
 
 // checkHostInDomain 检查指定的 host 是否在指定的 domain 下，并返回该 host 的 LocalIP（如果存在）。
-func (s *Server) checkHostInDomain(ctx context.Context, host *string, domainID, agentID string) (bool, error) {
+func (s *Server) checkHostInDomain(ctx context.Context, host string, domainID, agentID string) (bool, error) {
 	namespace := apis.RLarkAgentNamespacePrefix + agentID
 	dp, err := s.rlarkClient.RlinfV1alpha1().DomainPeers(namespace).Get(ctx, domainID, metav1.GetOptions{})
 	if err != nil {
 		return false, fmt.Errorf("get domain peer %s: %w", domainID, err)
 	}
 	for _, pod := range dp.Spec.Pods {
-		if pod.IP == *host {
-			if pod.LocalIP == "" {
-				return false, fmt.Errorf("domain peer %s/%s pod %s/%s has no LocalIP", namespace, domainID, pod.Namespace, pod.Name)
-			}
-			*host = pod.LocalIP
+		if pod.LocalIP == host {
 			return true, nil
 		}
 	}

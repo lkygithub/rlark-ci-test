@@ -59,6 +59,7 @@ func TestSigning(t *testing.T) {
 		ValidBefore:     uint64(ca.Cert.NotAfter.Unix()),
 		Permissions:     gossh.Permissions{},
 	}
+	SetSSHCertMeta(sshTemplate, map[string]string{"role": "test"})
 	sshPEM, err := ca.SignSSHCertificate(sshTemplate)
 	if err != nil {
 		t.Fatalf("failed to sign SSH certificate: %v", err)
@@ -74,5 +75,8 @@ func TestSigning(t *testing.T) {
 	}
 	if err := cc.CheckCert("test", sshCert); err != nil {
 		t.Fatalf("SSH certificate verification failed: %v", err)
+	}
+	if meta, ok := GetSSHCertMeta(sshCert); !ok || meta["role"] != "test" {
+		t.Fatalf("SSH certificate metadata verification failed: got %v, ok=%v", meta, ok)
 	}
 }

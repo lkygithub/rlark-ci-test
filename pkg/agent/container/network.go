@@ -12,6 +12,7 @@ import (
 	"github.com/rlinf/rlark/api/rlark.io/v1alpha1"
 	listerv1alpha1 "github.com/rlinf/rlark/kubeclients/listers/rlark.io/v1alpha1"
 	"github.com/rlinf/rlark/pkg/apis"
+	"github.com/rlinf/rlark/pkg/log"
 	"github.com/rlinf/rlark/pkg/utils"
 )
 
@@ -119,6 +120,8 @@ func (a *containerNetworkAdapter) getPodDomainByPodUID(ctx context.Context, podU
 }
 
 func (a *containerNetworkAdapter) GetContainerNetworkDial(ctx context.Context, cred *containerNetworkCred, host string, query url.Values) (utils.Dial, error) {
+	logger := log.FromContext(ctx)
+
 	dpeer, err := a.domainPeerLister.DomainPeers(a.globalNamespace).Get(cred.domainID)
 	if err != nil {
 		return nil, fmt.Errorf("get domain peer: %w", err)
@@ -137,10 +140,11 @@ func (a *containerNetworkAdapter) GetContainerNetworkDial(ctx context.Context, c
 	}
 	// 1. 如果在同一个集群内，可以直接通过节点访问
 	if targetPod.GlobalNamespace == a.globalNamespace {
+		logger.V(1).Info("Target pod is in the same cluster, using direct node access", "targetPod", targetPod.LocalIP)
 		return func(ctx context.Context) (net.Conn, error) {
 			var dialer net.Dialer
-			// 直接通过目标 Pod 的 LocalIP 访问其 57 端口（proxy 端口）
-			return dialer.DialContext(ctx, "tcp", net.JoinHostPort(targetPod.LocalIP, "57"))
+			// 直接通过目标 Pod 的 LocalIP 访问其 5700 端口（proxy 端口）
+			return dialer.DialContext(ctx, "tcp", net.JoinHostPort(targetPod.LocalIP, "5700"))
 		}, nil
 	}
 
@@ -149,7 +153,8 @@ func (a *containerNetworkAdapter) GetContainerNetworkDial(ctx context.Context, c
 
 	// 3. 不在同一个集群内，且无法直接访问到目标节点，则通过控制面代理进行访问
 	if agentID, ok := strings.CutPrefix(targetPod.GlobalNamespace, apis.RLarkAgentNamespacePrefix); ok {
-		target := fmt.Sprintf("%s.%s.agent:57", host, agentID)
+		target := fmt.Sprintf("%s.%s.agent:5700", targetPod.LocalIP, agentID)
+		logger.V(1).Info("Target pod is in a different cluster, using control plane proxy", "targetPod", target)
 		return func(ctx context.Context) (net.Conn, error) {
 			return a.sshDialer.DialContext(ctx, cred.domainID, a.sshAddr, dpeer.Spec.Cert, dpeer.Spec.Key, target)
 		}, nil

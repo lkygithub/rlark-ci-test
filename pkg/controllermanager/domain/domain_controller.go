@@ -79,7 +79,8 @@ func (r *DomainReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 			continue
 		}
 		ns := pod.Namespace
-		if alloc, ok := oldIPAllocMap[pod.Namespace+"/"+pod.Name]; ok {
+		podKey := ns + "/" + pod.Spec.PodNamespace + "/" + pod.Spec.PodName
+		if alloc, ok := oldIPAllocMap[podKey]; ok {
 			podsByNamespace[ns] = append(podsByNamespace[ns], rlarkv1alpha1.DomainPodInfo{
 				GlobalNamespace: ns,
 				Namespace:       pod.Spec.PodNamespace,
@@ -89,8 +90,8 @@ func (r *DomainReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 				IP:              alloc.IP,
 				LocalIP:         pod.Status.IP,
 			})
-			ippool.MarkAllocated(alloc.IP)                    // mark IP as allocated
-			delete(oldIPAllocMap, pod.Namespace+"/"+pod.Name) // mark as allocated
+			ippool.MarkAllocated(alloc.IP) // mark IP as allocated
+			delete(oldIPAllocMap, podKey)  // mark as allocated
 		} else {
 			nonAllocPodsByNamespace[ns] = append(nonAllocPodsByNamespace[ns], rlarkv1alpha1.DomainPodInfo{
 				GlobalNamespace: ns,
@@ -106,11 +107,16 @@ func (r *DomainReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 
 	// 5. Clean up expired IP allocations (keep 128 expired IPs for potential reuse)
 	var newIPAllocations []rlarkv1alpha1.DomainIPAllocation
+	dupAllocations := make(map[string]bool)
 	expireIPCount := len(oldIPAllocMap) - 128
 	if expireIPCount < 0 {
 		expireIPCount = 0
 	}
 	for _, ipAlloc := range domain.Status.IPAllocations {
+		if dupAllocations[ipAlloc.Pod] {
+			continue // skip duplicate IP allocations
+		}
+		dupAllocations[ipAlloc.Pod] = true
 		if _, ok := oldIPAllocMap[ipAlloc.Pod]; ok {
 			if expireIPCount > 0 {
 				expireIPCount--
@@ -138,7 +144,7 @@ func (r *DomainReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 				IP:   ip,
 				Job:  "", // TODO
 				Task: "", // TODO
-				Pod:  pod.Namespace + "/" + pod.Name,
+				Pod:  ns + "/" + pod.Namespace + "/" + pod.Name,
 			})
 		}
 	}
@@ -151,8 +157,12 @@ func (r *DomainReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 
 	// 8. Create or update DomainPeer per namespace
 	signer := newSigner(r)
-	for ns, pods := range podsByNamespace {
-		if err := r.createOrUpdateDomainPeer(ctx, logger, domain.Name, ns, pods, signer, ippool.PrefixLength()); err != nil {
+	allPods := make([]rlarkv1alpha1.DomainPodInfo, 0)
+	for _, pods := range podsByNamespace {
+		allPods = append(allPods, pods...)
+	}
+	for ns := range podsByNamespace {
+		if err := r.createOrUpdateDomainPeer(ctx, logger, domain.Name, ns, allPods, signer, ippool.PrefixLength()); err != nil {
 			return ctrl.Result{}, err
 		}
 	}

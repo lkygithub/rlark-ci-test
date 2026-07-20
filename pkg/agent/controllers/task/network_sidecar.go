@@ -28,6 +28,12 @@ func applyNetworkSidecar(template *corev1.PodTemplateSpec, mgmtTask *rlarkv1alph
 		Name:            sidecarContainerName,
 		Image:           sidecarImage,
 		ImagePullPolicy: corev1.PullIfNotPresent,
+		Env: []corev1.EnvVar{
+			{
+				Name:  "LOG_LEVEL",
+				Value: "debug",
+			},
+		},
 		SecurityContext: &corev1.SecurityContext{
 			Privileged: utils.Ptr(true),
 			Capabilities: &corev1.Capabilities{
