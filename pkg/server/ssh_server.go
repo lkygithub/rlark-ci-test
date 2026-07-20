@@ -94,21 +94,28 @@ func (s *Server) sshPublicKeyAuth() ssh.PublicKeyHandler {
 
 	cc := &gossh.CertChecker{
 		IsUserAuthority: func(auth gossh.PublicKey) bool {
+			logger.V(1).Info("Checking if public key is a trusted CA", "key", auth)
 			a := auth.Marshal()
 			for _, caKey := range caKeys {
 				b := caKey.Marshal()
 				if len(a) == len(b) && subtle.ConstantTimeCompare(a, b) == 1 {
+					logger.V(1).Info("Public key is a trusted CA", "key", auth)
 					return true
 				}
 			}
+			logger.V(1).Info("Public key is NOT a trusted CA", "key", auth)
 			return false
 		},
 		IsRevoked: func(cert *gossh.Certificate) bool {
+			logger.V(1).Info("Checking if certificate is revoked", "serial", cert.Serial, "keyID", cert.KeyId)
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
-			return s.checkCertRevoked(ctx, "ssh", fmt.Sprint(cert.Serial), cert.KeyId)
+			ret := s.checkCertRevoked(ctx, "ssh", fmt.Sprint(cert.Serial), cert.KeyId)
+			logger.V(1).Info("Certificate revocation check result", "serial", cert.Serial, "keyID", cert.KeyId, "revoked", ret)
+			return ret
 		},
 		UserKeyFallback: func(conn gossh.ConnMetadata, key gossh.PublicKey) (*gossh.Permissions, error) {
+			logger.V(1).Info("UserKeyFallback: checking user key store for public key", "user", conn.User())
 			// 如果证书验证失败，尝试使用普通公钥进行验证
 			var authedKey *db.SSHUserKeyModel
 			if s.userKeyStore != nil {
@@ -148,9 +155,11 @@ func (s *Server) sshPublicKeyAuth() ssh.PublicKeyHandler {
 	return func(ctx ssh.Context, key ssh.PublicKey) bool {
 		perm, err := cc.Authenticate(wrapSSHMetadata{ctx}, key)
 		if err != nil || perm == nil {
+			logger.Error(nil, "SSH public key authentication failed", "user", ctx.User(), "err", err)
 			return false
 		}
 		ctx.Permissions().Permissions = perm
+		logger.V(1).Info("SSH public key authenticated", "permissions", perm.Extensions)
 		return true
 	}
 }

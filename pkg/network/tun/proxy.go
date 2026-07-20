@@ -193,6 +193,7 @@ func (p *Proxy) handleICMP(conn *utils.WrapConn, dst string) {
 		if echoType != 0 { // 仅转发 Echo Reply（类型 0），忽略其他 ICMP 消息
 			continue
 		}
+		logger.V(1).Info("Received ICMP Echo Reply", "dst", dst, "len", n)
 		if err := SendPacket(conn, buf[:n]); err != nil {
 			return
 		}

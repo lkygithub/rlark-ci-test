@@ -103,6 +103,8 @@ func (s *NodeServer[C]) handleConnection(ctx context.Context, conn *utils.WrapCo
 		logger.Error(nil, "Failed to read target from connection", "err", err)
 		return
 	}
+	logger.V(1).Info("Received connection", "network", network, "host", host, "port", port, "query", query.Encode())
+
 	var conn2 net.Conn
 	// 如果 host 为 0.0.0.0，则表示连接的是本地服务，此时使用 localServiceDialer 连接本地服务。
 	// 否则，使用 getDial 获取到目标的 dialer，并连接到目标。

@@ -12,6 +12,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/rlinf/rlark/pkg/auth/cert"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -396,13 +397,9 @@ func dialSSH(ctx context.Context, sshAddr, certPEM, keyPEM string, cfg SSHDialer
 
 	var auth ssh.AuthMethod
 	if certPEM != "" {
-		pk, _, _, _, err := ssh.ParseAuthorizedKey([]byte(certPEM))
+		cert, err := cert.DecodeSSHCertificateFromPEM([]byte(certPEM))
 		if err != nil {
 			return nil, fmt.Errorf("parse ssh cert: %w", err)
-		}
-		cert, ok := pk.(*ssh.Certificate)
-		if !ok {
-			return nil, fmt.Errorf("parsed key is not an *ssh.Certificate (got %T)", pk)
 		}
 		certSigner, err := ssh.NewCertSigner(cert, signer)
 		if err != nil {

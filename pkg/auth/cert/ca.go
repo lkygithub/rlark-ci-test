@@ -111,6 +111,8 @@ func (ca Data) SignSSHCertificate(template *gossh.Certificate) ([]byte, error) {
 		ValidPrincipals: template.ValidPrincipals,
 		ValidAfter:      template.ValidAfter,
 		ValidBefore:     template.ValidBefore,
+		Permissions:     template.Permissions,
+		Reserved:        template.Reserved,
 	}
 	if err := cert.SignCert(rand.Reader, caSigner); err != nil {
 		return nil, err

@@ -55,10 +55,10 @@ func newNetstack(ip net.IP, mtu int, dialProxy utils.Dial, queryParams map[strin
 		queryParams: queryParams,
 	}
 	if ns.dialProxy == nil {
-		// 默认 dialProxy 实现：连接到本地 57 端口的 Proxy
+		// 默认 dialProxy 实现：连接到本地 5700 端口的 Proxy
 		ns.dialProxy = func(ctx context.Context) (net.Conn, error) {
 			var d net.Dialer
-			return d.DialContext(ctx, "tcp", "127.0.0.1:57")
+			return d.DialContext(ctx, "tcp", "127.0.0.1:5700")
 		}
 	}
 	return ns
@@ -219,10 +219,13 @@ func (ns *netstack) dial(ctx context.Context, network string, srcIP tcpip.Addres
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
+	logger := log.GetLogger()
+	logger.V(1).Info("Dialing proxy", "network", network, "src", net.JoinHostPort(srcIP.String(), fmt.Sprint(srcPort)), "dst", net.JoinHostPort(dstIP.String(), fmt.Sprint(dstPort)))
 	realConn, err := ns.dialProxy(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("dialing proxy for target %s: %w", dstIP.String(), err)
 	}
+	logger.V(1).Info("Connected to proxy", "network", network, "src", net.JoinHostPort(srcIP.String(), fmt.Sprint(srcPort)), "dst", net.JoinHostPort(dstIP.String(), fmt.Sprint(dstPort)))
 
 	var src, dst string
 	if srcPort > 0 {
@@ -250,5 +253,6 @@ func (ns *netstack) dial(ctx context.Context, network string, srcIP tcpip.Addres
 		_ = realConn.Close()
 		return nil, fmt.Errorf("writing target to proxy for %s: %w", dst, err)
 	}
+	logger.V(1).Info("Sent target to proxy", "network", network, "src", src, "dst", dst, "query", query.Encode())
 	return realConn, nil
 }
