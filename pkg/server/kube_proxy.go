@@ -45,10 +45,6 @@ func (p *KubeProxy) GetHandler() http.Handler {
 		req.URL.Host = p.apiServer.Host
 		req.URL.Path = path.Join(p.apiServer.Path, req.URL.Path)
 		req.Host = p.apiServer.Host
-		if req.Header == nil {
-			req.Header = make(http.Header)
-		}
-		req.Header.Set("Accept", "application/json, */*")
 	}
 	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
 		logger.Error(nil, "KubeProxy error", "err", err)
