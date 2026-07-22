@@ -73,8 +73,9 @@ func statefulSetPhase(sts *appsv1.StatefulSet) (rlarkv1alpha1.TaskPhase, string)
 	if sts.Status.ReadyReplicas >= desired && desired > 0 {
 		return rlarkv1alpha1.TaskPhaseRunning, ""
 	}
-	if sts.Status.Replicas > 0 {
-		return rlarkv1alpha1.TaskPhaseRunning, ""
+	if sts.Status.ReadyReplicas < desired {
+		return rlarkv1alpha1.TaskPhaseFailed,
+			fmt.Sprintf("statefulset ready replicas(%d) < desired(%d)", sts.Status.ReadyReplicas, desired)
 	}
 	return rlarkv1alpha1.TaskPhasePending, ""
 }
