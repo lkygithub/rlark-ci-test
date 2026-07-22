@@ -72,8 +72,8 @@ func daemonSetPhase(ds *appsv1.DaemonSet) (rlarkv1alpha1.TaskPhase, string) {
 	if ds.Status.NumberReady >= ds.Status.DesiredNumberScheduled && ds.Status.DesiredNumberScheduled > 0 {
 		return rlarkv1alpha1.TaskPhaseRunning, ""
 	}
-	if ds.Status.NumberAvailable > 0 {
-		return rlarkv1alpha1.TaskPhaseRunning, ""
+	if ds.Status.NumberUnavailable > 0 {
+		return rlarkv1alpha1.TaskPhaseFailed, "daemonset pods unavailable"
 	}
 	return rlarkv1alpha1.TaskPhasePending, ""
 }

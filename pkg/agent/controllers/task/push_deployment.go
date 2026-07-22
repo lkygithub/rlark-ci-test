@@ -83,8 +83,8 @@ func deploymentPhase(deploy *appsv1.Deployment) (rlarkv1alpha1.TaskPhase, string
 	if deploy.Status.ReadyReplicas >= desired && deploy.Status.Replicas >= desired {
 		return rlarkv1alpha1.TaskPhaseRunning, ""
 	}
-	if deploy.Status.AvailableReplicas > 0 {
-		return rlarkv1alpha1.TaskPhaseRunning, ""
+	if deploy.Status.UnavailableReplicas > 0 {
+		return rlarkv1alpha1.TaskPhaseFailed, fmt.Sprintf("deployment replicas unavailable %d", deploy.Status.UnavailableReplicas)
 	}
 	return rlarkv1alpha1.TaskPhasePending, ""
 }

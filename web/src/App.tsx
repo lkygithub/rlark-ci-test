@@ -1,4 +1,13 @@
-import { useEffect, useMemo, useState } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type FormEvent,
+  type MouseEvent,
+} from "react";
 import {
   Activity,
   ArrowRight,
@@ -55,7 +64,7 @@ import {
   workers,
 } from "./data";
 
-type Page = "overview" | "clusters" | "jobs" | "domains" | "api";
+type Page = "overview" | "clusters" | "jobs" | "workflows" | "domains" | "api";
 type Lang = "zh" | "en";
 type Theme = "light" | "dark";
 
@@ -80,6 +89,7 @@ const copy = {
       overview: "总览",
       clusters: "集群及节点",
       jobs: "任务",
+      workflows: "工作流",
       domains: "网络域",
       api: "接口参考",
       createCluster: "创建集群",
@@ -176,6 +186,17 @@ const copy = {
       sshDialogDesc: "在终端中执行以下命令登录到该 Worker Pod：",
       sshCopied: "已复制",
     },
+    workflows: {
+      title: "工作流",
+      eyebrow: "Workflow",
+      desc: "由多个任务组成的有向无环图，按依赖关系自动编排执行。",
+      search: "搜索工作流...",
+      createTitle: "创建工作流",
+      addJob: "添加任务",
+      jobName: "任务名称",
+      dependencies: "依赖任务",
+      noDeps: "无依赖",
+    },
     api: {
       title: "接口参考",
       eyebrow: "开发者平台",
@@ -197,6 +218,7 @@ const copy = {
       overview: "Overview",
       clusters: "Clusters & Nodes",
       jobs: "Jobs",
+      workflows: "Workflows",
       domains: "Domains",
       api: "API Reference",
       createCluster: "Create Cluster",
@@ -295,6 +317,17 @@ const copy = {
         "Run the following command in your terminal to log in to this Worker Pod:",
       sshCopied: "Copied",
     },
+    workflows: {
+      title: "Workflows",
+      eyebrow: "Workflow",
+      desc: "DAG of jobs, automatically orchestrated by dependency.",
+      search: "Search workflows...",
+      createTitle: "Create Workflow",
+      addJob: "Add Job",
+      jobName: "Job Name",
+      dependencies: "Dependencies",
+      noDeps: "No dependencies",
+    },
     api: {
       title: "API Reference",
       eyebrow: "Developer platform",
@@ -326,6 +359,7 @@ const navItems: { id: Page; icon: typeof LayoutDashboard }[] = [
   { id: "overview", icon: LayoutDashboard },
   { id: "clusters", icon: Network },
   { id: "jobs", icon: Workflow },
+  { id: "workflows", icon: Boxes },
   { id: "domains", icon: CloudCog },
 ];
 
@@ -1550,7 +1584,7 @@ function JobsPage({
 
   const selected =
     selectedName && allJobs.length > 0
-      ? allJobs.find((j) => j.name === selectedName) ?? null
+      ? (allJobs.find((j) => j.name === selectedName) ?? null)
       : null;
 
   if (selected) {
@@ -1685,9 +1719,9 @@ function JobDetailPage({
   onBack: () => void;
 }) {
   const zh = c.nav.overview === "总览";
-  const [activeTab, setActiveTab] = useState<
-    "config" | "workers" | "logs"
-  >("config");
+  const [activeTab, setActiveTab] = useState<"config" | "workers" | "logs">(
+    "config",
+  );
   const [taskNodes, setTaskNodes] = useState<Record<string, string>>({});
   const [podLogs, setPodLogs] = useState<
     Array<{
@@ -1897,12 +1931,8 @@ function JobDetailPage({
               <div className="log-toolbar">
                 <div className="log-role-tabs">
                   {[...new Set(podLogs.map((p) => p.taskName))].map((role) => {
-                    const rolePods = podLogs.filter(
-                      (p) => p.taskName === role,
-                    );
-                    const running = rolePods.some(
-                      (p) => p.phase === "Running",
-                    );
+                    const rolePods = podLogs.filter((p) => p.taskName === role);
+                    const running = rolePods.some((p) => p.phase === "Running");
                     return (
                       <button
                         key={role}
@@ -1922,8 +1952,7 @@ function JobDetailPage({
                       >
                         <i
                           className={
-                            "log-role-dot" +
-                            (running ? " running" : "")
+                            "log-role-dot" + (running ? " running" : "")
                           }
                         />
                         {role}
@@ -2128,6 +2157,40 @@ interface CRDDomain {
   };
 }
 
+interface CRDWorkflowJobTemplate {
+  name: string;
+  dependencies?: string[];
+  spec: { domain?: string; tasks: CRDJobTask[] };
+}
+
+interface CRDWorkflow {
+  apiVersion: string;
+  kind: string;
+  metadata: { name: string; creationTimestamp?: string };
+  spec: { jobTemplates: CRDWorkflowJobTemplate[] };
+  status?: {
+    phase: string;
+    jobs?: Array<{ name: string; phase: string; message: string }>;
+    startTime?: string;
+    endTime?: string;
+  };
+}
+
+function crdToWorkflow(crd: CRDWorkflow) {
+  const jobs = crd.status?.jobs ?? [];
+  const running = jobs.filter((j) => j.phase === "Running").length;
+  const phase = crd.status?.phase ?? "Pending";
+  return {
+    name: crd.metadata.name,
+    phase: phase as Phase,
+    jobCount: crd.spec.jobTemplates.length,
+    runningJobs: running,
+    created: crd.metadata.creationTimestamp ?? "—",
+    templates: crd.spec.jobTemplates,
+    jobStatuses: jobs,
+  };
+}
+
 function DomainsPage({
   copy: c,
   selectedName,
@@ -2208,7 +2271,7 @@ function DomainsPage({
 
   const selected =
     selectedName && domains.length > 0
-      ? domains.find((d) => d.metadata.name === selectedName) ?? null
+      ? (domains.find((d) => d.metadata.name === selectedName) ?? null)
       : null;
 
   if (selected) {
@@ -2506,7 +2569,9 @@ function DomainDetailPage({
                   setQuery(e.target.value);
                   setPage(1);
                 }}
-                placeholder={zh ? "搜索 IP/任务/Pod..." : "Search IP/Job/Pod..."}
+                placeholder={
+                  zh ? "搜索 IP/任务/Pod..." : "Search IP/Job/Pod..."
+                }
                 style={{ minWidth: 240, flex: 1, maxWidth: 360 }}
               />
               <small className="muted">
@@ -2520,9 +2585,7 @@ function DomainDetailPage({
                     alignItems: "center",
                   }}
                 >
-                  <small className="muted">
-                    {zh ? "每页" : "Page size"}
-                  </small>
+                  <small className="muted">{zh ? "每页" : "Page size"}</small>
                   <select
                     value={pageSize}
                     onChange={(e) => {
@@ -2649,6 +2712,1671 @@ function DomainDetailPage({
           <small>{zh ? "创建时间" : "Created"}</small>
         </div>
         <small>{domain.metadata.creationTimestamp ?? "—"}</small>
+      </div>
+    </div>
+  );
+}
+
+function WorkflowDetailPage({
+  wf,
+  crd,
+  copy: c,
+  onBack,
+  onJobClick,
+}: {
+  wf: ReturnType<typeof crdToWorkflow>;
+  crd: CRDWorkflow;
+  copy: Copy;
+  onBack: () => void;
+  onJobClick: (jobName: string) => void;
+}) {
+  const zh = c.nav.overview === "总览";
+  const templates = wf.templates;
+  const jobStatuses = wf.jobStatuses;
+
+  const statusOf = (name: string) =>
+    jobStatuses.find((s) => s.name === name)?.phase ?? "Pending";
+
+  const phaseColor = (phase: string) =>
+    phase === "Succeeded"
+      ? "#22c55e"
+      : phase === "Running"
+        ? "var(--blue)"
+        : phase === "Failed"
+          ? "#ef4444"
+          : "#94a3b8";
+
+  const phaseLabel = (phase: string) =>
+    zh
+      ? phase === "Succeeded"
+        ? "已完成"
+        : phase === "Running"
+          ? "运行中"
+          : phase === "Failed"
+            ? "失败"
+            : "待执行"
+      : phase === "Succeeded"
+        ? "Done"
+        : phase === "Running"
+          ? "Running"
+          : phase === "Failed"
+            ? "Failed"
+            : "Pending";
+
+  const NODE_W = 200;
+  const NODE_H = 56;
+  const COL_GAP = 280;
+  const ROW_GAP = 100;
+
+  const canvasRef = useRef<HTMLDivElement>(null);
+  const [portPositions, setPortPositions] = useState<
+    Record<
+      string,
+      { in: { x: number; y: number }; out: { x: number; y: number } }
+    >
+  >({});
+
+  const sorted = [...templates];
+  const depMap = new Map(templates.map((t) => [t.name, t.dependencies ?? []]));
+  const layerOf = new Map<string, number>();
+  const calcLayer = (name: string): number => {
+    if (layerOf.has(name)) return layerOf.get(name)!;
+    const deps = depMap.get(name) ?? [];
+    if (deps.length === 0) {
+      layerOf.set(name, 0);
+      return 0;
+    }
+    const max = Math.max(...deps.map(calcLayer));
+    layerOf.set(name, max + 1);
+    return max + 1;
+  };
+  templates.forEach((t) => calcLayer(t.name));
+
+  const layers = new Map<number, string[]>();
+  sorted.forEach((t) => {
+    const l = layerOf.get(t.name) ?? 0;
+    if (!layers.has(l)) layers.set(l, []);
+    layers.get(l)!.push(t.name);
+  });
+
+  const layoutNodes = useMemo(
+    () =>
+      templates.map((t) => {
+        const layer = layerOf.get(t.name) ?? 0;
+        const col = layers.get(layer) ?? [];
+        const idx = col.indexOf(t.name);
+        return {
+          id: t.name,
+          name: t.name,
+          phase: statusOf(t.name),
+          x: 40 + layer * COL_GAP,
+          y: 40 + idx * ROW_GAP,
+        };
+      }),
+    [templates, jobStatuses],
+  );
+
+  const allEdges = useMemo(() => {
+    const edges: { from: string; to: string }[] = [];
+    templates.forEach((t) => {
+      (t.dependencies ?? []).forEach((dep) => {
+        edges.push({ from: dep, to: t.name });
+      });
+    });
+    return edges;
+  }, [templates]);
+
+  useLayoutEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const cRect = canvas.getBoundingClientRect();
+    const next: Record<
+      string,
+      { in: { x: number; y: number }; out: { x: number; y: number } }
+    > = {};
+    for (const n of layoutNodes) {
+      const el = canvas.querySelector(
+        `[data-node-id="${n.id}"]`,
+      ) as HTMLElement | null;
+      if (!el) continue;
+      const r = el.getBoundingClientRect();
+      const sx = r.left - cRect.left + canvas.scrollLeft;
+      const sy = r.top - cRect.top + canvas.scrollTop;
+      const cy = sy + r.height / 2;
+      next[n.id] = { in: { x: sx, y: cy }, out: { x: sx + r.width, y: cy } };
+    }
+    setPortPositions(next);
+  }, [layoutNodes]);
+
+  const nodePos = (id: string, side: "in" | "out") => {
+    const p = portPositions[id];
+    if (p) return side === "in" ? p.in : p.out;
+    const n = layoutNodes.find((x) => x.id === id);
+    if (!n) return { x: 0, y: 0 };
+    const cy = n.y + NODE_H / 2;
+    return side === "in"
+      ? { x: n.x + 1, y: cy }
+      : { x: n.x + NODE_W - 1, y: cy };
+  };
+
+  const canvasW = 40 + (layers.size - 1) * COL_GAP + NODE_W + 40;
+  const canvasH =
+    40 + Math.max(...[...layers.values()].map((c) => c.length)) * ROW_GAP;
+
+  return (
+    <div className="page-content resource-page">
+      <div className="section-heading">
+        <div>
+          <button
+            className="secondary-button"
+            onClick={onBack}
+            style={{ marginBottom: 8 }}
+          >
+            <ChevronLeft size={14} />
+            {zh ? "返回" : "Back"}
+          </button>
+          <span className="eyebrow">{c.workflows.eyebrow}</span>
+          <h2>{wf.name}</h2>
+          <p>
+            <StatusBadge phase={wf.phase} copy={c} />
+            <span
+              style={{ marginLeft: 12, fontSize: 12, color: "var(--muted)" }}
+            >
+              {zh ? "任务" : "Jobs"}: {wf.runningJobs}/{wf.jobCount}
+            </span>
+          </p>
+        </div>
+      </div>
+      <div className="form-section">
+        <div className="form-section-head">
+          <strong>{zh ? "DAG 执行状态" : "DAG Execution Status"}</strong>
+        </div>
+        <div
+          className="dag-canvas"
+          ref={canvasRef}
+          style={{ overflow: "auto", maxHeight: 500 }}
+        >
+          <div
+            className="dag-canvas-content"
+            style={{ width: canvasW, height: canvasH }}
+          >
+            <svg className="dag-svg" width={canvasW} height={canvasH}>
+              <defs>
+                <marker
+                  id="wf-arrow"
+                  markerWidth="8"
+                  markerHeight="8"
+                  refX="7"
+                  refY="3"
+                  orient="auto"
+                >
+                  <path d="M0,0 L7,3 L0,6 Z" fill="var(--blue)" />
+                </marker>
+              </defs>
+              {allEdges.map((e) => {
+                const p1 = nodePos(e.from, "out");
+                const p2 = nodePos(e.to, "in");
+                const midX = (p1.x + p2.x) / 2;
+                return (
+                  <path
+                    key={`${e.from}-${e.to}`}
+                    d={`M ${p1.x} ${p1.y} C ${midX} ${p1.y}, ${midX} ${p2.y}, ${p2.x} ${p2.y}`}
+                    stroke="var(--blue)"
+                    strokeWidth="2"
+                    fill="none"
+                    markerEnd="url(#wf-arrow)"
+                  />
+                );
+              })}
+            </svg>
+            {layoutNodes.map((n) => (
+              <div
+                key={n.id}
+                data-node-id={n.id}
+                className="dag-node"
+                onClick={
+                  n.phase === "Pending"
+                    ? undefined
+                    : () => onJobClick(`${wf.name}-${n.name}`)
+                }
+                style={{
+                  left: n.x,
+                  top: n.y,
+                  borderColor: phaseColor(n.phase),
+                  cursor: n.phase === "Pending" ? "default" : "pointer",
+                  boxShadow:
+                    n.phase === "Running"
+                      ? `0 0 0 2px ${phaseColor(n.phase)}, 0 2px 12px rgba(124,58,237,0.2)`
+                      : undefined,
+                }}
+              >
+                <div
+                  className="dag-node-port input"
+                  style={{ borderColor: phaseColor(n.phase) }}
+                />
+                <div className="dag-node-body">
+                  <strong>{n.name}</strong>
+                  <span
+                    className="dag-node-type"
+                    style={{
+                      color: phaseColor(n.phase),
+                      background:
+                        n.phase === "Running"
+                          ? "rgba(124,58,237,0.1)"
+                          : undefined,
+                    }}
+                  >
+                    {phaseLabel(n.phase)}
+                  </span>
+                </div>
+                <div
+                  className="dag-node-port output"
+                  style={{ borderColor: phaseColor(n.phase) }}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+      <div className="table-panel" style={{ marginTop: 16 }}>
+        <table>
+          <thead>
+            <tr>
+              <th>{zh ? "任务名称" : "Job Name"}</th>
+              <th>{zh ? "状态" : "Phase"}</th>
+              <th>{zh ? "依赖" : "Dependencies"}</th>
+              <th>{zh ? "消息" : "Message"}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {templates.map((t) => {
+              const st = jobStatuses.find((s) => s.name === t.name);
+              return (
+                <tr
+                  key={t.name}
+                  onClick={
+                    (st?.phase ?? "Pending") === "Pending"
+                      ? undefined
+                      : () => onJobClick(`${wf.name}-${t.name}`)
+                  }
+                  style={{
+                    cursor:
+                      (st?.phase ?? "Pending") === "Pending"
+                        ? "default"
+                        : "pointer",
+                  }}
+                >
+                  <td>
+                    <strong>{t.name}</strong>
+                  </td>
+                  <td>
+                    <span
+                      style={{
+                        color: phaseColor(st?.phase ?? "Pending"),
+                        fontWeight: 600,
+                      }}
+                    >
+                      {phaseLabel(st?.phase ?? "Pending")}
+                    </span>
+                  </td>
+                  <td>
+                    <small>{(t.dependencies ?? []).join(", ") || "—"}</small>
+                  </td>
+                  <td>
+                    <small>{st?.message || "—"}</small>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function WorkflowsPage({
+  copy: c,
+  onCreate,
+  selectedName,
+  onSelect,
+  onJobClick,
+}: {
+  copy: Copy;
+  onCreate: () => void;
+  selectedName: string;
+  onSelect: (name?: string) => void;
+  onJobClick: (jobName: string) => void;
+}) {
+  const zh = c.nav.overview === "总览";
+  const [workflows, setWorkflows] = useState<CRDWorkflow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const fetchWorkflows = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const resp = await fetch("/api/v1/rlinf.io/v1alpha1/workflows");
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const data = await resp.json();
+      setWorkflows(data.items ?? []);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchWorkflows();
+  }, []);
+
+  const handleDelete = async (name: string) => {
+    if (
+      !confirm(
+        zh ? `确定删除工作流 "${name}" 吗?` : `Delete workflow "${name}"?`,
+      )
+    )
+      return;
+    try {
+      const resp = await fetch(`/api/v1/rlinf.io/v1alpha1/workflows/${name}`, {
+        method: "DELETE",
+      });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      setWorkflows((prev) => prev.filter((w) => w.metadata.name !== name));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  };
+
+  const items = workflows.map(crdToWorkflow);
+
+  const selected =
+    selectedName && items.length > 0
+      ? (items.find((w) => w.name === selectedName) ?? null)
+      : null;
+
+  if (selected) {
+    return (
+      <WorkflowDetailPage
+        wf={selected}
+        crd={workflows.find((w) => w.metadata.name === selectedName)!}
+        copy={c}
+        onBack={() => onSelect(undefined)}
+        onJobClick={onJobClick}
+      />
+    );
+  }
+
+  return (
+    <div className="page-content resource-page">
+      <div className="section-heading">
+        <div>
+          <span className="eyebrow">{c.workflows.eyebrow}</span>
+          <h2>{c.workflows.title}</h2>
+          <p>{c.workflows.desc}</p>
+        </div>
+        <button className="primary-button" onClick={onCreate}>
+          <Plus size={17} />
+          {c.workflows.createTitle}
+        </button>
+      </div>
+      <PageToolbar
+        placeholder={c.workflows.search}
+        value=""
+        onChange={() => {}}
+        count={items.length}
+        copy={c}
+        onRefresh={fetchWorkflows}
+      />
+      {error && (
+        <div className="cert-error" style={{ marginBottom: 12 }}>
+          {error}
+        </div>
+      )}
+      <div className="table-panel">
+        <table>
+          <thead>
+            <tr>
+              <th>{zh ? "工作流名称" : "Name"}</th>
+              <th>{zh ? "状态" : "Status"}</th>
+              <th>{zh ? "任务数" : "Jobs"}</th>
+              <th>{zh ? "创建时间" : "Created"}</th>
+              <th />
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((wf) => (
+              <tr
+                key={wf.name}
+                onClick={() => onSelect(wf.name)}
+                style={{ cursor: "pointer" }}
+              >
+                <td>
+                  <strong>{wf.name}</strong>
+                </td>
+                <td>
+                  <StatusBadge phase={wf.phase} copy={c} />
+                </td>
+                <td>
+                  <span className="inline-progress">
+                    <i>
+                      <b
+                        style={{
+                          width:
+                            wf.jobCount > 0
+                              ? (wf.runningJobs / wf.jobCount) * 100 + "%"
+                              : "0%",
+                        }}
+                      />
+                    </i>
+                    {wf.runningJobs}/{wf.jobCount}
+                  </span>
+                </td>
+                <td>
+                  <small>{wf.created}</small>
+                </td>
+                <td>
+                  <div className="row-actions">
+                    <button
+                      className="icon-button danger"
+                      onClick={() => handleDelete(wf.name)}
+                      title={zh ? "删除" : "Delete"}
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {items.length === 0 && !loading && (
+              <tr>
+                <td
+                  colSpan={5}
+                  style={{ textAlign: "center", padding: "32px" }}
+                >
+                  <small className="muted">
+                    {zh ? "暂无工作流" : "No workflows"}
+                  </small>
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+interface DAGNode {
+  id: string;
+  name: string;
+  x: number;
+  y: number;
+}
+
+interface DAGEdge {
+  from: string;
+  to: string;
+}
+
+interface WorkflowJobDef {
+  id: string;
+  name: string;
+  dependencies: string[];
+  type: JobType;
+  roles: string[];
+  headerRole: string;
+  roleResources: Record<string, RoleResource>;
+  runScript: string;
+  domain: string;
+}
+
+function makeDefaultRoleResources(
+  type: JobType,
+  roles: string[],
+): Record<string, RoleResource> {
+  const rr: Record<string, RoleResource> = {};
+  roles.forEach((role, index) => {
+    rr[role] = {
+      role,
+      cluster: clusters[0].name,
+      nodeSelector: index === 0 ? "gpu=h800" : "any=true",
+      replicas: 0,
+      cpu: "",
+      memory: "",
+      gpu: index === 0 ? "4" : "0",
+      image: "registry.rlark.ai/rl/policy-trainer:v0.42",
+      prepareScript: "",
+      envs: [{ key: "RLARK_TASK_ROLE", value: role }],
+      mounts: [{ objectStorage: "/host/dataset", mountPath: "/mnt/dataset" }],
+    };
+  });
+  return rr;
+}
+
+function hasCycle(edges: DAGEdge[], nodes: DAGNode[]): boolean {
+  const adj = new Map<string, string[]>();
+  nodes.forEach((n) => adj.set(n.id, []));
+  edges.forEach((e) => adj.get(e.from)?.push(e.to));
+  const visited = new Set<string>();
+  const stack = new Set<string>();
+  const dfs = (id: string): boolean => {
+    visited.add(id);
+    stack.add(id);
+    for (const next of adj.get(id) ?? []) {
+      if (!visited.has(next) && dfs(next)) return true;
+      if (stack.has(next)) return true;
+    }
+    stack.delete(id);
+    return false;
+  };
+  for (const n of nodes) {
+    if (!visited.has(n.id) && dfs(n.id)) return true;
+  }
+  return false;
+}
+
+function CreateWorkflowModal({
+  onClose,
+  copy: c,
+}: {
+  onClose: () => void;
+  copy: Copy;
+}) {
+  const zh = c.nav.overview === "总览";
+  const [step, setStep] = useState(1);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+  const [workflowName, setWorkflowName] = useState("rl-training-pipeline");
+  const [domains, setDomains] = useState<{ name: string; cidr: string }[]>([]);
+  const [activeJobId, setActiveJobId] = useState<string>("");
+  const [activeRoleTab, setActiveRoleTab] = useState<string>("");
+
+  const [dragNode, setDragNode] = useState<{
+    id: string;
+    offsetX: number;
+    offsetY: number;
+  } | null>(null);
+  const [dragEdge, setDragEdge] = useState<{
+    from: string;
+    x: number;
+    y: number;
+  } | null>(null);
+  const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
+  const canvasRef = useRef<HTMLDivElement>(null);
+
+  const [nodes, setNodes] = useState<DAGNode[]>([
+    { id: "n1", name: "job-1", x: 40, y: 40 },
+  ]);
+  const [edges, setEdges] = useState<DAGEdge[]>([]);
+
+  const [jobs, setJobs] = useState<WorkflowJobDef[]>([
+    {
+      id: "n1",
+      name: "job-1",
+      dependencies: [],
+      type: "RL",
+      roles: ROLE_TEMPLATES["RL"],
+      headerRole: ROLE_TEMPLATES["RL"][0],
+      roleResources: makeDefaultRoleResources("RL", ROLE_TEMPLATES["RL"]),
+      runScript:
+        "python train.py --config /mnt/config/train.yaml --dataset /mnt/dataset --output /mnt/checkpoints",
+      domain: "",
+    },
+  ]);
+
+  useEffect(() => {
+    fetch("/api/v1/rlinf.io/v1alpha1/domains")
+      .then((r) =>
+        r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)),
+      )
+      .then((data) =>
+        setDomains(
+          (data.items ?? []).map((d: any) => ({
+            name: d.metadata?.name ?? "",
+            cidr: d.spec?.cidr ?? "",
+          })),
+        ),
+      )
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!activeJobId && jobs.length > 0) setActiveJobId(jobs[0].id);
+  }, [activeJobId, jobs]);
+
+  useEffect(() => {
+    if (!activeRoleTab && jobs.length > 0) {
+      const job = jobs.find((j) => j.id === activeJobId);
+      if (job && job.roles.length > 0) setActiveRoleTab(job.roles[0]);
+    }
+  }, [activeRoleTab, activeJobId, jobs]);
+
+  const addJobToDAG = () => {
+    const id = `n${Date.now()}`;
+    let maxNum = 0;
+    for (const j of jobs) {
+      const m = j.name.match(/^job-(\d+)$/);
+      if (m) maxNum = Math.max(maxNum, parseInt(m[1]));
+    }
+    const name = `job-${maxNum + 1}`;
+    const x = 40 + (jobs.length % 3) * 260;
+    const y = 40 + Math.floor(jobs.length / 3) * 160;
+    const roles = ROLE_TEMPLATES["RL"];
+    const newJob: WorkflowJobDef = {
+      id,
+      name,
+      dependencies: [],
+      type: "RL",
+      roles,
+      headerRole: roles[0],
+      roleResources: makeDefaultRoleResources("RL", roles),
+      runScript:
+        "python train.py --config /mnt/config/train.yaml --dataset /mnt/dataset --output /mnt/checkpoints",
+      domain: "",
+    };
+    setJobs([...jobs, newJob]);
+    setNodes([...nodes, { id, name, x, y }]);
+    setActiveJobId(id);
+    setActiveRoleTab(roles[0]);
+  };
+
+  const removeJobFromDAG = (id: string) => {
+    if (jobs.length <= 1) return;
+    const nextJobs = jobs.filter((j) => j.id !== id);
+    const nextNodes = nodes.filter((n) => n.id !== id);
+    const nextEdges = edges.filter((e) => e.from !== id && e.to !== id);
+    setJobs(
+      nextJobs.map((j) => ({
+        ...j,
+        dependencies: j.dependencies.filter((d) => {
+          const depJob = jobs.find((j2) => j2.name === d);
+          return depJob && depJob.id !== id;
+        }),
+      })),
+    );
+    setNodes(nextNodes);
+    setEdges(nextEdges);
+    if (activeJobId === id) setActiveJobId(nextJobs[0].id);
+  };
+
+  const updateJob = (id: string, patch: Partial<WorkflowJobDef>) => {
+    setJobs((prev) => prev.map((j) => (j.id === id ? { ...j, ...patch } : j)));
+  };
+
+  const updateNodeName = (id: string, name: string) => {
+    setNodes((prev) => prev.map((n) => (n.id === id ? { ...n, name } : n)));
+  };
+
+  const renameJob = (id: string, newName: string) => {
+    const oldName = jobs.find((j) => j.id === id)?.name ?? "";
+    updateJob(id, { name: newName });
+    updateNodeName(id, newName);
+    setJobs((prev) =>
+      prev.map((j) => {
+        if (j.dependencies.includes(oldName)) {
+          return {
+            ...j,
+            dependencies: j.dependencies.map((d) =>
+              d === oldName ? newName : d,
+            ),
+          };
+        }
+        return j;
+      }),
+    );
+  };
+
+  const addEdge = (from: string, to: string) => {
+    if (from === to) return;
+    if (edges.some((e) => e.from === from && e.to === to)) return;
+    const nextEdges = [...edges, { from, to }];
+    if (hasCycle(nextEdges, nodes)) {
+      setError(zh ? "不能创建循环依赖" : "Cannot create circular dependency");
+      setTimeout(() => setError(""), 3000);
+      return;
+    }
+    setEdges(nextEdges);
+    const fromName = jobs.find((j) => j.id === from)?.name ?? "";
+    const toJob = jobs.find((j) => j.id === to);
+    if (toJob) {
+      updateJob(to, {
+        dependencies: [...new Set([...toJob.dependencies, fromName])],
+      });
+    }
+  };
+
+  const removeEdge = (from: string, to: string) => {
+    setEdges(edges.filter((e) => !(e.from === from && e.to === to)));
+    const fromName = jobs.find((j) => j.id === from)?.name ?? "";
+    const toJob = jobs.find((j) => j.id === to);
+    if (toJob) {
+      updateJob(to, {
+        dependencies: toJob.dependencies.filter((d) => d !== fromName),
+      });
+    }
+  };
+
+  const getCanvasXY = (clientX: number, clientY: number) => {
+    const el = canvasRef.current;
+    if (!el) return { x: 0, y: 0 };
+    const rect = el.getBoundingClientRect();
+    return {
+      x: clientX - rect.left + el.scrollLeft,
+      y: clientY - rect.top + el.scrollTop,
+    };
+  };
+
+  const onNodeMouseDown = (e: MouseEvent, id: string) => {
+    if ((e.target as HTMLElement).classList.contains("dag-node-port")) return;
+    const { x: mx, y: my } = getCanvasXY(e.clientX, e.clientY);
+    const node = nodes.find((n) => n.id === id);
+    if (!node) return;
+    setDragNode({ id, offsetX: mx - node.x, offsetY: my - node.y });
+  };
+
+  const onCanvasMouseMove = (e: MouseEvent) => {
+    const { x: mx, y: my } = getCanvasXY(e.clientX, e.clientY);
+    if (dragNode) {
+      setNodes((prev) =>
+        prev.map((n) =>
+          n.id === dragNode.id
+            ? { ...n, x: mx - dragNode.offsetX, y: my - dragNode.offsetY }
+            : n,
+        ),
+      );
+    }
+    if (dragEdge) {
+      setDragEdge({ ...dragEdge, x: mx, y: my });
+    }
+  };
+
+  const onCanvasMouseUp = (e: MouseEvent) => {
+    if (dragEdge) {
+      const target = (e.target as HTMLElement).closest(
+        "[data-node-id]",
+      ) as HTMLElement | null;
+      if (target) {
+        const toId = target.dataset.nodeId!;
+        addEdge(dragEdge.from, toId);
+      }
+      setDragEdge(null);
+    }
+    setDragNode(null);
+  };
+
+  const onPortMouseDown = (e: MouseEvent, fromId: string) => {
+    e.stopPropagation();
+    const { x, y } = getCanvasXY(e.clientX, e.clientY);
+    setDragEdge({ from: fromId, x, y });
+  };
+
+  const buildJobSpec = (job: WorkflowJobDef) => {
+    const crd = generateJobCRD({
+      name: job.name,
+      type: job.type,
+      headerRole: job.headerRole,
+      roles: job.roles,
+      roleResources: job.roleResources,
+      runScript: job.runScript,
+      domain: job.domain,
+    });
+    return { domain: crd.spec.domain, tasks: crd.spec.tasks };
+  };
+
+  const buildWorkflowCRD = () => {
+    const jobTemplates = jobs.map((job) => {
+      const depNames = edges
+        .filter((e) => e.to === job.id)
+        .map((e) => jobs.find((j) => j.id === e.from)?.name)
+        .filter(Boolean) as string[];
+      return {
+        name: job.name,
+        dependencies: depNames.length > 0 ? depNames : undefined,
+        spec: buildJobSpec(job),
+      };
+    });
+    return {
+      apiVersion: "rlinf.io/v1alpha1",
+      kind: "Workflow",
+      metadata: { name: workflowName },
+      spec: { jobTemplates },
+    };
+  };
+
+  const crd = buildWorkflowCRD();
+  const yaml = toYaml(crd);
+
+  const handleSubmit = async () => {
+    setSubmitting(true);
+    setError("");
+    try {
+      const resp = await fetch("/api/v1/rlinf.io/v1alpha1/workflows", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(crd),
+      });
+      if (!resp.ok) {
+        const body = await resp.text();
+        throw new Error(`HTTP ${resp.status}: ${body}`);
+      }
+      onClose();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const activeJob = jobs.find((j) => j.id === activeJobId) ?? jobs[0];
+  const effectiveHeader =
+    activeJob && activeJob.roles.includes(activeJob.headerRole)
+      ? activeJob.headerRole
+      : (activeJob?.roles[0] ?? "");
+  const steps = zh
+    ? ["DAG 编排", "Job 详情", "YAML 预览"]
+    : ["DAG Editor", "Job Details", "YAML Preview"];
+
+  const NODE_W = 200;
+  const NODE_H = 56;
+  const [portPositions, setPortPositions] = useState<
+    Record<
+      string,
+      { in: { x: number; y: number }; out: { x: number; y: number } }
+    >
+  >({});
+
+  useLayoutEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const cRect = canvas.getBoundingClientRect();
+    const next: Record<
+      string,
+      { in: { x: number; y: number }; out: { x: number; y: number } }
+    > = {};
+    for (const n of nodes) {
+      const el = canvas.querySelector(
+        `[data-node-id="${n.id}"]`,
+      ) as HTMLElement | null;
+      if (!el) continue;
+      const r = el.getBoundingClientRect();
+      const sx = r.left - cRect.left + canvas.scrollLeft;
+      const sy = r.top - cRect.top + canvas.scrollTop;
+      const cx = sx + r.width;
+      const cy = sy + r.height / 2;
+      next[n.id] = { in: { x: sx, y: cy }, out: { x: cx, y: cy } };
+    }
+    setPortPositions(next);
+  }, [nodes]);
+
+  const nodePortPos = (id: string, side: "in" | "out") => {
+    const stored = portPositions[id];
+    if (stored) return stored[side];
+    const n = nodes.find((x) => x.id === id);
+    if (!n) return { x: 0, y: 0 };
+    const cy = n.y + NODE_H / 2;
+    return side === "in"
+      ? { x: n.x + 1, y: cy }
+      : { x: n.x + NODE_W - 1, y: cy };
+  };
+
+  const updateRR = (role: string, field: keyof RoleResource, value: any) => {
+    if (!activeJob) return;
+    const rr = activeJob.roleResources[role];
+    if (!rr) return;
+    updateJob(activeJob.id, {
+      roleResources: {
+        ...activeJob.roleResources,
+        [role]: { ...rr, [field]: value },
+      },
+    });
+  };
+
+  const updateRREnv = (
+    role: string,
+    index: number,
+    field: "key" | "value",
+    value: string,
+  ) => {
+    if (!activeJob) return;
+    const rr = activeJob.roleResources[role];
+    if (!rr) return;
+    const envs = rr.envs.map((e, i) =>
+      i === index ? { ...e, [field]: value } : e,
+    );
+    updateRR(role, "envs", envs);
+  };
+
+  const addRREnv = (role: string) => {
+    if (!activeJob) return;
+    const rr = activeJob.roleResources[role];
+    if (!rr) return;
+    updateRR(role, "envs", [...rr.envs, { key: "", value: "" }]);
+  };
+
+  const removeRREnv = (role: string, index: number) => {
+    if (!activeJob) return;
+    const rr = activeJob.roleResources[role];
+    if (!rr) return;
+    updateRR(
+      role,
+      "envs",
+      rr.envs.filter((_, i) => i !== index),
+    );
+  };
+
+  const updateRRMount = (
+    role: string,
+    index: number,
+    field: "objectStorage" | "mountPath",
+    value: string,
+  ) => {
+    if (!activeJob) return;
+    const rr = activeJob.roleResources[role];
+    if (!rr) return;
+    const mounts = rr.mounts.map((m, i) =>
+      i === index ? { ...m, [field]: value } : m,
+    );
+    updateRR(role, "mounts", mounts);
+  };
+
+  const addRRMount = (role: string) => {
+    if (!activeJob) return;
+    const rr = activeJob.roleResources[role];
+    if (!rr) return;
+    updateRR(role, "mounts", [
+      ...rr.mounts,
+      { objectStorage: "", mountPath: "" },
+    ]);
+  };
+
+  const removeRRMount = (role: string, index: number) => {
+    if (!activeJob) return;
+    const rr = activeJob.roleResources[role];
+    if (!rr) return;
+    updateRR(
+      role,
+      "mounts",
+      rr.mounts.filter((_, i) => i !== index),
+    );
+  };
+
+  const onJobTypeChange = (next: JobType) => {
+    if (!activeJob) return;
+    const newRoles = ROLE_TEMPLATES[next];
+    const newRR = makeDefaultRoleResources(next, newRoles);
+    updateJob(activeJob.id, {
+      type: next,
+      roles: newRoles,
+      headerRole: newRoles[0],
+      roleResources: newRR,
+    });
+    if (newRoles.length > 0) setActiveRoleTab(newRoles[0]);
+  };
+
+  const addRole = () => {
+    if (!activeJob) return;
+    const newRole = `Role ${activeJob.roles.length + 1}`;
+    const roles = [...activeJob.roles, newRole];
+    const rr = { ...activeJob.roleResources };
+    rr[newRole] = {
+      role: newRole,
+      cluster: clusters[0].name,
+      nodeSelector: "any=true",
+      replicas: 0,
+      cpu: "",
+      memory: "",
+      gpu: "0",
+      image: "registry.rlark.ai/rl/policy-trainer:v0.42",
+      prepareScript: "",
+      envs: [{ key: "RLARK_TASK_ROLE", value: newRole }],
+      mounts: [{ objectStorage: "/host/dataset", mountPath: "/mnt/dataset" }],
+    };
+    updateJob(activeJob.id, { roles, roleResources: rr });
+    setActiveRoleTab(newRole);
+  };
+
+  const removeRole = (role: string) => {
+    if (!activeJob || activeJob.roles.length <= 1) return;
+    const roles = activeJob.roles.filter((r) => r !== role);
+    const rr = { ...activeJob.roleResources };
+    delete rr[role];
+    const headerRole =
+      activeJob.headerRole === role ? roles[0] : activeJob.headerRole;
+    updateJob(activeJob.id, { roles, roleResources: rr, headerRole });
+    if (activeRoleTab === role) setActiveRoleTab(roles[0]);
+  };
+
+  const renameRole = (old: string, newName: string) => {
+    if (!activeJob) return;
+    if (!newName.trim()) return;
+    const roles = activeJob.roles.map((r) => (r === old ? newName : r));
+    const rr: Record<string, RoleResource> = {};
+    for (const [k, v] of Object.entries(activeJob.roleResources)) {
+      rr[k === old ? newName : k] = k === old ? { ...v, role: newName } : v;
+    }
+    const headerRole =
+      activeJob.headerRole === old ? newName : activeJob.headerRole;
+    updateJob(activeJob.id, { roles, roleResources: rr, headerRole });
+    if (activeRoleTab === old) setActiveRoleTab(newName);
+  };
+
+  return (
+    <div
+      className="modal-backdrop"
+      onMouseDown={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div className="modal create-job-modal">
+        <div className="modal-head">
+          <div>
+            <span className="eyebrow">{c.workflows.eyebrow}</span>
+            <h2>{c.workflows.createTitle}</h2>
+          </div>
+          <button className="icon-button" onClick={onClose}>
+            ×
+          </button>
+        </div>
+        <div className="modal-body create-job-body">
+          <div className="create-stepper">
+            {steps.map((label, index) => (
+              <button
+                key={label}
+                className={step >= index + 1 ? "active" : ""}
+                onClick={() => setStep(index + 1)}
+              >
+                <span>{index + 1}</span>
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {step === 1 && (
+            <div className="form-section">
+              <div className="form-section-head">
+                <strong>{zh ? "工作流名称" : "Workflow Name"}</strong>
+              </div>
+              <input
+                value={workflowName}
+                onChange={(e) => setWorkflowName(e.target.value)}
+                placeholder="rl-training-pipeline"
+                style={{ marginBottom: 12 }}
+              />
+              <div className="dag-toolbar">
+                <button className="secondary-button" onClick={addJobToDAG}>
+                  <Plus size={14} />
+                  {c.workflows.addJob}
+                </button>
+              </div>
+              <div
+                className="dag-canvas"
+                ref={canvasRef}
+                onMouseMove={onCanvasMouseMove}
+                onMouseUp={onCanvasMouseUp}
+                onMouseLeave={onCanvasMouseUp}
+              >
+                <div className="dag-canvas-content">
+                  <svg className="dag-svg" width={900} height={500}>
+                    <defs>
+                      <marker
+                        id="dag-arrow"
+                        markerWidth="8"
+                        markerHeight="8"
+                        refX="7"
+                        refY="3"
+                        orient="auto"
+                      >
+                        <path d="M0,0 L7,3 L0,6 Z" fill="var(--blue)" />
+                      </marker>
+                    </defs>
+                    {edges.map((e) => {
+                      const p1 = nodePortPos(e.from, "out");
+                      const p2 = nodePortPos(e.to, "in");
+                      const midX = (p1.x + p2.x) / 2;
+                      return (
+                        <path
+                          key={`${e.from}-${e.to}`}
+                          d={`M ${p1.x} ${p1.y} C ${midX} ${p1.y}, ${midX} ${p2.y}, ${p2.x} ${p2.y}`}
+                          stroke="var(--blue)"
+                          strokeWidth="2"
+                          fill="none"
+                          markerEnd="url(#dag-arrow)"
+                          className="dag-edge"
+                          onClick={() => removeEdge(e.from, e.to)}
+                        />
+                      );
+                    })}
+                    {dragEdge &&
+                      (() => {
+                        const p1 = nodePortPos(dragEdge.from, "out");
+                        return (
+                          <path
+                            d={`M ${p1.x} ${p1.y} C ${(p1.x + dragEdge.x) / 2} ${p1.y}, ${(p1.x + dragEdge.x) / 2} ${dragEdge.y}, ${dragEdge.x} ${dragEdge.y}`}
+                            stroke="var(--blue)"
+                            strokeWidth="2"
+                            fill="none"
+                            strokeDasharray="4 3"
+                            className="dag-temp-line"
+                          />
+                        );
+                      })()}
+                  </svg>
+                  {nodes.map((n) => (
+                    <div
+                      key={n.id}
+                      className={
+                        "dag-node" + (activeJobId === n.id ? " selected" : "")
+                      }
+                      style={{ left: n.x, top: n.y }}
+                      data-node-id={n.id}
+                      onMouseDown={(e) => onNodeMouseDown(e, n.id)}
+                      onClick={() => {
+                        setActiveJobId(n.id);
+                        const j = jobs.find((j) => j.id === n.id);
+                        if (j && j.roles.length > 0)
+                          setActiveRoleTab(j.roles[0]);
+                      }}
+                    >
+                      <div
+                        className="dag-node-port input"
+                        title={zh ? "输入" : "Input"}
+                      />
+                      <div className="dag-node-body">
+                        {editingNodeId === n.id ? (
+                          <input
+                            className="dag-node-name"
+                            value={n.name}
+                            autoFocus
+                            onClick={(e) => e.stopPropagation()}
+                            onMouseDown={(e) => e.stopPropagation()}
+                            onChange={(e) => renameJob(n.id, e.target.value)}
+                            onBlur={() => {
+                              if (!n.name.trim()) renameJob(n.id, "unnamed");
+                              setEditingNodeId(null);
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") setEditingNodeId(null);
+                            }}
+                          />
+                        ) : (
+                          <strong
+                            onDoubleClick={(e) => {
+                              e.stopPropagation();
+                              setEditingNodeId(n.id);
+                            }}
+                          >
+                            {n.name}
+                          </strong>
+                        )}
+                        <span className="dag-node-type">
+                          {jobs.find((j) => j.id === n.id)?.type ?? ""}
+                        </span>
+                      </div>
+                      <div
+                        className="dag-node-port output"
+                        onMouseDown={(e) => onPortMouseDown(e, n.id)}
+                        title={
+                          zh
+                            ? "拖拽到目标节点创建依赖"
+                            : "Drag to target to create dependency"
+                        }
+                      />
+                      {jobs.length > 1 && (
+                        <button
+                          className="dag-node-delete"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeJobFromDAG(n.id);
+                          }}
+                        >
+                          <X size={10} />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="dag-hint">
+                {zh
+                  ? "拖拽节点右侧端口到目标节点创建依赖，点击连线可删除。点击节点切换 Job 详情。"
+                  : "Drag output port (right) to target node to create dependency. Click edge to remove. Click node to edit."}
+              </div>
+            </div>
+          )}
+
+          {step === 2 && activeJob && (
+            <>
+              <div className="role-config-tabs" style={{ marginBottom: 12 }}>
+                {jobs.map((job) => (
+                  <button
+                    key={job.id}
+                    className={activeJobId === job.id ? "active" : ""}
+                    onClick={() => {
+                      setActiveJobId(job.id);
+                      if (job.roles.length > 0) setActiveRoleTab(job.roles[0]);
+                    }}
+                  >
+                    {job.name}
+                  </button>
+                ))}
+              </div>
+              <div className="form-section">
+                <div className="form-row">
+                  <label>
+                    {c.workflows.jobName}
+                    <input
+                      value={activeJob.name}
+                      onChange={(e) => renameJob(activeJob.id, e.target.value)}
+                    />
+                  </label>
+                  <label>
+                    {zh ? "任务类型" : "Job Type"}
+                    <select
+                      value={activeJob.type}
+                      onChange={(e) =>
+                        onJobTypeChange(e.target.value as JobType)
+                      }
+                    >
+                      {(
+                        [
+                          "RL",
+                          "DataCollection",
+                          "Evaluation",
+                          "Custom",
+                        ] as JobType[]
+                      ).map((t) => (
+                        <option key={t} value={t}>
+                          {c.jobType[t]}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+              </div>
+              <div className="form-section">
+                <div className="form-section-head">
+                  <strong>{zh ? "角色管理" : "Roles"}</strong>
+                  <button
+                    className="secondary-button"
+                    style={{ padding: "2px 10px", fontSize: 12 }}
+                    onClick={addRole}
+                  >
+                    <Plus size={13} />
+                    {zh ? "添加角色" : "Add Role"}
+                  </button>
+                </div>
+                <div className="role-edit-list">
+                  {activeJob.roles.map((role) => (
+                    <div
+                      key={role}
+                      className={`role-edit-row ${effectiveHeader === role ? "active" : ""}`}
+                      onClick={() =>
+                        updateJob(activeJob.id, { headerRole: role })
+                      }
+                    >
+                      <Check size={14} />
+                      <input
+                        value={role}
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={(e) => renameRole(role, e.target.value)}
+                        onBlur={(e) => {
+                          if (!e.target.value.trim()) renameRole(role, role);
+                        }}
+                      />
+                      <small>
+                        {effectiveHeader === role ? "Header" : "Worker"}
+                      </small>
+                      {activeJob.roles.length > 1 && (
+                        <button
+                          className="icon-button danger"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeRole(role);
+                          }}
+                        >
+                          <X size={14} />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {activeJob.roles.length > 0 && (
+                <>
+                  <div className="role-config-tabs">
+                    {activeJob.roles.map((role) => (
+                      <button
+                        key={role}
+                        className={activeRoleTab === role ? "active" : ""}
+                        onClick={() => setActiveRoleTab(role)}
+                      >
+                        {role}
+                        {effectiveHeader === role && (
+                          <span
+                            className="role-chip"
+                            style={{ marginLeft: 6, fontSize: 10 }}
+                          >
+                            Header
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                  {(() => {
+                    const role = activeRoleTab || activeJob.roles[0];
+                    if (!role) return null;
+                    const rr = activeJob.roleResources[role];
+                    if (!rr) return null;
+                    return (
+                      <div className="role-resource-card" key={role}>
+                        <div className="form-section-head">
+                          <strong>{role}</strong>
+                          {effectiveHeader === role && (
+                            <span
+                              className="role-chip"
+                              style={{
+                                background: "#f3eefe",
+                                color: "var(--blue)",
+                              }}
+                            >
+                              Header
+                            </span>
+                          )}
+                        </div>
+                        <div className="form-row">
+                          <label>
+                            {zh ? "集群" : "Cluster"}
+                            <select
+                              value={rr.cluster}
+                              onChange={(e) =>
+                                updateRR(role, "cluster", e.target.value)
+                              }
+                            >
+                              {clusters.slice(0, 4).map((cl) => (
+                                <option key={cl.name}>{cl.name}</option>
+                              ))}
+                            </select>
+                          </label>
+                        </div>
+                        <div className="form-section" style={{ marginTop: 12 }}>
+                          <div className="form-section-head">
+                            <small>{zh ? "节点选择" : "Node Selector"}</small>
+                          </div>
+                          <NodeSelectorPicker
+                            value={rr.nodeSelector}
+                            onChange={(v) => updateRR(role, "nodeSelector", v)}
+                            zh={zh}
+                            onMatchedCount={(n) =>
+                              updateRR(role, "replicas", n)
+                            }
+                          />
+                        </div>
+                        <div
+                          className="resource-input-row"
+                          style={{ gridTemplateColumns: "1fr 1fr" }}
+                        >
+                          <label>
+                            {zh ? "副本（自动匹配节点数）" : "Replicas (auto)"}
+                            <input
+                              type="number"
+                              value={rr.replicas}
+                              readOnly
+                              style={{ opacity: 0.6 }}
+                            />
+                          </label>
+                          <label>
+                            GPU
+                            <input
+                              value={rr.gpu}
+                              onChange={(e) =>
+                                updateRR(role, "gpu", e.target.value)
+                              }
+                              placeholder="4"
+                            />
+                          </label>
+                        </div>
+                        <div className="form-section" style={{ marginTop: 12 }}>
+                          <div className="form-section-head">
+                            <small>{zh ? "镜像" : "Image"}</small>
+                          </div>
+                          <input
+                            value={rr.image}
+                            onChange={(e) =>
+                              updateRR(role, "image", e.target.value)
+                            }
+                            placeholder="registry.rlark.ai/rl/policy-trainer:v0.42"
+                          />
+                        </div>
+                        <div className="form-section" style={{ marginTop: 12 }}>
+                          <div className="form-section-head">
+                            <small>
+                              {zh
+                                ? "准备脚本 (Ray 启动前)"
+                                : "Prepare Script (before Ray)"}
+                            </small>
+                          </div>
+                          <textarea
+                            className="code-textarea"
+                            style={{ minHeight: 60 }}
+                            value={rr.prepareScript}
+                            onChange={(e) =>
+                              updateRR(role, "prepareScript", e.target.value)
+                            }
+                          />
+                        </div>
+                        <div className="form-section" style={{ marginTop: 12 }}>
+                          <div className="form-section-head">
+                            <small>
+                              {zh ? "环境变量" : "Environment Variables"}
+                            </small>
+                            <button
+                              className="secondary-button"
+                              onClick={() => addRREnv(role)}
+                            >
+                              <Plus size={14} />
+                              {zh ? "添加" : "Add"}
+                            </button>
+                          </div>
+                          {rr.envs.map((env, index) => (
+                            <div className="env-row" key={index}>
+                              <input
+                                value={env.key}
+                                onChange={(e) =>
+                                  updateRREnv(
+                                    role,
+                                    index,
+                                    "key",
+                                    e.target.value,
+                                  )
+                                }
+                              />
+                              <input
+                                value={env.value}
+                                onChange={(e) =>
+                                  updateRREnv(
+                                    role,
+                                    index,
+                                    "value",
+                                    e.target.value,
+                                  )
+                                }
+                              />
+                              <button
+                                className="icon-button danger"
+                                onClick={() => removeRREnv(role, index)}
+                              >
+                                <X size={14} />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="form-section" style={{ marginTop: 12 }}>
+                          <div className="form-section-head">
+                            <small>
+                              {zh ? "对象存储挂载" : "Volume Mounts"}
+                            </small>
+                            <button
+                              className="secondary-button"
+                              onClick={() => addRRMount(role)}
+                            >
+                              <Plus size={14} />
+                              {zh ? "添加" : "Add"}
+                            </button>
+                          </div>
+                          {rr.mounts.map((mount, index) => (
+                            <div className="env-row" key={index}>
+                              <input
+                                value={mount.objectStorage}
+                                onChange={(e) =>
+                                  updateRRMount(
+                                    role,
+                                    index,
+                                    "objectStorage",
+                                    e.target.value,
+                                  )
+                                }
+                                placeholder="/host/path"
+                              />
+                              <input
+                                value={mount.mountPath}
+                                onChange={(e) =>
+                                  updateRRMount(
+                                    role,
+                                    index,
+                                    "mountPath",
+                                    e.target.value,
+                                  )
+                                }
+                                placeholder="/mnt/data"
+                              />
+                              <button
+                                className="icon-button danger"
+                                onClick={() => removeRRMount(role, index)}
+                              >
+                                <X size={14} />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </>
+              )}
+              <div className="form-section">
+                <div className="form-section-head">
+                  <small>{zh ? "选择 Head 节点" : "Select Head"}</small>
+                </div>
+                <div className="role-template selectable">
+                  {activeJob.roles.map((role) => (
+                    <button
+                      key={role}
+                      className={effectiveHeader === role ? "active" : ""}
+                      onClick={() =>
+                        updateJob(activeJob.id, { headerRole: role })
+                      }
+                    >
+                      <Check size={13} />
+                      {role}
+                      <small>
+                        {effectiveHeader === role ? "Header" : "Worker"}
+                      </small>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="form-section">
+                <div className="form-section-head">
+                  <small>
+                    {zh
+                      ? "跨集群网络域 (可选)"
+                      : "Cross-cluster Network Domain (optional)"}
+                  </small>
+                </div>
+                <select
+                  value={activeJob.domain}
+                  onChange={(e) =>
+                    updateJob(activeJob.id, { domain: e.target.value })
+                  }
+                >
+                  <option value="">
+                    {zh ? "不使用跨集群网络" : "No cross-cluster network"}
+                  </option>
+                  {domains.map((d) => (
+                    <option key={d.name} value={d.name}>
+                      {d.name} ({d.cidr})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="form-section">
+                <div className="form-section-head">
+                  <small>{zh ? "运行脚本" : "Run Script"}</small>
+                </div>
+                <textarea
+                  className="code-textarea"
+                  value={activeJob.runScript}
+                  onChange={(e) =>
+                    updateJob(activeJob.id, { runScript: e.target.value })
+                  }
+                />
+              </div>
+            </>
+          )}
+
+          {step === 3 && (
+            <div className="yaml-preview">
+              <div className="yaml-preview-head">
+                <span>YAML</span>
+                <button
+                  className="secondary-button"
+                  onClick={() => navigator.clipboard?.writeText(yaml)}
+                >
+                  {c.api.copy}
+                </button>
+              </div>
+              <pre>{yaml}</pre>
+            </div>
+          )}
+
+          {error && (
+            <div className="cert-error" style={{ marginBottom: 12 }}>
+              {error}
+            </div>
+          )}
+          <div className="step-actions">
+            <button
+              className="secondary-button"
+              onClick={() => (step > 1 ? setStep(step - 1) : onClose())}
+            >
+              {step > 1 ? (zh ? "上一步" : "Back") : zh ? "取消" : "Cancel"}
+            </button>
+            {step < 3 ? (
+              <button
+                className="primary-button"
+                onClick={() => setStep(step + 1)}
+                disabled={step === 1 && !workflowName.trim()}
+              >
+                {zh ? "下一步" : "Next"}
+              </button>
+            ) : (
+              <button
+                className="primary-button"
+                disabled={submitting}
+                onClick={handleSubmit}
+              >
+                {submitting
+                  ? zh
+                    ? "提交中…"
+                    : "Submitting…"
+                  : zh
+                    ? "创建"
+                    : "Create"}
+              </button>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -4982,9 +6710,128 @@ const adminNavItems: {
   { id: "config", icon: Settings, zh: "系统配置", en: "Config" },
 ];
 
+function AdminLogin({
+  copy: c,
+  lang,
+  onLangChange,
+  theme,
+  onThemeChange,
+  onLogin,
+}: {
+  copy: Copy;
+  lang: Lang;
+  onLangChange: (l: Lang) => void;
+  theme: Theme;
+  onThemeChange: (t: Theme) => void;
+  onLogin: () => void;
+}) {
+  const zh = lang === "zh";
+  const [username, setUsername] = useState("admin");
+  const [password, setPassword] = useState("admin@123");
+  const [error, setError] = useState("");
+
+  const handleSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    if (!username.trim() || !password.trim()) {
+      setError(zh ? "请输入账号和密码" : "Please enter username and password");
+      return;
+    }
+    onLogin();
+  };
+
+  return (
+    <div className={"admin-login-page theme-" + theme}>
+      <div className="admin-login-topbar">
+        <div className="admin-brand">
+          <img src="/rlark-logo.png" alt="RLark" className="brand-logo" />
+          <div className="admin-brand-text">
+            <strong>RLark</strong>
+            <small>ADMIN</small>
+          </div>
+        </div>
+        <div className="topbar-actions">
+          <div className="segmented-control">
+            <button
+              className={lang === "zh" ? "active" : ""}
+              onClick={() => onLangChange("zh")}
+            >
+              <Languages size={14} />中
+            </button>
+            <button
+              className={lang === "en" ? "active" : ""}
+              onClick={() => onLangChange("en")}
+            >
+              EN
+            </button>
+          </div>
+          <div className="segmented-control theme-control">
+            <button
+              className={theme === "light" ? "active" : ""}
+              onClick={() => onThemeChange("light")}
+            >
+              {c.common.light}
+            </button>
+            <button
+              className={theme === "dark" ? "active" : ""}
+              onClick={() => onThemeChange("dark")}
+            >
+              <Moon size={14} />
+              {c.common.dark}
+            </button>
+          </div>
+        </div>
+      </div>
+      <div className="admin-login-body">
+        <form className="admin-login-card" onSubmit={handleSubmit}>
+          <div className="admin-login-logo">
+            <Shield size={32} />
+          </div>
+          <h2>{zh ? "管理后台登录" : "Admin Login"}</h2>
+          <p className="muted">
+            {zh ? "请输入管理员账号和密码" : "Enter your admin credentials"}
+          </p>
+          <div className="admin-login-field">
+            <label>{zh ? "账号" : "Username"}</label>
+            <input
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="admin"
+              autoComplete="username"
+            />
+          </div>
+          <div className="admin-login-field">
+            <label>{zh ? "密码" : "Password"}</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              autoComplete="current-password"
+            />
+          </div>
+          {error && (
+            <div className="cert-error" style={{ marginBottom: 12 }}>
+              {error}
+            </div>
+          )}
+          <button type="submit" className="primary-button admin-login-btn">
+            {zh ? "登录" : "Sign In"}
+          </button>
+          <a className="admin-login-back" href="/">
+            <ArrowRight size={13} />
+            {zh ? "返回前台" : "Back to Console"}
+          </a>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 function AdminApp() {
   const [lang, setLang] = useState<Lang>("zh");
   const [theme, setTheme] = useState<Theme>("light");
+  const [loggedIn, setLoggedIn] = useState(false);
   const [adminPage, setAdminPage] = useState(() => {
     const p = window.location.pathname
       .replace(/^\/admin\/?/, "")
@@ -5028,6 +6875,18 @@ function AdminApp() {
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
   }, []);
+  if (!loggedIn) {
+    return (
+      <AdminLogin
+        copy={c}
+        lang={lang}
+        onLangChange={setLang}
+        theme={theme}
+        onThemeChange={setTheme}
+        onLogin={() => setLoggedIn(true)}
+      />
+    );
+  }
   return (
     <div className={"app-shell theme-" + theme + " admin-shell"}>
       <header className="topbar admin-topbar">
@@ -5136,7 +6995,13 @@ function parseRoute() {
     .replace(/\/+$/, "")
     .split("/")
     .filter(Boolean);
-  const valid: Page[] = ["overview", "clusters", "jobs", "domains"];
+  const valid: Page[] = [
+    "overview",
+    "clusters",
+    "jobs",
+    "workflows",
+    "domains",
+  ];
   const top = (parts[0] as Page) ?? "overview";
   if (!valid.includes(top)) return { page: "overview" as Page, sub: "" };
   const sub = parts.slice(1).join("/");
@@ -5148,6 +7013,7 @@ export default function App() {
   const [{ page, sub }, setRoute] = useState(parseRoute);
   const [collapsed, setCollapsed] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
+  const [createWfOpen, setCreateWfOpen] = useState(false);
   const [cloneJob, setCloneJob] = useState<Job | null>(null);
   const [editJob, setEditJob] = useState<Job | null>(null);
   const [lang, setLang] = useState<Lang>("zh");
@@ -5254,6 +7120,15 @@ export default function App() {
             onSelect={(name?: string) => navigate("domains", name)}
           />
         )}
+        {page === "workflows" && (
+          <WorkflowsPage
+            copy={c}
+            selectedName={sub}
+            onSelect={(name?: string) => navigate("workflows", name)}
+            onCreate={() => setCreateWfOpen(true)}
+            onJobClick={(name) => navigate("jobs", name)}
+          />
+        )}
       </main>
       {createOpen && (
         <CreateJobModal
@@ -5266,6 +7141,9 @@ export default function App() {
           cloneJob={cloneJob}
           editJob={editJob}
         />
+      )}
+      {createWfOpen && (
+        <CreateWorkflowModal onClose={() => setCreateWfOpen(false)} copy={c} />
       )}
     </div>
   );
