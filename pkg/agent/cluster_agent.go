@@ -37,7 +37,7 @@ func (c *clusterAgent) Run(ctx context.Context) error {
 
 	mm, err := ctrl.NewManager(c.a.managementConfig, ctrl.Options{
 		Scheme:  controllers.MgmtScheme,
-		Metrics: metricsserver.Options{BindAddress: "0"},
+		Metrics: metricsserver.Options{BindAddress: c.a.config.MetricsBindAddress},
 		Cache: cache.Options{
 			DefaultNamespaces: map[string]cache.Config{
 				clusterID: {},

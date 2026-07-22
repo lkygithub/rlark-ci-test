@@ -8,7 +8,6 @@ const (
 	ComponentServer            = "rlark-server"
 	ComponentAgent             = "rlark-agent"
 	ComponentAgentNode         = "rlark-agent-node"
-	ComponentPrometheus        = "prometheus"
 	ComponentPostgresql        = "postgresql"
 	ComponentKCP               = "kcp"
 	ComponentUI                = "rlark-ui"
@@ -27,3 +26,9 @@ const InitDBSQL = `-- scripts/init-db.sql
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 GRANT ALL PRIVILEGES ON DATABASE rlark TO postgres;
 `
+
+const (
+	PrometheusScrapeLabelKey = "prometheus.io/scrape"
+	PrometheusScrapeLabelVal = "true"
+	PrometheusPortLabelKey   = "prometheus.io/port"
+)

@@ -26,6 +26,8 @@ type Config struct {
 	LeaderElectionKey string // namespace/name
 	LeaderElectionID  string // unique identifier for this agent instance, usually hostname
 
+	MetricsBindAddress string
+
 	NodeServerConfig      nodeserver.Config
 	NetworkSidecarImage   string
 	RLarkServerSSHAddress string
@@ -34,13 +36,14 @@ type Config struct {
 
 func DefaultConfig() Config {
 	return Config{
-		ClientConfig:      server.DefaultClientConfig(),
-		KubeClientConfig:  configs.DefaultKubernetesClientConfig(),
-		AgentType:         "Kubernetes",
-		Mode:              "cluster",
-		LeaderElectionKey: "default/rlark-agent",
-		LeaderElectionID:  fmt.Sprintf("%s-%d", os.Getenv("HOSTNAME"), os.Getpid()),
-		NodeServerConfig:  nodeserver.DefaultConfig(),
+		ClientConfig:       server.DefaultClientConfig(),
+		KubeClientConfig:   configs.DefaultKubernetesClientConfig(),
+		AgentType:          "Kubernetes",
+		Mode:               "cluster",
+		LeaderElectionKey:  "default/rlark-agent",
+		LeaderElectionID:   fmt.Sprintf("%s-%d", os.Getenv("HOSTNAME"), os.Getpid()),
+		MetricsBindAddress: ":8081",
+		NodeServerConfig:   nodeserver.DefaultConfig(),
 	}
 }
 
@@ -54,6 +57,7 @@ func (c *Config) SetupFlags(fs *pflag.FlagSet) {
 	fs.BoolVar(&c.LeaderElection, "leader-election", c.LeaderElection, "enable leader election for agent")
 	fs.StringVar(&c.LeaderElectionKey, "leader-election-key", c.LeaderElectionKey, "leader election key (namespace/name)")
 	fs.StringVar(&c.LeaderElectionID, "leader-election-id", c.LeaderElectionID, "leader election id (unique identifier for this agent instance)")
+	fs.StringVar(&c.MetricsBindAddress, "metrics-bind-address", c.MetricsBindAddress, "The address the metric endpoint binds to.")
 
 	fs.StringVar(&c.RLarkServerSSHAddress, "rlark-server-ssh-address", c.RLarkServerSSHAddress, "RLark server SSH address (user@host:port)")
 	fs.StringVar(&c.RLarkServerSSHHostKey, "rlark-server-ssh-host-key", c.RLarkServerSSHHostKey, "RLark server SSH host key")

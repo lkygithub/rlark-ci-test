@@ -107,6 +107,7 @@ type Component struct {
 	ServiceAccount string
 	RBACRules      []rbacv1.PolicyRule
 	Dependencies   []string
+	MetricsPort    int32
 	EnabledFn      func(cfg *DeployConfig) bool
 	ImageFn        func(cfg *DeployConfig) string
 	ArtifactFn     func(cfg *DeployConfig) string

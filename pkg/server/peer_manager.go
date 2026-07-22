@@ -126,6 +126,7 @@ func (s *Server) runPeerTunnel(ctx context.Context) error {
 		url := fmt.Sprintf("ws://127.0.0.1:%d/api/peer/%s", s.config.UnsafeHTTPPort, ip)
 		s.dialerFactory.AddPeer(url, peerID, peerToken)
 		leaseMap[name] = identity
+		metrics.SetPeerConnections(len(leaseMap))
 		logger.Info("Added peer", "peerID", peerID, "lease", name, "ip", ip)
 	}
 	unsetLease := func(name string) {
@@ -139,6 +140,7 @@ func (s *Server) runPeerTunnel(ctx context.Context) error {
 				logger.Info("Removed peer", "peerID", peerID, "lease", name)
 			}
 			delete(leaseMap, name)
+			metrics.SetPeerConnections(len(leaseMap))
 		}
 	}
 

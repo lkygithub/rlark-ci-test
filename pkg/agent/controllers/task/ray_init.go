@@ -59,6 +59,11 @@ func buildRayHeadService(namespace, taskName string) *corev1.Service {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      rayHeadServiceName(taskName),
 			Namespace: namespace,
+			Labels: map[string]string{
+				"app":                  taskName,
+				"prometheus.io/scrape": "true",
+				"prometheus.io/port":   "8080",
+			},
 		},
 		Spec: corev1.ServiceSpec{
 			Selector: map[string]string{
@@ -73,6 +78,11 @@ func buildRayHeadService(namespace, taskName string) *corev1.Service {
 				{
 					Name:     "dashboard",
 					Port:     8265,
+					Protocol: corev1.ProtocolTCP,
+				},
+				{
+					Name:     "metrics",
+					Port:     8080,
 					Protocol: corev1.ProtocolTCP,
 				},
 			},

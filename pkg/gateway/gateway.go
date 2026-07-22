@@ -9,6 +9,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"golang.org/x/sync/errgroup"
 	"k8s.io/client-go/kubernetes"
 
@@ -124,7 +125,9 @@ func (g *Gateway) init(ctx context.Context) error {
 func (g *Gateway) runHTTPServer(ctx context.Context) error {
 	logger := log.FromContext(ctx)
 	r := gin.Default()
+	r.Use(MetricsMiddleware())
 	g.RegisterRoutes(r)
+	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
 	server := http.Server{
 		Addr:    g.config.Address,

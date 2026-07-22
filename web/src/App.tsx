@@ -8,6 +8,7 @@ import {
   Braces,
   Check,
   ChevronDown,
+  ChevronLeft,
   ChevronRight,
   CircleDot,
   CloudCog,
@@ -103,7 +104,6 @@ const copy = {
       running: "运行中",
       total: "总数",
       logs: "日志",
-      monitor: "监控",
       details: "详情",
     },
     status: {
@@ -221,7 +221,6 @@ const copy = {
       running: "Running",
       total: "Total",
       logs: "Logs",
-      monitor: "Monitor",
       details: "Details",
     },
     status: {
@@ -552,7 +551,7 @@ function Overview({
   navigate,
   copy: c,
 }: {
-  navigate: (page: Page) => void;
+  navigate: (page: Page, name?: string) => void;
   copy: Copy;
 }) {
   const cloudClusters = clusters.filter((x) => x.type === "Cloud");
@@ -1485,18 +1484,21 @@ function mapRoleToJobType(tasks: CRDJobTask[]): JobType {
 
 function JobsPage({
   copy: c,
+  selectedName,
+  onSelect,
   onCreate,
   onClone,
   onEdit,
 }: {
   copy: Copy;
+  selectedName: string;
+  onSelect: (name?: string) => void;
   onCreate: () => void;
   onClone: (job: Job) => void;
   onEdit: (job: Job) => void;
 }) {
   const zh = c.nav.overview === "总览";
   const [query, setQuery] = useState("");
-  const [selected, setSelected] = useState<Job | null>(null);
   const [realJobs, setRealJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -1546,9 +1548,18 @@ function JobsPage({
       .includes(query.toLowerCase()),
   );
 
+  const selected =
+    selectedName && allJobs.length > 0
+      ? allJobs.find((j) => j.name === selectedName) ?? null
+      : null;
+
   if (selected) {
     return (
-      <JobDetailPage job={selected} copy={c} onBack={() => setSelected(null)} />
+      <JobDetailPage
+        job={selected}
+        copy={c}
+        onBack={() => onSelect(undefined)}
+      />
     );
   }
 
@@ -1598,7 +1609,7 @@ function JobsPage({
                 <td>
                   <button
                     className="link-cell"
-                    onClick={() => setSelected(job)}
+                    onClick={() => onSelect(job.name)}
                   >
                     <strong>{job.name}</strong>
                     <small>{job.id}</small>
@@ -1675,7 +1686,7 @@ function JobDetailPage({
 }) {
   const zh = c.nav.overview === "总览";
   const [activeTab, setActiveTab] = useState<
-    "config" | "workers" | "logs" | "monitor"
+    "config" | "workers" | "logs"
   >("config");
   const [taskNodes, setTaskNodes] = useState<Record<string, string>>({});
   const [podLogs, setPodLogs] = useState<
@@ -1774,7 +1785,6 @@ function JobDetailPage({
     { id: "config", label: zh ? "配置" : "Config" },
     { id: "workers", label: c.jobs.workers },
     { id: "logs", label: c.common.logs },
-    { id: "monitor", label: c.common.monitor },
   ];
   return (
     <div className="page-content resource-page job-detail-page">
@@ -1886,38 +1896,58 @@ function JobDetailPage({
             <>
               <div className="log-toolbar">
                 <div className="log-role-tabs">
-                  {[...new Set(podLogs.map((p) => p.taskName))].map((role) => (
-                    <button
-                      key={role}
-                      className={
-                        "log-role-tab" +
-                        (selectedRole === role ? " active" : "")
-                      }
-                      onClick={() => {
-                        setSelectedRole(role);
-                        const firstPod = podLogs.find(
-                          (p) => p.taskName === role,
-                        );
-                        setSelectedPodName(firstPod ? firstPod.podName : null);
-                      }}
-                    >
-                      {role}
-                    </button>
-                  ))}
+                  {[...new Set(podLogs.map((p) => p.taskName))].map((role) => {
+                    const rolePods = podLogs.filter(
+                      (p) => p.taskName === role,
+                    );
+                    const running = rolePods.some(
+                      (p) => p.phase === "Running",
+                    );
+                    return (
+                      <button
+                        key={role}
+                        className={
+                          "log-role-tab" +
+                          (selectedRole === role ? " active" : "")
+                        }
+                        onClick={() => {
+                          setSelectedRole(role);
+                          const firstPod = podLogs.find(
+                            (p) => p.taskName === role,
+                          );
+                          setSelectedPodName(
+                            firstPod ? firstPod.podName : null,
+                          );
+                        }}
+                      >
+                        <i
+                          className={
+                            "log-role-dot" +
+                            (running ? " running" : "")
+                          }
+                        />
+                        {role}
+                        <small>{rolePods.length}</small>
+                      </button>
+                    );
+                  })}
                 </div>
-                <select
-                  className="log-pod-select"
-                  value={selectedPodName ?? ""}
-                  onChange={(e) => setSelectedPodName(e.target.value)}
-                >
-                  {podLogs
-                    .filter((p) => p.taskName === selectedRole)
-                    .map((pod) => (
-                      <option key={pod.podName} value={pod.podName}>
-                        {pod.podName} ({pod.phase})
-                      </option>
-                    ))}
-                </select>
+                <div className="log-pod-picker">
+                  <span className="log-pod-label">Pod</span>
+                  <select
+                    className="log-pod-select"
+                    value={selectedPodName ?? ""}
+                    onChange={(e) => setSelectedPodName(e.target.value)}
+                  >
+                    {podLogs
+                      .filter((p) => p.taskName === selectedRole)
+                      .map((pod) => (
+                        <option key={pod.podName} value={pod.podName}>
+                          {pod.podName} ({pod.phase})
+                        </option>
+                      ))}
+                  </select>
+                </div>
               </div>
               {(() => {
                 const pod = podLogs.find((p) => p.podName === selectedPodName);
@@ -1943,19 +1973,6 @@ function JobDetailPage({
               })()}
             </>
           )}
-        </div>
-      )}
-      {activeTab === "monitor" && (
-        <div className="embodied-channel">
-          <div className="channel-screen" style={{ width: "100%" }}>
-            <GaugeIcon size={28} />
-            <strong>{zh ? "监控面板" : "Monitor Dashboard"}</strong>
-            <span>
-              {zh
-                ? "等待接入 Prometheus / Grafana 数据源"
-                : "Waiting for Prometheus / Grafana data source"}
-            </span>
-          </div>
         </div>
       )}
     </div>
@@ -2111,7 +2128,15 @@ interface CRDDomain {
   };
 }
 
-function DomainsPage({ copy: c }: { copy: Copy }) {
+function DomainsPage({
+  copy: c,
+  selectedName,
+  onSelect,
+}: {
+  copy: Copy;
+  selectedName: string;
+  onSelect: (name?: string) => void;
+}) {
   const zh = c.nav.overview === "总览";
   const [domains, setDomains] = useState<CRDDomain[]>([]);
   const [loading, setLoading] = useState(true);
@@ -2181,6 +2206,21 @@ function DomainsPage({ copy: c }: { copy: Copy }) {
     }
   };
 
+  const selected =
+    selectedName && domains.length > 0
+      ? domains.find((d) => d.metadata.name === selectedName) ?? null
+      : null;
+
+  if (selected) {
+    return (
+      <DomainDetailPage
+        domain={selected}
+        copy={c}
+        onBack={() => onSelect(undefined)}
+      />
+    );
+  }
+
   return (
     <div className="page-content resource-page">
       <div className="section-heading">
@@ -2226,7 +2266,11 @@ function DomainsPage({ copy: c }: { copy: Copy }) {
           </thead>
           <tbody>
             {domains.map((d) => (
-              <tr key={d.metadata.name}>
+              <tr
+                key={d.metadata.name}
+                className="clickable-row"
+                onClick={() => onSelect(d.metadata.name)}
+              >
                 <td>
                   <strong>{d.metadata.name}</strong>
                 </td>
@@ -2246,7 +2290,10 @@ function DomainsPage({ copy: c }: { copy: Copy }) {
                   <div className="row-actions">
                     <button
                       className="icon-button danger"
-                      onClick={() => handleDelete(d.metadata.name)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete(d.metadata.name);
+                      }}
                       title={zh ? "删除" : "Delete"}
                     >
                       <Trash2 size={15} />
@@ -2349,6 +2396,260 @@ function DomainsPage({ copy: c }: { copy: Copy }) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function DomainDetailPage({
+  domain,
+  copy: c,
+  onBack,
+}: {
+  domain: CRDDomain;
+  copy: Copy;
+  onBack: () => void;
+}) {
+  const zh = c.nav.overview === "总览";
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const [query, setQuery] = useState("");
+  const [sortKey, setSortKey] = useState<"ip" | "job" | "task" | "pod" | null>(
+    null,
+  );
+  const [sortAsc, setSortAsc] = useState(true);
+
+  const allAllocs = domain.status?.ipAllocations ?? [];
+
+  const filtered = useMemo(() => {
+    if (!query.trim()) return allAllocs;
+    const q = query.toLowerCase();
+    return allAllocs.filter((a) =>
+      `${a.ip} ${a.job} ${a.task} ${a.pod}`.toLowerCase().includes(q),
+    );
+  }, [allAllocs, query]);
+
+  const sorted = useMemo(() => {
+    if (!sortKey) return filtered;
+    const arr = [...filtered];
+    arr.sort((a, b) => {
+      const av = (a[sortKey] ?? "").toString();
+      const bv = (b[sortKey] ?? "").toString();
+      return sortAsc ? av.localeCompare(bv) : bv.localeCompare(av);
+    });
+    return arr;
+  }, [filtered, sortKey, sortAsc]);
+
+  const total = sorted.length;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const start = (currentPage - 1) * pageSize;
+  const paged = sorted.slice(start, start + pageSize);
+
+  useEffect(() => {
+    if (page > totalPages) setPage(1);
+  }, [totalPages, page]);
+
+  const toggleSort = (key: "ip" | "job" | "task" | "pod") => {
+    if (sortKey === key) {
+      setSortAsc(!sortAsc);
+    } else {
+      setSortKey(key);
+      setSortAsc(true);
+    }
+  };
+
+  return (
+    <div className="page-content resource-page domain-detail-page">
+      <div className="section-heading">
+        <div>
+          <span className="eyebrow">
+            {zh ? "跨集群网络" : "Cross-cluster Network"}
+          </span>
+          <h2>{domain.metadata.name}</h2>
+          <p>
+            {zh
+              ? "管理跨集群网络域，为 Pod 分配跨集群可达的 IP 地址。"
+              : "Manage cross-cluster network domains for pod IP allocation."}
+          </p>
+        </div>
+        <button className="secondary-button" onClick={onBack}>
+          <ChevronLeft size={17} />
+          {zh ? "返回列表" : "Back"}
+        </button>
+      </div>
+      <div className="form-section">
+        <div className="form-section-head">
+          <small>CIDR</small>
+        </div>
+        <code className="inline-code">{domain.spec.cidr}</code>
+      </div>
+      <div className="form-section">
+        <div className="form-section-head">
+          <small>
+            {zh ? "IP 分配明细" : "IP Allocations"} ({allAllocs.length})
+          </small>
+        </div>
+        {allAllocs.length > 0 ? (
+          <>
+            <div
+              style={{
+                display: "flex",
+                gap: 12,
+                alignItems: "center",
+                marginBottom: 8,
+                flexWrap: "wrap",
+              }}
+            >
+              <input
+                value={query}
+                onChange={(e) => {
+                  setQuery(e.target.value);
+                  setPage(1);
+                }}
+                placeholder={zh ? "搜索 IP/任务/Pod..." : "Search IP/Job/Pod..."}
+                style={{ minWidth: 240, flex: 1, maxWidth: 360 }}
+              />
+              <small className="muted">
+                {zh ? `共 ${total} 条` : `${total} total`}
+              </small>
+              <div style={{ marginLeft: "auto" }}>
+                <label
+                  style={{
+                    display: "inline-flex",
+                    gap: 6,
+                    alignItems: "center",
+                  }}
+                >
+                  <small className="muted">
+                    {zh ? "每页" : "Page size"}
+                  </small>
+                  <select
+                    value={pageSize}
+                    onChange={(e) => {
+                      setPageSize(Number(e.target.value));
+                      setPage(1);
+                    }}
+                    style={{ width: "auto" }}
+                  >
+                    {[10, 20, 50, 100].map((n) => (
+                      <option key={n} value={n}>
+                        {n}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            </div>
+            <div className="table-panel">
+              <table>
+                <thead>
+                  <tr>
+                    <th>
+                      <button
+                        className="sort-th"
+                        onClick={() => toggleSort("ip")}
+                      >
+                        IP
+                        {sortKey === "ip" && (sortAsc ? " ▲" : " ▼")}
+                      </button>
+                    </th>
+                    <th>
+                      <button
+                        className="sort-th"
+                        onClick={() => toggleSort("job")}
+                      >
+                        {zh ? "任务" : "Job"}
+                        {sortKey === "job" && (sortAsc ? " ▲" : " ▼")}
+                      </button>
+                    </th>
+                    <th>
+                      <button
+                        className="sort-th"
+                        onClick={() => toggleSort("task")}
+                      >
+                        {zh ? "子任务" : "Task"}
+                        {sortKey === "task" && (sortAsc ? " ▲" : " ▼")}
+                      </button>
+                    </th>
+                    <th>
+                      <button
+                        className="sort-th"
+                        onClick={() => toggleSort("pod")}
+                      >
+                        Pod
+                        {sortKey === "pod" && (sortAsc ? " ▲" : " ▼")}
+                      </button>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paged.map((alloc, i) => (
+                    <tr key={start + i}>
+                      <td>
+                        <code className="inline-code">{alloc.ip}</code>
+                      </td>
+                      <td>
+                        <small>{alloc.job}</small>
+                      </td>
+                      <td>
+                        <small>{alloc.task}</small>
+                      </td>
+                      <td>
+                        <small>{alloc.pod}</small>
+                      </td>
+                    </tr>
+                  ))}
+                  {paged.length === 0 && (
+                    <tr>
+                      <td
+                        colSpan={4}
+                        style={{ textAlign: "center", padding: "32px" }}
+                      >
+                        <small className="muted">
+                          {zh ? "暂无匹配记录" : "No matching records"}
+                        </small>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+            <div className="pagination-bar">
+              <button
+                className="icon-button"
+                disabled={currentPage <= 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                title={zh ? "上一页" : "Prev"}
+              >
+                <ChevronLeft size={16} />
+              </button>
+              <small>
+                {zh
+                  ? `第 ${currentPage} / ${totalPages} 页`
+                  : `Page ${currentPage} / ${totalPages}`}
+              </small>
+              <button
+                className="icon-button"
+                disabled={currentPage >= totalPages}
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                title={zh ? "下一页" : "Next"}
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
+          </>
+        ) : (
+          <small className="muted">
+            {zh ? "暂无 IP 分配" : "No IP allocations"}
+          </small>
+        )}
+      </div>
+      <div className="form-section">
+        <div className="form-section-head">
+          <small>{zh ? "创建时间" : "Created"}</small>
+        </div>
+        <small>{domain.metadata.creationTimestamp ?? "—"}</small>
+      </div>
     </div>
   );
 }
@@ -4829,13 +5130,22 @@ function AdminApp() {
   );
 }
 
+function parseRoute() {
+  const parts = window.location.pathname
+    .replace(/^\/+/, "")
+    .replace(/\/+$/, "")
+    .split("/")
+    .filter(Boolean);
+  const valid: Page[] = ["overview", "clusters", "jobs", "domains"];
+  const top = (parts[0] as Page) ?? "overview";
+  if (!valid.includes(top)) return { page: "overview" as Page, sub: "" };
+  const sub = parts.slice(1).join("/");
+  return { page: top, sub: decodeURIComponent(sub) };
+}
+
 export default function App() {
   const isAdmin = useIsAdminPath();
-  const [page, setPage] = useState<Page>(() => {
-    const p = window.location.pathname.replace(/^\/+/, "").replace(/\/+$/, "");
-    const valid: Page[] = ["overview", "clusters", "jobs", "domains"];
-    return valid.includes(p as Page) ? (p as Page) : "overview";
-  });
+  const [{ page, sub }, setRoute] = useState(parseRoute);
   const [collapsed, setCollapsed] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [cloneJob, setCloneJob] = useState<Job | null>(null);
@@ -4845,20 +5155,16 @@ export default function App() {
   const c = copy[lang];
   const pageTitle = useMemo(() => c.nav[page], [c, page]);
 
-  const navigate = (next: Page) => {
-    setPage(next);
-    const path = next === "overview" ? "/" : `/${next}`;
+  const navigate = (next: Page, name?: string) => {
+    const sub = name ? encodeURIComponent(name) : "";
+    setRoute({ page: next, sub });
+    const path =
+      next === "overview" && !sub ? "/" : `/${next}${sub ? "/" + sub : ""}`;
     window.history.pushState({}, "", path);
   };
 
   useEffect(() => {
-    const onPop = () => {
-      const p = window.location.pathname
-        .replace(/^\/+/, "")
-        .replace(/\/+$/, "");
-      const valid: Page[] = ["overview", "clusters", "jobs", "domains"];
-      setPage(valid.includes(p as Page) ? (p as Page) : "overview");
-    };
+    const onPop = () => setRoute(parseRoute());
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
   }, []);
@@ -4878,7 +5184,7 @@ export default function App() {
           {navItems.map(({ id, icon: Icon }) => (
             <button
               key={id}
-              className={page === id ? "active" : ""}
+              className={page === id && !sub ? "active" : ""}
               onClick={() => navigate(id)}
             >
               <Icon size={18} />
@@ -4922,6 +5228,8 @@ export default function App() {
         {page === "jobs" && (
           <JobsPage
             copy={c}
+            selectedName={sub}
+            onSelect={(name?: string) => navigate("jobs", name)}
             onCreate={() => {
               setCloneJob(null);
               setEditJob(null);
@@ -4939,7 +5247,13 @@ export default function App() {
             }}
           />
         )}{" "}
-        {page === "domains" && <DomainsPage copy={c} />}
+        {page === "domains" && (
+          <DomainsPage
+            copy={c}
+            selectedName={sub}
+            onSelect={(name?: string) => navigate("domains", name)}
+          />
+        )}
       </main>
       {createOpen && (
         <CreateJobModal

@@ -155,9 +155,11 @@ func (s *Server) sshPublicKeyAuth() ssh.PublicKeyHandler {
 	return func(ctx ssh.Context, key ssh.PublicKey) bool {
 		perm, err := cc.Authenticate(wrapSSHMetadata{ctx}, key)
 		if err != nil || perm == nil {
+			metrics.IncSSHConnection(ctx.User(), "auth_failed")
 			logger.Error(nil, "SSH public key authentication failed", "user", ctx.User(), "err", err)
 			return false
 		}
+		metrics.IncSSHConnection(ctx.User(), "auth_ok")
 		ctx.Permissions().Permissions = perm
 		logger.V(1).Info("SSH public key authenticated", "permissions", perm.Extensions)
 		return true
