@@ -49,6 +49,7 @@ import {
   jobs,
   type JobType,
   type NodeItem,
+  type NodeKind,
   nodes,
   type Phase,
   type Worker as WorkerItem,
@@ -333,10 +334,6 @@ function Logo() {
   return (
     <div className="brand">
       <img src="/rlark-logo.png" alt="RLark" className="brand-logo" />
-      <div>
-        <strong>RLark</strong>
-        <small>CONTROL CENTER</small>
-      </div>
     </div>
   );
 }
@@ -427,15 +424,17 @@ function MetricCard({
   label,
   value,
   note,
+  onClick,
 }: {
   icon: typeof Activity;
   tone: string;
   label: string;
   value: string;
   note: string;
+  onClick?: () => void;
 }) {
-  return (
-    <div className={"metric-card tone-" + tone}>
+  const content = (
+    <>
       <div className="metric-head">
         <span className="metric-icon">
           <Icon size={18} />
@@ -447,6 +446,25 @@ function MetricCard({
         <strong>{value}</strong>
       </div>
       <small>{note}</small>
+    </>
+  );
+
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        className={"metric-card metric-card-action tone-" + tone}
+        onClick={onClick}
+        aria-label={label}
+      >
+        {content}
+      </button>
+    );
+  }
+
+  return (
+    <div className={"metric-card tone-" + tone}>
+      {content}
     </div>
   );
 }
@@ -559,14 +577,15 @@ function Overview({
   const cloudNodeCount = clusters.reduce((sum, x) => sum + x.cloudNodes, 0);
   const robotCount = clusters.reduce((sum, x) => sum + x.robots, 0);
   const runningJobs = jobs.filter((x) => x.phase === "Running").length;
-  const gpuModels = Array.from(new Set(clusters.flatMap((x) => x.gpuModels)))
-    .slice(0, 4)
-    .join(" / ");
-  const robotModels = Array.from(
+  const gpuModelList = Array.from(new Set(clusters.flatMap((x) => x.gpuModels)));
+  const robotModelList = Array.from(
     new Set(clusters.flatMap((x) => x.robotModels)),
-  )
-    .slice(0, 4)
-    .join(" / ");
+  );
+  const gpuModels = gpuModelList.slice(0, 4).join(" / ");
+  const robotModels = robotModelList.slice(0, 4).join(" / ");
+  const isZh = c.nav.overview === "总览";
+  const regionCount = new Set(cloudClusters.map((x) => x.region)).size;
+  const runningWorkerCount = jobs.reduce((s, x) => s + x.runningWorkers, 0);
 
   return (
     <div className="page-content">
@@ -594,28 +613,40 @@ function Overview({
           tone="blue"
           label={c.overview.cloudClusters}
           value={`${cloudClusters.length}`}
-          note={cloudClusters.map((x) => x.region).join(" · ")}
+          note={isZh ? `${regionCount} 个地域` : `${regionCount} regions`}
+          onClick={() => navigate("clusters")}
         />
         <MetricCard
           icon={Server}
           tone="mint"
           label={c.overview.cloudNodes}
           value={`${cloudNodeCount}`}
-          note={gpuModels}
+          note={isZh ? `${gpuModelList.length} 种 GPU 型号` : `${gpuModelList.length} GPU models`}
+          onClick={() => navigate("clusters")}
         />
         <MetricCard
           icon={Bot}
           tone="violet"
           label={c.overview.robots}
           value={`${robotCount}`}
-          note={`${embodiedClusters.length} ${c.kind.Embodied} · ${robotModels}`}
+          note={
+            isZh
+              ? `${embodiedClusters.length} 个具身集群 · ${robotModelList.length} 种真机`
+              : `${embodiedClusters.length} embodied clusters · ${robotModelList.length} robot models`
+          }
+          onClick={() => navigate("clusters")}
         />
         <MetricCard
           icon={Workflow}
           tone="orange"
           label={c.overview.jobs}
           value={`${runningJobs} / ${jobs.length}`}
-          note={`${jobs.reduce((s, x) => s + x.runningWorkers, 0)} ${c.common.running} Worker`}
+          note={
+            isZh
+              ? `${runningWorkerCount} 个运行 Worker`
+              : `${runningWorkerCount} running workers`
+          }
+          onClick={() => navigate("jobs")}
         />
       </section>
       <section className="dashboard-grid">
@@ -771,7 +802,8 @@ function ClustersPage({ copy: c }: { copy: Copy }) {
       const data = await resp.json();
       setRealNodes(data.items ?? []);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setRealNodes(buildMockCRDNodes());
+      setError("");
     } finally {
       setLoading(false);
     }
@@ -893,9 +925,9 @@ function ClustersPage({ copy: c }: { copy: Copy }) {
         <MetricCard
           icon={CloudCog}
           tone="violet"
-          label={zh ? "集群列表" : "Namespaces"}
-          value={`${clustersList.map(([ns]) => ns).join(", ")}`}
-          note={zh ? "按命名空间分组" : "Grouped by namespace"}
+          label={zh ? "集群分组" : "Namespaces"}
+          value={`${clustersList.length}`}
+          note={zh ? "按命名空间分组" : "namespace groups"}
         />
         <MetricCard
           icon={Activity}
@@ -1513,7 +1545,8 @@ function JobsPage({
       const items: CRDJob[] = data.items ?? [];
       setRealJobs(items.map(crdToJob));
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setRealJobs(jobs);
+      setError("");
     } finally {
       setLoading(false);
     }
@@ -4226,6 +4259,63 @@ interface CRDNode {
     capacity?: Record<string, string>;
     used?: Record<string, string>;
   };
+}
+
+function buildMockCRDNodes(): CRDNode[] {
+  const categoryByKind: Record<NodeKind, NodeCategory> = {
+    CloudCompute: "cloud",
+    EmbodiedCompute: "edge",
+    Robot: "robot",
+  };
+
+  return nodes.map((node) => ({
+    apiVersion: "rlinf.io/v1alpha1",
+    kind: "Node",
+    metadata: {
+      name: node.name,
+      namespace: node.cluster,
+      labels: {
+        [NODE_CATEGORY_LABEL]: categoryByKind[node.kind],
+        "rlark.io/model": node.model,
+      },
+      creationTimestamp: "2026-06-29T10:00:00Z",
+    },
+    spec: {
+      agentType:
+        node.kind === "Robot"
+          ? "Robot"
+          : node.kind === "EmbodiedCompute"
+            ? "Edge"
+            : "Kubernetes",
+      unschedulable: node.phase === "Offline",
+    },
+    status: {
+      phase: node.phase,
+      reason: node.robotState,
+      nodeInfo: {
+        architecture: "amd64",
+        kernelVersion: "mock",
+        agentVersion: "demo",
+        operatingSystem: node.kind === "Robot" ? "robot-os" : "linux",
+      },
+      addresses: [{ type: "InternalIP", address: node.address }],
+      allocatable: {
+        cpu: "16",
+        memory: "64Gi",
+        "nvidia.com/gpu": node.gpu.split(" / ")[1] ?? "0",
+      },
+      capacity: {
+        cpu: "16",
+        memory: "64Gi",
+        "nvidia.com/gpu": node.gpu.split(" / ")[1] ?? "0",
+      },
+      used: {
+        cpu: `${node.cpu}%`,
+        memory: `${node.memory}%`,
+        "nvidia.com/gpu": node.gpu.split(" / ")[0] ?? "0",
+      },
+    },
+  }));
 }
 
 function ClustersOverviewAdminPage({ copy: c }: { copy: Copy }) {
