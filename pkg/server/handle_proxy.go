@@ -179,6 +179,7 @@ func (s *Server) handlePeerConnectProxy(ctx *gin.Context) {
 		Transport: s.defaultPeerTransport,
 	}
 	proxy.ServeHTTP(ctx.Writer, ctx.Request)
+	metrics.IncProxyRequest(target, "peer")
 }
 
 // handleProxy 处理通过服务器代理的 HTTP 请求。它会根据请求的目标和路径，使用默认的代理传输将请求转发到目标地址。
@@ -189,6 +190,7 @@ func (s *Server) handleProxy(ctx *gin.Context) {
 	target := ctx.Param("target")
 	certMeta := GetCertMetaFromContext(ctx)
 	if !auth.PermissionChecker.HasAgentProxyPermission(certMeta, target) {
+		metrics.IncProxyRequest(target, "forbidden")
 		ctx.JSON(http.StatusForbidden, gin.H{"error": "client certificate does not have proxy permission for the target"})
 		return
 	}
@@ -203,6 +205,7 @@ func (s *Server) handleProxy(ctx *gin.Context) {
 	proxy := httputil.NewSingleHostReverseProxy(url)
 	proxy.Transport = s.defaultProxyTransport
 	proxy.ServeHTTP(ctx.Writer, ctx.Request)
+	metrics.IncProxyRequest(target, "ok")
 }
 
 // handleKubernetesProxy 处理通过服务器代理的 Kubernetes API 请求。它会根据客户端证书中的元数据，

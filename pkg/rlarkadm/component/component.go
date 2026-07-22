@@ -249,6 +249,7 @@ var components = []types.Component{
 	},
 	{
 		Name: constants.ComponentControllerManager, Port: 8081, Plane: types.PlaneControl,
+		MetricsPort:   8080,
 		Dependencies:  []string{constants.ComponentKCP},
 		HealthCheckFn: health.ModeHealthCheck(types.Component{Name: constants.ComponentControllerManager}),
 		ImageFn: func(cfg *types.DeployConfig) string {
@@ -278,6 +279,7 @@ var components = []types.Component{
 	},
 	{
 		Name: constants.ComponentServer, Port: 8443, Plane: types.PlaneControl, NeedsService: true,
+		MetricsPort:   8888,
 		Dependencies:  []string{constants.ComponentKCP},
 		HealthCheckFn: health.ModeHealthCheck(types.Component{Name: constants.ComponentServer}),
 		ImageFn: func(cfg *types.DeployConfig) string {
@@ -309,6 +311,7 @@ var components = []types.Component{
 	},
 	{
 		Name: constants.ComponentAgent, Port: 8081, Plane: types.PlaneData,
+		MetricsPort:    8081,
 		HealthCheckFn:  health.ModeHealthCheck(types.Component{Name: constants.ComponentAgent}),
 		ServiceAccount: "rlark-agent",
 		RBACRules: []rbacv1.PolicyRule{
@@ -397,6 +400,7 @@ var components = []types.Component{
 	{
 		Name: constants.ComponentKCP, Port: 6443, Plane: types.PlaneControl, NeedsService: true,
 		WorkloadKind:  "StatefulSet",
+		MetricsPort:   8080,
 		HealthCheckFn: health.ModeHealthCheck(types.Component{Name: constants.ComponentKCP}),
 		ImageFn: func(cfg *types.DeployConfig) string {
 			return imageByMode(cfg, func(k *types.KubernetesEnv) string { return k.KCPImage }, func(d *types.DockerEnv) string { return d.KCPImage })
@@ -564,6 +568,7 @@ func DaemonSet(cfg *types.DeployConfig, c *types.Component) *appsv1.DaemonSet {
 							Privileged: utils.Ptr(true),
 						},
 					}},
+					HostPID: true,
 				},
 			},
 		},
@@ -675,7 +680,13 @@ func Service(c *types.Component) *corev1.Service {
 		return nil
 	}
 	labels := map[string]string{"app": c.Name}
-	return &corev1.Service{
+
+	if c.MetricsPort != 0 {
+		labels[constants.PrometheusScrapeLabelKey] = constants.PrometheusScrapeLabelVal
+		labels[constants.PrometheusPortLabelKey] = fmt.Sprintf("%d", c.MetricsPort)
+	}
+
+	svc := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      c.Name,
 			Namespace: constants.Namespace,
@@ -690,6 +701,16 @@ func Service(c *types.Component) *corev1.Service {
 			}},
 		},
 	}
+
+	if c.MetricsPort != 0 && c.MetricsPort != c.Port {
+		svc.Spec.Ports = append(svc.Spec.Ports, corev1.ServicePort{
+			Name:       "metrics",
+			Port:       c.MetricsPort,
+			TargetPort: intstr.FromInt32(c.MetricsPort),
+		})
+	}
+
+	return svc
 }
 
 func DBConfigYAML(cfg *types.DBConfig) ([]byte, error) {

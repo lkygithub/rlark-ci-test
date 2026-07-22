@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/rlinf/rlark/pkg/log"
 )
@@ -18,7 +19,7 @@ func (s *Server) registerUnsafeHTTPHandlers(r *gin.Engine) {
 	r.GET("/healthz", s.handleHealthCheck)
 	r.GET("/readyz", s.handleHealthCheck)
 	r.GET("/livez", s.handleHealthCheck)
-	r.GET("/metrics") // TODO
+	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
 }
 
 func (s *Server) runUnsafeHTTPServer(ctx context.Context) error {

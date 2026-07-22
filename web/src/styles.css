@@ -2753,6 +2753,10 @@ tbody tr:hover {
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
+  background: #0d1520;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 10px 12px;
 }
 
 .log-role-tabs {
@@ -2762,38 +2766,81 @@ tbody tr:hover {
 }
 
 .log-role-tab {
-  padding: 4px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
   color: #8b95a7;
-  border-radius: 6px;
+  border-radius: 8px;
   font-size: 12px;
   cursor: pointer;
   transition: all 0.15s;
 }
 
+.log-role-tab small {
+  font-size: 10px;
+  opacity: 0.6;
+}
+
 .log-role-tab:hover {
-  border-color: rgba(255, 255, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.2);
   color: #c8d3e4;
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .log-role-tab.active {
-  background: var(--blue, #6366f1);
-  border-color: var(--blue, #6366f1);
-  color: #fff;
+  background: rgba(99, 102, 241, 0.15);
+  border-color: rgba(99, 102, 241, 0.5);
+  color: #c7d2fe;
+}
+
+.log-role-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #4b5563;
+  flex-shrink: 0;
+}
+
+.log-role-dot.running {
+  background: #34d399;
+  box-shadow: 0 0 6px rgba(52, 211, 153, 0.5);
+}
+
+.log-pod-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.log-pod-label {
+  font-size: 11px;
+  color: #6b7891;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
 }
 
 .log-pod-select {
-  margin-left: auto;
-  padding: 4px 10px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 5px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
   background: rgba(255, 255, 255, 0.04);
   color: #c8d3e4;
-  border-radius: 6px;
+  border-radius: 8px;
   font-size: 12px;
   font-family: "JetBrains Mono", monospace;
   cursor: pointer;
   max-width: 320px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.log-pod-select:hover,
+.log-pod-select:focus {
+  border-color: rgba(255, 255, 255, 0.2);
 }
 
 .role-template {
@@ -3916,6 +3963,44 @@ tbody tr:hover {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.clickable-row {
+  cursor: pointer;
+}
+
+.clickable-row:hover {
+  background: var(--surface-hover, rgba(0, 0, 0, 0.03));
+}
+
+.pagination-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 12px;
+  padding-top: 8px;
+}
+
+.sort-th {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.sort-th:hover {
+  color: var(--accent, #6366f1);
+}
+
+.domain-detail-page .section-heading {
+  flex-wrap: wrap;
+  gap: 12px;
 }
 
 .icon-button.danger {
