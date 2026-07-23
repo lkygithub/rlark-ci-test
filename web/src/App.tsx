@@ -2249,6 +2249,15 @@ function createMockDomain(name: string, cidr: string): CRDDomain {
   };
 }
 
+async function readJsonResponse<T>(resp: Response): Promise<T> {
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+  const contentType = resp.headers.get("content-type") ?? "";
+  if (!contentType.includes("application/json")) {
+    throw new Error("Non-JSON response");
+  }
+  return (await resp.json()) as T;
+}
+
 function DomainsPage({
   copy: c,
   selectedName,
@@ -4475,8 +4484,7 @@ function ClustersOverviewAdminPage({ copy: c }: { copy: Copy }) {
     setError("");
     try {
       const resp = await fetch("/api/v1/rlinf.io/v1alpha1/nodes");
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      const data = await resp.json();
+      const data = await readJsonResponse<{ items?: CRDNode[] }>(resp);
       setNodes(data.items ?? []);
     } catch (e) {
       setNodes(buildMockCRDNodes());
@@ -4564,9 +4572,6 @@ function ClustersOverviewAdminPage({ copy: c }: { copy: Copy }) {
             <RefreshCw size={16} />
             {c.common.refresh}
           </button>
-        </div>
-        <div className="cert-error" style={{ marginBottom: 12 }}>
-          {error}
         </div>
       </div>
     );
@@ -5026,8 +5031,7 @@ function AdminPage({ copy: c }: { copy: Copy }) {
     setError("");
     try {
       const resp = await fetch("/api/v1/rlinf.io/v1alpha1/nodes");
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      const data = await resp.json();
+      const data = await readJsonResponse<{ items?: CRDNode[] }>(resp);
       setNodes(data.items ?? []);
     } catch (e) {
       setNodes(buildMockCRDNodes());
@@ -5171,12 +5175,6 @@ function AdminPage({ copy: c }: { copy: Copy }) {
         </button>
       </div>
 
-      {error && (
-        <div className="cert-error" style={{ marginBottom: 12 }}>
-          {error}
-        </div>
-      )}
-
       {loading ? (
         <p className="muted">{zh ? "加载中..." : "Loading..."}</p>
       ) : activeCats.length === 0 ? (
@@ -5277,8 +5275,7 @@ function AdminApp() {
         <div className="admin-brand">
           <BrandLogo />
           <div className="admin-brand-text">
-            <strong>RLark</strong>
-            <small>ADMIN</small>
+            <span>Admin</span>
           </div>
         </div>
         <div className="topbar-actions">

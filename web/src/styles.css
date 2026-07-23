@@ -4086,32 +4086,28 @@ tbody tr:hover {
 .admin-brand {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
 }
 
 .admin-brand .brand-mark,
 .admin-brand .brand-logo {
-  width: 40px;
-  height: 40px;
+  width: 104px;
+  height: 34px;
   flex-shrink: 0;
 }
 
 .admin-brand-text {
   display: flex;
-  flex-direction: column;
-  line-height: 1.2;
+  align-items: center;
+  line-height: 1;
 }
 
-.admin-brand-text strong {
-  font-size: 16px;
-  letter-spacing: -0.02em;
-}
-
-.admin-brand-text small {
-  font-size: 10px;
-  letter-spacing: 0.12em;
+.admin-brand-text span {
+  font-size: 13px;
+  letter-spacing: 0.02em;
   color: var(--muted);
-  font-weight: 600;
+  font-weight: 700;
+  text-transform: uppercase;
 }
 
 .admin-body {
