@@ -327,13 +327,29 @@ const navItems: { id: Page; icon: typeof LayoutDashboard }[] = [
   { id: "overview", icon: LayoutDashboard },
   { id: "clusters", icon: Network },
   { id: "jobs", icon: Workflow },
-  { id: "domains", icon: CloudCog },
 ];
+
+function BrandLogo({ className = "brand-logo" }: { className?: string }) {
+  return (
+    <>
+      <img
+        src="/rlark-logo.png"
+        alt="RLark"
+        className={`${className} brand-logo-light`}
+      />
+      <img
+        src="/rlark-logo-white.png"
+        alt="RLark"
+        className={`${className} brand-logo-dark`}
+      />
+    </>
+  );
+}
 
 function Logo() {
   return (
     <div className="brand">
-      <img src="/rlark-logo.png" alt="RLark" className="brand-logo" />
+      <BrandLogo />
     </div>
   );
 }
@@ -5212,7 +5228,7 @@ function AdminApp() {
     <div className={"app-shell theme-" + theme + " admin-shell"}>
       <header className="topbar admin-topbar">
         <div className="admin-brand">
-          <img src="/rlark-logo.png" alt="RLark" className="brand-logo" />
+          <BrandLogo />
           <div className="admin-brand-text">
             <strong>RLark</strong>
             <small>ADMIN</small>
@@ -5316,7 +5332,7 @@ function parseRoute() {
     .replace(/\/+$/, "")
     .split("/")
     .filter(Boolean);
-  const valid: Page[] = ["overview", "clusters", "jobs", "domains"];
+  const valid: Page[] = ["overview", "clusters", "jobs"];
   const top = (parts[0] as Page) ?? "overview";
   if (!valid.includes(top)) return { page: "overview" as Page, sub: "" };
   const sub = parts.slice(1).join("/");
@@ -5427,13 +5443,6 @@ export default function App() {
             }}
           />
         )}{" "}
-        {page === "domains" && (
-          <DomainsPage
-            copy={c}
-            selectedName={sub}
-            onSelect={(name?: string) => navigate("domains", name)}
-          />
-        )}
       </main>
       {createOpen && (
         <CreateJobModal

@@ -104,6 +104,12 @@ button {
   object-fit: contain;
   object-position: left center;
   flex-shrink: 0;
+  display: block;
+  background: transparent;
+}
+
+.brand-logo-dark {
+  display: none;
 }
 
 .brand-mark {
@@ -2251,6 +2257,14 @@ tbody tr:hover {
     ),
     linear-gradient(180deg, #101827 0%, #0c111b 100%);
   border-color: rgba(255, 255, 255, 0.08);
+}
+
+.theme-dark .brand-logo-light {
+  display: none;
+}
+
+.theme-dark .brand-logo-dark {
+  display: block;
 }
 
 .theme-dark .main-area,
