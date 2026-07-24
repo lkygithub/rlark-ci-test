@@ -13,6 +13,7 @@ import (
 
 type Installer interface {
 	Install(cfg *types.DeployConfig, certBundle *cert.Bundle) error
+	Summary() *types.InstallSummary
 }
 
 // LoadDeployConfig is a re-export of types.LoadDeployConfig for external callers.
@@ -45,6 +46,10 @@ func Install(cfg *types.DeployConfig) error {
 	}
 
 	logger.Info("plane installed successfully", "plane", cfg.Plane)
+
+	if summary := installer.Summary(); summary != nil {
+		summary.Print()
+	}
 	return nil
 }
 

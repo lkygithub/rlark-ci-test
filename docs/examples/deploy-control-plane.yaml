@@ -1,5 +1,5 @@
 # 控制面部署示例
-# rlarkadm deploy --deploy-conf deploy-control-plane.yaml
+# rlarkadm install -f deploy-control-plane.yaml
 
 apiVersion: rlark.io/v1alpha1
 kind: DeployConfig
@@ -16,22 +16,22 @@ plane: control
 
 kubernetes:
   kubeconfig: /Users/ar/test/kubeconfig.yaml # 往 k8s 集群部署平台，访问集群的 kubeconfig
-  gateway-image: harbor.infini-ai.com/artest/rlark-gateway:v0.0.2
-  controller-manager-image: harbor.infini-ai.com/artest/rlark-controller-manager:v0.0.3
-  server-image: harbor.infini-ai.com/artest/rlark-server:v0.0.3
+  gateway-image: harbor.infini-ai.com/artest/rlark-gateway:v0.0.9
+  controller-manager-image: harbor.infini-ai.com/artest/rlark-controller-manager:v0.0.7
+  server-image: harbor.infini-ai.com/artest/rlark-server:v0.0.19
   kcp-image: harbor.infini-ai.com/share/kcp:v0.30.0
   postgresql-image: harbor.infini-ai.com/share/postgres:15
-  ui-image: harbor.infini-ai.com/artest/rlark-ui:v0.0.1
+  ui-image: harbor.infini-ai.com/artest/rlark-ui:v0.0.83
 
   # 全局默认，所有有状态组件继承（可被组件级覆盖）
   #replicas: 1
-  #storage:
-  #  type: emptyDir   # emptyDir | hostPath | pvc
-  #  host-path: /data/rlark
-  #  storage-class: ""  # 空表示用集群默认 StorageClass
-  #  size: 10Gi
-  #  node-selector:
-  #    rlark-node: "true"
+  storage:
+    type: pvc   # emptyDir | hostPath | pvc
+    # host-path: /data/rlark
+    storage-class: ""  # 空表示用集群默认 StorageClass
+    size: 10Gi
+    node-selector:
+      kubernetes.io/hostname: dev-worker
 
   # 组件级配置（覆盖全局默认）
   #kcp:

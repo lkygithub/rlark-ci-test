@@ -84,7 +84,10 @@ func kcpDataVolume(cfg *types.DeployConfig) ([]corev1.Volume, []corev1.VolumeMou
 				MountPath: constants.KCPDataDir,
 			}}
 	default:
-		return nil, nil
+		return nil, []corev1.VolumeMount{{
+			Name:      "kcp-data",
+			MountPath: constants.KCPDataDir,
+		}}
 	}
 }
 
@@ -224,7 +227,7 @@ func postgresqlInitVolume() ([]corev1.Volume, []corev1.VolumeMount) {
 var components = []types.Component{
 	{
 		Name: constants.ComponentGateway, Port: 8090, Plane: types.PlaneControl, NeedsService: true,
-		Dependencies:  []string{constants.ComponentKCP},
+		Dependencies:  []string{constants.ComponentKCP, constants.ComponentServer},
 		HealthCheckFn: health.ModeHealthCheck(types.Component{Name: constants.ComponentGateway}),
 		ImageFn: func(cfg *types.DeployConfig) string {
 			return imageByMode(cfg, func(k *types.KubernetesEnv) string { return k.GatewayImage }, func(d *types.DockerEnv) string { return d.GatewayImage })
@@ -334,6 +337,10 @@ var components = []types.Component{
 				"--ca-cert=" + constants.CertDir + "/ca.crt",
 				"--leader-election=false",
 				"--mode=cluster",
+			}
+
+			if sidecar := networkSidecarImage(cfg); sidecar != "" {
+				args = append(args, "--network-sidecar-image="+sidecar)
 			}
 
 			if cfg.Kubernetes != nil {
@@ -459,6 +466,20 @@ func imageByMode(cfg *types.DeployConfig, k8sFn func(*types.KubernetesEnv) strin
 	case "Docker":
 		if cfg.Docker != nil {
 			return dockerFn(cfg.Docker)
+		}
+	}
+	return ""
+}
+
+func networkSidecarImage(cfg *types.DeployConfig) string {
+	switch cfg.EnvMode() {
+	case "Kubernetes":
+		if cfg.Kubernetes != nil {
+			return cfg.Kubernetes.NetworkSidecarImage
+		}
+	case "Docker":
+		if cfg.Docker != nil {
+			return cfg.Docker.NetworkSidecarImage
 		}
 	}
 	return ""
@@ -639,6 +660,13 @@ func StatefulSet(cfg *types.DeployConfig, c *types.Component) *appsv1.StatefulSe
 
 	if c.VolumeClaimFn != nil {
 		sts.Spec.VolumeClaimTemplates = c.VolumeClaimFn(cfg)
+		if len(sts.Spec.VolumeClaimTemplates) > 0 {
+			uid := int64(0)
+			sts.Spec.Template.Spec.SecurityContext = &corev1.PodSecurityContext{
+				RunAsUser: &uid,
+				FSGroup:   &uid,
+			}
+		}
 	}
 
 	nodeSelector := resolveComponentNodeSelector(cfg, c.Name)
@@ -679,6 +707,7 @@ func Service(c *types.Component) *corev1.Service {
 	if !c.NeedsService {
 		return nil
 	}
+	selector := map[string]string{"app": c.Name}
 	labels := map[string]string{"app": c.Name}
 
 	if c.MetricsPort != 0 {
@@ -693,7 +722,7 @@ func Service(c *types.Component) *corev1.Service {
 			Labels:    labels,
 		},
 		Spec: corev1.ServiceSpec{
-			Selector: labels,
+			Selector: selector,
 			Ports: []corev1.ServicePort{{
 				Name:       "http",
 				Port:       c.Port,

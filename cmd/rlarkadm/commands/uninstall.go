@@ -12,6 +12,7 @@ import (
 func UninstallCommand() *cobra.Command {
 	var uninstallConf string
 	var purge bool
+	var yes bool
 
 	cmd := &cobra.Command{
 		Use:   "uninstall",
@@ -30,12 +31,13 @@ func UninstallCommand() *cobra.Command {
 				log.InitLogger(level)
 			}
 
-			return rlarkadm.Uninstall(cfg, purge)
+			return rlarkadm.Uninstall(cfg, purge, yes)
 		},
 	}
 
 	cmd.Flags().StringVarP(&uninstallConf, "uninstall-conf", "f", "", "Path to the uninstall config file (same format as install)")
 	cmd.Flags().BoolVar(&purge, "purge", false, "Also remove namespace/data directories")
+	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "Skip confirmation prompt")
 
 	return cmd
 }

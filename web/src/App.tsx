@@ -55,14 +55,12 @@ import {
   clusters,
   type Domain,
   type Job,
-  jobs,
   type JobType,
   type NodeItem,
   type NodeKind,
   nodes,
   type Phase,
   type Worker as WorkerItem,
-  workers,
 } from "./data";
 
 type Page = "overview" | "clusters" | "jobs" | "workflows" | "domains" | "api";
@@ -389,6 +387,7 @@ function Header({
   onLangChange,
   onThemeChange,
   onCreate,
+  createLabel,
 }: {
   title: string;
   lang: Lang;
@@ -397,6 +396,7 @@ function Header({
   onLangChange: (lang: Lang) => void;
   onThemeChange: (theme: Theme) => void;
   onCreate: () => void;
+  createLabel?: string;
 }) {
   return (
     <header className="topbar">
@@ -444,7 +444,7 @@ function Header({
         </div>
         <button className="primary-button" onClick={onCreate}>
           <Plus size={17} />
-          {c.common.createJob}
+          {createLabel ?? c.common.createJob}
         </button>
         <div className="avatar">BW</div>
       </div>
@@ -610,7 +610,17 @@ function Overview({
   const embodiedClusters = clusters.filter((x) => x.type === "Embodied");
   const cloudNodeCount = clusters.reduce((sum, x) => sum + x.cloudNodes, 0);
   const robotCount = clusters.reduce((sum, x) => sum + x.robots, 0);
-  const runningJobs = jobs.filter((x) => x.phase === "Running").length;
+  const [realJobs, setRealJobs] = useState<Job[]>([]);
+  useEffect(() => {
+    fetch("/api/v1/rlinf.io/v1alpha1/jobs")
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((data) => {
+        const items: CRDJob[] = data.items ?? [];
+        setRealJobs(items.map(crdToJob));
+      })
+      .catch(() => {});
+  }, []);
+  const runningJobs = realJobs.filter((x) => x.phase === "Running").length;
   const gpuModelList = Array.from(new Set(clusters.flatMap((x) => x.gpuModels)));
   const robotModelList = Array.from(
     new Set(clusters.flatMap((x) => x.robotModels)),
@@ -619,7 +629,7 @@ function Overview({
   const robotModels = robotModelList.slice(0, 4).join(" / ");
   const isZh = c.nav.overview === "总览";
   const regionCount = new Set(cloudClusters.map((x) => x.region)).size;
-  const runningWorkerCount = jobs.reduce((s, x) => s + x.runningWorkers, 0);
+  const runningWorkerCount = realJobs.reduce((s, x) => s + x.runningWorkers, 0);
 
   return (
     <div className="page-content">
@@ -674,7 +684,7 @@ function Overview({
           icon={Workflow}
           tone="orange"
           label={c.overview.jobs}
-          value={`${runningJobs} / ${jobs.length}`}
+          value={`${runningJobs} / ${realJobs.length}`}
           note={
             isZh
               ? `${runningWorkerCount} 个运行 Worker`
@@ -757,7 +767,7 @@ function Overview({
             </button>
           </div>
           <div className="workflow-list">
-            {jobs.slice(0, 4).map((job) => (
+            {realJobs.slice(0, 4).map((job) => (
               <button key={job.id} onClick={() => navigate("jobs")}>
                 <span className={"workflow-symbol " + job.phase.toLowerCase()}>
                   <Workflow size={17} />
@@ -793,18 +803,24 @@ function Overview({
             </button>
           </div>
           <div className="activity-list">
-            {activity.map((item, i) => (
-              <div key={i}>
-                <span className={"activity-dot " + item.type}>
-                  <i />
-                </span>
-                <div>
-                  <strong>{item.title}</strong>
-                  <small>{item.meta}</small>
+            {activity.length === 0 ? (
+              <p className="muted" style={{ padding: "16px 0", textAlign: "center" }}>
+                {isZh ? "暂无活动" : "No recent activity"}
+              </p>
+            ) : (
+              activity.map((item, i) => (
+                <div key={i}>
+                  <span className={"activity-dot " + item.type}>
+                    <i />
+                  </span>
+                  <div>
+                    <strong>{item.title}</strong>
+                    <small>{item.meta}</small>
+                  </div>
+                  <time>{item.time}</time>
                 </div>
-                <time>{item.time}</time>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
       </section>
@@ -1578,9 +1594,8 @@ function JobsPage({
       const data = await resp.json();
       const items: CRDJob[] = data.items ?? [];
       setRealJobs(items.map(crdToJob));
-    } catch (e) {
-      setRealJobs(jobs);
-      setError("");
+    } catch {
+      setRealJobs([]);
     } finally {
       setLoading(false);
     }
@@ -1608,7 +1623,7 @@ function JobsPage({
     }
   };
 
-  const allJobs = realJobs.length > 0 ? realJobs : jobs;
+  const allJobs = realJobs;
   const filtered = allJobs.filter((j) =>
     `${j.name} ${j.type} ${j.target}`
       .toLowerCase()
@@ -1671,6 +1686,18 @@ function JobsPage({
             </tr>
           </thead>
           <tbody>
+            {filtered.length === 0 && !loading && (
+              <tr>
+                <td
+                  colSpan={8}
+                  style={{ textAlign: "center", padding: "32px" }}
+                >
+                  <small className="muted">
+                    {zh ? "暂无任务" : "No jobs"}
+                  </small>
+                </td>
+              </tr>
+            )}
             {filtered.map((job) => (
               <tr key={job.id}>
                 <td>
@@ -1847,7 +1874,7 @@ function JobDetailPage({
             logs: ts.message ? [ts.message] : [],
           };
         })
-      : workers.filter((w) => w.jobId === job.id);
+      : [];
   const tabs: Array<{ id: typeof activeTab; label: string }> = [
     { id: "config", label: zh ? "配置" : "Config" },
     { id: "workers", label: c.jobs.workers },
@@ -3269,20 +3296,21 @@ interface WorkflowJobDef {
 function makeDefaultRoleResources(
   type: JobType,
   roles: string[],
+  clusterDisplayNames: string[] = [],
 ): Record<string, RoleResource> {
   const rr: Record<string, RoleResource> = {};
   roles.forEach((role, index) => {
     rr[role] = {
       role,
-      cluster: clusters[0].name,
-      nodeSelector: index === 0 ? "gpu=h800" : "any=true",
+      cluster: clusterDisplayNames[0] ?? "",
+      nodeSelector: "",
       replicas: 0,
       cpu: "",
       memory: "",
       gpu: index === 0 ? "4" : "0",
       image: "registry.rlark.ai/rl/policy-trainer:v0.42",
       prepareScript: "",
-      envs: [{ key: "RLARK_TASK_ROLE", value: role }],
+      envs: [],
       mounts: [{ objectStorage: "/host/dataset", mountPath: "/mnt/dataset" }],
     };
   });
@@ -3324,6 +3352,7 @@ function CreateWorkflowModal({
   const [error, setError] = useState("");
   const [workflowName, setWorkflowName] = useState("rl-training-pipeline");
   const [domains, setDomains] = useState<{ name: string; cidr: string }[]>([]);
+  const { clusterDisplayNames, nodes: allNodes, loading: nodesLoading } = useNodeLabels();
   const [activeJobId, setActiveJobId] = useState<string>("");
   const [activeRoleTab, setActiveRoleTab] = useState<string>("");
 
@@ -3353,7 +3382,7 @@ function CreateWorkflowModal({
       type: "RL",
       roles: ROLE_TEMPLATES["RL"],
       headerRole: ROLE_TEMPLATES["RL"][0],
-      roleResources: makeDefaultRoleResources("RL", ROLE_TEMPLATES["RL"]),
+      roleResources: makeDefaultRoleResources("RL", ROLE_TEMPLATES["RL"], clusterDisplayNames),
       runScript:
         "python train.py --config /mnt/config/train.yaml --dataset /mnt/dataset --output /mnt/checkpoints",
       domain: "",
@@ -3375,6 +3404,31 @@ function CreateWorkflowModal({
       )
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (clusterDisplayNames.length === 0) return;
+    setJobs((prev) => {
+      let changed = false;
+      const next = prev.map((job) => {
+        let rrChanged = false;
+        const newRR: Record<string, RoleResource> = {};
+        for (const [k, v] of Object.entries(job.roleResources)) {
+          if (!v.cluster && clusterDisplayNames[0]) {
+            newRR[k] = { ...v, cluster: clusterDisplayNames[0] };
+            rrChanged = true;
+          } else {
+            newRR[k] = v;
+          }
+        }
+        if (rrChanged) {
+          changed = true;
+          return { ...job, roleResources: newRR };
+        }
+        return job;
+      });
+      return changed ? next : prev;
+    });
+  }, [clusterDisplayNames]);
 
   useEffect(() => {
     if (!activeJobId && jobs.length > 0) setActiveJobId(jobs[0].id);
@@ -3405,7 +3459,7 @@ function CreateWorkflowModal({
       type: "RL",
       roles,
       headerRole: roles[0],
-      roleResources: makeDefaultRoleResources("RL", roles),
+      roleResources: makeDefaultRoleResources("RL", roles, clusterDisplayNames),
       runScript:
         "python train.py --config /mnt/config/train.yaml --dataset /mnt/dataset --output /mnt/checkpoints",
       domain: "",
@@ -3739,7 +3793,7 @@ function CreateWorkflowModal({
   const onJobTypeChange = (next: JobType) => {
     if (!activeJob) return;
     const newRoles = ROLE_TEMPLATES[next];
-    const newRR = makeDefaultRoleResources(next, newRoles);
+    const newRR = makeDefaultRoleResources(next, newRoles, clusterDisplayNames);
     updateJob(activeJob.id, {
       type: next,
       roles: newRoles,
@@ -3756,15 +3810,15 @@ function CreateWorkflowModal({
     const rr = { ...activeJob.roleResources };
     rr[newRole] = {
       role: newRole,
-      cluster: clusters[0].name,
-      nodeSelector: "any=true",
+      cluster: clusterDisplayNames[0] ?? "",
+      nodeSelector: "",
       replicas: 0,
       cpu: "",
       memory: "",
       gpu: "0",
       image: "registry.rlark.ai/rl/policy-trainer:v0.42",
       prepareScript: "",
-      envs: [{ key: "RLARK_TASK_ROLE", value: newRole }],
+      envs: [],
       mounts: [{ objectStorage: "/host/dataset", mountPath: "/mnt/dataset" }],
     };
     updateJob(activeJob.id, { roles, roleResources: rr });
@@ -4126,8 +4180,8 @@ function CreateWorkflowModal({
                                 updateRR(role, "cluster", e.target.value)
                               }
                             >
-                              {clusters.slice(0, 4).map((cl) => (
-                                <option key={cl.name}>{cl.name}</option>
+                              {clusterDisplayNames.map((cl) => (
+                                <option key={cl}>{cl}</option>
                               ))}
                             </select>
                           </label>
@@ -4140,6 +4194,9 @@ function CreateWorkflowModal({
                             value={rr.nodeSelector}
                             onChange={(v) => updateRR(role, "nodeSelector", v)}
                             zh={zh}
+                            cluster={rr.cluster}
+                            nodes={allNodes}
+                            loading={nodesLoading}
                             onMatchedCount={(n) =>
                               updateRR(role, "replicas", n)
                             }
@@ -4561,12 +4618,9 @@ function generateJobCRD(opts: {
     const isHead = role === opts.headerRole;
     const roleEnvs = res?.envs ?? [];
     const roleMounts = res?.mounts ?? [];
-    const envVars = [
-      ...roleEnvs
-        .filter((e) => e.key !== "RLARK_TASK_ROLE")
-        .map((e) => ({ name: e.key, value: e.value })),
-      { name: "RLARK_TASK_ROLE", value: role },
-    ];
+    const envVars = roleEnvs
+      .filter((e) => e.key.trim() !== "")
+      .map((e) => ({ name: e.key, value: e.value }));
     const containerVolumes = roleMounts.map((m) => ({
       name: m.mountPath.replace(/\//g, "-").replace(/^-|-$/g, "") || "vol",
       hostPath: { path: m.objectStorage },
@@ -4593,7 +4647,7 @@ function generateJobCRD(opts: {
                 {
                   name: "main",
                   image: res?.image ?? "",
-                  env: envVars,
+                  env: envVars.length > 0 ? envVars : undefined,
                   volumeMounts:
                     volumeMounts.length > 0 ? volumeMounts : undefined,
                   resources: res
@@ -4680,7 +4734,7 @@ function toYaml(obj: unknown, indent = 0): string {
 }
 
 interface CRDNodeLite {
-  metadata: { name: string; labels?: Record<string, string> };
+  metadata: { name: string; namespace?: string; labels?: Record<string, string> };
   status?: { phase?: string };
 }
 
@@ -4712,7 +4766,17 @@ function useNodeLabels() {
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
-  return { nodes, loading };
+  const clusterNames = Array.from(
+    new Set(
+      nodes
+        .map((n) => n.metadata.namespace)
+        .filter((v): v is string => !!v),
+    ),
+  );
+  const clusterDisplayNames = clusterNames.map((n) =>
+    n.startsWith("rlark-") ? n.slice(6) : n,
+  );
+  return { nodes, loading, clusterNames, clusterDisplayNames };
 }
 
 function NodeSelectorPicker({
@@ -4720,18 +4784,32 @@ function NodeSelectorPicker({
   onChange,
   zh,
   onMatchedCount,
+  cluster,
+  nodes,
+  loading,
 }: {
   value: string;
   onChange: (v: string) => void;
   zh: boolean;
   onMatchedCount?: (n: number) => void;
+  cluster?: string;
+  nodes: CRDNodeLite[];
+  loading: boolean;
 }) {
-  const { nodes, loading } = useNodeLabels();
   const [open, setOpen] = useState(false);
   const selectorMap = parseNodeSelectorStr(value);
 
+  const clusterNodes = cluster
+    ? nodes.filter(
+        (n) =>
+          (n.metadata.namespace?.startsWith("rlark-")
+            ? n.metadata.namespace.slice(6)
+            : n.metadata.namespace) === cluster,
+      )
+    : nodes;
+
   const labelMap: Record<string, Set<string>> = {};
-  for (const n of nodes) {
+  for (const n of clusterNodes) {
     const labels = n.metadata.labels ?? {};
     for (const [k, v] of Object.entries(labels)) {
       if (!k.startsWith("kubernetes.io/") && !k.startsWith("rlark.io/"))
@@ -4741,14 +4819,19 @@ function NodeSelectorPicker({
     }
   }
 
-  const matchedNodes = nodes.filter((n) => {
+  const matchedNodes = clusterNodes.filter((n) => {
     const labels = n.metadata.labels ?? {};
     return Object.entries(selectorMap).every(([k, v]) => labels[k] === v);
   });
 
+  const matchedCount =
+    Object.keys(selectorMap).length === 0
+      ? clusterNodes.length
+      : matchedNodes.length;
+
   useEffect(() => {
-    onMatchedCount?.(matchedNodes.length);
-  }, [matchedNodes.length]);
+    onMatchedCount?.(matchedCount);
+  }, [matchedCount]);
 
   const toggleLabel = (key: string, val: string) => {
     const next = { ...selectorMap };
@@ -4915,6 +4998,7 @@ function CreateJobModal({
   );
   const [domain, setDomain] = useState(sourceJob?.domain ?? "");
   const [domains, setDomains] = useState<{ name: string; cidr: string }[]>([]);
+  const { clusterDisplayNames, nodes: allNodes, loading: nodesLoading } = useNodeLabels();
 
   useEffect(() => {
     fetch("/api/v1/rlinf.io/v1alpha1/domains")
@@ -4955,24 +5039,15 @@ function CreateJobModal({
     roles.forEach((role, index) => {
       defaultRoleResources[role] = {
         role,
-        cluster:
-          index === 0
-            ? clusters[0].name
-            : (clusters[2]?.name ?? clusters[0].name),
-        nodeSelector:
-          index === 0
-            ? "gpu=h800"
-            : role.toLowerCase().includes("robot") ||
-                role.toLowerCase().includes("env")
-              ? "robot=online"
-              : "any=true",
+        cluster: clusterDisplayNames[0] ?? "",
+        nodeSelector: "",
         replicas: 0,
         cpu: "",
         memory: "",
         gpu: index === 0 ? "4" : "0",
         image: "registry.rlark.ai/rl/policy-trainer:v0.42",
         prepareScript: "",
-        envs: [{ key: "RLARK_TASK_ROLE", value: role }],
+        envs: [],
         mounts: [{ objectStorage: "/host/dataset", mountPath: "/mnt/dataset" }],
       };
     });
@@ -4981,6 +5056,23 @@ function CreateJobModal({
     Record<string, RoleResource>
   >(sourceJob ? cloneRR : defaultRoleResources);
   const [activeRoleTab, setActiveRoleTab] = useState<string>(roles[0] ?? "");
+
+  useEffect(() => {
+    if (clusterDisplayNames.length === 0) return;
+    setRoleResources((prev) => {
+      let changed = false;
+      const next: Record<string, RoleResource> = {};
+      for (const [k, v] of Object.entries(prev)) {
+        if (!v.cluster && clusterDisplayNames[0]) {
+          next[k] = { ...v, cluster: clusterDisplayNames[0] };
+          changed = true;
+        } else {
+          next[k] = v;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [clusterDisplayNames]);
 
   const onTypeChange = (next: JobType) => {
     setType(next);
@@ -4992,17 +5084,8 @@ function CreateJobModal({
     newRoles.forEach((role, index) => {
       newRR[role] = roleResources[role] ?? {
         role,
-        cluster:
-          index === 0
-            ? clusters[0].name
-            : (clusters[2]?.name ?? clusters[0].name),
-        nodeSelector:
-          index === 0
-            ? "gpu=h800"
-            : role.toLowerCase().includes("robot") ||
-                role.toLowerCase().includes("env")
-              ? "robot=online"
-              : "any=true",
+        cluster: clusterDisplayNames[0] ?? "",
+        nodeSelector: "",
         replicas: 0,
         cpu: "",
         memory: "",
@@ -5023,15 +5106,15 @@ function CreateJobModal({
       ...prev,
       [name]: {
         role: name,
-        cluster: clusters[0].name,
-        nodeSelector: "any=true",
+        cluster: clusterDisplayNames[0] ?? "",
+        nodeSelector: "",
         replicas: 0,
         cpu: "",
         memory: "",
         gpu: "0",
         image: "registry.rlark.ai/rl/policy-trainer:v0.42",
         prepareScript: "",
-        envs: [{ key: "RLARK_TASK_ROLE", value: name }],
+        envs: [],
         mounts: [],
       },
     }));
@@ -5356,10 +5439,9 @@ function CreateJobModal({
                               updateRR(role, "cluster", e.target.value)
                             }
                           >
-                            <option>{clusters[0].name}</option>
-                            <option>{clusters[1].name}</option>
-                            <option>{clusters[2].name}</option>
-                            <option>{clusters[3].name}</option>
+                            {clusterDisplayNames.map((cl) => (
+                              <option key={cl}>{cl}</option>
+                            ))}
                           </select>
                         </label>
                       </div>
@@ -5371,6 +5453,9 @@ function CreateJobModal({
                           value={rr.nodeSelector}
                           onChange={(v) => updateRR(role, "nodeSelector", v)}
                           zh={zh}
+                          cluster={rr.cluster}
+                          nodes={allNodes}
+                          loading={nodesLoading}
                           onMatchedCount={(n) => updateRR(role, "replicas", n)}
                         />
                       </div>
@@ -6922,6 +7007,7 @@ function AdminApp() {
   const [lang, setLang] = useState<Lang>("zh");
   const [theme, setTheme] = useState<Theme>("light");
   const [loggedIn, setLoggedIn] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
   const [adminPage, setAdminPage] = useState(() => {
     const p = window.location.pathname
       .replace(/^\/admin\/?/, "")
@@ -6938,6 +7024,11 @@ function AdminApp() {
   });
   const c = copy[lang];
   const zh = lang === "zh";
+
+  const adminPageTitle = useMemo(() => {
+    const item = adminNavItems.find((i) => i.id === adminPage);
+    return item ? (zh ? item.zh : item.en) : "";
+  }, [adminPage, zh]);
 
   const navigate = (id: string) => {
     setAdminPage(id);
@@ -6977,54 +7068,17 @@ function AdminApp() {
       />
     );
   }
+
   return (
-    <div className={"app-shell theme-" + theme + " admin-shell"}>
-      <header className="topbar admin-topbar">
-        <div className="admin-brand">
-          <img src="/rlark-logo.png" alt="RLark" className="brand-logo" />
-          <div className="admin-brand-text">
-            <strong>RLark</strong>
-            <small>ADMIN</small>
-          </div>
-        </div>
-        <div className="topbar-actions">
-          <a className="secondary-button" href="/">
-            {c.nav.overview}
-            <ArrowRight size={14} />
-          </a>
-          <div className="segmented-control">
-            <button
-              className={lang === "zh" ? "active" : ""}
-              onClick={() => setLang("zh")}
-            >
-              <Languages size={14} />中
-            </button>
-            <button
-              className={lang === "en" ? "active" : ""}
-              onClick={() => setLang("en")}
-            >
-              EN
-            </button>
-          </div>
-          <div className="segmented-control theme-control">
-            <button
-              className={theme === "light" ? "active" : ""}
-              onClick={() => setTheme("light")}
-            >
-              {c.common.light}
-            </button>
-            <button
-              className={theme === "dark" ? "active" : ""}
-              onClick={() => setTheme("dark")}
-            >
-              <Moon size={14} />
-              {c.common.dark}
-            </button>
-          </div>
-        </div>
-      </header>
-      <aside className="sidebar admin-sidebar">
+    <div
+      className={
+        "app-shell theme-" + theme + (collapsed ? " sidebar-collapsed" : "")
+      }
+    >
+      <aside className="sidebar">
+        <Logo />
         <nav>
+          <span className="nav-label">{zh ? "管理后台" : "Admin"}</span>
           {adminNavItems.map(({ id, icon: Icon, zh: zhLabel, en: enLabel }) => (
             <button
               key={id}
@@ -7036,8 +7090,35 @@ function AdminApp() {
             </button>
           ))}
         </nav>
+        <div className="sidebar-bottom">
+          <div className="environment-card">
+            <span>
+              <CloudCog size={16} />
+            </span>
+            <div>
+              <small>{c.common.env}</small>
+              <strong>{c.common.production}</strong>
+              <b className="env-meta">ADMIN</b>
+            </div>
+            <i />
+          </div>
+          <button onClick={() => setCollapsed(!collapsed)}>
+            <CircleDot size={17} />
+            <span>{c.common.collapse}</span>
+          </button>
+        </div>
       </aside>
-      <main className="main-area admin-main">
+      <main className="main-area">
+        <Header
+          title={adminPageTitle}
+          lang={lang}
+          theme={theme}
+          copy={c}
+          onLangChange={setLang}
+          onThemeChange={setTheme}
+          onCreate={() => navigate("create-cluster")}
+          createLabel={zh ? "创建集群" : "Create Cluster"}
+        />
         {adminPage === "clusters-overview" && (
           <ClustersOverviewAdminPage copy={c} />
         )}
@@ -7145,9 +7226,6 @@ export default function App() {
             >
               <Icon size={18} />
               <span>{c.nav[id]}</span>
-              {id === "jobs" && (
-                <em>{jobs.filter((j) => j.phase === "Running").length}</em>
-              )}
             </button>
           ))}
         </nav>
