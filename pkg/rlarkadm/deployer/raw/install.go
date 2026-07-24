@@ -23,7 +23,9 @@ const (
 	systemdDir = "/etc/systemd/system"
 )
 
-type Installer struct{}
+type Installer struct {
+	summary *types.InstallSummary
+}
 
 func (d *Installer) Install(cfg *types.DeployConfig, certBundle *cert.Bundle) error {
 	logger := log.GetLogger()
@@ -79,10 +81,36 @@ func (d *Installer) Install(cfg *types.DeployConfig, certBundle *cert.Bundle) er
 	}
 
 	logger.Info("plane deployed via systemd", "plane", cfg.Plane)
-	if cfg.Plane == types.PlaneData {
-		logger.Info("agent connecting to control plane", "address", cfg.ControlPlaneAddress)
-	}
+
+	d.summary = d.buildSummary(cfg)
 	return nil
+}
+
+func (d *Installer) Summary() *types.InstallSummary {
+	return d.summary
+}
+
+func (d *Installer) buildSummary(cfg *types.DeployConfig) *types.InstallSummary {
+	summary := &types.InstallSummary{
+		Plane: string(cfg.Plane),
+		Mode:  cfg.EnvMode(),
+	}
+	for _, c := range component.ComponentsForPlane(cfg) {
+		healthy := false
+		if c.HealthCheckFn != nil {
+			healthy = c.HealthCheckFn(cfg) == nil
+		}
+		summary.Components = append(summary.Components, types.ComponentStatus{
+			Name:    c.Name,
+			Healthy: healthy,
+			Port:    c.Port,
+			Address: fmt.Sprintf("http://localhost:%d", c.Port),
+		})
+	}
+	if cfg.Plane == types.PlaneData {
+		summary.ControlPlaneAddress = cfg.ControlPlaneAddress
+	}
+	return summary
 }
 
 func downloadArtifact(url, binName string) (string, error) {

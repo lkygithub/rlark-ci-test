@@ -110,13 +110,7 @@ func (r *JobReconciler) reconcileTask(
 
 func taskSpecEqual(existing *rlarkv1alpha1.Task, job *rlarkv1alpha1.Job, t rlarkv1alpha1.JobTaskTemplate) bool {
 	desired := buildTask(job, t, existing.Name, existing.Namespace)
-	if !reflect.DeepEqual(existing.Spec, desired.Spec) {
-		return false
-	}
-	if !reflect.DeepEqual(existing.Annotations, desired.Annotations) {
-		return false
-	}
-	return true
+	return reflect.DeepEqual(existing.Spec, desired.Spec)
 }
 
 func (r *JobReconciler) reconcileWithStateMachine(

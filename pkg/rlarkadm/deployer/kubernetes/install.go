@@ -23,7 +23,9 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
-type Installer struct{}
+type Installer struct {
+	summary *types.InstallSummary
+}
 
 func (d *Installer) Install(cfg *types.DeployConfig, certBundle *cert.Bundle) error {
 	logger := log.GetLogger()
@@ -62,7 +64,7 @@ func (d *Installer) Install(cfg *types.DeployConfig, certBundle *cert.Bundle) er
 
 	// todo 可以并发部署
 	for _, c := range component.ComponentsForPlane(cfg) {
-		c.HealthCheckFn = health.K8sDeploymentHealthCheck(clientset, c.Name)
+		c.HealthCheckFn = health.K8sWorkloadHealthCheck(clientset, c)
 		if c.Name == constants.ComponentKCP {
 			c.PostDeployFn = extractKCPKubeconfigFn(ctx, clientset)
 		}
@@ -111,7 +113,46 @@ func (d *Installer) Install(cfg *types.DeployConfig, certBundle *cert.Bundle) er
 	}
 
 	logger.Info("plane deployed", "plane", cfg.Plane, "namespace", constants.Namespace)
+
+	d.summary = d.buildSummary(ctx, clientset, cfg)
 	return nil
+}
+
+func (d *Installer) Summary() *types.InstallSummary {
+	return d.summary
+}
+
+func (d *Installer) buildSummary(ctx context.Context, clientset *kubernetes.Clientset, cfg *types.DeployConfig) *types.InstallSummary {
+	summary := &types.InstallSummary{
+		Plane:     string(cfg.Plane),
+		Mode:      cfg.EnvMode(),
+		Namespace: constants.Namespace,
+	}
+
+	for _, c := range component.ComponentsForPlane(cfg) {
+		addr := ""
+		if c.NeedsService && c.Port > 0 {
+			addr = fmt.Sprintf("http://%s.%s.svc:%d", c.Name, constants.Namespace, c.Port)
+			if c.Name == constants.ComponentServer || c.Name == constants.ComponentKCP {
+				addr = fmt.Sprintf("https://%s.%s.svc:%d", c.Name, constants.Namespace, c.Port)
+			}
+		}
+		healthy := false
+		if c.HealthCheckFn != nil {
+			healthy = c.HealthCheckFn(cfg) == nil
+		}
+		summary.Components = append(summary.Components, types.ComponentStatus{
+			Name:    c.Name,
+			Healthy: healthy,
+			Port:    c.Port,
+			Address: addr,
+		})
+	}
+
+	if cfg.Plane == types.PlaneData {
+		summary.ControlPlaneAddress = cfg.ControlPlaneAddress
+	}
+	return summary
 }
 
 func ensureNamespace(ctx context.Context, clientset *kubernetes.Clientset) error {

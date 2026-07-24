@@ -48,7 +48,7 @@ func WaitForHealthy(cfg *types.DeployConfig, comp types.Component) error {
 }
 
 // ModeHealthCheck returns a HealthCheckFn for docker/raw modes.
-// For kubernetes mode, the deployer overrides HealthCheckFn with K8sDeploymentHealthCheck.
+// For kubernetes mode, the deployer overrides HealthCheckFn with K8sWorkloadHealthCheck.
 func ModeHealthCheck(comp types.Component) func(cfg *types.DeployConfig) error {
 	return func(cfg *types.DeployConfig) error {
 		switch cfg.EnvMode() {
@@ -62,18 +62,49 @@ func ModeHealthCheck(comp types.Component) func(cfg *types.DeployConfig) error {
 	}
 }
 
-// K8sDeploymentHealthCheck returns a HealthCheckFn that checks Deployment readyReplicas.
-func K8sDeploymentHealthCheck(clientset *kubernetes.Clientset, name string) func(cfg *types.DeployConfig) error {
-	return func(cfg *types.DeployConfig) error {
-		dep, err := clientset.AppsV1().Deployments(constants.Namespace).Get(
-			context.Background(), name, metav1.GetOptions{})
-		if err != nil {
-			return fmt.Errorf("get deployment %s: %w", name, err)
+// K8sWorkloadHealthCheck returns a HealthCheckFn that checks workload readiness
+// based on the component's WorkloadKind (Deployment, StatefulSet, or DaemonSet).
+func K8sWorkloadHealthCheck(clientset *kubernetes.Clientset, comp types.Component) func(cfg *types.DeployConfig) error {
+	name := comp.Name
+	switch comp.WorkloadKind {
+	case "StatefulSet":
+		return func(cfg *types.DeployConfig) error {
+			sts, err := clientset.AppsV1().StatefulSets(constants.Namespace).Get(
+				context.Background(), name, metav1.GetOptions{})
+			if err != nil {
+				return fmt.Errorf("get statefulset %s: %w", name, err)
+			}
+			if sts.Status.ReadyReplicas != *sts.Spec.Replicas {
+				return fmt.Errorf("statefulset %s: %d/%d replicas ready",
+					name, sts.Status.ReadyReplicas, *sts.Spec.Replicas)
+			}
+			return nil
 		}
-		if dep.Status.ReadyReplicas != *dep.Spec.Replicas {
-			return fmt.Errorf("deployment %s: %d/%d replicas ready",
-				name, dep.Status.ReadyReplicas, *dep.Spec.Replicas)
+	case "DaemonSet":
+		return func(cfg *types.DeployConfig) error {
+			ds, err := clientset.AppsV1().DaemonSets(constants.Namespace).Get(
+				context.Background(), name, metav1.GetOptions{})
+			if err != nil {
+				return fmt.Errorf("get daemonset %s: %w", name, err)
+			}
+			if ds.Status.NumberReady != ds.Status.DesiredNumberScheduled {
+				return fmt.Errorf("daemonset %s: %d/%d pods ready",
+					name, ds.Status.NumberReady, ds.Status.DesiredNumberScheduled)
+			}
+			return nil
 		}
-		return nil
+	default:
+		return func(cfg *types.DeployConfig) error {
+			dep, err := clientset.AppsV1().Deployments(constants.Namespace).Get(
+				context.Background(), name, metav1.GetOptions{})
+			if err != nil {
+				return fmt.Errorf("get deployment %s: %w", name, err)
+			}
+			if dep.Status.ReadyReplicas != *dep.Spec.Replicas {
+				return fmt.Errorf("deployment %s: %d/%d replicas ready",
+					name, dep.Status.ReadyReplicas, *dep.Spec.Replicas)
+			}
+			return nil
+		}
 	}
 }

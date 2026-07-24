@@ -43,6 +43,7 @@ type KubernetesEnv struct {
 	ControllerManagerImage string           `yaml:"controller-manager-image"`
 	ServerImage            string           `yaml:"server-image"`
 	AgentImage             string           `yaml:"agent-image"`
+	NetworkSidecarImage    string           `yaml:"network-sidecar-image,omitempty"`
 	KCPImage               string           `yaml:"kcp-image,omitempty"`
 	PostgresqlImage        string           `yaml:"postgresql-image,omitempty"`
 	UIImage                string           `yaml:"ui-image,omitempty"`
@@ -70,6 +71,7 @@ type DockerEnv struct {
 	ControllerManagerImage string `yaml:"controller-manager-image"`
 	ServerImage            string `yaml:"server-image"`
 	AgentImage             string `yaml:"agent-image"`
+	NetworkSidecarImage    string `yaml:"network-sidecar-image,omitempty"`
 	KCPImage               string `yaml:"kcp-image,omitempty"`
 	PostgresqlImage        string `yaml:"postgresql-image,omitempty"`
 	UIImage                string `yaml:"ui-image,omitempty"`
@@ -80,6 +82,7 @@ type RawEnv struct {
 	ControllerManagerArtifact string `yaml:"controller-manager-artifact"`
 	ServerArtifact            string `yaml:"server-artifact"`
 	AgentArtifact             string `yaml:"agent-artifact"`
+	NetworkSidecarArtifact    string `yaml:"network-sidecar-artifact,omitempty"`
 	KCPArtifact               string `yaml:"kcp-artifact,omitempty"`
 	PostgresqlArtifact        string `yaml:"postgresql-artifact,omitempty"`
 }
