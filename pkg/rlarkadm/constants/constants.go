@@ -10,13 +10,23 @@ const (
 	ComponentAgentNode         = "rlark-agent-node"
 	ComponentPostgresql        = "postgresql"
 	ComponentKCP               = "kcp"
+	ComponentEtcd              = "etcd"
 	ComponentUI                = "rlark-ui"
+)
+
+const (
+	EtcdDataDir      = "/var/run/etcd/default.etcd"
+	EtcdClientPort   = 2379
+	EtcdPeerPort     = 2380
+	EtcdMetricsPort  = 8080
+	EtcdClusterToken = "rlark-etcd-cluster"
 )
 
 const (
 	DBConfigPath      = "/etc/rlark/db.yaml"
 	CertDir           = "/etc/rlark/certs"
 	KCPDataDir        = "/.kcp"
+	KCPEtcdDataDir    = "/.kcp/etcd-server"
 	KCPKubeconfigPath = "/etc/kcp/admin.kubeconfig"
 	PostgresqlDataDir = "/var/lib/postgresql/data"
 	PostgresqlInitDir = "/docker-entrypoint-initdb.d"

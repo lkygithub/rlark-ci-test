@@ -45,15 +45,23 @@ type KubernetesEnv struct {
 	AgentImage             string           `yaml:"agent-image"`
 	NetworkSidecarImage    string           `yaml:"network-sidecar-image,omitempty"`
 	KCPImage               string           `yaml:"kcp-image,omitempty"`
+	EtcdImage              string           `yaml:"etcd-image,omitempty"`
 	PostgresqlImage        string           `yaml:"postgresql-image,omitempty"`
 	UIImage                string           `yaml:"ui-image,omitempty"`
 	Replicas               int32            `yaml:"replicas,omitempty"`
 	Storage                *StorageConfig   `yaml:"storage,omitempty"`
 	KCP                    *ComponentConfig `yaml:"kcp,omitempty"`
+	Etcd                   *EtcdConfig      `yaml:"etcd,omitempty"`
 	Postgresql             *ComponentConfig `yaml:"postgresql,omitempty"`
 }
 
 type ComponentConfig struct {
+	Replicas int32          `yaml:"replicas,omitempty"`
+	Storage  *StorageConfig `yaml:"storage,omitempty"`
+}
+
+type EtcdConfig struct {
+	Address  string         `yaml:"address,omitempty"` // 外部 etcd 地址，如 https://etcd.example.com:2379
 	Replicas int32          `yaml:"replicas,omitempty"`
 	Storage  *StorageConfig `yaml:"storage,omitempty"`
 }
@@ -73,6 +81,7 @@ type DockerEnv struct {
 	AgentImage             string `yaml:"agent-image"`
 	NetworkSidecarImage    string `yaml:"network-sidecar-image,omitempty"`
 	KCPImage               string `yaml:"kcp-image,omitempty"`
+	EtcdImage              string `yaml:"etcd-image,omitempty"`
 	PostgresqlImage        string `yaml:"postgresql-image,omitempty"`
 	UIImage                string `yaml:"ui-image,omitempty"`
 }
@@ -84,6 +93,7 @@ type RawEnv struct {
 	AgentArtifact             string `yaml:"agent-artifact"`
 	NetworkSidecarArtifact    string `yaml:"network-sidecar-artifact,omitempty"`
 	KCPArtifact               string `yaml:"kcp-artifact,omitempty"`
+	EtcdArtifact              string `yaml:"etcd-artifact,omitempty"`
 	PostgresqlArtifact        string `yaml:"postgresql-artifact,omitempty"`
 }
 
@@ -102,24 +112,31 @@ type DBConfig struct {
 }
 
 type Component struct {
-	Name           string
-	Port           int32
-	Plane          Plane
-	NeedsService   bool
-	WorkloadKind   string
-	ServiceAccount string
-	RBACRules      []rbacv1.PolicyRule
-	Dependencies   []string
-	MetricsPort    int32
-	EnabledFn      func(cfg *DeployConfig) bool
-	ImageFn        func(cfg *DeployConfig) string
-	ArtifactFn     func(cfg *DeployConfig) string
-	ArgsFn         func(cfg *DeployConfig) []string
-	EnvFn          func(cfg *DeployConfig) map[string]string
-	VolumeFn       func(cfg *DeployConfig) ([]corev1.Volume, []corev1.VolumeMount)
-	VolumeClaimFn  func(cfg *DeployConfig) []corev1.PersistentVolumeClaim
-	HealthCheckFn  func(cfg *DeployConfig) error
-	PostDeployFn   func(cfg *DeployConfig) error
+	Name            string
+	Port            int32
+	Plane           Plane
+	NeedsService    bool
+	Headless        bool
+	ParallelPodMgmt bool
+	WorkloadKind    string
+	ServiceAccount  string
+	RBACRules       []rbacv1.PolicyRule
+	Dependencies    []string
+	MetricsPort     int32
+	EnabledFn       func(cfg *DeployConfig) bool
+	ImageFn         func(cfg *DeployConfig) string
+	ArtifactFn      func(cfg *DeployConfig) string
+	CommandFn       func(cfg *DeployConfig) []string
+	ArgsFn          func(cfg *DeployConfig) []string
+	EnvFn           func(cfg *DeployConfig) map[string]string
+	ExtraPortsFn    func(cfg *DeployConfig) []corev1.ContainerPort
+	ExtraSvcPortsFn func(cfg *DeployConfig) []corev1.ServicePort
+	K8sEnvFn        func(cfg *DeployConfig) []corev1.EnvVar
+	VolumeFn        func(cfg *DeployConfig) ([]corev1.Volume, []corev1.VolumeMount)
+	VolumeClaimFn   func(cfg *DeployConfig) []corev1.PersistentVolumeClaim
+	ProbeFn         func(cfg *DeployConfig) (*corev1.Probe, *corev1.Probe)
+	HealthCheckFn   func(cfg *DeployConfig) error
+	PostDeployFn    func(cfg *DeployConfig) error
 }
 
 func (c *Component) GetName() string {

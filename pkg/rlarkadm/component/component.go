@@ -2,6 +2,7 @@ package component
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/rlinf/rlark/pkg/log"
 	"github.com/rlinf/rlark/pkg/rlarkadm/constants"
@@ -67,7 +68,7 @@ func kcpDataVolume(cfg *types.DeployConfig) ([]corev1.Volume, []corev1.VolumeMou
 			}},
 			[]corev1.VolumeMount{{
 				Name:      "kcp-data",
-				MountPath: constants.KCPDataDir,
+				MountPath: constants.KCPEtcdDataDir,
 			}}
 	case types.StorageHostPath:
 		return []corev1.Volume{{
@@ -81,12 +82,12 @@ func kcpDataVolume(cfg *types.DeployConfig) ([]corev1.Volume, []corev1.VolumeMou
 			}},
 			[]corev1.VolumeMount{{
 				Name:      "kcp-data",
-				MountPath: constants.KCPDataDir,
+				MountPath: constants.KCPEtcdDataDir,
 			}}
 	default:
 		return nil, []corev1.VolumeMount{{
 			Name:      "kcp-data",
-			MountPath: constants.KCPDataDir,
+			MountPath: constants.KCPEtcdDataDir,
 		}}
 	}
 }
@@ -112,6 +113,129 @@ func kcpVolumeClaim(cfg *types.DeployConfig) []corev1.PersistentVolumeClaim {
 	}}
 }
 
+func resolveEtcdConfig(cfg *types.DeployConfig) *types.EtcdConfig {
+	if cfg.Kubernetes == nil || cfg.Kubernetes.Etcd == nil {
+		return &types.EtcdConfig{}
+	}
+	return cfg.Kubernetes.Etcd
+}
+
+func resolveEtcdReplicas(cfg *types.DeployConfig) int32 {
+	if cfg.Kubernetes == nil {
+		return 1
+	}
+	ec := resolveEtcdConfig(cfg)
+	if ec.Replicas != 0 {
+		return ec.Replicas
+	}
+	if cfg.Kubernetes.Replicas != 0 {
+		return cfg.Kubernetes.Replicas
+	}
+	return 1
+}
+
+func resolveEtcdStorage(cfg *types.DeployConfig) *types.StorageConfig {
+	if cfg.Kubernetes == nil {
+		return &types.StorageConfig{}
+	}
+	ec := resolveEtcdConfig(cfg)
+	if ec.Storage != nil {
+		return ec.Storage
+	}
+	if cfg.Kubernetes.Storage != nil {
+		return cfg.Kubernetes.Storage
+	}
+	return &types.StorageConfig{}
+}
+
+func etcdConfigured(cfg *types.DeployConfig) bool {
+	return cfg.Kubernetes != nil && cfg.Kubernetes.Etcd != nil
+}
+
+func etcdAddress(cfg *types.DeployConfig) string {
+	if !etcdConfigured(cfg) {
+		return ""
+	}
+	return cfg.Kubernetes.Etcd.Address
+}
+
+func etcdEnabled(cfg *types.DeployConfig) bool {
+	return etcdConfigured(cfg) && etcdAddress(cfg) == ""
+}
+
+func etcdReplicas(cfg *types.DeployConfig) int32 {
+	return resolveEtcdReplicas(cfg)
+}
+
+func etcdInitialClusterDNS(cfg *types.DeployConfig) string {
+	replicas := etcdReplicas(cfg)
+	var members []string
+	for i := int32(0); i < replicas; i++ {
+		name := fmt.Sprintf("%s-%d", constants.ComponentEtcd, i)
+		peerURL := fmt.Sprintf("http://%s.%s.%s.svc.cluster.local:%d",
+			name, constants.ComponentEtcd, constants.Namespace, constants.EtcdPeerPort)
+		members = append(members, fmt.Sprintf("%s=%s", name, peerURL))
+	}
+	return joinStrings(members, ",")
+}
+
+func etcdDataVolume(cfg *types.DeployConfig) ([]corev1.Volume, []corev1.VolumeMount) {
+	storage := resolveEtcdStorage(cfg)
+	switch storage.Type {
+	case "", types.StorageEmptyDir:
+		return []corev1.Volume{{
+				Name: "etcd-data",
+				VolumeSource: corev1.VolumeSource{
+					EmptyDir: &corev1.EmptyDirVolumeSource{},
+				},
+			}},
+			[]corev1.VolumeMount{{
+				Name:      "etcd-data",
+				MountPath: constants.EtcdDataDir,
+			}}
+	case types.StorageHostPath:
+		return []corev1.Volume{{
+				Name: "etcd-data",
+				VolumeSource: corev1.VolumeSource{
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: storage.HostPath,
+						Type: &[]corev1.HostPathType{corev1.HostPathDirectoryOrCreate}[0],
+					},
+				},
+			}},
+			[]corev1.VolumeMount{{
+				Name:      "etcd-data",
+				MountPath: constants.EtcdDataDir,
+			}}
+	default:
+		return nil, []corev1.VolumeMount{{
+			Name:      "etcd-data",
+			MountPath: constants.EtcdDataDir,
+		}}
+	}
+}
+
+func etcdVolumeClaim(cfg *types.DeployConfig) []corev1.PersistentVolumeClaim {
+	storage := resolveEtcdStorage(cfg)
+	if storage.Type != types.StoragePVC {
+		return nil
+	}
+	size := storage.Size
+	if size == "" {
+		size = "8Gi"
+	}
+	return []corev1.PersistentVolumeClaim{{
+		ObjectMeta: metav1.ObjectMeta{Name: "etcd-data"},
+		Spec: corev1.PersistentVolumeClaimSpec{
+			AccessModes:      []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
+			StorageClassName: stringPtr(storage.StorageClass),
+			Resources: corev1.VolumeResourceRequirements{
+				Requests: corev1.ResourceList{corev1.ResourceStorage: mustParseQuantity(size)},
+			},
+		},
+	}}
+}
+
 func resolveComponentConfig(cfg *types.DeployConfig, name string) *types.ComponentConfig {
 	if cfg.Kubernetes == nil {
 		return &types.ComponentConfig{}
@@ -124,6 +248,13 @@ func resolveComponentConfig(cfg *types.DeployConfig, name string) *types.Compone
 	case constants.ComponentPostgresql:
 		if cfg.Kubernetes.Postgresql != nil {
 			return cfg.Kubernetes.Postgresql
+		}
+	case constants.ComponentEtcd:
+		if cfg.Kubernetes.Etcd != nil {
+			return &types.ComponentConfig{
+				Replicas: cfg.Kubernetes.Etcd.Replicas,
+				Storage:  cfg.Kubernetes.Etcd.Storage,
+			}
 		}
 	}
 	return &types.ComponentConfig{}
@@ -175,6 +306,17 @@ func mustParseQuantity(s string) resource.Quantity {
 		return resource.MustParse("10Gi")
 	}
 	return q
+}
+
+func joinStrings(items []string, sep string) string {
+	if len(items) == 0 {
+		return ""
+	}
+	result := items[0]
+	for _, s := range items[1:] {
+		result += sep + s
+	}
+	return result
 }
 
 func kubeconfigVolume() ([]corev1.Volume, []corev1.VolumeMount) {
@@ -405,22 +547,148 @@ var components = []types.Component{
 		},
 	},
 	{
+		Name: constants.ComponentEtcd, Port: constants.EtcdClientPort, Plane: types.PlaneControl,
+		NeedsService:    true,
+		Headless:        true,
+		ParallelPodMgmt: true,
+		WorkloadKind:    "StatefulSet",
+		MetricsPort:     constants.EtcdMetricsPort,
+		EnabledFn:       func(cfg *types.DeployConfig) bool { return etcdEnabled(cfg) },
+		HealthCheckFn:   health.ModeHealthCheck(types.Component{Name: constants.ComponentEtcd}),
+		ImageFn: func(cfg *types.DeployConfig) string {
+			return imageByMode(cfg, func(k *types.KubernetesEnv) string { return k.EtcdImage }, func(d *types.DockerEnv) string { return d.EtcdImage })
+		},
+		ArtifactFn: func(cfg *types.DeployConfig) string { return cfg.Raw.EtcdArtifact },
+		CommandFn:  func(cfg *types.DeployConfig) []string { return []string{"etcd"} },
+		K8sEnvFn: func(cfg *types.DeployConfig) []corev1.EnvVar {
+			return []corev1.EnvVar{
+				{
+					Name: "POD_NAME",
+					ValueFrom: &corev1.EnvVarSource{
+						FieldRef: &corev1.ObjectFieldSelector{FieldPath: "metadata.name"},
+					},
+				},
+				{
+					Name: "POD_IP",
+					ValueFrom: &corev1.EnvVarSource{
+						FieldRef: &corev1.ObjectFieldSelector{FieldPath: "status.podIP"},
+					},
+				},
+			}
+		},
+		ExtraPortsFn: func(cfg *types.DeployConfig) []corev1.ContainerPort {
+			return []corev1.ContainerPort{{ContainerPort: constants.EtcdPeerPort}}
+		},
+		ExtraSvcPortsFn: func(cfg *types.DeployConfig) []corev1.ServicePort {
+			return []corev1.ServicePort{
+				{
+					Name:       "peer",
+					Port:       constants.EtcdPeerPort,
+					TargetPort: intstr.FromInt32(constants.EtcdPeerPort),
+				},
+			}
+		},
+		ArgsFn: func(cfg *types.DeployConfig) []string {
+			peerPort := strconv.Itoa(constants.EtcdPeerPort)
+			clientPort := strconv.Itoa(constants.EtcdClientPort)
+			metricsPort := strconv.Itoa(constants.EtcdMetricsPort)
+
+			args := []string{
+				"--name=$(POD_NAME)",
+				"--listen-peer-urls=http://0.0.0.0:" + peerPort,
+				"--listen-client-urls=http://0.0.0.0:" + clientPort,
+				"--initial-cluster-token=" + constants.EtcdClusterToken,
+				"--initial-cluster-state=new",
+				"--listen-metrics-urls=http://0.0.0.0:" + metricsPort,
+				"--auto-compaction-mode=periodic",
+				"--auto-compaction-retention=5m",
+				"--data-dir=" + constants.EtcdDataDir,
+			}
+
+			if etcdReplicas(cfg) == 1 {
+				args = append(args,
+					"--initial-advertise-peer-urls=http://$(POD_IP):"+peerPort,
+					"--advertise-client-urls=http://$(POD_IP):"+clientPort,
+					"--initial-cluster=$(POD_NAME)=http://$(POD_IP):"+peerPort,
+				)
+			} else {
+				dnsHost := "$(POD_NAME)." + constants.ComponentEtcd + "." + constants.Namespace + ".svc.cluster.local"
+				args = append(args,
+					"--initial-advertise-peer-urls=http://"+dnsHost+":"+peerPort,
+					"--advertise-client-urls=http://"+dnsHost+":"+clientPort,
+					"--initial-cluster="+etcdInitialClusterDNS(cfg),
+				)
+			}
+
+			return args
+		},
+		VolumeFn: func(cfg *types.DeployConfig) ([]corev1.Volume, []corev1.VolumeMount) {
+			return etcdDataVolume(cfg)
+		},
+		VolumeClaimFn: func(cfg *types.DeployConfig) []corev1.PersistentVolumeClaim {
+			return etcdVolumeClaim(cfg)
+		},
+		ProbeFn: func(cfg *types.DeployConfig) (*corev1.Probe, *corev1.Probe) {
+			liveness := &corev1.Probe{
+				ProbeHandler: corev1.ProbeHandler{
+					HTTPGet: &corev1.HTTPGetAction{
+						Path: "/livez",
+						Port: intstr.FromInt32(constants.EtcdMetricsPort),
+					},
+				},
+				InitialDelaySeconds: 15,
+				PeriodSeconds:       10,
+				TimeoutSeconds:      5,
+				FailureThreshold:    3,
+			}
+			readiness := &corev1.Probe{
+				ProbeHandler: corev1.ProbeHandler{
+					HTTPGet: &corev1.HTTPGetAction{
+						Path: "/readyz",
+						Port: intstr.FromInt32(constants.EtcdMetricsPort),
+					},
+				},
+				InitialDelaySeconds: 10,
+				PeriodSeconds:       5,
+				TimeoutSeconds:      5,
+				SuccessThreshold:    1,
+				FailureThreshold:    30,
+			}
+			return liveness, readiness
+		},
+	},
+	{
 		Name: constants.ComponentKCP, Port: 6443, Plane: types.PlaneControl, NeedsService: true,
-		WorkloadKind:  "StatefulSet",
 		MetricsPort:   8080,
+		Dependencies:  []string{constants.ComponentEtcd},
 		HealthCheckFn: health.ModeHealthCheck(types.Component{Name: constants.ComponentKCP}),
 		ImageFn: func(cfg *types.DeployConfig) string {
 			return imageByMode(cfg, func(k *types.KubernetesEnv) string { return k.KCPImage }, func(d *types.DockerEnv) string { return d.KCPImage })
 		},
 		ArtifactFn: func(cfg *types.DeployConfig) string { return cfg.Raw.KCPArtifact },
-		ArgsFn:     func(cfg *types.DeployConfig) []string { return []string{"start"} },
+		ArgsFn: func(cfg *types.DeployConfig) []string {
+			args := []string{"start"}
+			if addr := etcdAddress(cfg); addr != "" {
+				args = append(args, "--etcd-servers="+addr)
+			} else if etcdEnabled(cfg) {
+				args = append(args, fmt.Sprintf("--etcd-servers=http://%s.%s.svc:%d",
+					constants.ComponentEtcd, constants.Namespace, constants.EtcdClientPort))
+			}
+			return args
+		},
 		EnvFn: func(cfg *types.DeployConfig) map[string]string {
 			return map[string]string{"KCP_LOG_LEVEL": "2"}
 		},
 		VolumeFn: func(cfg *types.DeployConfig) ([]corev1.Volume, []corev1.VolumeMount) {
+			if etcdConfigured(cfg) {
+				return nil, nil
+			}
 			return kcpDataVolume(cfg)
 		},
 		VolumeClaimFn: func(cfg *types.DeployConfig) []corev1.PersistentVolumeClaim {
+			if etcdConfigured(cfg) {
+				return nil
+			}
 			return kcpVolumeClaim(cfg)
 		},
 	},
@@ -544,6 +812,10 @@ func Deployment(cfg *types.DeployConfig, c *types.Component) *appsv1.Deployment 
 		},
 	}
 
+	if c.CommandFn != nil {
+		dep.Spec.Template.Spec.Containers[0].Command = c.CommandFn(cfg)
+	}
+
 	if c.EnvFn != nil {
 		envMap := c.EnvFn(cfg)
 		var envs []corev1.EnvVar
@@ -557,6 +829,39 @@ func Deployment(cfg *types.DeployConfig, c *types.Component) *appsv1.Deployment 
 		vols, mounts := c.VolumeFn(cfg)
 		dep.Spec.Template.Spec.Volumes = append(dep.Spec.Template.Spec.Volumes, vols...)
 		dep.Spec.Template.Spec.Containers[0].VolumeMounts = append(dep.Spec.Template.Spec.Containers[0].VolumeMounts, mounts...)
+	}
+
+	if c.VolumeClaimFn != nil {
+		claims := c.VolumeClaimFn(cfg)
+		for _, claim := range claims {
+			vol := corev1.Volume{
+				Name: claim.Name,
+				VolumeSource: corev1.VolumeSource{
+					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+						ClaimName: claim.Name,
+					},
+				},
+			}
+			dep.Spec.Template.Spec.Volumes = append(dep.Spec.Template.Spec.Volumes, vol)
+		}
+
+		if len(claims) > 0 {
+			uid := int64(0)
+			dep.Spec.Template.Spec.SecurityContext = &corev1.PodSecurityContext{
+				RunAsUser: &uid,
+				FSGroup:   &uid,
+			}
+		}
+	}
+
+	if c.ProbeFn != nil {
+		liveness, readiness := c.ProbeFn(cfg)
+		if liveness != nil {
+			dep.Spec.Template.Spec.Containers[0].LivenessProbe = liveness
+		}
+		if readiness != nil {
+			dep.Spec.Template.Spec.Containers[0].ReadinessProbe = readiness
+		}
 	}
 
 	return dep
@@ -595,6 +900,10 @@ func DaemonSet(cfg *types.DeployConfig, c *types.Component) *appsv1.DaemonSet {
 		},
 	}
 
+	if c.CommandFn != nil {
+		ds.Spec.Template.Spec.Containers[0].Command = c.CommandFn(cfg)
+	}
+
 	if c.EnvFn != nil {
 		envMap := c.EnvFn(cfg)
 		var envs []corev1.EnvVar
@@ -616,6 +925,18 @@ func DaemonSet(cfg *types.DeployConfig, c *types.Component) *appsv1.DaemonSet {
 func StatefulSet(cfg *types.DeployConfig, c *types.Component) *appsv1.StatefulSet {
 	labels := map[string]string{"app": c.Name}
 
+	ports := []corev1.ContainerPort{{
+		ContainerPort: c.Port,
+	}}
+
+	if c.MetricsPort != 0 && c.MetricsPort != c.Port {
+		ports = append(ports, corev1.ContainerPort{ContainerPort: c.MetricsPort})
+	}
+
+	if c.ExtraPortsFn != nil {
+		ports = append(ports, c.ExtraPortsFn(cfg)...)
+	}
+
 	sts := &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      c.Name,
@@ -633,14 +954,24 @@ func StatefulSet(cfg *types.DeployConfig, c *types.Component) *appsv1.StatefulSe
 						Name:            c.Name,
 						Image:           c.ImageFn(cfg),
 						ImagePullPolicy: corev1.PullIfNotPresent,
-						Ports: []corev1.ContainerPort{{
-							ContainerPort: c.Port,
-						}},
-						Args: c.ArgsFn(cfg),
+						Ports:           ports,
+						Args:            c.ArgsFn(cfg),
 					}},
 				},
 			},
 		},
+	}
+
+	if c.CommandFn != nil {
+		sts.Spec.Template.Spec.Containers[0].Command = c.CommandFn(cfg)
+	}
+
+	if c.ParallelPodMgmt {
+		sts.Spec.PodManagementPolicy = appsv1.ParallelPodManagement
+	}
+
+	if c.K8sEnvFn != nil {
+		sts.Spec.Template.Spec.Containers[0].Env = append(sts.Spec.Template.Spec.Containers[0].Env, c.K8sEnvFn(cfg)...)
 	}
 
 	if c.EnvFn != nil {
@@ -649,13 +980,23 @@ func StatefulSet(cfg *types.DeployConfig, c *types.Component) *appsv1.StatefulSe
 		for k, v := range envMap {
 			envs = append(envs, corev1.EnvVar{Name: k, Value: v})
 		}
-		sts.Spec.Template.Spec.Containers[0].Env = envs
+		sts.Spec.Template.Spec.Containers[0].Env = append(sts.Spec.Template.Spec.Containers[0].Env, envs...)
 	}
 
 	if c.VolumeFn != nil {
 		vols, mounts := c.VolumeFn(cfg)
 		sts.Spec.Template.Spec.Volumes = append(sts.Spec.Template.Spec.Volumes, vols...)
 		sts.Spec.Template.Spec.Containers[0].VolumeMounts = append(sts.Spec.Template.Spec.Containers[0].VolumeMounts, mounts...)
+	}
+
+	if c.ProbeFn != nil {
+		liveness, readiness := c.ProbeFn(cfg)
+		if liveness != nil {
+			sts.Spec.Template.Spec.Containers[0].LivenessProbe = liveness
+		}
+		if readiness != nil {
+			sts.Spec.Template.Spec.Containers[0].ReadinessProbe = readiness
+		}
 	}
 
 	if c.VolumeClaimFn != nil {
@@ -703,7 +1044,7 @@ func RBAC(c *types.Component) (*corev1.ServiceAccount, *rbacv1.ClusterRole, *rba
 	return sa, cr, crb
 }
 
-func Service(c *types.Component) *corev1.Service {
+func Service(cfg *types.DeployConfig, c *types.Component) *corev1.Service {
 	if !c.NeedsService {
 		return nil
 	}
@@ -724,11 +1065,20 @@ func Service(c *types.Component) *corev1.Service {
 		Spec: corev1.ServiceSpec{
 			Selector: selector,
 			Ports: []corev1.ServicePort{{
-				Name:       "http",
+				Name:       "client",
 				Port:       c.Port,
 				TargetPort: intstr.FromInt32(c.Port),
 			}},
 		},
+	}
+
+	if c.Headless {
+		svc.Spec.ClusterIP = "None"
+		svc.Spec.PublishNotReadyAddresses = true
+	}
+
+	if c.ExtraSvcPortsFn != nil {
+		svc.Spec.Ports = append(svc.Spec.Ports, c.ExtraSvcPortsFn(cfg)...)
 	}
 
 	if c.MetricsPort != 0 && c.MetricsPort != c.Port {
