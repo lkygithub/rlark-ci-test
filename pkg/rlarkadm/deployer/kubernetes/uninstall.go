@@ -33,10 +33,10 @@ func (d *Installer) Uninstall(cfg *types.DeployConfig, purge bool) error {
 	comps := component.ComponentsForPlane(cfg)
 	for i := len(comps) - 1; i >= 0; i-- {
 		c := comps[i]
-		if err := deleteWorkload(ctx, clientset, &c, cfg); err != nil {
+		if err := deleteWorkload(ctx, clientset, &c); err != nil {
 			return err
 		}
-		if svc := component.Service(&c); svc != nil {
+		if svc := component.Service(cfg, &c); svc != nil {
 			if err := deleteService(ctx, clientset, svc.Name); err != nil {
 				return err
 			}
@@ -47,14 +47,17 @@ func (d *Installer) Uninstall(cfg *types.DeployConfig, purge bool) error {
 		logger.Info("component removed", "name", c.Name)
 	}
 
-	// 删除共享的 ConfigMap 和 Secret
-	for _, cmName := range []string{"rlark-db-config", "rlark-postgres-init", "rlark-kcp-kubeconfig"} {
-		if err := deleteConfigMap(ctx, clientset, cmName); err != nil {
+	if cfg.Plane == types.PlaneControl {
+		for _, cmName := range []string{"rlark-db-config", "rlark-postgres-init", "rlark-kcp-kubeconfig"} {
+			if err := deleteConfigMap(ctx, clientset, cmName); err != nil {
+				return err
+			}
+		}
+		if err := deleteSecret(ctx, clientset, "rlark-tls"); err != nil {
 			return err
 		}
-	}
-	for _, secName := range []string{"rlark-tls", "rlark-agent-cert"} {
-		if err := deleteSecret(ctx, clientset, secName); err != nil {
+	} else {
+		if err := deleteSecret(ctx, clientset, "rlark-agent-cert"); err != nil {
 			return err
 		}
 	}
@@ -70,7 +73,7 @@ func (d *Installer) Uninstall(cfg *types.DeployConfig, purge bool) error {
 	return nil
 }
 
-func deleteWorkload(ctx context.Context, clientset *kubernetes.Clientset, c *types.Component, cfg *types.DeployConfig) error {
+func deleteWorkload(ctx context.Context, clientset *kubernetes.Clientset, c *types.Component) error {
 	switch c.WorkloadKind {
 	case "DaemonSet":
 		return deleteDaemonSet(ctx, clientset, c.Name)

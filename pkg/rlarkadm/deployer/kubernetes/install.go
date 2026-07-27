@@ -79,20 +79,18 @@ func (d *Installer) Install(cfg *types.DeployConfig, certBundle *cert.Bundle) er
 			return err
 		}
 
+		if svc := component.Service(cfg, &c); svc != nil {
+			if err := createService(ctx, clientset, svc); err != nil {
+				return err
+			}
+			logger.Info("service created", "name", svc.Name)
+		}
+
 		if err := createWorkload(ctx, clientset, &c, cfg); err != nil {
 			return err
 		}
 
-		if svc := component.Service(&c); svc != nil {
-			if err := createService(ctx, clientset, svc); err != nil {
-				return err
-			}
-		}
-
 		logger.Info("component deployed", "name", c.Name, "port", c.Port)
-		if component.Service(&c) != nil {
-			logger.Info("service created", "port", c.Port)
-		}
 
 		if err := health.WaitForHealthy(cfg, c); err != nil {
 			return err
@@ -427,6 +425,11 @@ func createWorkload(ctx context.Context, clientset *kubernetes.Clientset, c *typ
 	case "StatefulSet":
 		return createStatefulSet(ctx, clientset, component.StatefulSet(cfg, c))
 	default:
+		if c.VolumeClaimFn != nil {
+			if err := createPVCs(ctx, clientset, c.VolumeClaimFn(cfg)); err != nil {
+				return err
+			}
+		}
 		return createDeployment(ctx, clientset, component.Deployment(cfg, c))
 	}
 }
@@ -487,6 +490,19 @@ func createOrUpdateConfigMap(ctx context.Context, clientset *kubernetes.Clientse
 			return nil
 		}
 		return fmt.Errorf("create configmap %s: %w", cm.Name, err)
+	}
+	return nil
+}
+
+func createPVCs(ctx context.Context, clientset *kubernetes.Clientset, claims []corev1.PersistentVolumeClaim) error {
+	for _, claim := range claims {
+		_, err := clientset.CoreV1().PersistentVolumeClaims(constants.Namespace).Create(ctx, &claim, metav1.CreateOptions{})
+		if err != nil {
+			if errors.IsAlreadyExists(err) {
+				continue
+			}
+			return fmt.Errorf("create pvc %s: %w", claim.Name, err)
+		}
 	}
 	return nil
 }
