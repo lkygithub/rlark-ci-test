@@ -359,29 +359,14 @@ const navItems: { id: Page; icon: typeof LayoutDashboard }[] = [
   { id: "overview", icon: LayoutDashboard },
   { id: "clusters", icon: Network },
   { id: "jobs", icon: Workflow },
+  { id: "workflows", icon: Boxes },
+  { id: "domains", icon: CloudCog },
 ];
-
-function BrandLogo({ className = "brand-logo" }: { className?: string }) {
-  return (
-    <>
-      <img
-        src="/rlark-logo.png"
-        alt="RLark"
-        className={`${className} brand-logo-light`}
-      />
-      <img
-        src="/rlark-logo-white.png"
-        alt="RLark"
-        className={`${className} brand-logo-dark`}
-      />
-    </>
-  );
-}
 
 function Logo() {
   return (
     <div className="brand">
-      <BrandLogo />
+      <img src="/rlark-logo.png" alt="RLark" className="brand-logo" />
     </div>
   );
 }
@@ -611,155 +596,6 @@ function ResourceDistribution({ copy: c }: { copy: Copy }) {
   );
 }
 
-const MOCK_JOBS: Job[] = [
-  {
-    id: "rl-bimanual-042",
-    name: "双臂装配强化学习",
-    type: "RL",
-    phase: "Running",
-    owner: "research-team",
-    cluster: "云训练集群 East-A + 上海具身实验集群",
-    target: "Unitree G1 / Franka Panda",
-    workers: 24,
-    runningWorkers: 21,
-    startedAt: "2026-06-29 10:18",
-    duration: "6h 42m",
-    progress: 88,
-    defaultRoles: ["learner", "actor", "rollout", "env"],
-    image: "registry.rlark.ai/robot/rl-train:0.8.2",
-    command:
-      "python train.py --config /mnt/config/bimanual.yaml --rollout-address ${RLARK_DOMAIN}",
-    env: [
-      { key: "NCCL_SOCKET_IFNAME", value: "eth0" },
-      { key: "RLARK_TASK_DOMAIN", value: "rlark-robot-training" },
-    ],
-    mounts: [
-      {
-        objectStorage: "s3://rlark-demo/datasets/bimanual",
-        mountPath: "/mnt/dataset",
-      },
-    ],
-    headerRole: "learner",
-    headerWorker: "learner-0",
-    sshAddress: "ssh learner-0@rlark-gateway.example.com -p 32221",
-    domain: "rlark-robot-training",
-    resources: [
-      {
-        role: "learner",
-        cluster: "云训练集群 East-A",
-        nodeSelector: "gpu=NVIDIA-H800",
-        replicas: 1,
-        cpu: "16",
-        memory: "128Gi",
-        gpu: "8",
-        image: "registry.rlark.ai/robot/rl-train:0.8.2",
-        prepareScript: "pip install -r requirements.txt",
-        env: [],
-        mounts: [],
-      },
-      {
-        role: "rollout",
-        cluster: "上海具身实验集群",
-        nodeSelector: "robot=franka-panda",
-        replicas: 23,
-        cpu: "4",
-        memory: "16Gi",
-        gpu: "0",
-        image: "registry.rlark.ai/robot/rollout:0.8.2",
-        prepareScript: "",
-        env: [],
-        mounts: [],
-      },
-    ],
-    taskStatuses: [
-      { name: "learner-0", phase: "Running", message: "header worker ready" },
-      { name: "actor-3", phase: "Running", message: "collecting rollout" },
-    ],
-  },
-  {
-    id: "collect-warehouse-017",
-    name: "仓储巡检数据采集",
-    type: "DataCollection",
-    phase: "Running",
-    owner: "ops-team",
-    cluster: "杭州仓储机器人场",
-    target: "Robodog OT-T12",
-    workers: 12,
-    runningWorkers: 10,
-    startedAt: "2026-06-30 14:42",
-    duration: "2h 10m",
-    progress: 83,
-    defaultRoles: ["collector", "uploader"],
-    image: "registry.rlark.ai/robot/data-collector:1.2.0",
-    command: "python collect.py --camera /dev/video0 --upload /mnt/output",
-    env: [{ key: "COLLECT_SCENE", value: "warehouse" }],
-    mounts: [
-      {
-        objectStorage: "s3://rlark-demo/warehouse/raw",
-        mountPath: "/mnt/output",
-      },
-    ],
-    headerRole: "collector",
-    headerWorker: "collector-dog-08",
-    sshAddress: "ssh collector-dog-08@rlark-gateway.example.com -p 32224",
-    domain: "warehouse-collection",
-    resources: [],
-    taskStatuses: [
-      { name: "collector-dog-08", phase: "Running", message: "camera online" },
-      { name: "uploader-0", phase: "Running", message: "uploading frames" },
-    ],
-  },
-  {
-    id: "eval-nav-088",
-    name: "导航策略回归评测",
-    type: "Evaluation",
-    phase: "Pending",
-    owner: "qa-team",
-    cluster: "云评测集群 North-B",
-    target: "AgileX Scout",
-    workers: 8,
-    runningWorkers: 0,
-    startedAt: "—",
-    duration: "—",
-    progress: 4,
-    defaultRoles: ["evaluator", "metrics"],
-    image: "registry.rlark.ai/robot/eval-nav:0.4.1",
-    command: "python evaluate.py --suite nav-regression",
-    env: [],
-    mounts: [],
-    headerRole: "evaluator",
-    headerWorker: "eval-shadow",
-    sshAddress: "ssh eval-shadow@rlark-gateway.example.com -p 32231",
-    domain: "rlark-robot-training",
-    resources: [],
-    taskStatuses: [{ name: "evaluator-0", phase: "Pending", message: "waiting for robot window" }],
-  },
-  {
-    id: "custom-handeye-006",
-    name: "手眼标定自定义任务",
-    type: "Custom",
-    phase: "Succeeded",
-    owner: "robot-lab",
-    cluster: "上海具身实验集群",
-    target: "Franka Panda",
-    workers: 5,
-    runningWorkers: 0,
-    startedAt: "2026-06-28 09:12",
-    duration: "38m",
-    progress: 100,
-    defaultRoles: ["calibration-driver"],
-    image: "registry.rlark.ai/robot/calibration:2.1.0",
-    command: "python calibrate.py --board checkerboard --save /mnt/output",
-    env: [],
-    mounts: [],
-    headerRole: "calibration-driver",
-    headerWorker: "calibration-driver-0",
-    sshAddress: "ssh calibration-driver-0@rlark-gateway.example.com -p 32240",
-    resources: [],
-    taskStatuses: [{ name: "calibration-driver-0", phase: "Succeeded", message: "calibration saved" }],
-  },
-];
-
 function Overview({
   navigate,
   copy: c,
@@ -771,15 +607,15 @@ function Overview({
   const embodiedClusters = clusters.filter((x) => x.type === "Embodied");
   const cloudNodeCount = clusters.reduce((sum, x) => sum + x.cloudNodes, 0);
   const robotCount = clusters.reduce((sum, x) => sum + x.robots, 0);
-  const [realJobs, setRealJobs] = useState<Job[]>(MOCK_JOBS);
+  const [realJobs, setRealJobs] = useState<Job[]>([]);
   useEffect(() => {
     fetch("/api/v1/rlinf.io/v1alpha1/jobs")
-      .then((r) => readJsonResponse<{ items?: CRDJob[] }>(r))
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then((data) => {
         const items: CRDJob[] = data.items ?? [];
         setRealJobs(items.map(crdToJob));
       })
-      .catch(() => setRealJobs(MOCK_JOBS));
+      .catch(() => {});
   }, []);
   const runningJobs = realJobs.filter((x) => x.phase === "Running").length;
   const gpuModelList = Array.from(
@@ -1018,9 +854,10 @@ function ClustersPage({ copy: c }: { copy: Copy }) {
     setError("");
     try {
       const resp = await fetch("/api/v1/rlinf.io/v1alpha1/nodes");
-      const data = await readJsonResponse<{ items?: CRDNode[] }>(resp);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const data = await resp.json();
       setRealNodes(data.items ?? []);
-    } catch {
+    } catch (e) {
       setRealNodes(buildMockCRDNodes());
       setError("");
     } finally {
@@ -1759,12 +1596,12 @@ function JobsPage({
     setError("");
     try {
       const resp = await fetch("/api/v1/rlinf.io/v1alpha1/jobs");
-      const data = await readJsonResponse<{ items?: CRDJob[] }>(resp);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const data = await resp.json();
       const items: CRDJob[] = data.items ?? [];
       setRealJobs(items.map(crdToJob));
     } catch {
-      setRealJobs(MOCK_JOBS);
-      setError("");
+      setRealJobs([]);
     } finally {
       setLoading(false);
     }
@@ -2384,84 +2221,6 @@ interface CRDDomain {
   };
 }
 
-const MOCK_DOMAINS: CRDDomain[] = [
-  {
-    apiVersion: "rlinf.io/v1alpha1",
-    kind: "Domain",
-    metadata: {
-      name: "rlark-robot-training",
-      creationTimestamp: "2026-06-29T10:18:00Z",
-    },
-    spec: { cidr: "10.244.0.0/16" },
-    status: {
-      ipAllocations: [
-        {
-          ip: "10.244.8.21",
-          job: "双臂装配强化学习",
-          task: "learner-0",
-          pod: "rl-bimanual-042-learner-0",
-        },
-        {
-          ip: "10.244.12.33",
-          job: "双臂装配强化学习",
-          task: "actor-3",
-          pod: "rl-bimanual-042-actor-3",
-        },
-        {
-          ip: "10.244.16.9",
-          job: "导航策略回归评测",
-          task: "evaluator-0",
-          pod: "eval-nav-088-evaluator-0",
-        },
-      ],
-    },
-  },
-  {
-    apiVersion: "rlinf.io/v1alpha1",
-    kind: "Domain",
-    metadata: {
-      name: "warehouse-collection",
-      creationTimestamp: "2026-06-30T14:42:00Z",
-    },
-    spec: { cidr: "10.245.0.0/16" },
-    status: {
-      ipAllocations: [
-        {
-          ip: "10.245.3.18",
-          job: "仓储巡检数据采集",
-          task: "collector-dog-08",
-          pod: "collect-warehouse-017-dog-08",
-        },
-        {
-          ip: "10.245.4.22",
-          job: "仓储巡检数据采集",
-          task: "collector-dog-09",
-          pod: "collect-warehouse-017-dog-09",
-        },
-      ],
-    },
-  },
-];
-
-function createMockDomain(name: string, cidr: string): CRDDomain {
-  return {
-    apiVersion: "rlinf.io/v1alpha1",
-    kind: "Domain",
-    metadata: { name, creationTimestamp: new Date().toISOString() },
-    spec: { cidr },
-    status: { ipAllocations: [] },
-  };
-}
-
-async function readJsonResponse<T>(resp: Response): Promise<T> {
-  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-  const contentType = resp.headers.get("content-type") ?? "";
-  if (!contentType.includes("application/json")) {
-    throw new Error("Non-JSON response");
-  }
-  return (await resp.json()) as T;
-}
-
 interface CRDWorkflowJobTemplate {
   name: string;
   dependencies?: string[];
@@ -2519,11 +2278,11 @@ function DomainsPage({
     setError("");
     try {
       const resp = await fetch("/api/v1/rlinf.io/v1alpha1/domains");
-      const data = await readJsonResponse<{ items?: CRDDomain[] }>(resp);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const data = await resp.json();
       setDomains(data.items ?? []);
-    } catch {
-      setDomains(MOCK_DOMAINS);
-      setError("");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
     } finally {
       setLoading(false);
     }
@@ -2553,17 +2312,8 @@ function DomainsPage({
       setNewName("");
       setNewCidr("10.244.0.0/16");
       fetchDomains();
-    } catch {
-      const name = newName.trim();
-      const cidr = newCidr.trim();
-      setDomains((prev) => {
-        const next = createMockDomain(name, cidr);
-        return [next, ...prev.filter((d) => d.metadata.name !== name)];
-      });
-      setShowCreate(false);
-      setNewName("");
-      setNewCidr("10.244.0.0/16");
-      setError("");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
     } finally {
       setCreating(false);
     }
@@ -2578,9 +2328,8 @@ function DomainsPage({
       });
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       setDomains((prev) => prev.filter((d) => d.metadata.name !== name));
-    } catch {
-      setDomains((prev) => prev.filter((d) => d.metadata.name !== name));
-      setError("");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
     }
   };
 
@@ -3654,7 +3403,9 @@ function CreateWorkflowModal({
 
   useEffect(() => {
     fetch("/api/v1/rlinf.io/v1alpha1/domains")
-      .then((r) => readJsonResponse<{ items?: CRDDomain[] }>(r))
+      .then((r) =>
+        r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)),
+      )
       .then((data) =>
         setDomains(
           (data.items ?? []).map((d: any) => ({
@@ -3663,14 +3414,7 @@ function CreateWorkflowModal({
           })),
         ),
       )
-      .catch(() =>
-        setDomains(
-          MOCK_DOMAINS.map((d) => ({
-            name: d.metadata.name,
-            cidr: d.spec.cidr,
-          })),
-        ),
-      );
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -5276,7 +5020,9 @@ function CreateJobModal({
 
   useEffect(() => {
     fetch("/api/v1/rlinf.io/v1alpha1/domains")
-      .then((r) => readJsonResponse<{ items?: CRDDomain[] }>(r))
+      .then((r) =>
+        r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)),
+      )
       .then((data) =>
         setDomains(
           (data.items ?? []).map((d: any) => ({
@@ -5285,14 +5031,7 @@ function CreateJobModal({
           })),
         ),
       )
-      .catch(() =>
-        setDomains(
-          MOCK_DOMAINS.map((d) => ({
-            name: d.metadata.name,
-            cidr: d.spec.cidr,
-          })),
-        ),
-      );
+      .catch(() => {});
   }, []);
 
   const cloneRR: Record<string, RoleResource> = {};
@@ -6032,30 +5771,6 @@ interface AgentCertListItem {
   server_addr: string;
 }
 
-function createMockAgentCert(clusterId: string): SignAgentCertResponse {
-  const id = clusterId || "robot-lab-sh";
-  return {
-    cluster_id: id,
-    ca_cert: `-----BEGIN CERTIFICATE-----\nMOCK-CA-CERT-FOR-${id}\n-----END CERTIFICATE-----`,
-    agent_cert: `-----BEGIN CERTIFICATE-----\nMOCK-AGENT-CERT-FOR-${id}\n-----END CERTIFICATE-----`,
-    agent_key: `-----BEGIN PRIVATE KEY-----\nMOCK-AGENT-KEY-FOR-${id}\n-----END PRIVATE KEY-----`,
-    server_addr: "rlark-gateway.example.com:443",
-  };
-}
-
-const MOCK_CERT_LIST: AgentCertListItem[] = [
-  {
-    cluster_id: "robot-lab-sh",
-    created_at: "2026-06-29T10:18:00Z",
-    server_addr: "rlark-gateway.example.com:443",
-  },
-  {
-    cluster_id: "robot-warehouse-hz",
-    created_at: "2026-06-30T14:42:00Z",
-    server_addr: "rlark-gateway.example.com:443",
-  },
-];
-
 function CreateClusterPage({ copy: c, lang }: { copy: Copy; lang: Lang }) {
   const [clusterId, setClusterId] = useState("");
   const [loading, setLoading] = useState(false);
@@ -6075,9 +5790,10 @@ function CreateClusterPage({ copy: c, lang }: { copy: Copy; lang: Lang }) {
     setCertListLoading(true);
     try {
       const resp = await fetch("/api/v1/certificates/agent");
-      setCertList(await readJsonResponse<AgentCertListItem[]>(resp));
+      if (resp.ok) {
+        setCertList(await resp.json());
+      }
     } catch {
-      setCertList(MOCK_CERT_LIST);
     } finally {
       setCertListLoading(false);
     }
@@ -6102,20 +5818,10 @@ function CreateClusterPage({ copy: c, lang }: { copy: Copy; lang: Lang }) {
         const body = await resp.text();
         throw new Error(`HTTP ${resp.status}: ${body}`);
       }
-      setResult(await readJsonResponse<SignAgentCertResponse>(resp));
+      setResult(await resp.json());
       fetchCertList();
-    } catch {
-      const mockResult = createMockAgentCert(clusterId.trim());
-      setResult(mockResult);
-      setCertList((prev) => [
-        {
-          cluster_id: mockResult.cluster_id,
-          created_at: new Date().toISOString(),
-          server_addr: mockResult.server_addr,
-        },
-        ...prev.filter((item) => item.cluster_id !== mockResult.cluster_id),
-      ]);
-      setError("");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
     } finally {
       setLoading(false);
     }
@@ -6171,10 +5877,9 @@ kubernetes:
       const resp = await fetch(
         `/api/v1/certificates/agent/${encodeURIComponent(cid)}`,
       );
-      setExpandedResult(await readJsonResponse<SignAgentCertResponse>(resp));
-    } catch {
-      setExpandedResult(createMockAgentCert(cid));
-    }
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      setExpandedResult(await resp.json());
+    } catch {}
   };
 
   const handleExpandedCopy = () => {
@@ -6458,11 +6163,11 @@ function ClustersOverviewAdminPage({ copy: c }: { copy: Copy }) {
     setError("");
     try {
       const resp = await fetch("/api/v1/rlinf.io/v1alpha1/nodes");
-      const data = await readJsonResponse<{ items?: CRDNode[] }>(resp);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const data = await resp.json();
       setNodes(data.items ?? []);
-    } catch {
-      setNodes(buildMockCRDNodes());
-      setError("");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
     } finally {
       setLoading(false);
     }
@@ -6522,6 +6227,34 @@ function ClustersOverviewAdminPage({ copy: c }: { copy: Copy }) {
           </div>
         </div>
         <p className="muted">{zh ? "加载中..." : "Loading..."}</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="page-content resource-page cluster-page">
+        <div className="section-heading">
+          <div>
+            <span className="eyebrow">
+              <Network size={13} />
+              {zh ? "资源纳管" : "Managed resources"}
+            </span>
+            <h2>{zh ? "集群概览" : "Clusters Overview"}</h2>
+            <p>
+              {zh
+                ? "按命名空间（集群）分组查看所有已纳管节点。"
+                : "View all managed nodes grouped by namespace (cluster)."}
+            </p>
+          </div>
+          <button className="secondary-button" onClick={fetchNodes}>
+            <RefreshCw size={16} />
+            {c.common.refresh}
+          </button>
+        </div>
+        <div className="cert-error" style={{ marginBottom: 12 }}>
+          {error}
+        </div>
       </div>
     );
   }
@@ -7012,11 +6745,11 @@ function AdminPage({ copy: c }: { copy: Copy }) {
     setError("");
     try {
       const resp = await fetch("/api/v1/rlinf.io/v1alpha1/nodes");
-      const data = await readJsonResponse<{ items?: CRDNode[] }>(resp);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const data = await resp.json();
       setNodes(data.items ?? []);
-    } catch {
-      setNodes(buildMockCRDNodes());
-      setError("");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
     } finally {
       setLoading(false);
     }
@@ -7269,9 +7002,10 @@ function AdminLogin({
     <div className={"admin-login-page theme-" + theme}>
       <div className="admin-login-topbar">
         <div className="admin-brand">
-          <BrandLogo />
+          <img src="/rlark-logo.png" alt="RLark" className="brand-logo" />
           <div className="admin-brand-text">
-            <span>Admin</span>
+            <strong>RLark</strong>
+            <small>ADMIN</small>
           </div>
         </div>
         <div className="topbar-actions">
@@ -7516,7 +7250,13 @@ function parseRoute() {
     .replace(/\/+$/, "")
     .split("/")
     .filter(Boolean);
-  const valid: Page[] = ["overview", "clusters", "jobs"];
+  const valid: Page[] = [
+    "overview",
+    "clusters",
+    "jobs",
+    "workflows",
+    "domains",
+  ];
   const top = (parts[0] as Page) ?? "overview";
   if (!valid.includes(top)) return { page: "overview" as Page, sub: "" };
   const sub = parts.slice(1).join("/");
@@ -7625,6 +7365,22 @@ export default function App() {
             }}
           />
         )}{" "}
+        {page === "domains" && (
+          <DomainsPage
+            copy={c}
+            selectedName={sub}
+            onSelect={(name?: string) => navigate("domains", name)}
+          />
+        )}
+        {page === "workflows" && (
+          <WorkflowsPage
+            copy={c}
+            selectedName={sub}
+            onSelect={(name?: string) => navigate("workflows", name)}
+            onCreate={() => setCreateWfOpen(true)}
+            onJobClick={(name) => navigate("jobs", name)}
+          />
+        )}
       </main>
       {createOpen && (
         <CreateJobModal
