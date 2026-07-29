@@ -288,11 +288,38 @@ func ensureLabels(template *corev1.PodTemplateSpec, name string) {
 	}
 }
 
+// applyAntiAffinity injects a pod anti-affinity rule so that pods from the same
+// workload are scheduled on different nodes when possible.
+func applyAntiAffinity(template *corev1.PodTemplateSpec) {
+	if template == nil {
+		return
+	}
+
+	if template.Spec.Affinity == nil {
+		template.Spec.Affinity = &corev1.Affinity{}
+	}
+
+	if template.Spec.Affinity.PodAntiAffinity == nil {
+		template.Spec.Affinity.PodAntiAffinity = &corev1.PodAntiAffinity{}
+	}
+
+	template.Spec.Affinity.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution = append(
+		template.Spec.Affinity.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution,
+		corev1.PodAffinityTerm{
+			TopologyKey: "kubernetes.io/hostname",
+			LabelSelector: &metav1.LabelSelector{
+				MatchLabels: template.Labels,
+			},
+		},
+	)
+}
+
 func buildDeployment(mgmtTask *rlarkv1alpha1.Task, spec *rlarkv1alpha1.KubernetesWorkloadSpec, sidecarImage string) *appsv1.Deployment {
 	applyDomainAnnotation(&spec.Template, mgmtTask)
 	applyRayInit(&spec.Template, mgmtTask)
 	applyNetworkSidecar(&spec.Template, mgmtTask, sidecarImage)
 	ensureLabels(&spec.Template, mgmtTask.Name)
+	applyAntiAffinity(&spec.Template)
 	return &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      mgmtTask.Name,
@@ -319,6 +346,7 @@ func buildDaemonSet(mgmtTask *rlarkv1alpha1.Task, spec *rlarkv1alpha1.Kubernetes
 	applyRayInit(&spec.Template, mgmtTask)
 	applyNetworkSidecar(&spec.Template, mgmtTask, sidecarImage)
 	ensureLabels(&spec.Template, mgmtTask.Name)
+	applyAntiAffinity(&spec.Template)
 	return &appsv1.DaemonSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      mgmtTask.Name,
@@ -344,6 +372,7 @@ func buildStatefulSet(mgmtTask *rlarkv1alpha1.Task, spec *rlarkv1alpha1.Kubernet
 	applyRayInit(&spec.Template, mgmtTask)
 	applyNetworkSidecar(&spec.Template, mgmtTask, sidecarImage)
 	ensureLabels(&spec.Template, mgmtTask.Name)
+	applyAntiAffinity(&spec.Template)
 	return &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      mgmtTask.Name,

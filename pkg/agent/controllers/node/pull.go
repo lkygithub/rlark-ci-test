@@ -48,15 +48,20 @@ func (r *pullNodeReconciler) Reconcile(ctx context.Context, req reconcile.Reques
 		}
 	}
 
+	if localNode.Spec.Unschedulable != mgmtNode.Spec.Unschedulable {
+		localNode.Spec.Unschedulable = mgmtNode.Spec.Unschedulable
+		changed = true
+	}
+
 	if !changed {
 		return reconcile.Result{}, nil
 	}
 
 	if err := r.c.LocalKubeClient.Update(ctx, &localNode); err != nil {
-		logger.Error(err, "failed to update local K8s Node labels")
+		logger.Error(err, "failed to update local K8s Node")
 		return reconcile.Result{}, err
 	}
 
-	logger.Info("synced labels from management Node to local K8s Node")
+	logger.Info("synced labels and schedulability from management Node to local K8s Node")
 	return reconcile.Result{}, nil
 }
