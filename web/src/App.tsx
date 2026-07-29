@@ -11,6 +11,7 @@ import {
 import {
   Activity,
   ArrowRight,
+  Ban,
   Bell,
   Bot,
   Boxes,
@@ -496,11 +497,7 @@ function MetricCard({
     );
   }
 
-  return (
-    <div className={"metric-card tone-" + tone}>
-      {content}
-    </div>
-  );
+  return <div className={"metric-card tone-" + tone}>{content}</div>;
 }
 
 function Gauge({ value, label }: { value: number; label: string }) {
@@ -621,7 +618,9 @@ function Overview({
       .catch(() => {});
   }, []);
   const runningJobs = realJobs.filter((x) => x.phase === "Running").length;
-  const gpuModelList = Array.from(new Set(clusters.flatMap((x) => x.gpuModels)));
+  const gpuModelList = Array.from(
+    new Set(clusters.flatMap((x) => x.gpuModels)),
+  );
   const robotModelList = Array.from(
     new Set(clusters.flatMap((x) => x.robotModels)),
   );
@@ -665,7 +664,11 @@ function Overview({
           tone="mint"
           label={c.overview.cloudNodes}
           value={`${cloudNodeCount}`}
-          note={isZh ? `${gpuModelList.length} 种 GPU 型号` : `${gpuModelList.length} GPU models`}
+          note={
+            isZh
+              ? `${gpuModelList.length} 种 GPU 型号`
+              : `${gpuModelList.length} GPU models`
+          }
           onClick={() => navigate("clusters")}
         />
         <MetricCard
@@ -804,7 +807,10 @@ function Overview({
           </div>
           <div className="activity-list">
             {activity.length === 0 ? (
-              <p className="muted" style={{ padding: "16px 0", textAlign: "center" }}>
+              <p
+                className="muted"
+                style={{ padding: "16px 0", textAlign: "center" }}
+              >
                 {isZh ? "暂无活动" : "No recent activity"}
               </p>
             ) : (
@@ -1692,9 +1698,7 @@ function JobsPage({
                   colSpan={8}
                   style={{ textAlign: "center", padding: "32px" }}
                 >
-                  <small className="muted">
-                    {zh ? "暂无任务" : "No jobs"}
-                  </small>
+                  <small className="muted">{zh ? "暂无任务" : "No jobs"}</small>
                 </td>
               </tr>
             )}
@@ -3352,7 +3356,11 @@ function CreateWorkflowModal({
   const [error, setError] = useState("");
   const [workflowName, setWorkflowName] = useState("rl-training-pipeline");
   const [domains, setDomains] = useState<{ name: string; cidr: string }[]>([]);
-  const { clusterDisplayNames, nodes: allNodes, loading: nodesLoading } = useNodeLabels();
+  const {
+    clusterDisplayNames,
+    nodes: allNodes,
+    loading: nodesLoading,
+  } = useNodeLabels();
   const [activeJobId, setActiveJobId] = useState<string>("");
   const [activeRoleTab, setActiveRoleTab] = useState<string>("");
 
@@ -3382,7 +3390,11 @@ function CreateWorkflowModal({
       type: "RL",
       roles: ROLE_TEMPLATES["RL"],
       headerRole: ROLE_TEMPLATES["RL"][0],
-      roleResources: makeDefaultRoleResources("RL", ROLE_TEMPLATES["RL"], clusterDisplayNames),
+      roleResources: makeDefaultRoleResources(
+        "RL",
+        ROLE_TEMPLATES["RL"],
+        clusterDisplayNames,
+      ),
       runScript:
         "python train.py --config /mnt/config/train.yaml --dataset /mnt/dataset --output /mnt/checkpoints",
       domain: "",
@@ -4734,7 +4746,11 @@ function toYaml(obj: unknown, indent = 0): string {
 }
 
 interface CRDNodeLite {
-  metadata: { name: string; namespace?: string; labels?: Record<string, string> };
+  metadata: {
+    name: string;
+    namespace?: string;
+    labels?: Record<string, string>;
+  };
   status?: { phase?: string };
 }
 
@@ -4768,9 +4784,7 @@ function useNodeLabels() {
   }, []);
   const clusterNames = Array.from(
     new Set(
-      nodes
-        .map((n) => n.metadata.namespace)
-        .filter((v): v is string => !!v),
+      nodes.map((n) => n.metadata.namespace).filter((v): v is string => !!v),
     ),
   );
   const clusterDisplayNames = clusterNames.map((n) =>
@@ -4998,7 +5012,11 @@ function CreateJobModal({
   );
   const [domain, setDomain] = useState(sourceJob?.domain ?? "");
   const [domains, setDomains] = useState<{ name: string; cidr: string }[]>([]);
-  const { clusterDisplayNames, nodes: allNodes, loading: nodesLoading } = useNodeLabels();
+  const {
+    clusterDisplayNames,
+    nodes: allNodes,
+    loading: nodesLoading,
+  } = useNodeLabels();
 
   useEffect(() => {
     fetch("/api/v1/rlinf.io/v1alpha1/domains")
@@ -6398,7 +6416,9 @@ function NodeCategoryColumn({
   newLabelKey: string;
   newLabelValue: string;
   saving: boolean;
+  cordoning: boolean;
   onStartEdit: (node: CRDNode) => void;
+  onToggleCordon: (node: CRDNode) => void;
   onCancelEdit: () => void;
   onSaveLabels: (nodeName: string, namespace: string) => void;
   onAddLabel: () => void;
@@ -6467,7 +6487,9 @@ function NodeDetailPanel({
   newLabelKey: string;
   newLabelValue: string;
   saving: boolean;
+  cordoning: boolean;
   onStartEdit: (node: CRDNode) => void;
+  onToggleCordon: (node: CRDNode) => void;
   onCancelEdit: () => void;
   onSaveLabels: (nodeName: string, namespace: string) => void;
   onAddLabel: () => void;
@@ -6511,13 +6533,40 @@ function NodeDetailPanel({
             {node.status?.nodeInfo?.operatingSystem ?? "—"}
           </small>
         </div>
-        <button
-          className="icon-button"
-          onClick={() => ctx.onStartEdit(node)}
-          title={zh ? "编辑标签" : "Edit Labels"}
-        >
-          <Pencil size={15} />
-        </button>
+        <div className="row-actions" style={{ gap: 4 }}>
+          <button
+            className={
+              node.spec.unschedulable ? "primary-button" : "secondary-button"
+            }
+            disabled={ctx.cordoning}
+            onClick={() => ctx.onToggleCordon(node)}
+            title={
+              node.spec.unschedulable
+                ? zh
+                  ? "取消调度限制"
+                  : "Uncordon"
+                : zh
+                  ? "调度限制"
+                  : "Cordon"
+            }
+          >
+            <Ban size={14} />
+            {node.spec.unschedulable
+              ? zh
+                ? "Uncordon"
+                : "Uncordon"
+              : zh
+                ? "Cordon"
+                : "Cordon"}
+          </button>
+          <button
+            className="icon-button"
+            onClick={() => ctx.onStartEdit(node)}
+            title={zh ? "编辑标签" : "Edit Labels"}
+          >
+            <Pencil size={15} />
+          </button>
+        </div>
       </div>
 
       <div className="node-detail-body">
@@ -6688,6 +6737,7 @@ function AdminPage({ copy: c }: { copy: Copy }) {
   const [newLabelKey, setNewLabelKey] = useState("");
   const [newLabelValue, setNewLabelValue] = useState("");
   const [saving, setSaving] = useState(false);
+  const [cordoning, setCordoning] = useState(false);
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
 
   const fetchNodes = async () => {
@@ -6772,6 +6822,38 @@ function AdminPage({ copy: c }: { copy: Copy }) {
     setLabelDraft((prev) => ({ ...prev, [key]: value }));
   };
 
+  const toggleCordon = async (node: CRDNode) => {
+    setCordoning(true);
+    setError("");
+    try {
+      const patch = { spec: { unschedulable: !node.spec.unschedulable } };
+      const resp = await fetch(
+        `/api/v1/rlinf.io/v1alpha1/nodes/${node.metadata.name}?namespace=${encodeURIComponent(node.metadata.namespace ?? "")}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/merge-patch+json" },
+          body: JSON.stringify(patch),
+        },
+      );
+      if (!resp.ok)
+        throw new Error(`HTTP ${resp.status}: ${await resp.text()}`);
+      setNodes((prev) =>
+        prev.map((n) =>
+          n.metadata.name === node.metadata.name
+            ? {
+                ...n,
+                spec: { ...n.spec, unschedulable: !node.spec.unschedulable },
+              }
+            : n,
+        ),
+      );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setCordoning(false);
+    }
+  };
+
   const nodesByCategory = useMemo(() => {
     const groups: Record<NodeCategory, CRDNode[]> = {
       cloud: [],
@@ -6797,7 +6879,9 @@ function AdminPage({ copy: c }: { copy: Copy }) {
     newLabelKey,
     newLabelValue,
     saving,
+    cordoning,
     onStartEdit: startEdit,
+    onToggleCordon: toggleCordon,
     onCancelEdit: cancelEdit,
     onSaveLabels: saveLabels,
     onAddLabel: addLabel,

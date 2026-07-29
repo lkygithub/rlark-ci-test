@@ -444,6 +444,15 @@ var components = []types.Component{
 			}
 			return append(args, commonArgs()...)
 		},
+		ExtraSvcPortsFn: func(cfg *types.DeployConfig) []corev1.ServicePort {
+			return []corev1.ServicePort{
+				{
+					Name:       "ssh",
+					Port:       constants.ServerSSHPort,
+					TargetPort: intstr.FromInt32(constants.ServerSSHPort),
+				},
+			}
+		},
 		VolumeFn: func(cfg *types.DeployConfig) ([]corev1.Volume, []corev1.VolumeMount) {
 			vols, mounts := kubeconfigVolume()
 			if cfg.DB != nil {
@@ -516,6 +525,7 @@ var components = []types.Component{
 				"--ca-cert=" + constants.CertDir + "/ca.crt",
 				"--leader-election=false",
 				"--mode=node",
+				"--rlark-server-ssh-address=client@" + cfg.ControlPlaneAddress + ":" + strconv.Itoa(constants.ServerSSHPort),
 			}
 
 			if cfg.Kubernetes != nil {

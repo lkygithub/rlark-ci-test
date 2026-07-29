@@ -85,7 +85,7 @@ func (g *Gateway) fetchPodLogs(ctx context.Context, agentID, podNamespace, podNa
 	}
 
 	httpClient := &http.Client{Transport: g.serverTransport}
-	logsURL := fmt.Sprintf("%s/api/proxy/%s/api/kubernetes/api/v1/namespaces/%s/pods/%s/log?tailLines=1000",
+	logsURL := fmt.Sprintf("%s/api/proxy/%s/api/kubernetes/api/v1/namespaces/%s/pods/%s/log?tailLines=1000&container=main",
 		strings.TrimSuffix(g.config.ServerAddress, "/"),
 		agentID,
 		podNamespace,

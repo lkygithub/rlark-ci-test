@@ -23,6 +23,10 @@ const (
 )
 
 const (
+	ServerSSHPort = 2222
+)
+
+const (
 	DBConfigPath      = "/etc/rlark/db.yaml"
 	CertDir           = "/etc/rlark/certs"
 	KCPDataDir        = "/.kcp"
