@@ -104,6 +104,12 @@ button {
   object-fit: contain;
   object-position: left center;
   flex-shrink: 0;
+  display: block;
+  background: transparent;
+}
+
+.brand-logo-dark {
+  display: none;
 }
 
 .brand-mark {
@@ -2251,6 +2257,14 @@ tbody tr:hover {
     ),
     linear-gradient(180deg, #101827 0%, #0c111b 100%);
   border-color: rgba(255, 255, 255, 0.08);
+}
+
+.theme-dark .brand-logo-light {
+  display: none;
+}
+
+.theme-dark .brand-logo-dark {
+  display: block;
 }
 
 .theme-dark .main-area,
@@ -4884,31 +4898,27 @@ tbody tr:hover {
 .admin-login-topbar .admin-brand {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
 }
 
 .admin-login-topbar .admin-brand .brand-logo {
-  width: 40px;
-  height: 40px;
+  width: 104px;
+  height: 34px;
   flex-shrink: 0;
 }
 
 .admin-login-topbar .admin-brand-text {
   display: flex;
-  flex-direction: column;
-  line-height: 1.2;
+  align-items: center;
+  line-height: 1;
 }
 
-.admin-login-topbar .admin-brand-text strong {
-  font-size: 16px;
-  letter-spacing: -0.02em;
-}
-
-.admin-login-topbar .admin-brand-text small {
-  font-size: 10px;
-  letter-spacing: 0.12em;
+.admin-login-topbar .admin-brand-text span {
+  font-size: 13px;
+  letter-spacing: 0.02em;
   color: var(--muted);
-  font-weight: 600;
+  font-weight: 700;
+  text-transform: uppercase;
 }
 
 .admin-login-body {
