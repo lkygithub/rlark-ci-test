@@ -61,10 +61,25 @@ import {
   type NodeKind,
   nodes,
   type Phase,
+  type PodInfo,
   type Worker as WorkerItem,
 } from "./data";
 
-type Page = "overview" | "clusters" | "jobs" | "workflows" | "domains" | "api";
+type Page = "overview" | "clusters-overview" | "clusters-nodes" | "jobs" | "workflows" | "api";
+type NavParent = { id: Page; icon: typeof LayoutDashboard; children?: { id: Page; icon: typeof LayoutDashboard }[] };
+const navItems: NavParent[] = [
+  { id: "overview", icon: LayoutDashboard },
+  {
+    id: "clusters-overview",
+    icon: Network,
+    children: [
+      { id: "clusters-overview", icon: Network },
+      { id: "clusters-nodes", icon: Server },
+    ],
+  },
+  { id: "jobs", icon: Workflow },
+  { id: "workflows", icon: Boxes },
+];
 type Lang = "zh" | "en";
 type Theme = "light" | "dark";
 
@@ -87,7 +102,11 @@ const copy = {
   zh: {
     nav: {
       overview: "总览",
-      clusters: "集群及节点",
+      "clusters-overview": "集群概览",
+      "clusters-nodes": "节点管理",
+      clustersParent: "集群管理",
+      clustersOverview: "集群概览",
+      clustersNodes: "节点管理",
       jobs: "任务",
       workflows: "工作流",
       domains: "网络域",
@@ -216,7 +235,11 @@ const copy = {
   en: {
     nav: {
       overview: "Overview",
-      clusters: "Clusters & Nodes",
+      "clusters-overview": "Clusters Overview",
+      "clusters-nodes": "Nodes",
+      clustersParent: "Clusters",
+      clustersOverview: "Clusters Overview",
+      clustersNodes: "Nodes",
       jobs: "Jobs",
       workflows: "Workflows",
       domains: "Domains",
@@ -355,13 +378,6 @@ const copy = {
 
 type Copy = (typeof copy)[Lang];
 
-const navItems: { id: Page; icon: typeof LayoutDashboard }[] = [
-  { id: "overview", icon: LayoutDashboard },
-  { id: "clusters", icon: Network },
-  { id: "jobs", icon: Workflow },
-  { id: "workflows", icon: Boxes },
-  { id: "domains", icon: CloudCog },
-];
 
 function Logo() {
   return (
@@ -557,41 +573,32 @@ function PageToolbar({
   );
 }
 
-function ResourceDistribution({ copy: c }: { copy: Copy }) {
-  const rows = [
-    {
-      label: c.kind.CloudCompute,
-      value: 72,
-      note: "60 nodes · H800 / A100 / L40S",
-      color: "blue",
-    },
-    {
-      label: c.kind.EmbodiedCompute,
-      value: 49,
-      note: "15 nodes · Jetson / RTX Edge",
-      color: "green",
-    },
-    {
-      label: c.kind.Robot,
-      value: 68,
-      note: "44 robots · G1 / Franka / Robodog",
-      color: "orange",
-    },
-  ];
+interface ResourceRow {
+  label: string;
+  count: number;
+  models: string;
+  color: string;
+}
+
+function ResourceDistribution({ copy: c, rows }: { copy: Copy; rows: ResourceRow[] }) {
+  const total = rows.reduce((s, r) => s + r.count, 0) || 1;
   return (
     <div className="resource-split">
-      {rows.map((row) => (
-        <div key={row.label} className={"resource-row " + row.color}>
-          <div>
-            <strong>{row.label}</strong>
-            <small>{row.note}</small>
+      {rows.map((row) => {
+        const pct = Math.round((row.count / total) * 100);
+        return (
+          <div key={row.label} className={"resource-row " + row.color}>
+            <div>
+              <strong>{row.label}</strong>
+              <small>{row.count} nodes{row.models ? " · " + row.models : ""}</small>
+            </div>
+            <span>
+              <i style={{ width: pct + "%" }} />
+            </span>
+            <b>{pct}%</b>
           </div>
-          <span>
-            <i style={{ width: row.value + "%" }} />
-          </span>
-          <b>{row.value}%</b>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -603,12 +610,23 @@ function Overview({
   navigate: (page: Page, name?: string) => void;
   copy: Copy;
 }) {
-  const cloudClusters = clusters.filter((x) => x.type === "Cloud");
-  const embodiedClusters = clusters.filter((x) => x.type === "Embodied");
-  const cloudNodeCount = clusters.reduce((sum, x) => sum + x.cloudNodes, 0);
-  const robotCount = clusters.reduce((sum, x) => sum + x.robots, 0);
+  const [realClusters, setRealClusters] = useState<Cluster[]>([]);
+  const [realNodes, setRealNodes] = useState<CRDNode[]>([]);
   const [realJobs, setRealJobs] = useState<Job[]>([]);
+  const isZh = c.nav.overview === "总览";
+
   useEffect(() => {
+    fetch("/api/v1/clusters")
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((data) => {
+        const items: Cluster[] = data.data ?? [];
+        setRealClusters(items);
+      })
+      .catch(() => setRealClusters([]));
+    fetch("/api/v1/rlinf.io/v1alpha1/nodes")
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((data) => setRealNodes(data.items ?? []))
+      .catch(() => setRealNodes([]));
     fetch("/api/v1/rlinf.io/v1alpha1/jobs")
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then((data) => {
@@ -617,18 +635,56 @@ function Overview({
       })
       .catch(() => {});
   }, []);
+
+  const cloudClusters = realClusters.filter((x) => x.type === "Cloud");
+  const embodiedClusters = realClusters.filter((x) => x.type === "Embodied");
+  const cloudNodeCount = realClusters.reduce((sum, x) => sum + x.cloudNodes, 0);
+  const robotCount = realClusters.reduce((sum, x) => sum + x.robots, 0);
   const runningJobs = realJobs.filter((x) => x.phase === "Running").length;
   const gpuModelList = Array.from(
-    new Set(clusters.flatMap((x) => x.gpuModels)),
+    new Set(realClusters.flatMap((x) => x.gpuModels)),
   );
   const robotModelList = Array.from(
-    new Set(clusters.flatMap((x) => x.robotModels)),
+    new Set(realClusters.flatMap((x) => x.robotModels)),
   );
-  const gpuModels = gpuModelList.slice(0, 4).join(" / ");
-  const robotModels = robotModelList.slice(0, 4).join(" / ");
-  const isZh = c.nav.overview === "总览";
+  const gpuModels = gpuModelList.slice(0, 4).join(" / ") || (isZh ? "—" : "—");
+  const robotModels = robotModelList.slice(0, 4).join(" / ") || (isZh ? "—" : "—");
   const regionCount = new Set(cloudClusters.map((x) => x.region)).size;
   const runningWorkerCount = realJobs.reduce((s, x) => s + x.runningWorkers, 0);
+
+  const categoryCounts = useMemo(() => {
+    const counts = { cloud: 0, edge: 0, robot: 0 };
+    for (const n of realNodes) {
+      const cat = getNodeCategory(n);
+      if (cat === "cloud") counts.cloud++;
+      else if (cat === "edge") counts.edge++;
+      else if (cat === "robot") counts.robot++;
+    }
+    return counts;
+  }, [realNodes]);
+
+  const resourceRows: ResourceRow[] = [
+    {
+      label: c.kind.CloudCompute,
+      count: categoryCounts.cloud,
+      models: gpuModelList.slice(0, 3).join(" / "),
+      color: "blue",
+    },
+    {
+      label: c.kind.EmbodiedCompute,
+      count: categoryCounts.edge,
+      models: "",
+      color: "green",
+    },
+    {
+      label: c.kind.Robot,
+      count: categoryCounts.robot,
+      models: robotModelList.slice(0, 3).join(" / "),
+      color: "orange",
+    },
+  ];
+
+  const robotNodes = realNodes.filter((n) => getNodeCategory(n) === "robot");
 
   return (
     <div className="page-content">
@@ -657,7 +713,7 @@ function Overview({
           label={c.overview.cloudClusters}
           value={`${cloudClusters.length}`}
           note={isZh ? `${regionCount} 个地域` : `${regionCount} regions`}
-          onClick={() => navigate("clusters")}
+          onClick={() => navigate("clusters-overview")}
         />
         <MetricCard
           icon={Server}
@@ -669,7 +725,7 @@ function Overview({
               ? `${gpuModelList.length} 种 GPU 型号`
               : `${gpuModelList.length} GPU models`
           }
-          onClick={() => navigate("clusters")}
+          onClick={() => navigate("clusters-overview")}
         />
         <MetricCard
           icon={Bot}
@@ -681,7 +737,7 @@ function Overview({
               ? `${embodiedClusters.length} 个具身集群 · ${robotModelList.length} 种真机`
               : `${embodiedClusters.length} embodied clusters · ${robotModelList.length} robot models`
           }
-          onClick={() => navigate("clusters")}
+          onClick={() => navigate("clusters-overview")}
         />
         <MetricCard
           icon={Workflow}
@@ -705,13 +761,13 @@ function Overview({
             </div>
             <button
               className="plain-button"
-              onClick={() => navigate("clusters")}
+              onClick={() => navigate("clusters-overview")}
             >
               {c.common.viewAll}
               <ArrowRight size={14} />
             </button>
           </div>
-          <ResourceDistribution copy={c} />
+          <ResourceDistribution copy={c} rows={resourceRows} />
           <div className="cluster-models">
             <div>
               <span>{c.overview.gpuModels}</span>
@@ -731,29 +787,36 @@ function Overview({
             </div>
             <button
               className="plain-button"
-              onClick={() => navigate("clusters")}
+              onClick={() => navigate("clusters-overview")}
             >
               {c.common.details}
               <ArrowRight size={14} />
             </button>
           </div>
           <div className="robot-state-list">
-            {nodes
-              .filter((n) => n.kind === "Robot")
-              .map((n) => (
-                <div key={n.id}>
-                  <span className={"node-status-ring " + n.phase.toLowerCase()}>
-                    <Bot size={17} />
-                  </span>
-                  <div>
-                    <strong>{n.name}</strong>
-                    <small>
-                      {n.model} · {n.robotState}
-                    </small>
+            {robotNodes.length === 0 ? (
+              <p className="muted" style={{ padding: "16px 0", textAlign: "center" }}>
+                {isZh ? "暂无真机" : "No robots"}
+              </p>
+            ) : (
+              robotNodes.slice(0, 6).map((n) => {
+                const phase = (n.status?.phase ?? "Offline") as Phase;
+                const model = n.metadata.labels?.["rlark.io/model"] || n.metadata.labels?.["node.kubernetes.io/instance-type"] || "—";
+                const reason = n.status?.reason || "—";
+                return (
+                  <div key={n.metadata.name}>
+                    <span className={"node-status-ring " + phase.toLowerCase()}>
+                      <Bot size={17} />
+                    </span>
+                    <div>
+                      <strong>{n.metadata.name}</strong>
+                      <small>{model} · {reason}</small>
+                    </div>
+                    <StatusBadge phase={phase} copy={c} />
                   </div>
-                  <StatusBadge phase={n.phase} copy={c} />
-                </div>
-              ))}
+                );
+              })
+            )}
           </div>
         </div>
       </section>
@@ -834,14 +897,20 @@ function Overview({
   );
 }
 
-function ClustersPage({ copy: c }: { copy: Copy }) {
+function ClustersPage({
+  copy: c,
+  initialView,
+}: {
+  copy: Copy;
+  initialView?: "clusters" | "nodes";
+}) {
   const zh = c.nav.overview === "总览";
   const [query, setQuery] = useState("");
   const [realNodes, setRealNodes] = useState<CRDNode[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [resourceView, setResourceView] = useState<"clusters" | "nodes">(
-    "clusters",
+    initialView ?? "clusters",
   );
   const [selectedClusterNs, setSelectedClusterNs] = useState<string | null>(
     null,
@@ -1867,6 +1936,8 @@ function JobDetailPage({
     "config",
   );
   const [taskNodes, setTaskNodes] = useState<Record<string, string>>({});
+  const [pods, setPods] = useState<PodInfo[]>([]);
+  const [domainIPMap, setDomainIPMap] = useState<Record<string, string>>({});
   const [podLogs, setPodLogs] = useState<
     Array<{
       taskName: string;
@@ -1903,6 +1974,62 @@ function JobDetailPage({
       })
       .catch(() => {});
   }, [job.name]);
+
+  useEffect(() => {
+    if (activeTab !== "workers") return;
+    const taskNames = job.taskStatuses.map((ts) => {
+      const childTaskName = ts.name.toLowerCase().replace(/\s+/g, "-");
+      return `${job.name}-${childTaskName}`.toLowerCase().replace(/\s+/g, "-");
+    });
+    if (taskNames.length === 0) return;
+    const labelSelector = `rlark.io/task-name in (${taskNames.join(",")})`;
+
+    const domainsPromise = fetch(
+      `/api/v1/rlinf.io/v1alpha1/domains`,
+    ).then((resp) =>
+      resp.ok
+        ? resp.json()
+        : Promise.reject(new Error(`HTTP ${resp.status}`)),
+    );
+
+    const podsPromise = fetch(
+      `/api/v1/rlinf.io/v1alpha1/pods?labelSelector=${encodeURIComponent(labelSelector)}`,
+    ).then((resp) =>
+      resp.ok
+        ? resp.json()
+        : Promise.reject(new Error(`HTTP ${resp.status}`)),
+    );
+
+    Promise.all([podsPromise, domainsPromise])
+      .then(([podData, domainData]) => {
+        const podItems = podData.items ?? [];
+        const podList: PodInfo[] = podItems.map((item: any) => ({
+          name: item.metadata?.name ?? "",
+          namespace: item.metadata?.namespace ?? "",
+          taskName: item.spec?.taskName ?? "",
+          taskNamespace: item.spec?.taskNamespace ?? "",
+          podName: item.spec?.podName ?? "",
+          podNamespace: item.spec?.podNamespace ?? "",
+          domain: item.spec?.domain ?? "",
+          phase: item.status?.phase ?? "Pending",
+          node: item.status?.node ?? "",
+          ip: item.status?.ip ?? "",
+          message: item.status?.message ?? "",
+        }));
+        setPods(podList);
+
+        const domainItems = domainData.items ?? [];
+        const ipMap: Record<string, string> = {};
+        for (const d of domainItems) {
+          const allocs = d.status?.ipAllocations ?? [];
+          for (const a of allocs) {
+            if (a.pod) ipMap[a.pod] = a.ip;
+          }
+        }
+        setDomainIPMap(ipMap);
+      })
+      .catch(() => {});
+  }, [activeTab, job.name, job.taskStatuses]);
 
   useEffect(() => {
     if (activeTab !== "logs") return;
@@ -2052,9 +2179,26 @@ function JobDetailPage({
               </tr>
             </thead>
             <tbody>
-              {jobWorkers.map((worker) => (
-                <WorkerRow key={worker.id} worker={worker} copy={c} />
-              ))}
+              {jobWorkers.map((worker) => {
+                const childTaskName = worker.name
+                  .toLowerCase()
+                  .replace(/\s+/g, "-");
+                const jobChildName = `${job.name}-${childTaskName}`
+                  .toLowerCase()
+                  .replace(/\s+/g, "-");
+                const workerPods = pods.filter(
+                  (p) => p.taskName === jobChildName,
+                );
+                return (
+                  <WorkerRow
+                    key={worker.id}
+                    worker={worker}
+                    copy={c}
+                    pods={workerPods}
+                    domainIPMap={domainIPMap}
+                  />
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -2192,10 +2336,21 @@ function JobConfigSummary({ job }: { job: Job }) {
   );
 }
 
-function WorkerRow({ worker, copy: c }: { worker: WorkerItem; copy: Copy }) {
+function WorkerRow({
+  worker,
+  copy: c,
+  pods,
+  domainIPMap,
+}: {
+  worker: WorkerItem;
+  copy: Copy;
+  pods: PodInfo[];
+  domainIPMap: Record<string, string>;
+}) {
   const zh = c.nav.overview === "总览";
   const [sshOpen, setSshOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const sshServer = "ssh.rlark.ai";
   const sshCommand = `ssh -J rlark-user@${sshServer} user@${worker.name}`;
   const handleCopy = () => {
@@ -2208,6 +2363,21 @@ function WorkerRow({ worker, copy: c }: { worker: WorkerItem; copy: Copy }) {
       <tr>
         <td>
           <span className="table-primary">
+            {pods.length > 0 && (
+              <button
+                className="icon-button"
+                style={{ padding: 2, marginRight: 4 }}
+                onClick={() => setExpanded(!expanded)}
+              >
+                <ChevronDown
+                  size={14}
+                  style={{
+                    transform: expanded ? "rotate(180deg)" : "none",
+                    transition: "transform 0.15s",
+                  }}
+                />
+              </button>
+            )}
             <span className="row-icon">
               <Zap size={16} />
             </span>
@@ -2242,6 +2412,66 @@ function WorkerRow({ worker, copy: c }: { worker: WorkerItem; copy: Copy }) {
           </div>
         </td>
       </tr>
+      {expanded && pods.length > 0 && (
+        <tr className="pod-detail-row">
+          <td colSpan={7}>
+            <div className="pod-subtable">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Pod</th>
+                    <th>Node</th>
+                    <th>Pod IP</th>
+                    <th>Domain</th>
+                    <th>Phase</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pods.map((pod) => {
+                    const domainIP =
+                      domainIPMap[
+                        `${pod.namespace}/${pod.podNamespace}/${pod.podName}`
+                      ] ?? "";
+                    return (
+                    <tr key={pod.name}>
+                      <td>
+                        <code className="inline-code">{pod.podName}</code>
+                      </td>
+                      <td>{pod.node || "—"}</td>
+                      <td>{pod.ip || "—"}</td>
+                      <td>
+                        {pod.domain ? (
+                          <>
+                            <Network size={13} style={{ marginRight: 4 }} />
+                            {pod.domain}
+                            {domainIP && (
+                              <code
+                                className="inline-code"
+                                style={{ marginLeft: 6, fontSize: 12 }}
+                              >
+                                {domainIP}
+                              </code>
+                            )}
+                          </>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                      <td>
+                        <StatusBadge
+                          phase={pod.phase as Phase}
+                          copy={c}
+                        />
+                      </td>
+                    </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </td>
+        </tr>
+      )}
       {sshOpen && (
         <div
           className="modal-backdrop"
@@ -4836,9 +5066,19 @@ function mapTaskRole(role: string): "Actor" | "Rollout" | "Env" {
 
 function parseNodeSelector(s: string): Record<string, string> {
   const result: Record<string, string> = {};
+  let lastKey = "";
   for (const part of s.split(",")) {
-    const [k, v] = part.split("=");
-    if (k && v !== undefined) result[k.trim()] = v.trim();
+    const eqIdx = part.indexOf("=");
+    if (eqIdx >= 0) {
+      const k = part.slice(0, eqIdx).trim();
+      const v = part.slice(eqIdx + 1).trim();
+      if (k) {
+        result[k] = v;
+        lastKey = k;
+      }
+    } else if (lastKey) {
+      result[lastKey] += "," + part.trim();
+    }
   }
   return result;
 }
@@ -5043,9 +5283,19 @@ interface CRDNodeLite {
 
 function parseNodeSelectorStr(s: string): Record<string, string> {
   const result: Record<string, string> = {};
+  let lastKey = "";
   for (const part of s.split(",")) {
-    const [k, v] = part.split("=");
-    if (k && v !== undefined) result[k.trim()] = v.trim();
+    const eqIdx = part.indexOf("=");
+    if (eqIdx >= 0) {
+      const k = part.slice(0, eqIdx).trim();
+      const v = part.slice(eqIdx + 1).trim();
+      if (k) {
+        result[k] = v;
+        lastKey = k;
+      }
+    } else if (lastKey) {
+      result[lastKey] += "," + part.trim();
+    }
   }
   return result;
 }
@@ -5128,7 +5378,10 @@ function NodeSelectorPicker({
 
   const matchedNodes = clusterNodes.filter((n) => {
     const labels = n.metadata.labels ?? {};
-    return Object.entries(selectorMap).every(([k, v]) => labels[k] === v);
+    return Object.entries(selectorMap).every(([k, v]) => {
+      const values = v.split(",");
+      return labels[k] !== undefined && values.includes(labels[k]);
+    });
   });
 
   const matchedCount =
@@ -5142,10 +5395,17 @@ function NodeSelectorPicker({
 
   const toggleLabel = (key: string, val: string) => {
     const next = { ...selectorMap };
-    if (next[key] === val) {
+    const current = next[key] ? next[key].split(",") : [];
+    const idx = current.indexOf(val);
+    if (idx >= 0) {
+      current.splice(idx, 1);
+    } else {
+      current.push(val);
+    }
+    if (current.length === 0) {
       delete next[key];
     } else {
-      next[key] = val;
+      next[key] = current.join(",");
     }
     onChange(selectorToStr(next));
   };
@@ -5206,7 +5466,7 @@ function NodeSelectorPicker({
                         key={val}
                         className={
                           "selector-value-chip " +
-                          (selectorMap[key] === val ? "active" : "")
+                          ((selectorMap[key] ?? "").split(",").includes(val) ? "active" : "")
                         }
                         onClick={(e) => {
                           e.stopPropagation();
@@ -7389,16 +7649,28 @@ function AdminPage({ copy: c }: { copy: Copy }) {
   );
 }
 
-const adminNavItems: {
+type AdminNavItem = {
   id: string;
   icon: typeof Activity;
   zh: string;
   en: string;
-}[] = [
-  { id: "clusters-overview", icon: Network, zh: "集群概览", en: "Clusters" },
-  { id: "create-cluster", icon: Shield, zh: "创建集群", en: "Create Cluster" },
-  { id: "clusters-nodes", icon: Server, zh: "节点管理", en: "Nodes" },
+  children?: AdminNavItem[];
+};
+
+const adminNavItems: AdminNavItem[] = [
+  {
+    id: "clusters",
+    icon: Network,
+    zh: "集群管理",
+    en: "Clusters",
+    children: [
+      { id: "clusters-overview", icon: Network, zh: "集群概览", en: "Clusters" },
+      { id: "clusters-nodes", icon: Server, zh: "节点管理", en: "Nodes" },
+      { id: "create-cluster", icon: Shield, zh: "创建集群", en: "Create Cluster" },
+    ],
+  },
   { id: "jobs", icon: Boxes, zh: "任务管理", en: "Jobs" },
+  { id: "domains", icon: CloudCog, zh: "网络域", en: "Domains" },
   { id: "api", icon: Braces, zh: "接口参考", en: "API Reference" },
   { id: "config", icon: Settings, zh: "系统配置", en: "Config" },
 ];
@@ -7420,8 +7692,9 @@ function AdminLogin({
 }) {
   const zh = lang === "zh";
   const [username, setUsername] = useState("admin");
-  const [password, setPassword] = useState("admin@123");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -7429,7 +7702,26 @@ function AdminLogin({
       setError(zh ? "请输入账号和密码" : "Please enter username and password");
       return;
     }
-    onLogin();
+    setLoading(true);
+    setError("");
+    fetch("/api/v1/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username: username.trim(), password }),
+    })
+      .then((resp) =>
+        resp.ok
+          ? resp.json()
+          : Promise.reject(new Error(resp.status === 401 ? (zh ? "账号或密码错误" : "Invalid credentials") : `HTTP ${resp.status}`)),
+      )
+      .then(() => {
+        sessionStorage.setItem("rlark-admin-auth", "1");
+        onLogin();
+      })
+      .catch((err) => {
+        setError(err.message);
+        setLoading(false);
+      });
   };
 
   return (
@@ -7508,8 +7800,8 @@ function AdminLogin({
               {error}
             </div>
           )}
-          <button type="submit" className="primary-button admin-login-btn">
-            {zh ? "登录" : "Sign In"}
+          <button type="submit" className="primary-button admin-login-btn" disabled={loading}>
+            {loading ? (zh ? "登录中…" : "Signing in…") : zh ? "登录" : "Sign In"}
           </button>
           <a className="admin-login-back" href="/">
             <ArrowRight size={13} />
@@ -7524,21 +7816,32 @@ function AdminLogin({
 function AdminApp() {
   const [lang, setLang] = useState<Lang>("zh");
   const [theme, setTheme] = useState<Theme>("light");
-  const [loggedIn, setLoggedIn] = useState(false);
+  const [loggedIn, setLoggedIn] = useState(
+    () => typeof sessionStorage !== "undefined" && sessionStorage.getItem("rlark-admin-auth") === "1",
+  );
   const [collapsed, setCollapsed] = useState(false);
   const [adminPage, setAdminPage] = useState(() => {
     const p = window.location.pathname
       .replace(/^\/admin\/?/, "")
       .replace(/\/+$/, "");
+    const parts = p.split("/").filter(Boolean);
     const valid = [
       "clusters-overview",
       "create-cluster",
       "clusters-nodes",
       "jobs",
+      "domains",
       "api",
       "config",
     ];
-    return valid.includes(p) ? p : "clusters-overview";
+    return valid.includes(parts[0]) ? parts[0] : "clusters-overview";
+  });
+  const [adminSub, setAdminSub] = useState(() => {
+    const p = window.location.pathname
+      .replace(/^\/admin\/?/, "")
+      .replace(/\/+$/, "");
+    const parts = p.split("/").filter(Boolean);
+    return parts.length > 1 ? decodeURIComponent(parts.slice(1).join("/")) : "";
   });
   const c = copy[lang];
   const zh = lang === "zh";
@@ -7548,12 +7851,12 @@ function AdminApp() {
     return item ? (zh ? item.zh : item.en) : "";
   }, [adminPage, zh]);
 
-  const navigate = (id: string) => {
+  const navigate = (id: string, sub?: string) => {
     setAdminPage(id);
-    const path = id === "clusters-overview" ? "/admin" : `/admin/${id}`;
-    if (id === "create-cluster")
-      window.history.pushState({}, "", "/admin/create-cluster");
-    else window.history.pushState({}, "", path);
+    setAdminSub(sub ?? "");
+    let path = id === "clusters-overview" ? "/admin" : `/admin/${id}`;
+    if (sub) path += "/" + encodeURIComponent(sub);
+    window.history.pushState({}, "", path);
   };
 
   useEffect(() => {
@@ -7561,15 +7864,18 @@ function AdminApp() {
       const p = window.location.pathname
         .replace(/^\/admin\/?/, "")
         .replace(/\/+$/, "");
+      const parts = p.split("/").filter(Boolean);
       const valid = [
         "clusters-overview",
         "create-cluster",
         "clusters-nodes",
         "jobs",
+        "domains",
         "api",
         "config",
       ];
-      setAdminPage(valid.includes(p) ? p : "clusters-overview");
+      setAdminPage(valid.includes(parts[0]) ? parts[0] : "clusters-overview");
+      setAdminSub(parts.length > 1 ? decodeURIComponent(parts.slice(1).join("/")) : "");
     };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
@@ -7597,16 +7903,57 @@ function AdminApp() {
         <Logo />
         <nav>
           <span className="nav-label">{zh ? "管理后台" : "Admin"}</span>
-          {adminNavItems.map(({ id, icon: Icon, zh: zhLabel, en: enLabel }) => (
-            <button
-              key={id}
-              className={adminPage === id ? "active" : ""}
-              onClick={() => navigate(id)}
-            >
-              <Icon size={18} />
-              <span>{zh ? zhLabel : enLabel}</span>
-            </button>
-          ))}
+          {adminNavItems.map((item) => {
+            const Icon = item.icon;
+            const isParent = item.children && item.children.length > 0;
+            const isActive = adminPage === item.id;
+            const isChildActive = isParent
+              ? item.children!.some((ch) => ch.id === adminPage)
+              : false;
+            const expanded = isParent && (isChildActive || isActive);
+            return (
+              <div key={item.id} className={isParent ? "nav-parent" : ""}>
+                <button
+                  className={
+                    (isParent
+                      ? isChildActive
+                        ? "nav-parent-expanded"
+                        : isActive
+                          ? "active"
+                          : ""
+                      : isActive
+                        ? "active"
+                        : "") + (isParent ? " nav-parent-btn" : "")
+                  }
+                  onClick={() =>
+                    isParent
+                      ? navigate(item.children![0].id)
+                      : navigate(item.id)
+                  }
+                >
+                  <Icon size={18} />
+                  <span>{zh ? item.zh : item.en}</span>
+                </button>
+                {isParent && expanded && (
+                  <div className="nav-children">
+                    {item.children!.map((ch) => {
+                      const ChIcon = ch.icon;
+                      return (
+                        <button
+                          key={ch.id}
+                          className={adminPage === ch.id ? "active" : ""}
+                          onClick={() => navigate(ch.id)}
+                        >
+                          <ChIcon size={16} />
+                          <span>{zh ? ch.zh : ch.en}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </nav>
         <div className="sidebar-bottom">
           <div className="environment-card">
@@ -7655,6 +8002,13 @@ function AdminApp() {
             <p className="muted">{zh ? "即将推出" : "Coming soon"}</p>
           </div>
         )}
+        {adminPage === "domains" && (
+          <DomainsPage
+            copy={c}
+            selectedName={adminSub}
+            onSelect={(name?: string) => navigate("domains", name)}
+          />
+        )}
         {adminPage === "api" && <ApiPage copy={c} />}
         {adminPage === "create-cluster" && (
           <CreateClusterPage copy={c} lang={lang} />
@@ -7678,6 +8032,87 @@ function AdminApp() {
   );
 }
 
+function UserLogin({ onLogin }: { onLogin: () => void }) {
+  const [username, setUsername] = useState("user");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    if (!username.trim() || !password.trim()) {
+      setError("请输入账号和密码");
+      return;
+    }
+    setLoading(true);
+    setError("");
+    fetch("/api/v1/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username: username.trim(), password }),
+    })
+      .then((resp) =>
+        resp.ok
+          ? resp.json()
+          : Promise.reject(new Error(resp.status === 401 ? "账号或密码错误" : `HTTP ${resp.status}`)),
+      )
+      .then(() => {
+        sessionStorage.setItem("rlark-user-auth", "1");
+        onLogin();
+      })
+      .catch((err) => {
+        setError(err.message);
+        setLoading(false);
+      });
+  };
+
+  return (
+    <div className="admin-login-page theme-light">
+      <div className="admin-login-body">
+        <form className="admin-login-card" onSubmit={handleSubmit}>
+          <div className="admin-login-logo">
+            <Shield size={32} />
+          </div>
+          <h2>用户登录</h2>
+          <p className="muted">请输入账号和密码</p>
+          <div className="admin-login-field">
+            <label>账号</label>
+            <input
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="user"
+              autoComplete="username"
+            />
+          </div>
+          <div className="admin-login-field">
+            <label>密码</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              autoComplete="current-password"
+            />
+          </div>
+          {error && (
+            <div className="cert-error" style={{ marginBottom: 12 }}>
+              {error}
+            </div>
+          )}
+          <button type="submit" className="primary-button admin-login-btn" disabled={loading}>
+            {loading ? "登录中…" : "登录"}
+          </button>
+          <a className="admin-login-back" href="/admin">
+            <ArrowRight size={13} />
+            管理后台
+          </a>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 function parseRoute() {
   const parts = window.location.pathname
     .replace(/^\/+/, "")
@@ -7686,12 +8121,18 @@ function parseRoute() {
     .filter(Boolean);
   const valid: Page[] = [
     "overview",
-    "clusters",
+    "clusters-overview",
+    "clusters-nodes",
     "jobs",
     "workflows",
-    "domains",
   ];
   const top = (parts[0] as Page) ?? "overview";
+  if ((top as string) === "clusters") {
+    const sub = parts[1] ?? "overview";
+    return sub === "nodes"
+      ? { page: "clusters-nodes" as Page, sub: "" }
+      : { page: "clusters-overview" as Page, sub: "" };
+  }
   if (!valid.includes(top)) return { page: "overview" as Page, sub: "" };
   const sub = parts.slice(1).join("/");
   return { page: top, sub: decodeURIComponent(sub) };
@@ -7707,14 +8148,25 @@ export default function App() {
   const [editJob, setEditJob] = useState<Job | null>(null);
   const [lang, setLang] = useState<Lang>("zh");
   const [theme, setTheme] = useState<Theme>("light");
+  const [userLoggedIn, setUserLoggedIn] = useState(
+    () => typeof sessionStorage !== "undefined" && sessionStorage.getItem("rlark-user-auth") === "1",
+  );
   const c = copy[lang];
   const pageTitle = useMemo(() => c.nav[page], [c, page]);
 
   const navigate = (next: Page, name?: string) => {
     const sub = name ? encodeURIComponent(name) : "";
     setRoute({ page: next, sub });
-    const path =
-      next === "overview" && !sub ? "/" : `/${next}${sub ? "/" + sub : ""}`;
+    let path: string;
+    if (next === "overview" && !sub) {
+      path = "/";
+    } else if (next === "clusters-overview") {
+      path = "/clusters";
+    } else if (next === "clusters-nodes") {
+      path = "/clusters/nodes";
+    } else {
+      path = `/${next}${sub ? "/" + sub : ""}`;
+    }
     window.history.pushState({}, "", path);
   };
 
@@ -7725,6 +8177,7 @@ export default function App() {
   }, []);
 
   if (isAdmin) return <AdminApp />;
+  if (!userLoggedIn) return <UserLogin onLogin={() => setUserLoggedIn(true)} />;
 
   return (
     <div
@@ -7736,16 +8189,61 @@ export default function App() {
         <Logo />
         <nav>
           <span className="nav-label">{c.nav.workspace}</span>
-          {navItems.map(({ id, icon: Icon }) => (
-            <button
-              key={id}
-              className={page === id && !sub ? "active" : ""}
-              onClick={() => navigate(id)}
-            >
-              <Icon size={18} />
-              <span>{c.nav[id]}</span>
-            </button>
-          ))}
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const isParent = item.children && item.children.length > 0;
+            const isActive = page === item.id && !sub;
+            const isChildActive = isParent
+              ? item.children!.some((ch) => ch.id === page)
+              : false;
+            const expanded =
+              isParent && (isChildActive || isActive);
+
+            return (
+              <div key={item.id} className={isParent ? "nav-parent" : ""}>
+                <button
+                  className={
+                    (isParent
+                      ? isChildActive
+                        ? "nav-parent-expanded"
+                        : isActive
+                          ? "active"
+                          : ""
+                      : isActive
+                        ? "active"
+                        : "") + (isParent ? " nav-parent-btn" : "")
+                  }
+                  onClick={() =>
+                    isParent
+                      ? navigate(item.children![0].id)
+                      : navigate(item.id)
+                  }
+                >
+                  <Icon size={18} />
+                  <span>{isParent ? c.nav.clustersParent : c.nav[item.id]}</span>
+                </button>
+                {isParent && expanded && (
+                  <div className="nav-children">
+                    {item.children!.map((ch) => {
+                      const ChIcon = ch.icon;
+                      return (
+                        <button
+                          key={ch.id}
+                          className={
+                            page === ch.id ? "active" : ""
+                          }
+                          onClick={() => navigate(ch.id)}
+                        >
+                          <ChIcon size={16} />
+                          <span>{c.nav[ch.id]}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </nav>
         <div className="sidebar-bottom">
           <div className="environment-card">
@@ -7776,7 +8274,12 @@ export default function App() {
           onCreate={() => setCreateOpen(true)}
         />
         {page === "overview" && <Overview navigate={navigate} copy={c} />}{" "}
-        {page === "clusters" && <ClustersPage copy={c} />}{" "}
+        {page === "clusters-overview" && (
+          <ClustersPage copy={c} initialView="clusters" />
+        )}{" "}
+        {page === "clusters-nodes" && (
+          <ClustersPage copy={c} initialView="nodes" />
+        )}{" "}
         {page === "jobs" && (
           <JobsPage
             copy={c}
@@ -7799,13 +8302,6 @@ export default function App() {
             }}
           />
         )}{" "}
-        {page === "domains" && (
-          <DomainsPage
-            copy={c}
-            selectedName={sub}
-            onSelect={(name?: string) => navigate("domains", name)}
-          />
-        )}
         {page === "workflows" && (
           <WorkflowsPage
             copy={c}

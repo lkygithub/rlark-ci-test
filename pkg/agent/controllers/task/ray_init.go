@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	rayScriptMountPath = "/infiniai/scripts"
+	rayScriptMountPath = "/rlark/scripts"
 	rayCheckScriptName = "ray_check.py"
 	rayPort            = "6379"
 

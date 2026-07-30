@@ -224,6 +224,33 @@ button {
   font-style: normal;
 }
 
+.nav-children {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-left: 16px;
+}
+
+.nav-children button {
+  height: 38px;
+  font-size: 12px;
+  font-weight: 550;
+}
+
+.nav-children button.active::before {
+  height: 22px;
+}
+
+.sidebar nav button.nav-parent-expanded {
+  color: #4e5768;
+  background: transparent;
+  font-weight: 650;
+}
+
+.sidebar nav button.nav-parent-expanded:hover {
+  background: #f3f6fb;
+}
+
 .sidebar-bottom {
   margin-top: auto;
   display: grid;
@@ -2690,6 +2717,34 @@ tbody tr:hover {
 
 .worker-table table td {
   word-break: break-word;
+}
+
+.pod-detail-row td {
+  padding: 0 !important;
+  background: var(--surface-2);
+}
+
+.pod-subtable {
+  padding: 8px 16px 12px 48px;
+}
+
+.pod-subtable table {
+  width: 100%;
+  table-layout: auto;
+}
+
+.pod-subtable th {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-2);
+  padding: 6px 10px;
+  text-align: left;
+}
+
+.pod-subtable td {
+  padding: 6px 10px;
+  font-size: 13px;
 }
 
 .embodied-channel {

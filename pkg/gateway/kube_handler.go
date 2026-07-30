@@ -160,6 +160,27 @@ func registerAccessors(client versioned.Interface) map[string]*resourceAccessor 
 			},
 		}).accessor(),
 
+		"pods": (&kubeClient[rlarkiov1alpha1.Pod]{
+			doList: func(ctx context.Context, ns string, opts metav1.ListOptions) (any, error) {
+				return client.RlinfV1alpha1().Pods(ns).List(ctx, opts)
+			},
+			doGet: func(ctx context.Context, ns, name string, opts metav1.GetOptions) (*rlarkiov1alpha1.Pod, error) {
+				return client.RlinfV1alpha1().Pods(ns).Get(ctx, name, opts)
+			},
+			doCreate: func(ctx context.Context, ns string, obj *rlarkiov1alpha1.Pod, opts metav1.CreateOptions) (*rlarkiov1alpha1.Pod, error) {
+				return client.RlinfV1alpha1().Pods(ns).Create(ctx, obj, opts)
+			},
+			doUpdate: func(ctx context.Context, ns string, obj *rlarkiov1alpha1.Pod, opts metav1.UpdateOptions) (*rlarkiov1alpha1.Pod, error) {
+				return client.RlinfV1alpha1().Pods(ns).Update(ctx, obj, opts)
+			},
+			doPatch: func(ctx context.Context, ns, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (*rlarkiov1alpha1.Pod, error) {
+				return client.RlinfV1alpha1().Pods(ns).Patch(ctx, name, pt, data, opts, subresources...)
+			},
+			doDelete: func(ctx context.Context, ns, name string, opts metav1.DeleteOptions) error {
+				return client.RlinfV1alpha1().Pods(ns).Delete(ctx, name, opts)
+			},
+		}).accessor(),
+
 		"domains": (&kubeClient[rlarkiov1alpha1.Domain]{
 			doList: func(ctx context.Context, _ string, opts metav1.ListOptions) (any, error) {
 				return client.RlinfV1alpha1().Domains().List(ctx, opts)

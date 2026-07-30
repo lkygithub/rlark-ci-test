@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -93,7 +94,7 @@ func (r *pullReconciler) Reconcile(ctx context.Context, req reconcile.Request) (
 	}
 
 	workloadSpec := mgmtTask.Spec.Kubernetes.Workload
-	workloadSpec.Template.Spec.NodeSelector = mgmtTask.Spec.NodeSelector // pod 继承 task 的 node label
+	applyTemplateMutations(&workloadSpec.Template, &mgmtTask, r.c.NetworkSidecarImage)
 
 	if err := r.ensurePVCs(ctx, &mgmtTask, workloadSpec); err != nil {
 		logger.Error(err, "failed to ensure PVCs")
@@ -162,7 +163,7 @@ func (r *pullReconciler) createOrUpdateWorkload(
 func (r *pullReconciler) createOrUpdateDeployment(ctx context.Context, mgmtTask *rlarkv1alpha1.Task, spec *rlarkv1alpha1.KubernetesWorkloadSpec) (reconcile.Result, error) {
 	return r.createOrUpdateWorkload(ctx, mgmtTask, "Deployment",
 		&appsv1.Deployment{},
-		buildDeployment(mgmtTask, spec, r.c.NetworkSidecarImage),
+		buildDeployment(mgmtTask, spec),
 		func(obj client.Object) {
 			deploy := obj.(*appsv1.Deployment)
 			if deploy.Annotations == nil {
@@ -177,7 +178,7 @@ func (r *pullReconciler) createOrUpdateDeployment(ctx context.Context, mgmtTask 
 func (r *pullReconciler) createOrUpdateDaemonSet(ctx context.Context, mgmtTask *rlarkv1alpha1.Task, spec *rlarkv1alpha1.KubernetesWorkloadSpec) (reconcile.Result, error) {
 	return r.createOrUpdateWorkload(ctx, mgmtTask, "DaemonSet",
 		&appsv1.DaemonSet{},
-		buildDaemonSet(mgmtTask, spec, r.c.NetworkSidecarImage),
+		buildDaemonSet(mgmtTask, spec),
 		func(obj client.Object) {
 			ds := obj.(*appsv1.DaemonSet)
 			if ds.Annotations == nil {
@@ -191,7 +192,7 @@ func (r *pullReconciler) createOrUpdateDaemonSet(ctx context.Context, mgmtTask *
 func (r *pullReconciler) createOrUpdateStatefulSet(ctx context.Context, mgmtTask *rlarkv1alpha1.Task, spec *rlarkv1alpha1.KubernetesWorkloadSpec) (reconcile.Result, error) {
 	return r.createOrUpdateWorkload(ctx, mgmtTask, "StatefulSet",
 		&appsv1.StatefulSet{},
-		buildStatefulSet(mgmtTask, spec, r.c.NetworkSidecarImage),
+		buildStatefulSet(mgmtTask, spec),
 		func(obj client.Object) {
 			sts := obj.(*appsv1.StatefulSet)
 			if sts.Annotations == nil {
@@ -452,12 +453,17 @@ func applyAntiAffinity(template *corev1.PodTemplateSpec) {
 	)
 }
 
-func buildDeployment(mgmtTask *rlarkv1alpha1.Task, spec *rlarkv1alpha1.KubernetesWorkloadSpec, sidecarImage string) *appsv1.Deployment {
-	applyDomainAnnotation(&spec.Template, mgmtTask)
-	applyRayInit(&spec.Template, mgmtTask)
-	applyNetworkSidecar(&spec.Template, mgmtTask, sidecarImage)
-	ensureLabels(&spec.Template, mgmtTask.Name)
-	applyAntiAffinity(&spec.Template)
+// applyTemplateMutations applies all common pod template mutations shared by workload builders.
+func applyTemplateMutations(template *corev1.PodTemplateSpec, mgmtTask *rlarkv1alpha1.Task, sidecarImage string) {
+	applyDomainAnnotation(template, mgmtTask)
+	applyRayInit(template, mgmtTask)
+	applyNetworkSidecar(template, mgmtTask, sidecarImage)
+	ensureLabels(template, mgmtTask.Name)
+	applyNodeSelector(&template.Spec, mgmtTask.Spec.NodeSelector)
+	applyAntiAffinity(template)
+}
+
+func buildDeployment(mgmtTask *rlarkv1alpha1.Task, spec *rlarkv1alpha1.KubernetesWorkloadSpec) *appsv1.Deployment {
 	return &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      mgmtTask.Name,
@@ -479,12 +485,7 @@ func buildDeployment(mgmtTask *rlarkv1alpha1.Task, spec *rlarkv1alpha1.Kubernete
 	}
 }
 
-func buildDaemonSet(mgmtTask *rlarkv1alpha1.Task, spec *rlarkv1alpha1.KubernetesWorkloadSpec, sidecarImage string) *appsv1.DaemonSet {
-	applyDomainAnnotation(&spec.Template, mgmtTask)
-	applyRayInit(&spec.Template, mgmtTask)
-	applyNetworkSidecar(&spec.Template, mgmtTask, sidecarImage)
-	ensureLabels(&spec.Template, mgmtTask.Name)
-	applyAntiAffinity(&spec.Template)
+func buildDaemonSet(mgmtTask *rlarkv1alpha1.Task, spec *rlarkv1alpha1.KubernetesWorkloadSpec) *appsv1.DaemonSet {
 	return &appsv1.DaemonSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      mgmtTask.Name,
@@ -505,12 +506,7 @@ func buildDaemonSet(mgmtTask *rlarkv1alpha1.Task, spec *rlarkv1alpha1.Kubernetes
 	}
 }
 
-func buildStatefulSet(mgmtTask *rlarkv1alpha1.Task, spec *rlarkv1alpha1.KubernetesWorkloadSpec, sidecarImage string) *appsv1.StatefulSet {
-	applyDomainAnnotation(&spec.Template, mgmtTask)
-	applyRayInit(&spec.Template, mgmtTask)
-	applyNetworkSidecar(&spec.Template, mgmtTask, sidecarImage)
-	ensureLabels(&spec.Template, mgmtTask.Name)
-	applyAntiAffinity(&spec.Template)
+func buildStatefulSet(mgmtTask *rlarkv1alpha1.Task, spec *rlarkv1alpha1.KubernetesWorkloadSpec) *appsv1.StatefulSet {
 	return &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      mgmtTask.Name,
@@ -533,6 +529,54 @@ func buildStatefulSet(mgmtTask *rlarkv1alpha1.Task, spec *rlarkv1alpha1.Kubernet
 }
 
 // --- helper functions ---
+
+// applyNodeSelector applies the task's node selector to the pod spec.
+// Values containing commas are converted to nodeAffinity with In operator;
+// single values use nodeSelector directly.
+func applyNodeSelector(podSpec *corev1.PodSpec, selector map[string]string) {
+	if len(selector) == 0 {
+		return
+	}
+
+	var nodeSelector map[string]string
+	var affinityTerms []corev1.NodeSelectorTerm
+
+	for k, v := range selector {
+		if strings.Contains(v, ",") {
+			values := strings.Split(v, ",")
+			for i := range values {
+				values[i] = strings.TrimSpace(values[i])
+			}
+			affinityTerms = append(affinityTerms, corev1.NodeSelectorTerm{
+				MatchExpressions: []corev1.NodeSelectorRequirement{
+					{
+						Key:      k,
+						Operator: corev1.NodeSelectorOpIn,
+						Values:   values,
+					},
+				},
+			})
+		} else {
+			if nodeSelector == nil {
+				nodeSelector = make(map[string]string)
+			}
+			nodeSelector[k] = v
+		}
+	}
+
+	podSpec.NodeSelector = nodeSelector
+	if len(affinityTerms) > 0 {
+		if podSpec.Affinity == nil {
+			podSpec.Affinity = &corev1.Affinity{}
+		}
+
+		podSpec.Affinity.NodeAffinity = &corev1.NodeAffinity{
+			RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+				NodeSelectorTerms: affinityTerms,
+			},
+		}
+	}
+}
 
 // applyDomainAnnotation injects the management-task annotations (including domain)
 // into the Pod template spec so that pods created by the workload carry these annotations.
