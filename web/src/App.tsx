@@ -860,6 +860,52 @@ function ClustersPage({ copy: c }: { copy: Copy }) {
     } catch (e) {
       setRealNodes(buildMockCRDNodes());
       setError("");
+      console.warn("API request failed, using mock data:", e);
+      // Fallback to mock data when API is not available
+      const mockNodes: CRDNode[] = nodes.map((node, index) => ({
+        apiVersion: "rlinf.io/v1alpha1",
+        kind: "Node",
+        metadata: {
+          name: node.name,
+          namespace: "default",
+          labels: {
+            "rlinf.io/cluster": node.cluster,
+            "rlinf.io/kind": node.kind,
+          },
+          creationTimestamp: new Date(Date.now() - index * 86400000).toISOString(),
+        },
+        spec: {
+          agentType: node.kind === "Robot" ? "robot" : "kubernetes",
+        },
+        status: {
+          phase: node.phase,
+          nodeInfo: {
+            architecture: "amd64",
+            kernelVersion: "5.15.0",
+            agentVersion: "v1.0.0",
+            operatingSystem: "linux",
+          },
+          addresses: [
+            { type: "InternalIP", address: node.address },
+          ],
+          allocatable: {
+            cpu: "8",
+            memory: "16Gi",
+            "nvidia.com/gpu": node.kind === "CloudCompute" ? "8" : "1",
+          },
+          capacity: {
+            cpu: "8",
+            memory: "16Gi",
+            "nvidia.com/gpu": node.kind === "CloudCompute" ? "8" : "1",
+          },
+          used: {
+            cpu: `${node.cpu}`,
+            memory: `${node.memory}%`,
+            "nvidia.com/gpu": node.gpu ? node.gpu.split("/")[0] : "0",
+          },
+        },
+      }));
+      setRealNodes(mockNodes);
     } finally {
       setLoading(false);
     }
@@ -1408,6 +1454,7 @@ function NodeDetailReal({ node, copy: c }: { node: CRDNode; copy: Copy }) {
 interface CRDWorkload {
   kind: string;
   replicas: number;
+  pvcStorageMap?: Record<string, string>;
   template: {
     spec: {
       containers: Array<{
@@ -1420,7 +1467,11 @@ interface CRDWorkload {
           limits?: Record<string, string>;
         };
       }>;
-      volumes?: Array<{ name: string; hostPath: { path: string } }>;
+      volumes?: Array<{
+        name: string;
+        hostPath?: { path: string };
+        persistentVolumeClaim?: { claimName: string };
+      }>;
     };
   };
 }
@@ -1488,9 +1539,23 @@ function crdToJob(crd: CRDJob): Job {
       const vol = t.kubernetes?.workload?.template.spec.volumes?.find(
         (v) => v.name === vm.name,
       );
+      if (vol?.persistentVolumeClaim) {
+        const claimName = vol.persistentVolumeClaim.claimName;
+        const storageClass =
+          t.kubernetes?.workload?.pvcStorageMap?.[claimName] ?? "";
+        return {
+          type: "storage" as const,
+          objectStorage: storageClass,
+          mountPath: vm.mountPath,
+          hostPath: "",
+        };
+      }
+      const hostPath = vol?.hostPath?.path ?? "";
       return {
-        objectStorage: vol?.hostPath?.path ?? "",
+        type: "host" as const,
+        objectStorage: "",
         mountPath: vm.mountPath,
+        hostPath,
       };
     });
     return {
@@ -1505,6 +1570,7 @@ function crdToJob(crd: CRDJob): Job {
       prepareScript: t.prepareScript ?? "",
       env: taskEnv,
       mounts: taskMounts,
+      pvcStorageMap: t.kubernetes?.workload?.pvcStorageMap,
     };
   });
   const env =
@@ -1514,13 +1580,27 @@ function crdToJob(crd: CRDJob): Job {
         key: e.name,
         value: e.value,
       })) ?? [];
-  const mounts = (container?.volumeMounts ?? []).map((vm, i) => {
+  const mounts = (container?.volumeMounts ?? []).map((vm) => {
     const vol = tasks[0]?.kubernetes?.workload?.template.spec.volumes?.find(
       (v) => v.name === vm.name,
     );
+    if (vol?.persistentVolumeClaim) {
+      const claimName = vol.persistentVolumeClaim.claimName;
+      const storageClass =
+        tasks[0]?.kubernetes?.workload?.pvcStorageMap?.[claimName] ?? "";
+      return {
+        type: "storage" as const,
+        objectStorage: storageClass,
+        mountPath: vm.mountPath,
+        hostPath: "",
+      };
+    }
+    const hostPath = vol?.hostPath?.path ?? "";
     return {
-      objectStorage: vol?.hostPath?.path ?? "",
+      type: "host" as const,
+      objectStorage: "",
       mountPath: vm.mountPath,
+      hostPath,
     };
   });
   return {
@@ -3301,9 +3381,11 @@ function makeDefaultRoleResources(
   type: JobType,
   roles: string[],
   clusterDisplayNames: string[] = [],
+  jobName?: string,
 ): Record<string, RoleResource> {
   const rr: Record<string, RoleResource> = {};
   roles.forEach((role, index) => {
+    const mounts = [{ type: "host" as const, objectStorage: "", mountPath: "/mnt/dataset", hostPath: "/host/dataset" }];
     rr[role] = {
       role,
       cluster: clusterDisplayNames[0] ?? "",
@@ -3312,10 +3394,11 @@ function makeDefaultRoleResources(
       cpu: "",
       memory: "",
       gpu: index === 0 ? "4" : "0",
-      image: "registry.rlark.ai/rl/policy-trainer:v0.42",
+      image: "",
       prepareScript: "",
-      envs: [],
-      mounts: [{ objectStorage: "/host/dataset", mountPath: "/mnt/dataset" }],
+      envs: [{ key: "RLARK_TASK_ROLE", value: role }],
+      mounts,
+      pvcStorageMap: computePvcStorageMap(role, mounts, jobName),
     };
   });
   return rr;
@@ -3363,6 +3446,14 @@ function CreateWorkflowModal({
   } = useNodeLabels();
   const [activeJobId, setActiveJobId] = useState<string>("");
   const [activeRoleTab, setActiveRoleTab] = useState<string>("");
+
+  const [availableClusters, setAvailableClusters] = useState<Cluster[]>(clusters.slice(0, 4));
+
+  const [storageClasses, setStorageClasses] = useState<Array<{ name: string; description: string; bucket: string }>>([]);
+  const [storageClassLoading, setStorageClassLoading] = useState(false);
+  const [storageClassFetched, setStorageClassFetched] = useState(false);
+  const [clustersLoaded, setClustersLoaded] = useState(false);
+  const lastFetchedStorageClusterRef = useRef<string>("");
 
   const [dragNode, setDragNode] = useState<{
     id: string;
@@ -3418,33 +3509,99 @@ function CreateWorkflowModal({
   }, []);
 
   useEffect(() => {
-    if (clusterDisplayNames.length === 0) return;
-    setJobs((prev) => {
-      let changed = false;
-      const next = prev.map((job) => {
-        let rrChanged = false;
-        const newRR: Record<string, RoleResource> = {};
-        for (const [k, v] of Object.entries(job.roleResources)) {
-          if (!v.cluster && clusterDisplayNames[0]) {
-            newRR[k] = { ...v, cluster: clusterDisplayNames[0] };
-            rrChanged = true;
-          } else {
-            newRR[k] = v;
-          }
+    fetch("/api/v1/clusters")
+      .then((r) =>
+        r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)),
+      )
+      .then((data) => {
+        const list: Cluster[] = (data.data ?? []).map((c: any) => ({
+          id: c.id ?? c.name ?? "",
+          name: c.name ?? c.id ?? "",
+          type: c.type === "Embodied" ? "Embodied" : "Cloud",
+          region: c.region ?? "",
+          location: c.location ?? "",
+          phase: c.phase ?? "Online",
+          cloudNodes: c.cloudNodes ?? 0,
+          embodiedNodes: c.embodiedNodes ?? 0,
+          robots: c.robots ?? 0,
+          gpuModels: c.gpuModels ?? [],
+          robotModels: c.robotModels ?? [],
+          cpuUsage: c.cpuUsage ?? 0,
+          gpuUsage: c.gpuUsage ?? 0,
+          robotUsage: c.robotUsage ?? 0,
+          runningJobs: c.runningJobs ?? 0,
+          description: c.description ?? "",
+        }));
+        const realList = list.length > 0 ? list : clusters.slice(0, 4);
+        setAvailableClusters(realList);
+        setClustersLoaded(list.length > 0);
+        if (list.length > 0) {
+          setJobs((prevJobs) =>
+            prevJobs.map((job) => ({
+              ...job,
+              roleResources: Object.fromEntries(
+                Object.entries(job.roleResources).map(([role, rr]) => {
+                  const current = rr.cluster;
+                  const match = list.find((c) => c.id === current || c.name === current);
+                  return [role, { ...rr, cluster: match ? match.id : list[0].id }];
+                }),
+              ),
+            })),
+          );
         }
-        if (rrChanged) {
-          changed = true;
-          return { ...job, roleResources: newRR };
-        }
-        return job;
-      });
-      return changed ? next : prev;
-    });
-  }, [clusterDisplayNames]);
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!activeJobId && jobs.length > 0) setActiveJobId(jobs[0].id);
   }, [activeJobId, jobs]);
+
+  const fetchStorageClasses = async (cluster?: string) => {
+    if (storageClassLoading) return;
+    const clusterKey = cluster ?? "";
+    if (storageClassFetched && lastFetchedStorageClusterRef.current === clusterKey) return;
+    lastFetchedStorageClusterRef.current = clusterKey;
+    setStorageClassLoading(true);
+    setStorageClassFetched(false);
+    try {
+      const url = new URL("/api/v1/storage/storageclass", window.location.origin);
+      if (cluster) {
+        url.searchParams.set("clusters", cluster);
+      }
+      const resp = await fetch(url.pathname + url.search);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const result = await resp.json();
+      const list: Array<{ name: string; description: string; bucket: string }> = [];
+      const data = result.data ?? {};
+      for (const [key, value] of Object.entries(data)) {
+        const item = value as any;
+        list.push({
+          name: item.name ?? key,
+          description: item.description ?? "",
+          bucket: item.bucket ?? "",
+        });
+      }
+      setStorageClasses(list);
+    } catch (e) {
+      console.warn("Failed to fetch storage classes:", e);
+    } finally {
+      setStorageClassLoading(false);
+      setStorageClassFetched(true);
+    }
+  };
+
+  useEffect(() => {
+    if (!activeRoleTab || !jobs.length) return;
+    const job = jobs.find((j) => j.id === activeJobId);
+    if (!job) return;
+    const rr = job.roleResources[activeRoleTab];
+    if (!rr) return;
+    const hasStorageMount = rr.mounts.some((m) => m.type === "storage");
+    if (hasStorageMount && rr.cluster) {
+      fetchStorageClasses(rr.cluster);
+    }
+  }, [activeRoleTab, activeJobId, jobs]);
 
   useEffect(() => {
     if (!activeRoleTab && jobs.length > 0) {
@@ -3471,7 +3628,7 @@ function CreateWorkflowModal({
       type: "RL",
       roles,
       headerRole: roles[0],
-      roleResources: makeDefaultRoleResources("RL", roles, clusterDisplayNames),
+      roleResources: makeDefaultRoleResources("RL", roles, clusterDisplayNames, name),
       runScript:
         "python train.py --config /mnt/config/train.yaml --dataset /mnt/dataset --output /mnt/checkpoints",
       domain: "",
@@ -3769,7 +3926,7 @@ function CreateWorkflowModal({
   const updateRRMount = (
     role: string,
     index: number,
-    field: "objectStorage" | "mountPath",
+    field: "objectStorage" | "mountPath" | "type" | "hostPath",
     value: string,
   ) => {
     if (!activeJob) return;
@@ -3778,34 +3935,50 @@ function CreateWorkflowModal({
     const mounts = rr.mounts.map((m, i) =>
       i === index ? { ...m, [field]: value } : m,
     );
-    updateRR(role, "mounts", mounts);
+    const pvcStorageMap = computePvcStorageMap(role, mounts, activeJob.name);
+    updateJob(activeJob.id, {
+      roleResources: {
+        ...activeJob.roleResources,
+        [role]: { ...rr, mounts, pvcStorageMap },
+      },
+    });
   };
 
   const addRRMount = (role: string) => {
     if (!activeJob) return;
     const rr = activeJob.roleResources[role];
     if (!rr) return;
-    updateRR(role, "mounts", [
+    const newMounts = [
       ...rr.mounts,
-      { objectStorage: "", mountPath: "" },
-    ]);
+      { type: "storage" as const, objectStorage: "", mountPath: "", hostPath: "" },
+    ];
+    const pvcStorageMap = computePvcStorageMap(role, newMounts, activeJob.name);
+    updateJob(activeJob.id, {
+      roleResources: {
+        ...activeJob.roleResources,
+        [role]: { ...rr, mounts: newMounts, pvcStorageMap },
+      },
+    });
   };
 
   const removeRRMount = (role: string, index: number) => {
     if (!activeJob) return;
     const rr = activeJob.roleResources[role];
     if (!rr) return;
-    updateRR(
-      role,
-      "mounts",
-      rr.mounts.filter((_, i) => i !== index),
-    );
+    const newMounts = rr.mounts.filter((_, i) => i !== index);
+    const pvcStorageMap = computePvcStorageMap(role, newMounts, activeJob.name);
+    updateJob(activeJob.id, {
+      roleResources: {
+        ...activeJob.roleResources,
+        [role]: { ...rr, mounts: newMounts, pvcStorageMap },
+      },
+    });
   };
 
   const onJobTypeChange = (next: JobType) => {
     if (!activeJob) return;
     const newRoles = ROLE_TEMPLATES[next];
-    const newRR = makeDefaultRoleResources(next, newRoles, clusterDisplayNames);
+    const newRR = makeDefaultRoleResources(next, newRoles, clusterDisplayNames, activeJob.name);
     updateJob(activeJob.id, {
       type: next,
       roles: newRoles,
@@ -3828,10 +4001,10 @@ function CreateWorkflowModal({
       cpu: "",
       memory: "",
       gpu: "0",
-      image: "registry.rlark.ai/rl/policy-trainer:v0.42",
+      image: "",
       prepareScript: "",
-      envs: [],
-      mounts: [{ objectStorage: "/host/dataset", mountPath: "/mnt/dataset" }],
+envs: [{ key: "RLARK_TASK_ROLE", value: newRole }],
+      mounts: [{ type: "host" as const, objectStorage: "", mountPath: "/mnt/dataset", hostPath: "/host/dataset" }],
     };
     updateJob(activeJob.id, { roles, roleResources: rr });
     setActiveRoleTab(newRole);
@@ -4188,12 +4361,18 @@ function CreateWorkflowModal({
                             {zh ? "集群" : "Cluster"}
                             <select
                               value={rr.cluster}
-                              onChange={(e) =>
-                                updateRR(role, "cluster", e.target.value)
-                              }
+                              onChange={(e) => {
+                                const newCluster = e.target.value;
+                                updateRR(role, "cluster", newCluster);
+                                if (rr.mounts.some((m) => m.type === "storage")) {
+                                  fetchStorageClasses(newCluster);
+                                }
+                              }}
                             >
-                              {clusterDisplayNames.map((cl) => (
-                                <option key={cl}>{cl}</option>
+                              {availableClusters.map((cl) => (
+                                <option key={cl.id} value={cl.id}>
+                                  {cl.name}
+                                </option>
                               ))}
                             </select>
                           </label>
@@ -4247,7 +4426,7 @@ function CreateWorkflowModal({
                             onChange={(e) =>
                               updateRR(role, "image", e.target.value)
                             }
-                            placeholder="registry.rlark.ai/rl/policy-trainer:v0.42"
+                            placeholder=""
                           />
                         </div>
                         <div className="form-section" style={{ marginTop: 12 }}>
@@ -4327,19 +4506,60 @@ function CreateWorkflowModal({
                             </button>
                           </div>
                           {rr.mounts.map((mount, index) => (
-                            <div className="env-row" key={index}>
-                              <input
-                                value={mount.objectStorage}
-                                onChange={(e) =>
-                                  updateRRMount(
-                                    role,
-                                    index,
-                                    "objectStorage",
-                                    e.target.value,
-                                  )
-                                }
-                                placeholder="/host/path"
-                              />
+                            <div className="mount-row" key={index}>
+                              <select
+                                value={mount.type}
+                                onChange={(e) => {
+                                  updateRRMount(role, index, "type", e.target.value);
+                                  if (e.target.value === "storage") {
+                                    fetchStorageClasses(rr.cluster);
+                                  }
+                                }}
+                              >
+                                <option value="storage">
+                                  {zh ? "对象存储" : "Object Storage"}
+                                </option>
+                                <option value="host">
+                                  {zh ? "主机路径" : "Host Path"}
+                                </option>
+                              </select>
+                              {mount.type === "storage" ? (
+                                <select
+                                  value={mount.objectStorage}
+                                  onChange={(e) =>
+                                    updateRRMount(
+                                      role,
+                                      index,
+                                      "objectStorage",
+                                      e.target.value,
+                                    )
+                                  }
+                                >
+                                  <option value="">
+                                    {storageClassFetched && storageClasses.length === 0
+                                      ? (zh ? "无可用存储类" : "No storage classes")
+                                      : (zh ? "选择存储类" : "Select storage class")}
+                                  </option>
+                                  {storageClasses.map((sc) => (
+                                    <option key={sc.name} value={sc.name}>
+                                      {sc.name}
+                                    </option>
+                                  ))}
+                                </select>
+                              ) : (
+                                <input
+                                  value={mount.hostPath}
+                                  onChange={(e) =>
+                                    updateRRMount(
+                                      role,
+                                      index,
+                                      "hostPath",
+                                      e.target.value,
+                                    )
+                                  }
+                                  placeholder="/host/path"
+                                />
+                              )}
                               <input
                                 value={mount.mountPath}
                                 onChange={(e) =>
@@ -4355,8 +4575,9 @@ function CreateWorkflowModal({
                               <button
                                 className="icon-button danger"
                                 onClick={() => removeRRMount(role, index)}
+                                title={zh ? "删除" : "Delete"}
                               >
-                                <X size={14} />
+                                <Trash2 size={14} />
                               </button>
                             </div>
                           ))}
@@ -4583,7 +4804,13 @@ interface RoleResource {
   image: string;
   prepareScript: string;
   envs: Array<{ key: string; value: string }>;
-  mounts: Array<{ objectStorage: string; mountPath: string }>;
+  mounts: Array<{
+    type: "host" | "storage";
+    objectStorage: string;
+    mountPath: string;
+    hostPath: string;
+  }>;
+  pvcStorageMap?: Record<string, string>;
 }
 
 function mapTaskRole(role: string): "Actor" | "Rollout" | "Env" {
@@ -4616,6 +4843,31 @@ function parseNodeSelector(s: string): Record<string, string> {
   return result;
 }
 
+function computePvcStorageMap(
+  role: string,
+  mounts: Array<{
+    type: "host" | "storage";
+    objectStorage: string;
+    mountPath: string;
+    hostPath: string;
+  }>,
+  jobName?: string,
+): Record<string, string> | undefined {
+  const roleSlug = role.toLowerCase().replace(/\s+/g, "-");
+  const storageMounts = mounts.filter((m) => m.type === "storage");
+  if (storageMounts.length === 0) return undefined;
+  const map: Record<string, string> = {};
+  const jobSlug = jobName ? jobName.toLowerCase().replace(/\s+/g, "-") : "";
+  storageMounts.forEach((m) => {
+    const volName = m.mountPath.replace(/\//g, "-").replace(/^-|-$/g, "") || "vol";
+    const claimName = jobSlug
+      ? `pvc-${jobSlug}-${roleSlug}-${volName}`
+      : `pvc-${roleSlug}-${volName}`;
+    map[claimName] = m.objectStorage ?? "";
+  });
+  return map;
+}
+
 function generateJobCRD(opts: {
   name: string;
   type: JobType;
@@ -4625,24 +4877,53 @@ function generateJobCRD(opts: {
   runScript: string;
   domain: string;
 }) {
-  const tasks = opts.roles.map((role) => {
-    const res = opts.roleResources[role];
-    const isHead = role === opts.headerRole;
+  const tasks = opts.roles
+    .map((role) => {
+      const res = opts.roleResources[role];
+      if (!res?.image) return null;
+      const isHead = role === opts.headerRole;
     const roleEnvs = res?.envs ?? [];
-    const roleMounts = res?.mounts ?? [];
-    const envVars = roleEnvs
-      .filter((e) => e.key.trim() !== "")
-      .map((e) => ({ name: e.key, value: e.value }));
-    const containerVolumes = roleMounts.map((m) => ({
+      const roleMounts = res?.mounts ?? [];
+      const envVars = [
+      ...roleEnvs
+        .filter((e) => e.key !== "RLARK_TASK_ROLE")
+        .map((e) => ({ name: e.key, value: e.value })),
+      { name: "RLARK_TASK_ROLE", value: role },
+    ];
+    const taskName = role.toLowerCase().replace(/\s+/g, "-");
+    const jobSlug = opts.name.toLowerCase().replace(/\s+/g, "-");
+
+    const hostMounts = roleMounts.filter((m) => m.type === "host");
+    const storageMounts = roleMounts.filter((m) => m.type === "storage");
+
+    const containerVolumes = hostMounts.map((m) => ({
       name: m.mountPath.replace(/\//g, "-").replace(/^-|-$/g, "") || "vol",
-      hostPath: { path: m.objectStorage },
+      hostPath: { path: m.hostPath || m.objectStorage },
     }));
-    const volumeMounts = roleMounts.map((m) => ({
-      name: m.mountPath.replace(/\//g, "-").replace(/^-|-$/g, "") || "vol",
+
+    const storageVolumes = storageMounts.map((m) => {
+      const volName =
+        m.mountPath.replace(/\//g, "-").replace(/^-|-$/g, "") || "vol";
+      const claimName = `pvc-${jobSlug}-${taskName}-${volName}`;
+      return {
+        name: volName,
+        persistentVolumeClaim: {
+          claimName,
+        },
+      };
+    });
+
+    const pvcStorageMap =
+      res?.pvcStorageMap ?? computePvcStorageMap(role, roleMounts, opts.name);
+
+    const allVolumeMounts = roleMounts.map((m) => ({
+      name:
+        m.mountPath.replace(/\//g, "-").replace(/^-|-$/g, "") || "vol",
       mountPath: m.mountPath,
     }));
+
     return {
-      name: role.toLowerCase().replace(/\s+/g, "-"),
+      name: taskName,
       head: isHead,
       agentType: "Kubernetes",
       role: mapTaskRole(role),
@@ -4653,6 +4934,9 @@ function generateJobCRD(opts: {
         workload: {
           kind: "Deployment",
           replicas: res ? Number(res.replicas) : 1,
+          ...(pvcStorageMap
+            ? { pvcStorageMap }
+            : {}),
           template: {
             spec: {
               containers: [
@@ -4661,7 +4945,7 @@ function generateJobCRD(opts: {
                   image: res?.image ?? "",
                   env: envVars.length > 0 ? envVars : undefined,
                   volumeMounts:
-                    volumeMounts.length > 0 ? volumeMounts : undefined,
+                    allVolumeMounts.length > 0 ? allVolumeMounts : undefined,
                   resources: res
                     ? {
                         requests: {
@@ -4680,14 +4964,17 @@ function generateJobCRD(opts: {
                     : undefined,
                 },
               ],
-              volumes:
-                containerVolumes.length > 0 ? containerVolumes : undefined,
+              volumes: [
+                ...(containerVolumes.length > 0 ? containerVolumes : []),
+                ...(storageVolumes.length > 0 ? storageVolumes : []),
+              ],
             },
           },
         },
       },
     };
-  });
+  })
+    .filter(Boolean);
 
   return {
     apiVersion: "rlinf.io/v1alpha1",
@@ -4813,12 +5100,18 @@ function NodeSelectorPicker({
   const [open, setOpen] = useState(false);
   const selectorMap = parseNodeSelectorStr(value);
 
-  const clusterNodes = cluster
+  const normalizedCluster = cluster
+    ? cluster.startsWith("rlark-")
+      ? cluster.slice(6)
+      : cluster
+    : undefined;
+
+  const clusterNodes = normalizedCluster
     ? nodes.filter(
         (n) =>
           (n.metadata.namespace?.startsWith("rlark-")
             ? n.metadata.namespace.slice(6)
-            : n.metadata.namespace) === cluster,
+            : n.metadata.namespace) === normalizedCluster,
       )
     : nodes;
 
@@ -5017,6 +5310,12 @@ function CreateJobModal({
     nodes: allNodes,
     loading: nodesLoading,
   } = useNodeLabels();
+  const [availableClusters, setAvailableClusters] = useState<Cluster[]>(clusters.slice(0, 4));
+  const [storageClasses, setStorageClasses] = useState<{name: string, description: string, bucket: string}[]>([]);
+  const [storageClassLoading, setStorageClassLoading] = useState(false);
+  const [storageClassFetched, setStorageClassFetched] = useState(false);
+  const [clustersLoaded, setClustersLoaded] = useState(false);
+  const lastFetchedStorageClusterRef = useRef<string>("");
 
   useEffect(() => {
     fetch("/api/v1/rlinf.io/v1alpha1/domains")
@@ -5034,6 +5333,79 @@ function CreateJobModal({
       .catch(() => {});
   }, []);
 
+  useEffect(() => {
+    fetch("/api/v1/clusters")
+      .then((r) =>
+        r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)),
+      )
+      .then((data) => {
+        const list: Cluster[] = (data.data ?? []).map((c: any) => ({
+          id: c.id ?? c.name ?? "",
+          name: c.name ?? c.id ?? "",
+          type: c.type === "Embodied" ? "Embodied" : "Cloud",
+          region: c.region ?? "",
+          location: c.location ?? "",
+          phase: c.phase ?? "Online",
+          cloudNodes: c.cloudNodes ?? 0,
+          embodiedNodes: c.embodiedNodes ?? 0,
+          robots: c.robots ?? 0,
+          gpuModels: c.gpuModels ?? [],
+          robotModels: c.robotModels ?? [],
+          cpuUsage: c.cpuUsage ?? 0,
+          gpuUsage: c.gpuUsage ?? 0,
+          robotUsage: c.robotUsage ?? 0,
+          runningJobs: c.runningJobs ?? 0,
+          description: c.description ?? "",
+        }));
+        const realList = list.length > 0 ? list : clusters.slice(0, 4);
+        setAvailableClusters(realList);
+        setClustersLoaded(list.length > 0);
+        if (list.length > 0) {
+          setRoleResources((prev) =>
+            Object.fromEntries(
+              Object.entries(prev).map(([role, rr]) => {
+                const current = rr.cluster;
+                const match = list.find((c) => c.id === current || c.name === current);
+                return [role, { ...rr, cluster: match ? match.id : list[0].id }];
+              }),
+            ),
+          );
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const fetchStorageClasses = async (cluster?: string) => {
+    if (storageClassLoading) return;
+    const clusterKey = cluster ?? "";
+    if (storageClassFetched && lastFetchedStorageClusterRef.current === clusterKey) return;
+    lastFetchedStorageClusterRef.current = clusterKey;
+    setStorageClassLoading(true);
+    setStorageClassFetched(false);
+    try {
+      const url = new URL("/api/v1/storage/storageclass", window.location.origin);
+      if (cluster) {
+        url.searchParams.set("clusters", cluster);
+      }
+      const resp = await fetch(url.pathname + url.search);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const data = await resp.json();
+      if (data.success && data.data) {
+        const storageClassList = Object.values(data.data).map((sc: any) => ({
+          name: sc.name,
+          description: sc.description || "",
+          bucket: sc.bucket || "",
+        }));
+        setStorageClasses(storageClassList);
+      }
+    } catch (e) {
+      console.warn("Failed to fetch storage classes:", e);
+    } finally {
+      setStorageClassLoading(false);
+      setStorageClassFetched(true);
+    }
+  };
+
   const cloneRR: Record<string, RoleResource> = {};
   if (sourceJob) {
     sourceJob.resources.forEach((res) => {
@@ -5048,7 +5420,12 @@ function CreateJobModal({
         image: res.image,
         prepareScript: res.prepareScript ?? "",
         envs: res.env.map((e) => ({ ...e })),
-        mounts: res.mounts.map((m) => ({ ...m })),
+        mounts: res.mounts.map((m) => ({
+          type: m.type ?? "host",
+          objectStorage: m.objectStorage ?? "",
+          mountPath: m.mountPath ?? "",
+          hostPath: m.hostPath ?? m.objectStorage ?? "",
+        })),
       };
     });
   }
@@ -5063,10 +5440,10 @@ function CreateJobModal({
         cpu: "",
         memory: "",
         gpu: index === 0 ? "4" : "0",
-        image: "registry.rlark.ai/rl/policy-trainer:v0.42",
+        image: "",
         prepareScript: "",
-        envs: [],
-        mounts: [{ objectStorage: "/host/dataset", mountPath: "/mnt/dataset" }],
+        envs: [{ key: "RLARK_TASK_ROLE", value: role }],
+        mounts: [{ type: "host" as const, objectStorage: "", mountPath: "/mnt/dataset", hostPath: "/host/dataset" }],
       };
     });
   }
@@ -5092,6 +5469,16 @@ function CreateJobModal({
     });
   }, [clusterDisplayNames]);
 
+  useEffect(() => {
+    if (!activeRoleTab) return;
+    const rr = roleResources[activeRoleTab];
+    if (!rr) return;
+    const hasStorageMount = rr.mounts.some((m) => m.type === "storage");
+    if (hasStorageMount && rr.cluster) {
+      fetchStorageClasses(rr.cluster);
+    }
+  }, [activeRoleTab, roleResources]);
+
   const onTypeChange = (next: JobType) => {
     setType(next);
     const newRoles = ROLE_TEMPLATES[next];
@@ -5108,10 +5495,10 @@ function CreateJobModal({
         cpu: "",
         memory: "",
         gpu: index === 0 ? "4" : "0",
-        image: "registry.rlark.ai/rl/policy-trainer:v0.42",
+        image: "",
         prepareScript: "",
         envs: [{ key: "RLARK_TASK_ROLE", value: role }],
-        mounts: [{ objectStorage: "/host/dataset", mountPath: "/mnt/dataset" }],
+        mounts: [{ type: "host" as const, objectStorage: "", mountPath: "/mnt/dataset", hostPath: "/host/dataset" }],
       };
     });
     setRoleResources(newRR);
@@ -5130,7 +5517,7 @@ function CreateJobModal({
         cpu: "",
         memory: "",
         gpu: "0",
-        image: "registry.rlark.ai/rl/policy-trainer:v0.42",
+        image: "",
         prepareScript: "",
         envs: [],
         mounts: [],
@@ -5213,36 +5600,35 @@ function CreateJobModal({
   const updateRRMount = (
     role: string,
     i: number,
-    field: "objectStorage" | "mountPath",
+    field: "objectStorage" | "mountPath" | "type" | "hostPath",
     v: string,
   ) => {
     setRoleResources((prev) => {
       const rr = prev[role];
       const next = [...rr.mounts];
       next[i] = { ...next[i], [field]: v };
-      return { ...prev, [role]: { ...rr, mounts: next } };
+      const pvcStorageMap = computePvcStorageMap(role, next, jobName);
+      return { ...prev, [role]: { ...rr, mounts: next, pvcStorageMap } };
     });
   };
   const addRRMount = (role: string) => {
-    setRoleResources((prev) => ({
-      ...prev,
-      [role]: {
-        ...prev[role],
-        mounts: [
-          ...prev[role].mounts,
-          { objectStorage: "/host/path", mountPath: "/mnt/data" },
-        ],
-      },
-    }));
+    setRoleResources((prev) => {
+      const rr = prev[role];
+      const newMounts = [
+        ...rr.mounts,
+        { type: "storage" as const, objectStorage: "", mountPath: "", hostPath: "" },
+      ];
+      const pvcStorageMap = computePvcStorageMap(role, newMounts, jobName);
+      return { ...prev, [role]: { ...rr, mounts: newMounts, pvcStorageMap } };
+    });
   };
   const removeRRMount = (role: string, i: number) => {
-    setRoleResources((prev) => ({
-      ...prev,
-      [role]: {
-        ...prev[role],
-        mounts: prev[role].mounts.filter((_, idx) => idx !== i),
-      },
-    }));
+    setRoleResources((prev) => {
+      const rr = prev[role];
+      const newMounts = rr.mounts.filter((_, idx) => idx !== i);
+      const pvcStorageMap = computePvcStorageMap(role, newMounts, jobName);
+      return { ...prev, [role]: { ...rr, mounts: newMounts, pvcStorageMap } };
+    });
   };
 
   const crd = generateJobCRD({
@@ -5453,14 +5839,20 @@ function CreateJobModal({
                           {zh ? "集群" : "Cluster"}
                           <select
                             value={rr.cluster}
-                            onChange={(e) =>
-                              updateRR(role, "cluster", e.target.value)
-                            }
+                            onChange={(e) => {
+                              const newCluster = e.target.value;
+                              updateRR(role, "cluster", newCluster);
+                              if (rr.mounts.some((m) => m.type === "storage")) {
+                                fetchStorageClasses(newCluster);
+                              }
+                            }}
                           >
-                            {clusterDisplayNames.map((cl) => (
-                              <option key={cl}>{cl}</option>
-                            ))}
-                          </select>
+                              {availableClusters.map((cl) => (
+                                <option key={cl.id} value={cl.id}>
+                                  {cl.name}
+                                </option>
+                              ))}
+                            </select>
                         </label>
                       </div>
                       <div className="form-section" style={{ marginTop: 12 }}>
@@ -5512,7 +5904,7 @@ function CreateJobModal({
                           onChange={(e) =>
                             updateRR(role, "image", e.target.value)
                           }
-                          placeholder="registry.rlark.ai/rl/policy-trainer:v0.42"
+                          placeholder=""
                         />
                       </div>
                       <div className="form-section" style={{ marginTop: 12 }}>
@@ -5590,19 +5982,60 @@ function CreateJobModal({
                           </button>
                         </div>
                         {rr.mounts.map((mount, index) => (
-                          <div className="env-row" key={index}>
-                            <input
-                              value={mount.objectStorage}
-                              onChange={(e) =>
-                                updateRRMount(
-                                  role,
-                                  index,
-                                  "objectStorage",
-                                  e.target.value,
-                                )
-                              }
-                              placeholder="/host/path"
-                            />
+                          <div className="mount-row" key={index}>
+                            <select
+                              value={mount.type}
+                              onChange={(e) => {
+                                updateRRMount(role, index, "type", e.target.value);
+                                if (e.target.value === "storage") {
+                                  fetchStorageClasses(rr.cluster);
+                                }
+                              }}
+                            >
+                              <option value="storage">
+                                {zh ? "对象存储" : "Object Storage"}
+                              </option>
+                              <option value="host">
+                                {zh ? "主机路径" : "Host Path"}
+                              </option>
+                            </select>
+                            {mount.type === "storage" ? (
+                              <select
+                                value={mount.objectStorage}
+                                onChange={(e) =>
+                                  updateRRMount(
+                                    role,
+                                    index,
+                                    "objectStorage",
+                                    e.target.value,
+                                  )
+                                }
+                              >
+                                <option value="">
+                                  {storageClassFetched && storageClasses.length === 0
+                                    ? (zh ? "无可用存储类" : "No storage classes")
+                                    : (zh ? "选择存储类" : "Select storage class")}
+                                </option>
+                                {storageClasses.map((sc) => (
+                                  <option key={sc.name} value={sc.name}>
+                                    {sc.name}
+                                  </option>
+                                ))}
+                              </select>
+                            ) : (
+                              <input
+                                value={mount.hostPath}
+                                onChange={(e) =>
+                                  updateRRMount(
+                                    role,
+                                    index,
+                                    "hostPath",
+                                    e.target.value,
+                                  )
+                                }
+                                placeholder="/host/path"
+                              />
+                            )}
                             <input
                               value={mount.mountPath}
                               onChange={(e) =>
@@ -5618,8 +6051,9 @@ function CreateJobModal({
                             <button
                               className="icon-button danger"
                               onClick={() => removeRRMount(role, index)}
+                              title={zh ? "删除" : "Delete"}
                             >
-                              <X size={14} />
+                              <Trash2 size={14} />
                             </button>
                           </div>
                         ))}

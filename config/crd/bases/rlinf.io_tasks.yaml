@@ -99,6 +99,10 @@ spec:
                     properties:
                       kind:
                         type: string
+                      pvcStorageMap:
+                        additionalProperties:
+                          type: string
+                        type: object
                       replicas:
                         format: int32
                         type: integer

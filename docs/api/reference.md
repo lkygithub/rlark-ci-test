@@ -568,8 +568,10 @@ Responses:
       - `kubernetes`: `object`, optional
       - `name`: `string`, optional
       - `nodeSelector`: `object`, optional
+      - `prepareScript`: `string`, optional
       - `raw`: `object`, optional
       - `role`: `string`, required
+      - `runScript`: `string`, optional
       - `tensorBoardDir`: `string`, optional
 - `status`: `object`, optional
   - `conditions`: `array`, optional
@@ -1179,15 +1181,18 @@ Responses:
   - `kubernetes`: `object`, optional
     - `workload`: `object`, optional
       - `kind`: `string`, optional
+      - `pvcStorageMap`: `object`, optional
       - `replicas`: `integer`, optional
       - `template`: `object`, optional - PodTemplateSpec describes the data a pod should have when created from a template
   - `nodeSelector`: `object`, optional
+  - `prepareScript`: `string`, optional
   - `raw`: `object`, optional
     - `artifact`: `string`, optional
     - `entrypoint`: `array`, optional
     - `environment`: `array`, optional
       - `items`: `object`, optional
   - `role`: `string`, required
+  - `runScript`: `string`, optional
   - `tensorBoardDir`: `string`, optional
 - `status`: `object`, optional
   - `completionTime`: `string`, optional

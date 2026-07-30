@@ -472,7 +472,8 @@ var components = []types.Component{
 			{APIGroups: []string{""}, Resources: []string{"nodes"}, Verbs: []string{"get", "list", "watch", "update"}},
 			{APIGroups: []string{""}, Resources: []string{"pods"}, Verbs: []string{"get", "list", "watch", "create", "update", "delete"}},
 			{APIGroups: []string{""}, Resources: []string{"pods/log"}, Verbs: []string{"get"}},
-			{APIGroups: []string{""}, Resources: []string{"configmaps", "services"}, Verbs: []string{"get", "list", "watch", "create", "update", "delete"}},
+			{APIGroups: []string{""}, Resources: []string{"configmaps", "services", "persistentvolumeclaims"}, Verbs: []string{"get", "list", "watch", "create", "update", "delete"}},
+			{APIGroups: []string{"storage.k8s.io"}, Resources: []string{"storageclasses"}, Verbs: []string{"get", "list", "watch", "create", "update", "delete"}},
 			{APIGroups: []string{"apps"}, Resources: []string{"deployments", "daemonsets", "statefulsets"}, Verbs: []string{"get", "list", "watch", "create", "update", "delete"}},
 		},
 		ImageFn: func(cfg *types.DeployConfig) string {
@@ -811,7 +812,7 @@ func Deployment(cfg *types.DeployConfig, c *types.Component) *appsv1.Deployment 
 					Containers: []corev1.Container{{
 						Name:            c.Name,
 						Image:           c.ImageFn(cfg),
-						ImagePullPolicy: corev1.PullIfNotPresent,
+						ImagePullPolicy: corev1.PullAlways,
 						Ports: []corev1.ContainerPort{{
 							ContainerPort: c.Port,
 						}},
@@ -895,7 +896,7 @@ func DaemonSet(cfg *types.DeployConfig, c *types.Component) *appsv1.DaemonSet {
 					Containers: []corev1.Container{{
 						Name:            c.Name,
 						Image:           c.ImageFn(cfg),
-						ImagePullPolicy: corev1.PullIfNotPresent,
+						ImagePullPolicy: corev1.PullAlways,
 						Ports: []corev1.ContainerPort{{
 							ContainerPort: c.Port,
 						}},
@@ -963,7 +964,7 @@ func StatefulSet(cfg *types.DeployConfig, c *types.Component) *appsv1.StatefulSe
 					Containers: []corev1.Container{{
 						Name:            c.Name,
 						Image:           c.ImageFn(cfg),
-						ImagePullPolicy: corev1.PullIfNotPresent,
+						ImagePullPolicy: corev1.PullAlways,
 						Ports:           ports,
 						Args:            c.ArgsFn(cfg),
 					}},

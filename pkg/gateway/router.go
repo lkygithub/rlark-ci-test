@@ -5,6 +5,12 @@ import "github.com/gin-gonic/gin"
 func (g *Gateway) RegisterRoutes(r gin.IRouter) {
 	rlinfv1alpha1 := r.Group("/api/v1/rlinf.io/v1alpha1")
 
+	// Clusters API
+	clusters := r.Group("/api/v1/clusters")
+	{
+		clusters.GET("", g.listClusters)
+	}
+
 	nodes := rlinfv1alpha1.Group("/nodes")
 	{
 		nodes.GET("", g.rlinfv1alpha1ListNodes)
@@ -70,6 +76,14 @@ func (g *Gateway) RegisterRoutes(r gin.IRouter) {
 		sshUserKeys.GET("", g.handleListSSHUserKeys)
 		sshUserKeys.POST("", g.handleCreateSSHUserKey)
 		sshUserKeys.DELETE("/:id", g.handleDeleteSSHUserKey)
+	}
+
+	// Storage APIs
+	storage := r.Group("/api/v1/storage")
+	{
+		storage.GET("/storageclass", g.listStorageClass)
+		storage.POST("/storageclass", g.createStorageClass)
+		storage.GET("/storageclass/provider", g.listProvider)
 	}
 }
 

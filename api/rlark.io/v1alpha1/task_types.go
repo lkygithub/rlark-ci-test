@@ -36,9 +36,10 @@ const (
 )
 
 type KubernetesWorkloadSpec struct {
-	Kind     KubernetesWorkloadKind `json:"kind,omitempty"`
-	Replicas *int32                 `json:"replicas,omitempty"`
-	Template corev1.PodTemplateSpec `json:"template,omitempty"`
+	Kind          KubernetesWorkloadKind `json:"kind,omitempty"`
+	Replicas      *int32                 `json:"replicas,omitempty"`
+	Template      corev1.PodTemplateSpec `json:"template,omitempty"`
+	PvcStorageMap map[string]string      `json:"pvcStorageMap,omitempty"`
 }
 
 type DockerTaskSpec struct {
