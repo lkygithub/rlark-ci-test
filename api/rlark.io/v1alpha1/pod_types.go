@@ -11,6 +11,12 @@ const (
 	PodPhaseFailed    PodPhase = "Failed"
 )
 
+const (
+	PodLabelTaskName          = "rlark.io/task-name"
+	PodLabelLocalPodName      = "rlark.io/local-pod-name"
+	PodLabelLocalPodNamespace = "rlark.io/local-pod-namespace"
+)
+
 // PodSpec 包含 Pod 的标识和引用信息，由数据面上报时设置。
 type PodSpec struct {
 	Domain        string `json:"domain,omitempty"`        // 所属 Domain 名称

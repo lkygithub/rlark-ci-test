@@ -53,6 +53,13 @@ func (g *Gateway) RegisterRoutes(r gin.IRouter) {
 		tasks.DELETE("/:name", g.rlinfv1alpha1DeleteTask)
 	}
 
+	pods := rlinfv1alpha1.Group("/pods")
+	{
+		pods.GET("", g.rlinfv1alpha1ListPods)
+		pods.GET("/:name", g.rlinfv1alpha1GetPod)
+		pods.PATCH("/:name", g.rlinfv1alpha1PatchPod)
+	}
+
 	domains := rlinfv1alpha1.Group("/domains")
 	{
 		domains.GET("", g.rlinfv1alpha1ListDomains)
@@ -76,6 +83,11 @@ func (g *Gateway) RegisterRoutes(r gin.IRouter) {
 		sshUserKeys.GET("", g.handleListSSHUserKeys)
 		sshUserKeys.POST("", g.handleCreateSSHUserKey)
 		sshUserKeys.DELETE("/:id", g.handleDeleteSSHUserKey)
+	}
+
+	auth := r.Group("/api/v1/auth")
+	{
+		auth.POST("/login", g.handleLogin)
 	}
 
 	// Storage APIs
@@ -128,6 +140,12 @@ func (g *Gateway) rlinfv1alpha1GetTask(c *gin.Context)    { g.handleGet("tasks")
 func (g *Gateway) rlinfv1alpha1UpdateTask(c *gin.Context) { g.handleKubeUpdate("tasks")(c) }
 func (g *Gateway) rlinfv1alpha1PatchTask(c *gin.Context)  { g.handleKubePatch("tasks")(c) }
 func (g *Gateway) rlinfv1alpha1DeleteTask(c *gin.Context) { g.handleKubeDelete("tasks")(c) }
+
+// --- Pod handlers ---
+
+func (g *Gateway) rlinfv1alpha1ListPods(c *gin.Context) { g.handleList("pods")(c) }
+func (g *Gateway) rlinfv1alpha1GetPod(c *gin.Context)   { g.handleGet("pods")(c) }
+func (g *Gateway) rlinfv1alpha1PatchPod(c *gin.Context) { g.handleKubePatch("pods")(c) }
 
 // --- Domain handlers ---
 

@@ -18,6 +18,8 @@ type InstallSummary struct {
 	Namespace           string
 	Components          []ComponentStatus
 	ControlPlaneAddress string
+	AdminPassword       string
+	UserPassword        string
 }
 
 func (s *InstallSummary) Print() {
@@ -62,6 +64,12 @@ func (s *InstallSummary) Print() {
 		b.WriteString("\n")
 		b.WriteString("Admin console:\n")
 		b.WriteString("  http://localhost:8080/admin\n")
+		if s.AdminPassword != "" {
+			b.WriteString("\n")
+			b.WriteString("Credentials:\n")
+			b.WriteString("  Admin:  admin / " + s.AdminPassword + "\n")
+			b.WriteString("  User:   user / " + s.UserPassword + "\n")
+		}
 	}
 
 	if s.Plane == "data" && s.ControlPlaneAddress != "" {

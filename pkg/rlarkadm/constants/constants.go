@@ -46,3 +46,7 @@ const (
 	PrometheusScrapeLabelVal = "true"
 	PrometheusPortLabelKey   = "prometheus.io/port"
 )
+
+const (
+	UIAuthSecretName = "rlark-ui-auth"
+)

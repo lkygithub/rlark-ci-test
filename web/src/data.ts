@@ -103,6 +103,20 @@ export interface Job {
   }>;
 }
 
+export interface PodInfo {
+  name: string;
+  namespace: string;
+  taskName: string;
+  taskNamespace: string;
+  podName: string;
+  podNamespace: string;
+  domain: string;
+  phase: string;
+  node: string;
+  ip: string;
+  message: string;
+}
+
 export interface Domain {
   id: string;
   name: string;

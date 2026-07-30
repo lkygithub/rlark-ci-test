@@ -3,6 +3,7 @@ package job
 import (
 	"context"
 	"strconv"
+	"strings"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -17,7 +18,12 @@ func (r *JobReconciler) resolveTaskNamespace(ctx context.Context, t *rlarkv1alph
 		return "default"
 	}
 
-	selector := labels.SelectorFromSet(t.NodeSelector)
+	simpleSelector := make(map[string]string)
+	for k, v := range t.NodeSelector {
+		simpleSelector[k] = strings.Split(v, ",")[0] // nodeSelector 的 value 可能是逗号分隔的多个值，取一个即可
+	}
+
+	selector := labels.SelectorFromSet(simpleSelector)
 
 	var nodeList rlarkv1alpha1.NodeList
 	if err := r.List(ctx, &nodeList, &client.ListOptions{LabelSelector: selector}); err != nil {

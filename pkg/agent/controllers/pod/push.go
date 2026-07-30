@@ -75,8 +75,9 @@ func (r *pushPodReconciler) buildRLarkPodFromK8sPod(k8sPod *corev1.Pod, taskName
 			Name:      string(k8sPod.UID),
 			Namespace: r.c.ManagementNamespace,
 			Labels: map[string]string{
-				"rlark.io/local-pod-name":      k8sPod.Name,
-				"rlark.io/local-pod-namespace": k8sPod.Namespace,
+				rlarkv1alpha1.PodLabelLocalPodName:      k8sPod.Name,
+				rlarkv1alpha1.PodLabelLocalPodNamespace: k8sPod.Namespace,
+				rlarkv1alpha1.PodLabelTaskName:          taskName,
 			},
 		},
 		Spec:   podSpec,
@@ -128,8 +129,8 @@ func (r *pushPodReconciler) deleteManagementPod(ctx context.Context, logger logr
 	if err := r.c.ManagementClient.List(ctx, &mgmtPodList,
 		client.InNamespace(r.c.ManagementNamespace),
 		client.MatchingLabels{
-			"rlark.io/local-pod-name":      name,
-			"rlark.io/local-pod-namespace": namespace,
+			rlarkv1alpha1.PodLabelLocalPodName:      name,
+			rlarkv1alpha1.PodLabelLocalPodNamespace: namespace,
 		}); err != nil {
 		logger.Error(err, "failed to list management Pods for deletion")
 		return reconcile.Result{}, err

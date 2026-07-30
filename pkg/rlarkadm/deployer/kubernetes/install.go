@@ -3,6 +3,9 @@ package kubernetes
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"os/exec"
 	"path/filepath"
@@ -105,6 +108,9 @@ func (d *Installer) Install(cfg *types.DeployConfig, certBundle *cert.Bundle) er
 
 	// 始终 apply CRD，无论 KCP 是否新部署
 	if cfg.Plane == types.PlaneControl {
+		if err := createUIAuthSecretInKCP(ctx, clientset); err != nil {
+			return err
+		}
 		if err := applyKCP(ctx, clientset); err != nil {
 			return err
 		}
@@ -150,6 +156,14 @@ func (d *Installer) buildSummary(ctx context.Context, clientset *kubernetes.Clie
 	if cfg.Plane == types.PlaneData {
 		summary.ControlPlaneAddress = cfg.ControlPlaneAddress
 	}
+
+	if cfg.Plane == types.PlaneControl {
+		if adminPW, userPW, err := readUIAuthFromKCP(ctx, clientset); err == nil {
+			summary.AdminPassword = adminPW
+			summary.UserPassword = userPW
+		}
+	}
+
 	return summary
 }
 
@@ -354,6 +368,133 @@ func installCRDs(podName string) error {
 	}
 
 	return nil
+}
+
+const letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()"
+
+func generatePassword(length int) (string, error) {
+	b := make([]byte, length)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+
+	out := make([]byte, length)
+	for i := range b {
+		out[i] = letters[int(b[i])%len(letters)]
+	}
+
+	return string(out), nil
+}
+
+// createUIAuthSecretInKCP creates the rlark-ui-auth secret in KCP (not local K8s)
+// by running kubectl inside the KCP pod.
+func createUIAuthSecretInKCP(ctx context.Context, clientset *kubernetes.Clientset) error {
+	logger := log.FromContext(ctx)
+
+	pods, err := clientset.CoreV1().Pods(constants.Namespace).List(ctx, metav1.ListOptions{
+		LabelSelector: "app=" + constants.ComponentKCP,
+	})
+	if err != nil {
+		return fmt.Errorf("list kcp pods: %w", err)
+	}
+	if len(pods.Items) == 0 {
+		return fmt.Errorf("no kcp pods found")
+	}
+	podName := pods.Items[0].Name
+	kc := constants.KCPDataDir + "/admin.kubeconfig"
+
+	// Check if secret already exists in KCP
+	checkCmd := exec.Command("kubectl", "-n", constants.Namespace, "exec", podName, "--",
+		"kubectl", "--kubeconfig", kc, "get", "secret", constants.UIAuthSecretName, "-n", "default")
+	if err := checkCmd.Run(); err == nil {
+		logger.Info("ui auth secret already exists in KCP, skipping", "name", constants.UIAuthSecretName)
+		return nil
+	}
+
+	adminPassword, err := generatePassword(16)
+	if err != nil {
+		return fmt.Errorf("generate admin password: %w", err)
+	}
+	userPassword, err := generatePassword(16)
+	if err != nil {
+		return fmt.Errorf("generate user password: %w", err)
+	}
+
+	manifest := fmt.Sprintf(`
+apiVersion: v1
+kind: Secret
+metadata:
+  name: %s
+  namespace: default
+type: Opaque
+stringData:
+  admin-password: %s
+  user-password: %s
+`, constants.UIAuthSecretName, adminPassword, userPassword)
+
+	applyCmd := exec.Command("kubectl", "-n", constants.Namespace, "exec", "-i", podName, "--",
+		"kubectl", "--kubeconfig", kc, "apply", "-f", "-")
+	applyCmd.Stdin = strings.NewReader(manifest)
+	var errBuf bytes.Buffer
+	applyCmd.Stderr = &errBuf
+	if err := applyCmd.Run(); err != nil {
+		return fmt.Errorf("apply ui auth secret in kcp: %w: %s", err, errBuf.String())
+	}
+
+	logger.Info("ui auth secret created in KCP", "name", constants.UIAuthSecretName)
+	return nil
+}
+
+// readUIAuthFromKCP reads the ui auth secret from KCP via kubectl exec.
+func readUIAuthFromKCP(ctx context.Context, clientset *kubernetes.Clientset) (adminPW, userPW string, err error) {
+	pods, err := clientset.CoreV1().Pods(constants.Namespace).List(ctx, metav1.ListOptions{
+		LabelSelector: "app=" + constants.ComponentKCP,
+	})
+	if err != nil {
+		return "", "", fmt.Errorf("list kcp pods: %w", err)
+	}
+	if len(pods.Items) == 0 {
+		return "", "", fmt.Errorf("no kcp pods found")
+	}
+	podName := pods.Items[0].Name
+	kc := constants.KCPDataDir + "/admin.kubeconfig"
+
+	cmd := exec.Command("kubectl", "-n", constants.Namespace, "exec", podName, "--",
+		"kubectl", "--kubeconfig", kc, "get", "secret", constants.UIAuthSecretName, "-n", "default",
+		"-o", "json")
+	var jsonOut bytes.Buffer
+	cmd.Stdout = &jsonOut
+	if err := cmd.Run(); err != nil {
+		return "", "", fmt.Errorf("read ui auth secret from kcp: %w", err)
+	}
+
+	return parseAuthSecretJSON(jsonOut.Bytes())
+}
+
+func parseAuthSecretJSON(data []byte) (adminPW, userPW string, err error) {
+	var s struct {
+		Data map[string]string `json:"data"`
+	}
+	if err := json.Unmarshal(data, &s); err != nil {
+		return "", "", err
+	}
+	adminRaw, ok := s.Data["admin-password"]
+	if !ok {
+		return "", "", fmt.Errorf("admin-password not found in secret")
+	}
+	userRaw, ok := s.Data["user-password"]
+	if !ok {
+		return "", "", fmt.Errorf("user-password not found in secret")
+	}
+	adminDec, err := base64.StdEncoding.DecodeString(adminRaw)
+	if err != nil {
+		return "", "", fmt.Errorf("decode admin-password: %w", err)
+	}
+	userDec, err := base64.StdEncoding.DecodeString(userRaw)
+	if err != nil {
+		return "", "", fmt.Errorf("decode user-password: %w", err)
+	}
+	return string(adminDec), string(userDec), nil
 }
 
 func createDBConfigMap(ctx context.Context, clientset *kubernetes.Clientset, cfg *types.DeployConfig) error {
