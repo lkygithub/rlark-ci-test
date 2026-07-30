@@ -25,9 +25,10 @@ import (
 // KubernetesWorkloadSpecApplyConfiguration represents a declarative configuration of the KubernetesWorkloadSpec type for use
 // with apply.
 type KubernetesWorkloadSpecApplyConfiguration struct {
-	Kind     *rlarkiov1alpha1.KubernetesWorkloadKind `json:"kind,omitempty"`
-	Replicas *int32                                  `json:"replicas,omitempty"`
-	Template *v1.PodTemplateSpec                     `json:"template,omitempty"`
+	Kind          *rlarkiov1alpha1.KubernetesWorkloadKind `json:"kind,omitempty"`
+	Replicas      *int32                                  `json:"replicas,omitempty"`
+	Template      *v1.PodTemplateSpec                     `json:"template,omitempty"`
+	PvcStorageMap map[string]string                       `json:"pvcStorageMap,omitempty"`
 }
 
 // KubernetesWorkloadSpecApplyConfiguration constructs a declarative configuration of the KubernetesWorkloadSpec type for use with
@@ -57,5 +58,19 @@ func (b *KubernetesWorkloadSpecApplyConfiguration) WithReplicas(value int32) *Ku
 // If called multiple times, the Template field is set to the value of the last call.
 func (b *KubernetesWorkloadSpecApplyConfiguration) WithTemplate(value v1.PodTemplateSpec) *KubernetesWorkloadSpecApplyConfiguration {
 	b.Template = &value
+	return b
+}
+
+// WithPvcStorageMap puts the entries into the PvcStorageMap field in the declarative configuration
+// and returns the receiver, so that objects can be build by chaining "With" function invocations.
+// If called multiple times, the entries provided by each call will be put on the PvcStorageMap field,
+// overwriting an existing map entries in PvcStorageMap field with the same key.
+func (b *KubernetesWorkloadSpecApplyConfiguration) WithPvcStorageMap(entries map[string]string) *KubernetesWorkloadSpecApplyConfiguration {
+	if b.PvcStorageMap == nil && len(entries) > 0 {
+		b.PvcStorageMap = make(map[string]string, len(entries))
+	}
+	for k, v := range entries {
+		b.PvcStorageMap[k] = v
+	}
 	return b
 }

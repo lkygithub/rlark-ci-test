@@ -87,5 +87,16 @@ docker-build-%: build-% build/%/Dockerfile
 docker-push-%: build-% build/%/Dockerfile
 	docker buildx build --platform $(IMAGE_PLATFORMS) -t $(IMAGE_REGISTRY)/rlark-$*:$(IMAGE_TAG) -f build/$*/Dockerfile . --push
 
+nerd-build: $(addprefix nerd-build-,$(COMPONENTS))
+
+nerd-push: $(addprefix nerd-push-,$(COMPONENTS))
+
+nerd-build-%: build-% build/%/Dockerfile
+	nerdctl build --platform $(IMAGE_PLATFORMS) -t $(IMAGE_REGISTRY)/rlark-$*:$(IMAGE_TAG) -f build/$*/Dockerfile .
+
+nerd-push-%: build-% build/%/Dockerfile
+	nerdctl build --platform $(IMAGE_PLATFORMS) -t $(IMAGE_REGISTRY)/rlark-$*:$(IMAGE_TAG) -f build/$*/Dockerfile . 
+	nerdctl push $(IMAGE_REGISTRY)/rlark-$*:$(IMAGE_TAG)
+
 $(CONTROLLER_GEN):
 	GOBIN=$(shell go env GOPATH)/bin go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.16.5

@@ -12,6 +12,9 @@ spec:
     workload:
       kind: Deployment
       replicas: 2
+      pvcStorageMap:
+        data-pvc: "standard"
+        model-pvc: "ssd"
       template:
         metadata:
           labels:
@@ -32,11 +35,23 @@ spec:
                   value: ray-head-0
                 - name: TENSORBOARD_DIR
                   value: /data/tensorboard/rollout-k8s
+              volumeMounts:
+                - name: data-vol
+                  mountPath: /workspace/data
+                - name: model-vol
+                  mountPath: /workspace/models
               resources:
                 limits:
                   cpu: "4"
                   memory: 8Gi
                   nvidia.com/gpu: "1"
+          volumes:
+            - name: data-vol
+              persistentVolumeClaim:
+                claimName: data-pvc
+            - name: model-vol
+              persistentVolumeClaim:
+                claimName: model-pvc
 status:
   phase: Running
   observedNodes:

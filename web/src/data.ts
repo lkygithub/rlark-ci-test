@@ -76,7 +76,7 @@ export interface Job {
   image: string;
   command: string;
   env: Array<{ key: string; value: string }>;
-  mounts: Array<{ objectStorage: string; mountPath: string }>;
+  mounts: Array<{ type: "host" | "storage"; objectStorage: string; mountPath: string; hostPath: string }>;
   headerRole: string;
   headerWorker: string;
   sshAddress: string;
@@ -92,7 +92,8 @@ export interface Job {
     image: string;
     prepareScript: string;
     env: Array<{ key: string; value: string }>;
-    mounts: Array<{ objectStorage: string; mountPath: string }>;
+    mounts: Array<{ type: "host" | "storage"; objectStorage: string; mountPath: string; hostPath: string }>;
+    pvcStorageMap?: Record<string, string>;
   }>;
   taskStatuses: Array<{
     name: string;

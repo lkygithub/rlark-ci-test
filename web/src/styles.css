@@ -3290,6 +3290,46 @@ tbody tr:hover {
   align-items: center;
 }
 
+.mount-row {
+  display: grid;
+  grid-template-columns: 80px 1fr 1fr 32px;
+  gap: 8px;
+  margin-top: 8px;
+  align-items: center;
+}
+
+.mount-row select,
+.env-row select {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px 11px;
+  color: #27303d;
+  outline: 0;
+  font-size: 12px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.mount-row input {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px 11px;
+  color: #27303d;
+  outline: 0;
+  font-size: 12px;
+  background: #fff;
+}
+
+.theme-dark .mount-row select,
+.theme-dark .mount-row input,
+.theme-dark .env-row select {
+  background: #151d2b;
+  border-color: var(--line);
+  color: #d8e0ee;
+}
+
 .env-row input {
   width: 100%;
   border: 1px solid var(--line);

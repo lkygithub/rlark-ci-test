@@ -7,6 +7,8 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -25,6 +27,10 @@ const (
 	ManagementTaskUIDAnnotation             = "rlark.io/management-task-uid"
 	ManagementTaskDomainAnnotation          = "rlark.io/management-task-domain"
 	ManagementTaskFinalizer                 = "rlark.io/agent-cleanup"
+	DefaultPVCSize                          = "10Gi"
+	PVCTaskLabel                            = "rlark.io/task"
+	PVCOwnerAnnotation                      = "rlark.io/pvc-owner"
+	PVCOwnerTaskAnnotation                  = "rlark.io/pvc-owner-task"
 )
 
 // pullReconciler watches management Tasks and creates workloads on local cluster.
@@ -88,6 +94,11 @@ func (r *pullReconciler) Reconcile(ctx context.Context, req reconcile.Request) (
 
 	workloadSpec := mgmtTask.Spec.Kubernetes.Workload
 	workloadSpec.Template.Spec.NodeSelector = mgmtTask.Spec.NodeSelector // pod 继承 task 的 node label
+
+	if err := r.ensurePVCs(ctx, &mgmtTask, workloadSpec); err != nil {
+		logger.Error(err, "failed to ensure PVCs")
+		return reconcile.Result{}, err
+	}
 
 	if err := r.ensureRayResources(ctx, &mgmtTask, nil); err != nil {
 		logger.Error(err, "failed to ensure ray resources")
@@ -214,6 +225,10 @@ func (r *pullReconciler) cleanupWorkload(ctx context.Context, name string, names
 		}
 	}
 
+	if err := r.cleanupPVCs(ctx, name, namespace); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -272,8 +287,131 @@ func (r *pullReconciler) ensureRayResources(ctx context.Context, mgmtTask *rlark
 	return nil
 }
 
+func (r *pullReconciler) ensurePVCs(ctx context.Context, mgmtTask *rlarkv1alpha1.Task, workloadSpec *rlarkv1alpha1.KubernetesWorkloadSpec) error {
+	namespace := getWorkloadNamespace(mgmtTask)
+	logger := log.FromContext(ctx).WithValues("task", mgmtTask.Name)
+
+	for i := range workloadSpec.Template.Spec.Volumes {
+		vol := &workloadSpec.Template.Spec.Volumes[i]
+		if vol.PersistentVolumeClaim == nil {
+			continue
+		}
+
+		claimName := vol.PersistentVolumeClaim.ClaimName
+		if claimName == "" {
+			claimName = pvcNameForVolume(mgmtTask.Name, vol.Name)
+			vol.PersistentVolumeClaim.ClaimName = claimName
+			logger.Info("PVC volume has no claim name, using generated name", "volume", vol.Name, "pvc", claimName)
+		}
+
+		storageClassName := ""
+		if workloadSpec.PvcStorageMap != nil {
+			storageClassName = workloadSpec.PvcStorageMap[claimName]
+		}
+
+		pvc := &corev1.PersistentVolumeClaim{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      claimName,
+				Namespace: namespace,
+				Labels: map[string]string{
+					PVCTaskLabel: mgmtTask.Name,
+				},
+				Annotations: map[string]string{
+					PVCOwnerAnnotation:     mgmtTask.Name,
+					PVCOwnerTaskAnnotation: mgmtTask.Name,
+				},
+			},
+			Spec: corev1.PersistentVolumeClaimSpec{
+				AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
+				Resources: corev1.VolumeResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceStorage: resource.MustParse(DefaultPVCSize),
+					},
+				},
+			},
+		}
+
+		if storageClassName != "" {
+			pvc.Spec.StorageClassName = &storageClassName
+		}
+
+		existing := &corev1.PersistentVolumeClaim{}
+		err := r.c.LocalKubeClient.Get(ctx, types.NamespacedName{Name: claimName, Namespace: namespace}, existing)
+		if err != nil && !errors.IsNotFound(err) {
+			return fmt.Errorf("get PVC %s: %w", claimName, err)
+		}
+		if errors.IsNotFound(err) {
+			if storageClassName == "" {
+				logger.Info("Creating PVC with default storage class", "pvc", claimName)
+			} else {
+				logger.Info("Creating PVC", "pvc", claimName, "storageClass", storageClassName)
+			}
+			if err := r.c.LocalKubeClient.Create(ctx, pvc); err != nil {
+				return fmt.Errorf("create PVC %s: %w", claimName, err)
+			}
+		} else {
+			if storageClassName != "" && (existing.Spec.StorageClassName == nil || *existing.Spec.StorageClassName != storageClassName) {
+				logger.Info("Updating PVC storage class", "pvc", claimName, "storageClass", storageClassName)
+				existing.Spec.StorageClassName = &storageClassName
+				if err := r.c.LocalKubeClient.Update(ctx, existing); err != nil {
+					return fmt.Errorf("update PVC %s: %w", claimName, err)
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+func (r *pullReconciler) cleanupPVCs(ctx context.Context, taskName string, namespace string) error {
+	if r.c.LocalKubeClient == nil {
+		return nil
+	}
+
+	pvcList := &corev1.PersistentVolumeClaimList{}
+	if err := r.c.LocalKubeClient.List(ctx, pvcList, client.InNamespace(namespace), client.MatchingLabels{
+		PVCTaskLabel: taskName,
+	}); err != nil {
+		if errors.IsNotFound(err) {
+			return nil
+		}
+		return fmt.Errorf("list PVCs for task %s: %w", taskName, err)
+	}
+
+	if len(pvcList.Items) == 0 {
+		var allPVCs corev1.PersistentVolumeClaimList
+		if err := r.c.LocalKubeClient.List(ctx, &allPVCs, client.InNamespace(namespace)); err != nil {
+			if errors.IsNotFound(err) {
+				return nil
+			}
+			return fmt.Errorf("list all PVCs in namespace %s: %w", namespace, err)
+		}
+		for _, pvc := range allPVCs.Items {
+			if pvc.Annotations != nil && pvc.Annotations[PVCOwnerTaskAnnotation] == taskName {
+				pvcList.Items = append(pvcList.Items, pvc)
+			}
+		}
+	}
+
+	for i := range pvcList.Items {
+		logger := log.FromContext(ctx).WithValues("pvc", pvcList.Items[i].Name)
+		logger.Info("Deleting PVC owned by task", "pvc", pvcList.Items[i].Name, "task", taskName)
+		if err := r.c.LocalKubeClient.Delete(ctx, &pvcList.Items[i]); err != nil {
+			if !errors.IsNotFound(err) {
+				return fmt.Errorf("delete PVC %s: %w", pvcList.Items[i].Name, err)
+			}
+		}
+	}
+
+	return nil
+}
+
+func pvcNameForVolume(taskName, volumeName string) string {
+	return fmt.Sprintf("pvc-%s-%s", taskName, volumeName)
+}
+
 func getWorkloadNamespace(mgmtTask *rlarkv1alpha1.Task) string {
-	// todo workload 具体使用什么 namespace？不能直接使用 task 的
+	_ = mgmtTask
 	return "rlark-system"
 }
 
