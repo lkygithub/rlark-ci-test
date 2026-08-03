@@ -68,7 +68,8 @@ func buildTask(
 
 func buildRayAnnotations(job *rlarkv1alpha1.Job, t rlarkv1alpha1.JobTaskTemplate) map[string]string {
 	annotations := map[string]string{
-		rlarkv1alpha1.RayTotalNodesAnnotation: strconv.Itoa(totalNodeCount(job.Spec.Tasks)),
+		rlarkv1alpha1.RayTotalNodesAnnotation:    strconv.Itoa(totalNodeCount(job.Spec.Tasks)),
+		rlarkv1alpha1.RayNodeRankStartAnnotation: strconv.Itoa(rankStartForTask(job, t.Name)),
 	}
 	if t.Head {
 		annotations[rlarkv1alpha1.RayRoleAnnotation] = rlarkv1alpha1.RayRoleHead
@@ -79,6 +80,21 @@ func buildRayAnnotations(job *rlarkv1alpha1.Job, t rlarkv1alpha1.JobTaskTemplate
 		annotations[rlarkv1alpha1.RayHeadTaskNameAnnotation] = headTaskName
 	}
 	return annotations
+}
+
+func rankStartForTask(job *rlarkv1alpha1.Job, taskName string) int {
+	rank := 0
+	for _, t := range job.Spec.Tasks {
+		if t.Name == taskName {
+			break
+		}
+		if t.Kubernetes != nil && t.Kubernetes.Workload != nil && t.Kubernetes.Workload.Replicas != nil {
+			rank += int(*t.Kubernetes.Workload.Replicas)
+		} else {
+			rank += 1
+		}
+	}
+	return rank
 }
 
 func findHeadTaskName(job *rlarkv1alpha1.Job) string {

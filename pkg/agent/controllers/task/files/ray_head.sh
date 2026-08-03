@@ -1,6 +1,8 @@
 #!/bin/bash
 set -e
 
+export RLINF_NODE_RANK=$((RLARK_NODE_RANK_START + ${POD_NAME##*-}))
+
 if [ -n "$WAIT_NETWORK_SCRIPT" ]; then
     bash "$WAIT_NETWORK_SCRIPT" "network"
 fi
@@ -43,7 +45,7 @@ trap cleanup EXIT INT TERM
 # Phase 3: Wait for Ray cluster to be ready (including head node itself)
 TOTAL_NODES="${RLARK_TOTAL_NODES:-1}"
 echo "Waiting for $TOTAL_NODES nodes to join the Ray cluster..."
-python -u /infiniai/scripts/ray_check.py "ray://$NODE_IP:${RLARK_RAY_PORT}" "$TOTAL_NODES" || {
+python -u /rlark/scripts/ray_check.py "$NODE_IP:${RLARK_RAY_PORT}" "$TOTAL_NODES" || {
     echo "Warning: Ray cluster check failed, proceeding anyway."
 }
 

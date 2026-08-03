@@ -172,7 +172,7 @@ func etcdInitialClusterDNS(cfg *types.DeployConfig) string {
 	var members []string
 	for i := int32(0); i < replicas; i++ {
 		name := fmt.Sprintf("%s-%d", constants.ComponentEtcd, i)
-		peerURL := fmt.Sprintf("http://%s.%s.%s.svc.cluster.local:%d",
+		peerURL := fmt.Sprintf("http://%s.%s.%s.svc:%d",
 			name, constants.ComponentEtcd, constants.Namespace, constants.EtcdPeerPort)
 		members = append(members, fmt.Sprintf("%s=%s", name, peerURL))
 	}
@@ -286,6 +286,13 @@ func resolveComponentReplicas(cfg *types.DeployConfig, name string) int32 {
 		return cfg.Kubernetes.Replicas
 	}
 	return 1
+}
+
+func leaderElectFlag(cfg *types.DeployConfig, name string) string {
+	if resolveComponentReplicas(cfg, name) > 1 {
+		return "true"
+	}
+	return "false"
 }
 
 func resolveComponentNodeSelector(cfg *types.DeployConfig, name string) map[string]string {
@@ -405,7 +412,7 @@ var components = []types.Component{
 			args := []string{
 				"--metrics-bind-address=:8080",
 				"--health-probe-bind-address=:8081",
-				"--leader-elect=false",
+				"--leader-elect=" + leaderElectFlag(cfg, constants.ComponentControllerManager),
 			}
 			if cfg.DB != nil {
 				args = append(args, "--db-config="+constants.DBConfigPath)
@@ -487,7 +494,7 @@ var components = []types.Component{
 				"--client-cert=" + constants.CertDir + "/tls.crt",
 				"--client-key=" + constants.CertDir + "/tls.key",
 				"--ca-cert=" + constants.CertDir + "/ca.crt",
-				"--leader-election=false",
+				"--leader-election=" + leaderElectFlag(cfg, constants.ComponentAgent),
 				"--mode=cluster",
 			}
 
@@ -612,7 +619,7 @@ var components = []types.Component{
 				"--initial-cluster-state=new",
 				"--listen-metrics-urls=http://0.0.0.0:" + metricsPort,
 				"--auto-compaction-mode=periodic",
-				"--auto-compaction-retention=5m",
+				"--auto-compaction-retention=1h",
 				"--data-dir=" + constants.EtcdDataDir,
 			}
 
@@ -623,7 +630,7 @@ var components = []types.Component{
 					"--initial-cluster=$(POD_NAME)=http://$(POD_IP):"+peerPort,
 				)
 			} else {
-				dnsHost := "$(POD_NAME)." + constants.ComponentEtcd + "." + constants.Namespace + ".svc.cluster.local"
+				dnsHost := "$(POD_NAME)." + constants.ComponentEtcd + "." + constants.Namespace + ".svc"
 				args = append(args,
 					"--initial-advertise-peer-urls=http://"+dnsHost+":"+peerPort,
 					"--advertise-client-urls=http://"+dnsHost+":"+clientPort,
@@ -701,6 +708,33 @@ var components = []types.Component{
 				return nil
 			}
 			return kcpVolumeClaim(cfg)
+		},
+		ProbeFn: func(cfg *types.DeployConfig) (*corev1.Probe, *corev1.Probe) {
+			liveness := &corev1.Probe{
+				ProbeHandler: corev1.ProbeHandler{
+					HTTPGet: &corev1.HTTPGetAction{
+						Path:   "/livez",
+						Port:   intstr.FromInt32(6443),
+						Scheme: corev1.URISchemeHTTPS,
+					},
+				},
+				InitialDelaySeconds: 45,
+				PeriodSeconds:       10,
+				TimeoutSeconds:      10,
+				FailureThreshold:    6,
+				SuccessThreshold:    1,
+			}
+			readiness := &corev1.Probe{
+				ProbeHandler: corev1.ProbeHandler{
+					HTTPGet: &corev1.HTTPGetAction{
+						Path:   "/readyz",
+						Port:   intstr.FromInt32(6443),
+						Scheme: corev1.URISchemeHTTPS,
+					},
+				},
+				FailureThreshold: 6,
+			}
+			return liveness, readiness
 		},
 	},
 	{
@@ -955,8 +989,9 @@ func StatefulSet(cfg *types.DeployConfig, c *types.Component) *appsv1.StatefulSe
 			Labels:    labels,
 		},
 		Spec: appsv1.StatefulSetSpec{
-			Replicas: utils.Ptr(resolveComponentReplicas(cfg, c.Name)),
-			Selector: &metav1.LabelSelector{MatchLabels: labels},
+			Replicas:    utils.Ptr(resolveComponentReplicas(cfg, c.Name)),
+			ServiceName: c.Name,
+			Selector:    &metav1.LabelSelector{MatchLabels: labels},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{Labels: labels},
 				Spec: corev1.PodSpec{

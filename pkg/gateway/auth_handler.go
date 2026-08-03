@@ -33,7 +33,7 @@ func (g *Gateway) handleLogin(c *gin.Context) {
 
 	adminPW, userPW, err := g.readUIAuthSecret()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to read auth secret"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to read auth secret, err: %v", err)})
 		return
 	}
 

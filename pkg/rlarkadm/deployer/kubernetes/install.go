@@ -8,10 +8,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/rlinf/rlark/config"
 	"github.com/rlinf/rlark/pkg/log"
 	"github.com/rlinf/rlark/pkg/rlarkadm/cert"
 	"github.com/rlinf/rlark/pkg/rlarkadm/component"
@@ -293,43 +293,45 @@ func extractAndApplyKCP(ctx context.Context, clientset *kubernetes.Clientset) er
 	return nil
 }
 
-// installCRDs copies CRD manifests into the KCP pod and applies them using
-// kubectl inside the pod, since the local machine cannot reach the KCP API directly.
+// installCRDs applies embedded CRD manifests into the KCP pod via kubectl exec,
+// since the local machine cannot reach the KCP API directly.
 func installCRDs(podName string) error {
 	logger := log.GetLogger()
-	crdDir := filepath.Join("config", "crd", "bases")
-	matches, err := filepath.Glob(filepath.Join(crdDir, "*.yaml"))
+
+	entries, err := config.CRDFiles.ReadDir("crd/bases")
 	if err != nil {
-		return fmt.Errorf("glob crd files: %w", err)
+		return fmt.Errorf("read embedded CRD files: %w", err)
 	}
-	if len(matches) == 0 {
-		logger.Error(nil, "no CRD files found, skipping CRD install")
+	if len(entries) == 0 {
+		logger.Error(nil, "no CRD files embedded, skipping CRD install")
 		return nil
 	}
 
-	for _, crdFile := range matches {
-		tmpPath := "/tmp/" + filepath.Base(crdFile)
-
-		cpCmd := exec.Command("kubectl", "-n", constants.Namespace, "cp", crdFile, podName+":"+tmpPath)
-		var cpErr bytes.Buffer
-		cpCmd.Stderr = &cpErr
-		if err := cpCmd.Run(); err != nil {
-			return fmt.Errorf("copy %s to pod: %w: %s", filepath.Base(crdFile), err, cpErr.String())
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		crdName := entry.Name()
+		content, err := config.CRDFiles.ReadFile("crd/bases/" + crdName)
+		if err != nil {
+			return fmt.Errorf("read embedded CRD %s: %w", crdName, err)
 		}
 
 		kc := constants.KCPDataDir + "/admin.kubeconfig"
 		var lastErr error
 		for attempt := 0; attempt < 5; attempt++ {
-			createCmd := exec.Command("kubectl", "-n", constants.Namespace, "exec", podName, "--",
-				"kubectl", "--kubeconfig", kc, "create", "--validate=false", "-f", tmpPath)
+			createCmd := exec.Command("kubectl", "-n", constants.Namespace, "exec", "-i", podName, "--",
+				"kubectl", "--kubeconfig", kc, "create", "--validate=false", "-f", "-")
+			createCmd.Stdin = strings.NewReader(string(content))
 			var createErr bytes.Buffer
 			createCmd.Stderr = &createErr
 			if err := createCmd.Run(); err == nil {
 				lastErr = nil
 				break
 			}
-			replaceCmd := exec.Command("kubectl", "-n", constants.Namespace, "exec", podName, "--",
-				"kubectl", "--kubeconfig", kc, "replace", "--validate=false", "-f", tmpPath)
+			replaceCmd := exec.Command("kubectl", "-n", constants.Namespace, "exec", "-i", podName, "--",
+				"kubectl", "--kubeconfig", kc, "replace", "--validate=false", "-f", "-")
+			replaceCmd.Stdin = strings.NewReader(string(content))
 			var replaceErr bytes.Buffer
 			replaceCmd.Stderr = &replaceErr
 			if err := replaceCmd.Run(); err == nil {
@@ -338,24 +340,26 @@ func installCRDs(podName string) error {
 			}
 			if strings.Contains(replaceErr.String(), "field is immutable") {
 				deleteCmd := exec.Command("kubectl", "-n", constants.Namespace, "exec", podName, "--",
-					"kubectl", "--kubeconfig", kc, "delete", "--ignore-not-found", "-f", tmpPath)
+					"kubectl", "--kubeconfig", kc, "delete", "--ignore-not-found", "-f", "-")
+				deleteCmd.Stdin = strings.NewReader(string(content))
 				var deleteErr bytes.Buffer
 				deleteCmd.Stderr = &deleteErr
 				if err := deleteCmd.Run(); err == nil {
-					recreateCmd := exec.Command("kubectl", "-n", constants.Namespace, "exec", podName, "--",
-						"kubectl", "--kubeconfig", kc, "create", "--validate=false", "-f", tmpPath)
+					recreateCmd := exec.Command("kubectl", "-n", constants.Namespace, "exec", "-i", podName, "--",
+						"kubectl", "--kubeconfig", kc, "create", "--validate=false", "-f", "-")
+					recreateCmd.Stdin = strings.NewReader(string(content))
 					var recreateErr bytes.Buffer
 					recreateCmd.Stderr = &recreateErr
 					if err := recreateCmd.Run(); err == nil {
 						lastErr = nil
 						break
 					}
-					lastErr = fmt.Errorf("apply %s: recreate after delete: %s", filepath.Base(crdFile), recreateErr.String())
+					lastErr = fmt.Errorf("apply %s: recreate after delete: %s", crdName, recreateErr.String())
 				} else {
-					lastErr = fmt.Errorf("apply %s: delete before recreate: %s", filepath.Base(crdFile), deleteErr.String())
+					lastErr = fmt.Errorf("apply %s: delete before recreate: %s", crdName, deleteErr.String())
 				}
 			} else {
-				lastErr = fmt.Errorf("apply %s: create: %s | replace: %s", filepath.Base(crdFile), createErr.String(), replaceErr.String())
+				lastErr = fmt.Errorf("apply %s: create: %s | replace: %s", crdName, createErr.String(), replaceErr.String())
 			}
 			if attempt < 2 {
 				time.Sleep(5 * time.Second)
@@ -364,7 +368,7 @@ func installCRDs(podName string) error {
 		if lastErr != nil {
 			return lastErr
 		}
-		logger.Info("applied CRD", "file", filepath.Base(crdFile))
+		logger.Info("applied CRD", "file", crdName)
 	}
 
 	return nil

@@ -64,6 +64,7 @@ import {
   type PodInfo,
   type Worker as WorkerItem,
 } from "./data";
+import { useAutoRefresh } from "./hooks";
 
 type Page = "overview" | "clusters-overview" | "clusters-nodes" | "jobs" | "workflows" | "api";
 type NavParent = { id: Page; icon: typeof LayoutDashboard; children?: { id: Page; icon: typeof LayoutDashboard }[] };
@@ -615,26 +616,17 @@ function Overview({
   const [realJobs, setRealJobs] = useState<Job[]>([]);
   const isZh = c.nav.overview === "总览";
 
-  useEffect(() => {
-    fetch("/api/v1/clusters")
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((data) => {
-        const items: Cluster[] = data.data ?? [];
-        setRealClusters(items);
-      })
-      .catch(() => setRealClusters([]));
-    fetch("/api/v1/rlinf.io/v1alpha1/nodes")
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((data) => setRealNodes(data.items ?? []))
-      .catch(() => setRealNodes([]));
-    fetch("/api/v1/rlinf.io/v1alpha1/jobs")
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((data) => {
-        const items: CRDJob[] = data.items ?? [];
-        setRealJobs(items.map(crdToJob));
-      })
-      .catch(() => {});
-  }, []);
+  const { refresh } = useAutoRefresh(async () => {
+    const [clustersRes, nodesRes, jobsRes] = await Promise.all([
+      fetch("/api/v1/clusters").then((r) => (r.ok ? r.json() : Promise.reject())).catch(() => ({ data: [] })),
+      fetch("/api/v1/rlinf.io/v1alpha1/nodes").then((r) => (r.ok ? r.json() : Promise.reject())).catch(() => ({ items: [] })),
+      fetch("/api/v1/rlinf.io/v1alpha1/jobs").then((r) => (r.ok ? r.json() : Promise.reject())).catch(() => ({ items: [] })),
+    ]);
+    setRealClusters(clustersRes.data ?? []);
+    setRealNodes(nodesRes.items ?? []);
+    const jobItems: CRDJob[] = jobsRes.items ?? [];
+    setRealJobs(jobItems.map(crdToJob));
+  }, 15000);
 
   const cloudClusters = realClusters.filter((x) => x.type === "Cloud");
   const embodiedClusters = realClusters.filter((x) => x.type === "Embodied");
@@ -864,7 +856,7 @@ function Overview({
               <span>{c.overview.recent}</span>
               <h3>{c.common.production}</h3>
             </div>
-            <button className="icon-button small">
+            <button className="icon-button small" onClick={refresh}>
               <RefreshCw size={15} />
             </button>
           </div>
@@ -918,8 +910,8 @@ function ClustersPage({
   const [selectedNode, setSelectedNode] = useState<CRDNode | null>(null);
   const [phaseFilter, setPhaseFilter] = useState<"All" | Phase>("All");
 
-  const fetchNodes = async () => {
-    setLoading(true);
+  const fetchNodes = async (isInitial = true) => {
+    if (isInitial) setLoading(true);
     setError("");
     try {
       const resp = await fetch("/api/v1/rlinf.io/v1alpha1/nodes");
@@ -980,9 +972,7 @@ function ClustersPage({
     }
   };
 
-  useEffect(() => {
-    fetchNodes();
-  }, []);
+  useAutoRefresh(fetchNodes, 10000);
 
   const clustersList = useMemo(() => {
     const map = new Map<string, CRDNode[]>();
@@ -1037,7 +1027,7 @@ function ClustersPage({
             <h2>{c.clusters.title}</h2>
             <p>{c.clusters.desc}</p>
           </div>
-          <button className="secondary-button" onClick={fetchNodes}>
+          <button className="secondary-button" onClick={() => fetchNodes()}>
             <RefreshCw size={16} />
             {c.common.refresh}
           </button>
@@ -1057,7 +1047,7 @@ function ClustersPage({
           <h2>{c.clusters.title}</h2>
           <p>{c.clusters.desc}</p>
         </div>
-        <button className="secondary-button" onClick={fetchNodes}>
+        <button className="secondary-button" onClick={() => fetchNodes()}>
           <RefreshCw size={16} />
           {c.common.refresh}
         </button>
@@ -1223,7 +1213,7 @@ function ClustersPage({
             onChange={setQuery}
             count={filteredNodes.length}
             copy={c}
-            onRefresh={fetchNodes}
+            onRefresh={() => fetchNodes()}
           />
           <div className="node-filter-bar">
             {(["All", "Online", "Offline"] as const).map((phase) => (
@@ -1683,16 +1673,14 @@ function crdToJob(crd: CRDJob): Job {
       .filter(Boolean)
       .join(", "),
     target: roles.join(" / "),
-    workers: totalReplicas,
+    workers: tasks.length,
     runningWorkers: runningTasks,
     startedAt: crd.metadata.creationTimestamp ?? "—",
     duration: "—",
     progress:
       phase === "Succeeded"
         ? 100
-        : phase === "Running"
-          ? Math.round((runningTasks / Math.max(totalReplicas, 1)) * 100)
-          : 0,
+        : Math.round((runningTasks / Math.max(tasks.length, 1)) * 100),
     defaultRoles: roles,
     image: container?.image ?? "",
     command: headerTask?.runScript ?? "",
@@ -1740,8 +1728,8 @@ function JobsPage({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const fetchJobs = async () => {
-    setLoading(true);
+  const fetchJobs = async (isInitial = true) => {
+    if (isInitial) setLoading(true);
     setError("");
     try {
       const resp = await fetch("/api/v1/rlinf.io/v1alpha1/jobs");
@@ -1756,9 +1744,7 @@ function JobsPage({
     }
   };
 
-  useEffect(() => {
-    fetchJobs();
-  }, []);
+  useAutoRefresh(fetchJobs, 10000);
 
   const handleDelete = async (job: Job) => {
     if (
@@ -1819,7 +1805,7 @@ function JobsPage({
         onChange={setQuery}
         count={filtered.length}
         copy={c}
-        onRefresh={fetchJobs}
+        onRefresh={() => fetchJobs()}
       />
       {error && (
         <div className="cert-error" style={{ marginBottom: 12 }}>
@@ -1952,28 +1938,22 @@ function JobDetailPage({
   const [selectedRole, setSelectedRole] = useState<string | null>(null);
   const [selectedPodName, setSelectedPodName] = useState<string | null>(null);
 
-  useEffect(() => {
+  useAutoRefresh(async () => {
     const labelSelector = `rlinf.io/job=${job.name}`;
-    fetch(
+    const resp = await fetch(
       `/api/v1/rlinf.io/v1alpha1/tasks?labelSelector=${encodeURIComponent(labelSelector)}`,
-    )
-      .then((resp) =>
-        resp.ok
-          ? resp.json()
-          : Promise.reject(new Error(`HTTP ${resp.status}`)),
-      )
-      .then((data) => {
-        const items = data.items ?? [];
-        const nodeMap: Record<string, string> = {};
-        for (const item of items) {
-          const taskName = item.metadata?.name ?? "";
-          const observedNodes = item.status?.observedNodes ?? [];
-          nodeMap[taskName] = observedNodes.join(", ") || "—";
-        }
-        setTaskNodes(nodeMap);
-      })
-      .catch(() => {});
-  }, [job.name]);
+    );
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const data = await resp.json();
+    const items = data.items ?? [];
+    const nodeMap: Record<string, string> = {};
+    for (const item of items) {
+      const taskName = item.metadata?.name ?? "";
+      const observedNodes = item.status?.observedNodes ?? [];
+      nodeMap[taskName] = observedNodes.join(", ") || "—";
+    }
+    setTaskNodes(nodeMap);
+  }, 10000, [job.name]);
 
   useEffect(() => {
     if (activeTab !== "workers") return;
@@ -2031,36 +2011,34 @@ function JobDetailPage({
       .catch(() => {});
   }, [activeTab, job.name, job.taskStatuses]);
 
-  useEffect(() => {
+  const fetchLogs = async (isInitial = true) => {
     if (activeTab !== "logs") return;
-    setLogsLoading(true);
+    if (isInitial) setLogsLoading(true);
     setLogsError(null);
-    fetch(`/api/v1/rlinf.io/v1alpha1/jobs/${encodeURIComponent(job.name)}/logs`)
-      .then((resp) =>
-        resp.ok
-          ? resp.json()
-          : Promise.reject(new Error(`HTTP ${resp.status}`)),
-      )
-      .then((data) => {
-        const pods = data.pods ?? [];
-        setPodLogs(pods);
-        const roles = [
-          ...new Set(pods.map((p: { taskName: string }) => p.taskName)),
-        ];
-        if (roles.length > 0) {
-          setSelectedRole(roles[0] as string);
-          const firstPod = pods.find(
-            (p: { taskName: string }) => p.taskName === roles[0],
-          );
-          if (firstPod) setSelectedPodName(firstPod.podName);
-        }
-        setLogsLoading(false);
-      })
-      .catch((err) => {
-        setLogsError(err.message);
-        setLogsLoading(false);
-      });
-  }, [activeTab, job.name]);
+    try {
+      const resp = await fetch(`/api/v1/rlinf.io/v1alpha1/jobs/${encodeURIComponent(job.name)}/logs`);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const data = await resp.json();
+      const pods = data.pods ?? [];
+      setPodLogs(pods);
+      const roles = [
+        ...new Set(pods.map((p: { taskName: string }) => p.taskName)),
+      ];
+      if (roles.length > 0) {
+        setSelectedRole(roles[0] as string);
+        const firstPod = pods.find(
+          (p: { taskName: string }) => p.taskName === roles[0],
+        );
+        if (firstPod) setSelectedPodName(firstPod.podName);
+      }
+    } catch (err) {
+      setLogsError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setLogsLoading(false);
+    }
+  };
+
+  useAutoRefresh(fetchLogs, 5000, [activeTab, job.name]);
 
   const jobWorkers: WorkerItem[] =
     job.taskStatuses.length > 0
@@ -2583,8 +2561,8 @@ function DomainsPage({
   const [newCidr, setNewCidr] = useState("10.244.0.0/16");
   const [creating, setCreating] = useState(false);
 
-  const fetchDomains = async () => {
-    setLoading(true);
+  const fetchDomains = async (isInitial = true) => {
+    if (isInitial) setLoading(true);
     setError("");
     try {
       const resp = await fetch("/api/v1/rlinf.io/v1alpha1/domains");
@@ -2598,9 +2576,7 @@ function DomainsPage({
     }
   };
 
-  useEffect(() => {
-    fetchDomains();
-  }, []);
+  useAutoRefresh(fetchDomains, 10000);
 
   const handleCreate = async () => {
     setCreating(true);
@@ -2683,7 +2659,7 @@ function DomainsPage({
         onChange={() => {}}
         count={domains.length}
         copy={c}
-        onRefresh={fetchDomains}
+        onRefresh={() => fetchDomains()}
       />
       {error && (
         <div className="cert-error" style={{ marginBottom: 12 }}>
@@ -3427,8 +3403,8 @@ function WorkflowsPage({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const fetchWorkflows = async () => {
-    setLoading(true);
+  const fetchWorkflows = async (isInitial = true) => {
+    if (isInitial) setLoading(true);
     setError("");
     try {
       const resp = await fetch("/api/v1/rlinf.io/v1alpha1/workflows");
@@ -3442,9 +3418,7 @@ function WorkflowsPage({
     }
   };
 
-  useEffect(() => {
-    fetchWorkflows();
-  }, []);
+  useAutoRefresh(fetchWorkflows, 10000);
 
   const handleDelete = async (name: string) => {
     if (
@@ -3502,7 +3476,7 @@ function WorkflowsPage({
         onChange={() => {}}
         count={items.length}
         copy={c}
-        onRefresh={fetchWorkflows}
+        onRefresh={() => fetchWorkflows()}
       />
       {error && (
         <div className="cert-error" style={{ marginBottom: 12 }}>
@@ -4518,14 +4492,7 @@ envs: [{ key: "RLARK_TASK_ROLE", value: newRole }],
                       }
                     >
                       <Check size={14} />
-                      <input
-                        value={role}
-                        onClick={(e) => e.stopPropagation()}
-                        onChange={(e) => renameRole(role, e.target.value)}
-                        onBlur={(e) => {
-                          if (!e.target.value.trim()) renameRole(role, role);
-                        }}
-                      />
+                      <RoleNameInput role={role} onRename={renameRole} />
                       <small>
                         {effectiveHeader === role ? "Header" : "Worker"}
                       </small>
@@ -5172,7 +5139,7 @@ function generateJobCRD(opts: {
       ...(isHead ? { runScript: opts.runScript } : {}),
       kubernetes: {
         workload: {
-          kind: "Deployment",
+          kind: "StatefulSet",
           replicas: res ? Number(res.replicas) : 1,
           ...(pvcStorageMap
             ? { pvcStorageMap }
@@ -5522,6 +5489,34 @@ function NodeSelectorPicker({
           )
         ))}
     </div>
+  );
+}
+
+function RoleNameInput({
+  role,
+  onRename,
+}: {
+  role: string;
+  onRename: (old: string, newName: string) => void;
+}) {
+  const [draft, setDraft] = useState(role);
+  useEffect(() => setDraft(role), [role]);
+  return (
+    <input
+      value={draft}
+      onClick={(e) => e.stopPropagation()}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={() => {
+        const trimmed = draft.trim();
+        if (trimmed && trimmed !== role) onRename(role, trimmed);
+        else setDraft(role);
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          (e.target as HTMLInputElement).blur();
+        }
+      }}
+    />
   );
 }
 
@@ -6005,14 +6000,7 @@ function CreateJobModal({
                       onClick={() => setHeaderRole(role)}
                     >
                       <Check size={14} />
-                      <input
-                        value={role}
-                        onClick={(e) => e.stopPropagation()}
-                        onChange={(e) => renameRole(role, e.target.value)}
-                        onBlur={(e) => {
-                          if (!e.target.value.trim()) renameRole(role, role);
-                        }}
-                      />
+                      <RoleNameInput role={role} onRename={renameRole} />
                       <small>
                         {effectiveHeader === role
                           ? zh
@@ -6852,8 +6840,8 @@ function ClustersOverviewAdminPage({ copy: c }: { copy: Copy }) {
     null,
   );
 
-  const fetchNodes = async () => {
-    setLoading(true);
+  const fetchNodes = async (isInitial = true) => {
+    if (isInitial) setLoading(true);
     setError("");
     try {
       const resp = await fetch("/api/v1/rlinf.io/v1alpha1/nodes");
@@ -6867,9 +6855,7 @@ function ClustersOverviewAdminPage({ copy: c }: { copy: Copy }) {
     }
   };
 
-  useEffect(() => {
-    fetchNodes();
-  }, []);
+  useAutoRefresh(fetchNodes, 10000);
 
   const clustersList = useMemo(() => {
     const map = new Map<string, CRDNode[]>();
@@ -6941,7 +6927,7 @@ function ClustersOverviewAdminPage({ copy: c }: { copy: Copy }) {
                 : "View all managed nodes grouped by namespace (cluster)."}
             </p>
           </div>
-          <button className="secondary-button" onClick={fetchNodes}>
+          <button className="secondary-button" onClick={() => fetchNodes()}>
             <RefreshCw size={16} />
             {c.common.refresh}
           </button>
@@ -6968,7 +6954,7 @@ function ClustersOverviewAdminPage({ copy: c }: { copy: Copy }) {
               : "View all managed nodes grouped by namespace (cluster)."}
           </p>
         </div>
-        <button className="secondary-button" onClick={fetchNodes}>
+        <button className="secondary-button" onClick={() => fetchNodes()}>
           <RefreshCw size={16} />
           {c.common.refresh}
         </button>
@@ -7434,8 +7420,8 @@ function AdminPage({ copy: c }: { copy: Copy }) {
   const [cordoning, setCordoning] = useState(false);
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
 
-  const fetchNodes = async () => {
-    setLoading(true);
+  const fetchNodes = async (isInitial = true) => {
+    if (isInitial) setLoading(true);
     setError("");
     try {
       const resp = await fetch("/api/v1/rlinf.io/v1alpha1/nodes");
@@ -7449,9 +7435,7 @@ function AdminPage({ copy: c }: { copy: Copy }) {
     }
   };
 
-  useEffect(() => {
-    fetchNodes();
-  }, []);
+  useAutoRefresh(fetchNodes, 10000);
 
   const startEdit = (node: CRDNode) => {
     setEditingNode(node.metadata.name);
@@ -7603,7 +7587,7 @@ function AdminPage({ copy: c }: { copy: Copy }) {
               : "Manage node labels by category. Labels are used for task scheduling and node selection."}
           </p>
         </div>
-        <button className="secondary-button" onClick={fetchNodes}>
+        <button className="secondary-button" onClick={() => fetchNodes()}>
           <RefreshCw size={16} />
           {c.common.refresh}
         </button>

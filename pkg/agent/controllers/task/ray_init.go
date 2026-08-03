@@ -66,6 +66,8 @@ func buildRayHeadService(namespace, taskName string) *corev1.Service {
 			},
 		},
 		Spec: corev1.ServiceSpec{
+			ClusterIP:                "None",
+			PublishNotReadyAddresses: true,
 			Selector: map[string]string{
 				"app": taskName,
 			},
@@ -115,6 +117,19 @@ func applyRayInit(template *corev1.PodTemplateSpec, mgmtTask *rlarkv1alpha1.Task
 		if role == rlarkv1alpha1.RayRoleHead && mgmtTask.Spec.RunScript != "" {
 			envs = append(envs, corev1.EnvVar{Name: "RLARK_RUN_SCRIPT", Value: mgmtTask.Spec.RunScript})
 		}
+
+		// Inject RLARK_NODE_RANK_START and POD_NAME (via Downward API) for rank computation
+		envs = append(envs,
+			corev1.EnvVar{Name: "RLARK_NODE_RANK_START", Value: annotations[rlarkv1alpha1.RayNodeRankStartAnnotation]},
+			corev1.EnvVar{
+				Name: "POD_NAME",
+				ValueFrom: &corev1.EnvVarSource{
+					FieldRef: &corev1.ObjectFieldSelector{
+						FieldPath: "metadata.name",
+					},
+				},
+			},
+		)
 
 		if role == rlarkv1alpha1.RayRoleHead {
 			envs = append(envs,

@@ -1088,6 +1088,9 @@ button {
 
 .progress-cell > i,
 .inline-progress > i {
+  display: block;
+  width: 100%;
+  min-width: 40px;
   height: 5px;
   background: #e8edf4;
   border-radius: 999px;
