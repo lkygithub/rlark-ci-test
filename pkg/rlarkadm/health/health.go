@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	checkTimeout  = 120 * time.Second
+	checkTimeout  = 180 * time.Second
 	checkInterval = 3 * time.Second
 )
 
