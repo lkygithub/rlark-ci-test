@@ -4,7 +4,7 @@ on:
   pull_request:
     branches:
       - main
-    types: [synchronize, labeled]
+    types: [opened, synchronize, reopened, labeled]
   workflow_dispatch:
 
 concurrency:
@@ -12,7 +12,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # =============================================== check changes ====================================================
   check-changes:
     runs-on: ubuntu-latest
     outputs:
@@ -59,52 +58,37 @@ jobs:
               - 'go.sum'
               - '.github/workflows/lint.yml'
 
-  # =============================================== lint ====================================================
   lint:
     needs: [check-changes]
     if: needs.check-changes.outputs.lint_filter == 'true'
     uses: ./.github/workflows/lint.yml
 
-  # =============================================== unit tests ====================================================
   unit-tests:
     needs: [check-changes]
     if: needs.check-changes.outputs.unit_test_filter == 'true'
     uses: ./.github/workflows/unit-tests.yml
 
-  # =============================================== docker build ====================================================
   docker-build:
     needs: [check-changes]
     if: needs.check-changes.outputs.docker_filter == 'true'
     uses: ./.github/workflows/docker-build.yml
 
-  # =============================================== finale ====================================================
   ci-test-finish:
-    needs:
-      [
-        check-changes,
-        lint,
-        unit-tests,
-        docker-build,
-      ]
+    needs: [check-changes, lint, unit-tests, docker-build]
     if: always()
     runs-on: ubuntu-latest
     steps:
       - name: Check all dependent job statuses
         run: |
           json_needs='${{ toJson(needs) }}'
-
           job_names=$(echo "$json_needs" | jq -r 'keys_unsorted[]')
-
           for job in $job_names; do
             result=$(echo "$json_needs" | jq -r --arg j "$job" '.[$j].result')
-
             echo "$job: $result"
-
             if [[ "$result" == "failure" || "$result" == "cancelled" ]]; then
               echo "The above jobs failed."
               exit 1
             fi
           done
-
           echo "All jobs completed successfully"
           exit 0
