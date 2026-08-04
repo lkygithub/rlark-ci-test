@@ -12,30 +12,5 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  check-changes:
-    runs-on: ubuntu-latest
-    outputs:
-      lint_filter: ${{ steps.filter.outputs.lint_filter }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v5
-
-      - name: Fail if the PR does not have the 'run-ci' label
-        if: github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'run-ci')
-        run: |
-          echo "This pull request does not have the 'run-ci' label. Failing the workflow."
-          exit 1
-
-      - name: Detect file changes
-        id: filter
-        uses: dorny/paths-filter@v3
-        with:
-          filters: |
-            lint_filter:
-              - '**/*.go'
-              - 'web/**'
-
   lint:
-    needs: check-changes
-    if: needs.check-changes.outputs.lint_filter == 'true'
     uses: ./.github/workflows/lint.yml
