@@ -16,12 +16,16 @@ jobs:
           go-version-file: "go.mod"
           cache: true
 
+      - name: Build binary
+        run: CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o bin/server ./cmd/server/...
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build server
+      - name: Build server image
         uses: docker/build-push-action@v6
         with:
+          context: .
           file: ./build/server/Dockerfile
           push: false
           tags: rlark-server:latest
@@ -38,12 +42,16 @@ jobs:
           go-version-file: "go.mod"
           cache: true
 
+      - name: Build binary
+        run: CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o bin/controller-manager ./cmd/controller-manager/...
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build controller-manager
+      - name: Build controller-manager image
         uses: docker/build-push-action@v6
         with:
+          context: .
           file: ./build/controller-manager/Dockerfile
           push: false
           tags: rlark-controller-manager:latest
@@ -60,12 +68,16 @@ jobs:
           go-version-file: "go.mod"
           cache: true
 
+      - name: Build binary
+        run: CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o bin/gateway ./cmd/gateway/...
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build gateway
+      - name: Build gateway image
         uses: docker/build-push-action@v6
         with:
+          context: .
           file: ./build/gateway/Dockerfile
           push: false
           tags: rlark-gateway:latest
@@ -82,12 +94,16 @@ jobs:
           go-version-file: "go.mod"
           cache: true
 
+      - name: Build binary
+        run: CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o bin/agent ./cmd/agent/...
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build agent
+      - name: Build agent image
         uses: docker/build-push-action@v6
         with:
+          context: .
           file: ./build/agent/Dockerfile
           push: false
           tags: rlark-agent:latest
@@ -105,12 +121,17 @@ jobs:
           cache: "npm"
           cache-dependency-path: web/package-lock.json
 
+      - name: Install dependencies and build
+        working-directory: web
+        run: npm ci && npm run build
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build ui
+      - name: Build ui image
         uses: docker/build-push-action@v6
         with:
+          context: .
           file: ./build/ui/Dockerfile
           push: false
           tags: rlark-ui:latest
@@ -127,12 +148,16 @@ jobs:
           go-version-file: "go.mod"
           cache: true
 
+      - name: Build binary
+        run: CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o bin/network-sidecar ./cmd/network-sidecar/...
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build network-sidecar
+      - name: Build network-sidecar image
         uses: docker/build-push-action@v6
         with:
+          context: .
           file: ./build/network-sidecar/Dockerfile
           push: false
           tags: rlark-network-sidecar:latest
