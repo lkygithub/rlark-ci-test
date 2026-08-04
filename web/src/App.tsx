@@ -66,8 +66,18 @@ import {
 } from "./data";
 import { useAutoRefresh } from "./hooks";
 
-type Page = "overview" | "clusters-overview" | "clusters-nodes" | "jobs" | "workflows" | "api";
-type NavParent = { id: Page; icon: typeof LayoutDashboard; children?: { id: Page; icon: typeof LayoutDashboard }[] };
+type Page =
+  | "overview"
+  | "clusters-overview"
+  | "clusters-nodes"
+  | "jobs"
+  | "workflows"
+  | "api";
+type NavParent = {
+  id: Page;
+  icon: typeof LayoutDashboard;
+  children?: { id: Page; icon: typeof LayoutDashboard }[];
+};
 const navItems: NavParent[] = [
   { id: "overview", icon: LayoutDashboard },
   {
@@ -379,7 +389,6 @@ const copy = {
 
 type Copy = (typeof copy)[Lang];
 
-
 function Logo() {
   return (
     <div className="brand">
@@ -581,7 +590,13 @@ interface ResourceRow {
   color: string;
 }
 
-function ResourceDistribution({ copy: c, rows }: { copy: Copy; rows: ResourceRow[] }) {
+function ResourceDistribution({
+  copy: c,
+  rows,
+}: {
+  copy: Copy;
+  rows: ResourceRow[];
+}) {
   const total = rows.reduce((s, r) => s + r.count, 0) || 1;
   return (
     <div className="resource-split">
@@ -591,7 +606,9 @@ function ResourceDistribution({ copy: c, rows }: { copy: Copy; rows: ResourceRow
           <div key={row.label} className={"resource-row " + row.color}>
             <div>
               <strong>{row.label}</strong>
-              <small>{row.count} nodes{row.models ? " · " + row.models : ""}</small>
+              <small>
+                {row.count} nodes{row.models ? " · " + row.models : ""}
+              </small>
             </div>
             <span>
               <i style={{ width: pct + "%" }} />
@@ -618,9 +635,15 @@ function Overview({
 
   const { refresh } = useAutoRefresh(async () => {
     const [clustersRes, nodesRes, jobsRes] = await Promise.all([
-      fetch("/api/v1/clusters").then((r) => (r.ok ? r.json() : Promise.reject())).catch(() => ({ data: [] })),
-      fetch("/api/v1/rlinf.io/v1alpha1/nodes").then((r) => (r.ok ? r.json() : Promise.reject())).catch(() => ({ items: [] })),
-      fetch("/api/v1/rlinf.io/v1alpha1/jobs").then((r) => (r.ok ? r.json() : Promise.reject())).catch(() => ({ items: [] })),
+      fetch("/api/v1/clusters")
+        .then((r) => (r.ok ? r.json() : Promise.reject()))
+        .catch(() => ({ data: [] })),
+      fetch("/api/v1/rlinf.io/v1alpha1/nodes")
+        .then((r) => (r.ok ? r.json() : Promise.reject()))
+        .catch(() => ({ items: [] })),
+      fetch("/api/v1/rlinf.io/v1alpha1/jobs")
+        .then((r) => (r.ok ? r.json() : Promise.reject()))
+        .catch(() => ({ items: [] })),
     ]);
     setRealClusters(clustersRes.data ?? []);
     setRealNodes(nodesRes.items ?? []);
@@ -640,7 +663,8 @@ function Overview({
     new Set(realClusters.flatMap((x) => x.robotModels)),
   );
   const gpuModels = gpuModelList.slice(0, 4).join(" / ") || (isZh ? "—" : "—");
-  const robotModels = robotModelList.slice(0, 4).join(" / ") || (isZh ? "—" : "—");
+  const robotModels =
+    robotModelList.slice(0, 4).join(" / ") || (isZh ? "—" : "—");
   const regionCount = new Set(cloudClusters.map((x) => x.region)).size;
   const runningWorkerCount = realJobs.reduce((s, x) => s + x.runningWorkers, 0);
 
@@ -787,13 +811,19 @@ function Overview({
           </div>
           <div className="robot-state-list">
             {robotNodes.length === 0 ? (
-              <p className="muted" style={{ padding: "16px 0", textAlign: "center" }}>
+              <p
+                className="muted"
+                style={{ padding: "16px 0", textAlign: "center" }}
+              >
                 {isZh ? "暂无真机" : "No robots"}
               </p>
             ) : (
               robotNodes.slice(0, 6).map((n) => {
                 const phase = (n.status?.phase ?? "Offline") as Phase;
-                const model = n.metadata.labels?.["rlark.io/model"] || n.metadata.labels?.["node.kubernetes.io/instance-type"] || "—";
+                const model =
+                  n.metadata.labels?.["rlark.io/model"] ||
+                  n.metadata.labels?.["node.kubernetes.io/instance-type"] ||
+                  "—";
                 const reason = n.status?.reason || "—";
                 return (
                   <div key={n.metadata.name}>
@@ -802,7 +832,9 @@ function Overview({
                     </span>
                     <div>
                       <strong>{n.metadata.name}</strong>
-                      <small>{model} · {reason}</small>
+                      <small>
+                        {model} · {reason}
+                      </small>
                     </div>
                     <StatusBadge phase={phase} copy={c} />
                   </div>
@@ -933,7 +965,9 @@ function ClustersPage({
             "rlinf.io/cluster": node.cluster,
             "rlinf.io/kind": node.kind,
           },
-          creationTimestamp: new Date(Date.now() - index * 86400000).toISOString(),
+          creationTimestamp: new Date(
+            Date.now() - index * 86400000,
+          ).toISOString(),
         },
         spec: {
           agentType: node.kind === "Robot" ? "robot" : "kubernetes",
@@ -946,9 +980,7 @@ function ClustersPage({
             agentVersion: "v1.0.0",
             operatingSystem: "linux",
           },
-          addresses: [
-            { type: "InternalIP", address: node.address },
-          ],
+          addresses: [{ type: "InternalIP", address: node.address }],
           allocatable: {
             cpu: "8",
             memory: "16Gi",
@@ -1938,22 +1970,26 @@ function JobDetailPage({
   const [selectedRole, setSelectedRole] = useState<string | null>(null);
   const [selectedPodName, setSelectedPodName] = useState<string | null>(null);
 
-  useAutoRefresh(async () => {
-    const labelSelector = `rlinf.io/job=${job.name}`;
-    const resp = await fetch(
-      `/api/v1/rlinf.io/v1alpha1/tasks?labelSelector=${encodeURIComponent(labelSelector)}`,
-    );
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    const data = await resp.json();
-    const items = data.items ?? [];
-    const nodeMap: Record<string, string> = {};
-    for (const item of items) {
-      const taskName = item.metadata?.name ?? "";
-      const observedNodes = item.status?.observedNodes ?? [];
-      nodeMap[taskName] = observedNodes.join(", ") || "—";
-    }
-    setTaskNodes(nodeMap);
-  }, 10000, [job.name]);
+  useAutoRefresh(
+    async () => {
+      const labelSelector = `rlinf.io/job=${job.name}`;
+      const resp = await fetch(
+        `/api/v1/rlinf.io/v1alpha1/tasks?labelSelector=${encodeURIComponent(labelSelector)}`,
+      );
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const data = await resp.json();
+      const items = data.items ?? [];
+      const nodeMap: Record<string, string> = {};
+      for (const item of items) {
+        const taskName = item.metadata?.name ?? "";
+        const observedNodes = item.status?.observedNodes ?? [];
+        nodeMap[taskName] = observedNodes.join(", ") || "—";
+      }
+      setTaskNodes(nodeMap);
+    },
+    10000,
+    [job.name],
+  );
 
   useEffect(() => {
     if (activeTab !== "workers") return;
@@ -1964,20 +2000,17 @@ function JobDetailPage({
     if (taskNames.length === 0) return;
     const labelSelector = `rlark.io/task-name in (${taskNames.join(",")})`;
 
-    const domainsPromise = fetch(
-      `/api/v1/rlinf.io/v1alpha1/domains`,
-    ).then((resp) =>
-      resp.ok
-        ? resp.json()
-        : Promise.reject(new Error(`HTTP ${resp.status}`)),
+    const domainsPromise = fetch(`/api/v1/rlinf.io/v1alpha1/domains`).then(
+      (resp) =>
+        resp.ok
+          ? resp.json()
+          : Promise.reject(new Error(`HTTP ${resp.status}`)),
     );
 
     const podsPromise = fetch(
       `/api/v1/rlinf.io/v1alpha1/pods?labelSelector=${encodeURIComponent(labelSelector)}`,
     ).then((resp) =>
-      resp.ok
-        ? resp.json()
-        : Promise.reject(new Error(`HTTP ${resp.status}`)),
+      resp.ok ? resp.json() : Promise.reject(new Error(`HTTP ${resp.status}`)),
     );
 
     Promise.all([podsPromise, domainsPromise])
@@ -2016,7 +2049,9 @@ function JobDetailPage({
     if (isInitial) setLogsLoading(true);
     setLogsError(null);
     try {
-      const resp = await fetch(`/api/v1/rlinf.io/v1alpha1/jobs/${encodeURIComponent(job.name)}/logs`);
+      const resp = await fetch(
+        `/api/v1/rlinf.io/v1alpha1/jobs/${encodeURIComponent(job.name)}/logs`,
+      );
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const data = await resp.json();
       const pods = data.pods ?? [];
@@ -2411,37 +2446,34 @@ function WorkerRow({
                         `${pod.namespace}/${pod.podNamespace}/${pod.podName}`
                       ] ?? "";
                     return (
-                    <tr key={pod.name}>
-                      <td>
-                        <code className="inline-code">{pod.podName}</code>
-                      </td>
-                      <td>{pod.node || "—"}</td>
-                      <td>{pod.ip || "—"}</td>
-                      <td>
-                        {pod.domain ? (
-                          <>
-                            <Network size={13} style={{ marginRight: 4 }} />
-                            {pod.domain}
-                            {domainIP && (
-                              <code
-                                className="inline-code"
-                                style={{ marginLeft: 6, fontSize: 12 }}
-                              >
-                                {domainIP}
-                              </code>
-                            )}
-                          </>
-                        ) : (
-                          "—"
-                        )}
-                      </td>
-                      <td>
-                        <StatusBadge
-                          phase={pod.phase as Phase}
-                          copy={c}
-                        />
-                      </td>
-                    </tr>
+                      <tr key={pod.name}>
+                        <td>
+                          <code className="inline-code">{pod.podName}</code>
+                        </td>
+                        <td>{pod.node || "—"}</td>
+                        <td>{pod.ip || "—"}</td>
+                        <td>
+                          {pod.domain ? (
+                            <>
+                              <Network size={13} style={{ marginRight: 4 }} />
+                              {pod.domain}
+                              {domainIP && (
+                                <code
+                                  className="inline-code"
+                                  style={{ marginLeft: 6, fontSize: 12 }}
+                                >
+                                  {domainIP}
+                                </code>
+                              )}
+                            </>
+                          ) : (
+                            "—"
+                          )}
+                        </td>
+                        <td>
+                          <StatusBadge phase={pod.phase as Phase} copy={c} />
+                        </td>
+                      </tr>
                     );
                   })}
                 </tbody>
@@ -3589,7 +3621,14 @@ function makeDefaultRoleResources(
 ): Record<string, RoleResource> {
   const rr: Record<string, RoleResource> = {};
   roles.forEach((role, index) => {
-    const mounts = [{ type: "host" as const, objectStorage: "", mountPath: "/mnt/dataset", hostPath: "/host/dataset" }];
+    const mounts = [
+      {
+        type: "host" as const,
+        objectStorage: "",
+        mountPath: "/mnt/dataset",
+        hostPath: "/host/dataset",
+      },
+    ];
     rr[role] = {
       role,
       cluster: clusterDisplayNames[0] ?? "",
@@ -3651,9 +3690,13 @@ function CreateWorkflowModal({
   const [activeJobId, setActiveJobId] = useState<string>("");
   const [activeRoleTab, setActiveRoleTab] = useState<string>("");
 
-  const [availableClusters, setAvailableClusters] = useState<Cluster[]>(clusters.slice(0, 4));
+  const [availableClusters, setAvailableClusters] = useState<Cluster[]>(
+    clusters.slice(0, 4),
+  );
 
-  const [storageClasses, setStorageClasses] = useState<Array<{ name: string; description: string; bucket: string }>>([]);
+  const [storageClasses, setStorageClasses] = useState<
+    Array<{ name: string; description: string; bucket: string }>
+  >([]);
   const [storageClassLoading, setStorageClassLoading] = useState(false);
   const [storageClassFetched, setStorageClassFetched] = useState(false);
   const [clustersLoaded, setClustersLoaded] = useState(false);
@@ -3746,8 +3789,13 @@ function CreateWorkflowModal({
               roleResources: Object.fromEntries(
                 Object.entries(job.roleResources).map(([role, rr]) => {
                   const current = rr.cluster;
-                  const match = list.find((c) => c.id === current || c.name === current);
-                  return [role, { ...rr, cluster: match ? match.id : list[0].id }];
+                  const match = list.find(
+                    (c) => c.id === current || c.name === current,
+                  );
+                  return [
+                    role,
+                    { ...rr, cluster: match ? match.id : list[0].id },
+                  ];
                 }),
               ),
             })),
@@ -3764,19 +3812,27 @@ function CreateWorkflowModal({
   const fetchStorageClasses = async (cluster?: string) => {
     if (storageClassLoading) return;
     const clusterKey = cluster ?? "";
-    if (storageClassFetched && lastFetchedStorageClusterRef.current === clusterKey) return;
+    if (
+      storageClassFetched &&
+      lastFetchedStorageClusterRef.current === clusterKey
+    )
+      return;
     lastFetchedStorageClusterRef.current = clusterKey;
     setStorageClassLoading(true);
     setStorageClassFetched(false);
     try {
-      const url = new URL("/api/v1/storage/storageclass", window.location.origin);
+      const url = new URL(
+        "/api/v1/storage/storageclass",
+        window.location.origin,
+      );
       if (cluster) {
         url.searchParams.set("clusters", cluster);
       }
       const resp = await fetch(url.pathname + url.search);
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const result = await resp.json();
-      const list: Array<{ name: string; description: string; bucket: string }> = [];
+      const list: Array<{ name: string; description: string; bucket: string }> =
+        [];
       const data = result.data ?? {};
       for (const [key, value] of Object.entries(data)) {
         const item = value as any;
@@ -3832,7 +3888,12 @@ function CreateWorkflowModal({
       type: "RL",
       roles,
       headerRole: roles[0],
-      roleResources: makeDefaultRoleResources("RL", roles, clusterDisplayNames, name),
+      roleResources: makeDefaultRoleResources(
+        "RL",
+        roles,
+        clusterDisplayNames,
+        name,
+      ),
       runScript:
         "python train.py --config /mnt/config/train.yaml --dataset /mnt/dataset --output /mnt/checkpoints",
       domain: "",
@@ -4154,7 +4215,12 @@ function CreateWorkflowModal({
     if (!rr) return;
     const newMounts = [
       ...rr.mounts,
-      { type: "storage" as const, objectStorage: "", mountPath: "", hostPath: "" },
+      {
+        type: "storage" as const,
+        objectStorage: "",
+        mountPath: "",
+        hostPath: "",
+      },
     ];
     const pvcStorageMap = computePvcStorageMap(role, newMounts, activeJob.name);
     updateJob(activeJob.id, {
@@ -4182,7 +4248,12 @@ function CreateWorkflowModal({
   const onJobTypeChange = (next: JobType) => {
     if (!activeJob) return;
     const newRoles = ROLE_TEMPLATES[next];
-    const newRR = makeDefaultRoleResources(next, newRoles, clusterDisplayNames, activeJob.name);
+    const newRR = makeDefaultRoleResources(
+      next,
+      newRoles,
+      clusterDisplayNames,
+      activeJob.name,
+    );
     updateJob(activeJob.id, {
       type: next,
       roles: newRoles,
@@ -4207,8 +4278,15 @@ function CreateWorkflowModal({
       gpu: "0",
       image: "",
       prepareScript: "",
-envs: [{ key: "RLARK_TASK_ROLE", value: newRole }],
-      mounts: [{ type: "host" as const, objectStorage: "", mountPath: "/mnt/dataset", hostPath: "/host/dataset" }],
+      envs: [{ key: "RLARK_TASK_ROLE", value: newRole }],
+      mounts: [
+        {
+          type: "host" as const,
+          objectStorage: "",
+          mountPath: "/mnt/dataset",
+          hostPath: "/host/dataset",
+        },
+      ],
     };
     updateJob(activeJob.id, { roles, roleResources: rr });
     setActiveRoleTab(newRole);
@@ -4561,7 +4639,9 @@ envs: [{ key: "RLARK_TASK_ROLE", value: newRole }],
                               onChange={(e) => {
                                 const newCluster = e.target.value;
                                 updateRR(role, "cluster", newCluster);
-                                if (rr.mounts.some((m) => m.type === "storage")) {
+                                if (
+                                  rr.mounts.some((m) => m.type === "storage")
+                                ) {
                                   fetchStorageClasses(newCluster);
                                 }
                               }}
@@ -4707,7 +4787,12 @@ envs: [{ key: "RLARK_TASK_ROLE", value: newRole }],
                               <select
                                 value={mount.type}
                                 onChange={(e) => {
-                                  updateRRMount(role, index, "type", e.target.value);
+                                  updateRRMount(
+                                    role,
+                                    index,
+                                    "type",
+                                    e.target.value,
+                                  );
                                   if (e.target.value === "storage") {
                                     fetchStorageClasses(rr.cluster);
                                   }
@@ -4733,9 +4818,14 @@ envs: [{ key: "RLARK_TASK_ROLE", value: newRole }],
                                   }
                                 >
                                   <option value="">
-                                    {storageClassFetched && storageClasses.length === 0
-                                      ? (zh ? "无可用存储类" : "No storage classes")
-                                      : (zh ? "选择存储类" : "Select storage class")}
+                                    {storageClassFetched &&
+                                    storageClasses.length === 0
+                                      ? zh
+                                        ? "无可用存储类"
+                                        : "No storage classes"
+                                      : zh
+                                        ? "选择存储类"
+                                        : "Select storage class"}
                                   </option>
                                   {storageClasses.map((sc) => (
                                     <option key={sc.name} value={sc.name}>
@@ -5066,7 +5156,8 @@ function computePvcStorageMap(
   const map: Record<string, string> = {};
   const jobSlug = jobName ? jobName.toLowerCase().replace(/\s+/g, "-") : "";
   storageMounts.forEach((m) => {
-    const volName = m.mountPath.replace(/\//g, "-").replace(/^-|-$/g, "") || "vol";
+    const volName =
+      m.mountPath.replace(/\//g, "-").replace(/^-|-$/g, "") || "vol";
     const claimName = jobSlug
       ? `pvc-${jobSlug}-${roleSlug}-${volName}`
       : `pvc-${roleSlug}-${volName}`;
@@ -5089,98 +5180,95 @@ function generateJobCRD(opts: {
       const res = opts.roleResources[role];
       if (!res?.image) return null;
       const isHead = role === opts.headerRole;
-    const roleEnvs = res?.envs ?? [];
+      const roleEnvs = res?.envs ?? [];
       const roleMounts = res?.mounts ?? [];
       const envVars = [
-      ...roleEnvs
-        .filter((e) => e.key !== "RLARK_TASK_ROLE")
-        .map((e) => ({ name: e.key, value: e.value })),
-      { name: "RLARK_TASK_ROLE", value: role },
-    ];
-    const taskName = role.toLowerCase().replace(/\s+/g, "-");
-    const jobSlug = opts.name.toLowerCase().replace(/\s+/g, "-");
+        ...roleEnvs
+          .filter((e) => e.key !== "RLARK_TASK_ROLE")
+          .map((e) => ({ name: e.key, value: e.value })),
+        { name: "RLARK_TASK_ROLE", value: role },
+      ];
+      const taskName = role.toLowerCase().replace(/\s+/g, "-");
+      const jobSlug = opts.name.toLowerCase().replace(/\s+/g, "-");
 
-    const hostMounts = roleMounts.filter((m) => m.type === "host");
-    const storageMounts = roleMounts.filter((m) => m.type === "storage");
+      const hostMounts = roleMounts.filter((m) => m.type === "host");
+      const storageMounts = roleMounts.filter((m) => m.type === "storage");
 
-    const containerVolumes = hostMounts.map((m) => ({
-      name: m.mountPath.replace(/\//g, "-").replace(/^-|-$/g, "") || "vol",
-      hostPath: { path: m.hostPath || m.objectStorage },
-    }));
+      const containerVolumes = hostMounts.map((m) => ({
+        name: m.mountPath.replace(/\//g, "-").replace(/^-|-$/g, "") || "vol",
+        hostPath: { path: m.hostPath || m.objectStorage },
+      }));
 
-    const storageVolumes = storageMounts.map((m) => {
-      const volName =
-        m.mountPath.replace(/\//g, "-").replace(/^-|-$/g, "") || "vol";
-      const claimName = `pvc-${jobSlug}-${taskName}-${volName}`;
+      const storageVolumes = storageMounts.map((m) => {
+        const volName =
+          m.mountPath.replace(/\//g, "-").replace(/^-|-$/g, "") || "vol";
+        const claimName = `pvc-${jobSlug}-${taskName}-${volName}`;
+        return {
+          name: volName,
+          persistentVolumeClaim: {
+            claimName,
+          },
+        };
+      });
+
+      const pvcStorageMap =
+        res?.pvcStorageMap ?? computePvcStorageMap(role, roleMounts, opts.name);
+
+      const allVolumeMounts = roleMounts.map((m) => ({
+        name: m.mountPath.replace(/\//g, "-").replace(/^-|-$/g, "") || "vol",
+        mountPath: m.mountPath,
+      }));
+
       return {
-        name: volName,
-        persistentVolumeClaim: {
-          claimName,
-        },
-      };
-    });
-
-    const pvcStorageMap =
-      res?.pvcStorageMap ?? computePvcStorageMap(role, roleMounts, opts.name);
-
-    const allVolumeMounts = roleMounts.map((m) => ({
-      name:
-        m.mountPath.replace(/\//g, "-").replace(/^-|-$/g, "") || "vol",
-      mountPath: m.mountPath,
-    }));
-
-    return {
-      name: taskName,
-      head: isHead,
-      agentType: "Kubernetes",
-      role: mapTaskRole(role),
-      nodeSelector: res ? parseNodeSelector(res.nodeSelector) : {},
-      prepareScript: res?.prepareScript ?? "",
-      ...(isHead ? { runScript: opts.runScript } : {}),
-      kubernetes: {
-        workload: {
-          kind: "StatefulSet",
-          replicas: res ? Number(res.replicas) : 1,
-          ...(pvcStorageMap
-            ? { pvcStorageMap }
-            : {}),
-          template: {
-            spec: {
-              containers: [
-                {
-                  name: "main",
-                  image: res?.image ?? "",
-                  env: envVars.length > 0 ? envVars : undefined,
-                  volumeMounts:
-                    allVolumeMounts.length > 0 ? allVolumeMounts : undefined,
-                  resources: res
-                    ? {
-                        requests: {
-                          ...(res.cpu ? { cpu: res.cpu } : {}),
-                          ...(res.memory ? { memory: res.memory } : {}),
-                          ...(res.gpu && res.gpu !== "0"
-                            ? { "nvidia.com/gpu": res.gpu }
-                            : {}),
-                        },
-                        limits: {
-                          ...(res.gpu && res.gpu !== "0"
-                            ? { "nvidia.com/gpu": res.gpu }
-                            : {}),
-                        },
-                      }
-                    : undefined,
-                },
-              ],
-              volumes: [
-                ...(containerVolumes.length > 0 ? containerVolumes : []),
-                ...(storageVolumes.length > 0 ? storageVolumes : []),
-              ],
+        name: taskName,
+        head: isHead,
+        agentType: "Kubernetes",
+        role: mapTaskRole(role),
+        nodeSelector: res ? parseNodeSelector(res.nodeSelector) : {},
+        prepareScript: res?.prepareScript ?? "",
+        ...(isHead ? { runScript: opts.runScript } : {}),
+        kubernetes: {
+          workload: {
+            kind: "StatefulSet",
+            replicas: res ? Number(res.replicas) : 1,
+            ...(pvcStorageMap ? { pvcStorageMap } : {}),
+            template: {
+              spec: {
+                containers: [
+                  {
+                    name: "main",
+                    image: res?.image ?? "",
+                    env: envVars.length > 0 ? envVars : undefined,
+                    volumeMounts:
+                      allVolumeMounts.length > 0 ? allVolumeMounts : undefined,
+                    resources: res
+                      ? {
+                          requests: {
+                            ...(res.cpu ? { cpu: res.cpu } : {}),
+                            ...(res.memory ? { memory: res.memory } : {}),
+                            ...(res.gpu && res.gpu !== "0"
+                              ? { "nvidia.com/gpu": res.gpu }
+                              : {}),
+                          },
+                          limits: {
+                            ...(res.gpu && res.gpu !== "0"
+                              ? { "nvidia.com/gpu": res.gpu }
+                              : {}),
+                          },
+                        }
+                      : undefined,
+                  },
+                ],
+                volumes: [
+                  ...(containerVolumes.length > 0 ? containerVolumes : []),
+                  ...(storageVolumes.length > 0 ? storageVolumes : []),
+                ],
+              },
             },
           },
         },
-      },
-    };
-  })
+      };
+    })
     .filter(Boolean);
 
   return {
@@ -5433,7 +5521,9 @@ function NodeSelectorPicker({
                         key={val}
                         className={
                           "selector-value-chip " +
-                          ((selectorMap[key] ?? "").split(",").includes(val) ? "active" : "")
+                          ((selectorMap[key] ?? "").split(",").includes(val)
+                            ? "active"
+                            : "")
                         }
                         onClick={(e) => {
                           e.stopPropagation();
@@ -5565,8 +5655,12 @@ function CreateJobModal({
     nodes: allNodes,
     loading: nodesLoading,
   } = useNodeLabels();
-  const [availableClusters, setAvailableClusters] = useState<Cluster[]>(clusters.slice(0, 4));
-  const [storageClasses, setStorageClasses] = useState<{name: string, description: string, bucket: string}[]>([]);
+  const [availableClusters, setAvailableClusters] = useState<Cluster[]>(
+    clusters.slice(0, 4),
+  );
+  const [storageClasses, setStorageClasses] = useState<
+    { name: string; description: string; bucket: string }[]
+  >([]);
   const [storageClassLoading, setStorageClassLoading] = useState(false);
   const [storageClassFetched, setStorageClassFetched] = useState(false);
   const [clustersLoaded, setClustersLoaded] = useState(false);
@@ -5620,8 +5714,13 @@ function CreateJobModal({
             Object.fromEntries(
               Object.entries(prev).map(([role, rr]) => {
                 const current = rr.cluster;
-                const match = list.find((c) => c.id === current || c.name === current);
-                return [role, { ...rr, cluster: match ? match.id : list[0].id }];
+                const match = list.find(
+                  (c) => c.id === current || c.name === current,
+                );
+                return [
+                  role,
+                  { ...rr, cluster: match ? match.id : list[0].id },
+                ];
               }),
             ),
           );
@@ -5633,12 +5732,19 @@ function CreateJobModal({
   const fetchStorageClasses = async (cluster?: string) => {
     if (storageClassLoading) return;
     const clusterKey = cluster ?? "";
-    if (storageClassFetched && lastFetchedStorageClusterRef.current === clusterKey) return;
+    if (
+      storageClassFetched &&
+      lastFetchedStorageClusterRef.current === clusterKey
+    )
+      return;
     lastFetchedStorageClusterRef.current = clusterKey;
     setStorageClassLoading(true);
     setStorageClassFetched(false);
     try {
-      const url = new URL("/api/v1/storage/storageclass", window.location.origin);
+      const url = new URL(
+        "/api/v1/storage/storageclass",
+        window.location.origin,
+      );
       if (cluster) {
         url.searchParams.set("clusters", cluster);
       }
@@ -5698,7 +5804,14 @@ function CreateJobModal({
         image: "",
         prepareScript: "",
         envs: [{ key: "RLARK_TASK_ROLE", value: role }],
-        mounts: [{ type: "host" as const, objectStorage: "", mountPath: "/mnt/dataset", hostPath: "/host/dataset" }],
+        mounts: [
+          {
+            type: "host" as const,
+            objectStorage: "",
+            mountPath: "/mnt/dataset",
+            hostPath: "/host/dataset",
+          },
+        ],
       };
     });
   }
@@ -5753,7 +5866,14 @@ function CreateJobModal({
         image: "",
         prepareScript: "",
         envs: [{ key: "RLARK_TASK_ROLE", value: role }],
-        mounts: [{ type: "host" as const, objectStorage: "", mountPath: "/mnt/dataset", hostPath: "/host/dataset" }],
+        mounts: [
+          {
+            type: "host" as const,
+            objectStorage: "",
+            mountPath: "/mnt/dataset",
+            hostPath: "/host/dataset",
+          },
+        ],
       };
     });
     setRoleResources(newRR);
@@ -5871,7 +5991,12 @@ function CreateJobModal({
       const rr = prev[role];
       const newMounts = [
         ...rr.mounts,
-        { type: "storage" as const, objectStorage: "", mountPath: "", hostPath: "" },
+        {
+          type: "storage" as const,
+          objectStorage: "",
+          mountPath: "",
+          hostPath: "",
+        },
       ];
       const pvcStorageMap = computePvcStorageMap(role, newMounts, jobName);
       return { ...prev, [role]: { ...rr, mounts: newMounts, pvcStorageMap } };
@@ -6095,12 +6220,12 @@ function CreateJobModal({
                               }
                             }}
                           >
-                              {availableClusters.map((cl) => (
-                                <option key={cl.id} value={cl.id}>
-                                  {cl.name}
-                                </option>
-                              ))}
-                            </select>
+                            {availableClusters.map((cl) => (
+                              <option key={cl.id} value={cl.id}>
+                                {cl.name}
+                              </option>
+                            ))}
+                          </select>
                         </label>
                       </div>
                       <div className="form-section" style={{ marginTop: 12 }}>
@@ -6234,7 +6359,12 @@ function CreateJobModal({
                             <select
                               value={mount.type}
                               onChange={(e) => {
-                                updateRRMount(role, index, "type", e.target.value);
+                                updateRRMount(
+                                  role,
+                                  index,
+                                  "type",
+                                  e.target.value,
+                                );
                                 if (e.target.value === "storage") {
                                   fetchStorageClasses(rr.cluster);
                                 }
@@ -6260,9 +6390,14 @@ function CreateJobModal({
                                 }
                               >
                                 <option value="">
-                                  {storageClassFetched && storageClasses.length === 0
-                                    ? (zh ? "无可用存储类" : "No storage classes")
-                                    : (zh ? "选择存储类" : "Select storage class")}
+                                  {storageClassFetched &&
+                                  storageClasses.length === 0
+                                    ? zh
+                                      ? "无可用存储类"
+                                      : "No storage classes"
+                                    : zh
+                                      ? "选择存储类"
+                                      : "Select storage class"}
                                 </option>
                                 {storageClasses.map((sc) => (
                                   <option key={sc.name} value={sc.name}>
@@ -7648,9 +7783,19 @@ const adminNavItems: AdminNavItem[] = [
     zh: "集群管理",
     en: "Clusters",
     children: [
-      { id: "clusters-overview", icon: Network, zh: "集群概览", en: "Clusters" },
+      {
+        id: "clusters-overview",
+        icon: Network,
+        zh: "集群概览",
+        en: "Clusters",
+      },
       { id: "clusters-nodes", icon: Server, zh: "节点管理", en: "Nodes" },
-      { id: "create-cluster", icon: Shield, zh: "创建集群", en: "Create Cluster" },
+      {
+        id: "create-cluster",
+        icon: Shield,
+        zh: "创建集群",
+        en: "Create Cluster",
+      },
     ],
   },
   { id: "jobs", icon: Boxes, zh: "任务管理", en: "Jobs" },
@@ -7696,7 +7841,15 @@ function AdminLogin({
       .then((resp) =>
         resp.ok
           ? resp.json()
-          : Promise.reject(new Error(resp.status === 401 ? (zh ? "账号或密码错误" : "Invalid credentials") : `HTTP ${resp.status}`)),
+          : Promise.reject(
+              new Error(
+                resp.status === 401
+                  ? zh
+                    ? "账号或密码错误"
+                    : "Invalid credentials"
+                  : `HTTP ${resp.status}`,
+              ),
+            ),
       )
       .then(() => {
         sessionStorage.setItem("rlark-admin-auth", "1");
@@ -7784,8 +7937,18 @@ function AdminLogin({
               {error}
             </div>
           )}
-          <button type="submit" className="primary-button admin-login-btn" disabled={loading}>
-            {loading ? (zh ? "登录中…" : "Signing in…") : zh ? "登录" : "Sign In"}
+          <button
+            type="submit"
+            className="primary-button admin-login-btn"
+            disabled={loading}
+          >
+            {loading
+              ? zh
+                ? "登录中…"
+                : "Signing in…"
+              : zh
+                ? "登录"
+                : "Sign In"}
           </button>
           <a className="admin-login-back" href="/">
             <ArrowRight size={13} />
@@ -7801,7 +7964,9 @@ function AdminApp() {
   const [lang, setLang] = useState<Lang>("zh");
   const [theme, setTheme] = useState<Theme>("light");
   const [loggedIn, setLoggedIn] = useState(
-    () => typeof sessionStorage !== "undefined" && sessionStorage.getItem("rlark-admin-auth") === "1",
+    () =>
+      typeof sessionStorage !== "undefined" &&
+      sessionStorage.getItem("rlark-admin-auth") === "1",
   );
   const [collapsed, setCollapsed] = useState(false);
   const [adminPage, setAdminPage] = useState(() => {
@@ -7859,7 +8024,9 @@ function AdminApp() {
         "config",
       ];
       setAdminPage(valid.includes(parts[0]) ? parts[0] : "clusters-overview");
-      setAdminSub(parts.length > 1 ? decodeURIComponent(parts.slice(1).join("/")) : "");
+      setAdminSub(
+        parts.length > 1 ? decodeURIComponent(parts.slice(1).join("/")) : "",
+      );
     };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
@@ -8038,7 +8205,11 @@ function UserLogin({ onLogin }: { onLogin: () => void }) {
       .then((resp) =>
         resp.ok
           ? resp.json()
-          : Promise.reject(new Error(resp.status === 401 ? "账号或密码错误" : `HTTP ${resp.status}`)),
+          : Promise.reject(
+              new Error(
+                resp.status === 401 ? "账号或密码错误" : `HTTP ${resp.status}`,
+              ),
+            ),
       )
       .then(() => {
         sessionStorage.setItem("rlark-user-auth", "1");
@@ -8084,7 +8255,11 @@ function UserLogin({ onLogin }: { onLogin: () => void }) {
               {error}
             </div>
           )}
-          <button type="submit" className="primary-button admin-login-btn" disabled={loading}>
+          <button
+            type="submit"
+            className="primary-button admin-login-btn"
+            disabled={loading}
+          >
             {loading ? "登录中…" : "登录"}
           </button>
           <a className="admin-login-back" href="/admin">
@@ -8133,7 +8308,9 @@ export default function App() {
   const [lang, setLang] = useState<Lang>("zh");
   const [theme, setTheme] = useState<Theme>("light");
   const [userLoggedIn, setUserLoggedIn] = useState(
-    () => typeof sessionStorage !== "undefined" && sessionStorage.getItem("rlark-user-auth") === "1",
+    () =>
+      typeof sessionStorage !== "undefined" &&
+      sessionStorage.getItem("rlark-user-auth") === "1",
   );
   const c = copy[lang];
   const pageTitle = useMemo(() => c.nav[page], [c, page]);
@@ -8180,8 +8357,7 @@ export default function App() {
             const isChildActive = isParent
               ? item.children!.some((ch) => ch.id === page)
               : false;
-            const expanded =
-              isParent && (isChildActive || isActive);
+            const expanded = isParent && (isChildActive || isActive);
 
             return (
               <div key={item.id} className={isParent ? "nav-parent" : ""}>
@@ -8204,7 +8380,9 @@ export default function App() {
                   }
                 >
                   <Icon size={18} />
-                  <span>{isParent ? c.nav.clustersParent : c.nav[item.id]}</span>
+                  <span>
+                    {isParent ? c.nav.clustersParent : c.nav[item.id]}
+                  </span>
                 </button>
                 {isParent && expanded && (
                   <div className="nav-children">
@@ -8213,9 +8391,7 @@ export default function App() {
                       return (
                         <button
                           key={ch.id}
-                          className={
-                            page === ch.id ? "active" : ""
-                          }
+                          className={page === ch.id ? "active" : ""}
                           onClick={() => navigate(ch.id)}
                         >
                           <ChIcon size={16} />
