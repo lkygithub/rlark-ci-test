@@ -1,0 +1,138 @@
+name: Docker Build
+
+on:
+  workflow_call:
+
+jobs:
+  build-server:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: "go.mod"
+          cache: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build server
+        uses: docker/build-push-action@v6
+        with:
+          file: ./build/server/Dockerfile
+          push: false
+          tags: rlark-server:latest
+
+  build-controller-manager:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: "go.mod"
+          cache: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build controller-manager
+        uses: docker/build-push-action@v6
+        with:
+          file: ./build/controller-manager/Dockerfile
+          push: false
+          tags: rlark-controller-manager:latest
+
+  build-gateway:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: "go.mod"
+          cache: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build gateway
+        uses: docker/build-push-action@v6
+        with:
+          file: ./build/gateway/Dockerfile
+          push: false
+          tags: rlark-gateway:latest
+
+  build-agent:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: "go.mod"
+          cache: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build agent
+        uses: docker/build-push-action@v6
+        with:
+          file: ./build/agent/Dockerfile
+          push: false
+          tags: rlark-agent:latest
+
+  build-ui:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: web/package-lock.json
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build ui
+        uses: docker/build-push-action@v6
+        with:
+          file: ./build/ui/Dockerfile
+          push: false
+          tags: rlark-ui:latest
+
+  build-network-sidecar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: "go.mod"
+          cache: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build network-sidecar
+        uses: docker/build-push-action@v6
+        with:
+          file: ./build/network-sidecar/Dockerfile
+          push: false
+          tags: rlark-network-sidecar:latest
