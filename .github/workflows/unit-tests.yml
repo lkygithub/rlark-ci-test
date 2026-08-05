@@ -1,0 +1,21 @@
+name: Unit Tests
+
+on:
+  workflow_call:
+
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: "go.mod"
+          cache: true
+
+      - name: Run unit tests
+        timeout-minutes: 10
+        run: go test ./pkg/... -v -count=1 -short
