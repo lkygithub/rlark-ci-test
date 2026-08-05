@@ -9,6 +9,8 @@ variables:
   CI_IMAGE: harbor.infini-ai.com/share/mizar-ci:1.26.5-bookworm
   DOCKER_CLIENT_TIMEOUT: "300"
   IMAGE_REGISTRY: harbor.infini-ai.com/share
+  BASE_IMAGE: harbor.infini-ai.com/share/ubuntu:22.04
+  BASE_IMAGE_UI: harbor.infini-ai.com/share/nginx:1.29.1
 
 build-images-dev:
   image: ${CI_IMAGE}
