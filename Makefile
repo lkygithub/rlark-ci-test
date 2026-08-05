@@ -3,9 +3,11 @@ CRD_DIR ?= config/crd/bases
 SAMPLES_DIR ?= config/samples
 API_DOC ?= docs/api/reference.md
 
-IMAGE_REGISTRY ?= harbor.infini-ai.com/share
+IMAGE_REGISTRY ?= docker.io/rlark
 IMAGE_TAG ?= latest
 IMAGE_PLATFORMS ?= linux/amd64
+BASE_IMAGE ?= ubuntu:22.04
+BASE_IMAGE_UI ?= nginx:1.29.1
 
 COMPONENTS = server controller-manager gateway agent ui network-sidecar
 
@@ -82,10 +84,12 @@ docker-build: $(addprefix docker-build-,$(COMPONENTS))
 docker-push: $(addprefix docker-push-,$(COMPONENTS))
 
 docker-build-%: build-% build/%/Dockerfile
-	docker buildx build --platform $(IMAGE_PLATFORMS) -t $(IMAGE_REGISTRY)/rlark-$*:$(IMAGE_TAG) -f build/$*/Dockerfile . --load
+	$(eval IMG := $(if $(filter ui,$*),$(BASE_IMAGE_UI),$(BASE_IMAGE)))
+	docker buildx build --platform $(IMAGE_PLATFORMS) --build-arg BASE_IMAGE=$(IMG) -t $(IMAGE_REGISTRY)/rlark-$*:$(IMAGE_TAG) -f build/$*/Dockerfile . --load
 
 docker-push-%: build-% build/%/Dockerfile
-	docker buildx build --platform $(IMAGE_PLATFORMS) -t $(IMAGE_REGISTRY)/rlark-$*:$(IMAGE_TAG) -f build/$*/Dockerfile . --push
+	$(eval IMG := $(if $(filter ui,$*),$(BASE_IMAGE_UI),$(BASE_IMAGE)))
+	docker buildx build --platform $(IMAGE_PLATFORMS) --build-arg BASE_IMAGE=$(IMG) -t $(IMAGE_REGISTRY)/rlark-$*:$(IMAGE_TAG) -f build/$*/Dockerfile . --push
 
 nerd-build: $(addprefix nerd-build-,$(COMPONENTS))
 
