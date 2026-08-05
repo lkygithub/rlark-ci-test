@@ -27,6 +27,7 @@ import (
 
 type RlinfV1alpha1Interface interface {
 	RESTClient() rest.Interface
+	AddonsGetter
 	DomainsGetter
 	DomainPeersGetter
 	JobsGetter
@@ -39,6 +40,10 @@ type RlinfV1alpha1Interface interface {
 // RlinfV1alpha1Client is used to interact with features provided by the rlinf.io group.
 type RlinfV1alpha1Client struct {
 	restClient rest.Interface
+}
+
+func (c *RlinfV1alpha1Client) Addons(namespace string) AddonInterface {
+	return newAddons(c, namespace)
 }
 
 func (c *RlinfV1alpha1Client) Domains() DomainInterface {

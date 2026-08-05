@@ -94,6 +94,7 @@ export interface Job {
     cpu: string;
     memory: string;
     gpu: string;
+    devices: Array<{ name: string; quantity: string }>;
     image: string;
     prepareScript: string;
     env: Array<{ key: string; value: string }>;

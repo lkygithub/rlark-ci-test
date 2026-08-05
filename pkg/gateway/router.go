@@ -97,6 +97,29 @@ func (g *Gateway) RegisterRoutes(r gin.IRouter) {
 		storage.POST("/storageclass", g.createStorageClass)
 		storage.GET("/storageclass/provider", g.listProvider)
 	}
+
+	// Addon Catalog APIs
+	addons := r.Group("/api/v1/addons")
+	{
+		addons.GET("", g.listAddonCatalog)
+		addons.GET("/:name", g.getAddonCatalog)
+	}
+
+	// Installed Addons API (all clusters or filtered by ?cluster=)
+	installedAddons := r.Group("/api/v1/installed-addons")
+	{
+		installedAddons.GET("", g.listInstalledAddons)
+	}
+
+	// Cluster Addon APIs
+	clusterAddons := r.Group("/api/v1/clusters/:cluster_id/addons")
+	{
+		clusterAddons.GET("", g.listClusterAddons)
+		clusterAddons.POST("", g.installClusterAddon)
+		clusterAddons.GET("/:name", g.getClusterAddon)
+		clusterAddons.PUT("/:name", g.updateClusterAddon)
+		clusterAddons.DELETE("/:name", g.deleteClusterAddon)
+	}
 }
 
 // --- Node handlers ---

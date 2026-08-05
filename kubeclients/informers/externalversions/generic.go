@@ -52,6 +52,8 @@ func (f *genericInformer) Lister() cache.GenericLister {
 func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource) (GenericInformer, error) {
 	switch resource {
 	// Group=rlinf.io, Version=v1alpha1
+	case v1alpha1.SchemeGroupVersion.WithResource("addons"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Rlinf().V1alpha1().Addons().Informer()}, nil
 	case v1alpha1.SchemeGroupVersion.WithResource("domains"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Rlinf().V1alpha1().Domains().Informer()}, nil
 	case v1alpha1.SchemeGroupVersion.WithResource("domainpeers"):

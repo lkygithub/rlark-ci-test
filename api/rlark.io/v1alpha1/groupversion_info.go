@@ -35,6 +35,9 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 
 		&Pod{},
 		&PodList{},
+
+		&Addon{},
+		&AddonList{},
 	)
 	metav1.AddToGroupVersion(scheme, GroupVersion)
 	return nil

@@ -34,6 +34,7 @@ import {
   Moon,
   MoreHorizontal,
   Network,
+  Package,
   Pencil,
   Plus,
   RefreshCw,
@@ -703,7 +704,7 @@ function Overview({
   const robotNodes = realNodes.filter((n) => getNodeCategory(n) === "robot");
 
   return (
-    <div className="page-content">
+    <div className="page-content overview-page">
       <section className="hero-strip">
         <div>
           <span className="eyebrow">
@@ -784,16 +785,6 @@ function Overview({
             </button>
           </div>
           <ResourceDistribution copy={c} rows={resourceRows} />
-          <div className="cluster-models">
-            <div>
-              <span>{c.overview.gpuModels}</span>
-              <strong>{gpuModels}</strong>
-            </div>
-            <div>
-              <span>{c.overview.robotModels}</span>
-              <strong>{robotModels}</strong>
-            </div>
-          </div>
         </div>
         <div className="panel workload-panel">
           <div className="panel-title">
@@ -924,9 +915,13 @@ function Overview({
 function ClustersPage({
   copy: c,
   initialView,
+  selectedNodeName,
+  onNavigate,
 }: {
   copy: Copy;
   initialView?: "clusters" | "nodes";
+  selectedNodeName?: string;
+  onNavigate?: (name?: string) => void;
 }) {
   const zh = c.nav.overview === "总览";
   const [query, setQuery] = useState("");
@@ -939,7 +934,6 @@ function ClustersPage({
   const [selectedClusterNs, setSelectedClusterNs] = useState<string | null>(
     null,
   );
-  const [selectedNode, setSelectedNode] = useState<CRDNode | null>(null);
   const [phaseFilter, setPhaseFilter] = useState<"All" | Phase>("All");
 
   const fetchNodes = async (isInitial = true) => {
@@ -1071,8 +1065,37 @@ function ClustersPage({
     );
   }
 
+  const selectedNodeObj =
+    realNodes.find((n) => n.metadata.name === selectedNodeName) ?? null;
+
+  if (selectedNodeName && selectedNodeObj) {
+    return (
+      <div className="page-content resource-page node-detail-page">
+        <div className="section-heading">
+          <div>
+            <button
+              className="plain-button back-button"
+              onClick={() => onNavigate?.()}
+            >
+              ← {zh ? "返回节点列表" : "Back"}
+            </button>
+            <span className="eyebrow">
+              <Settings size={13} />
+              {zh ? "节点详情" : "Node Detail"}
+            </span>
+          </div>
+        </div>
+        <NodeDetailReal node={selectedNodeObj} copy={c} />
+      </div>
+    );
+  }
+
   return (
-    <div className="page-content resource-page cluster-page">
+    <div
+      className={`page-content resource-page cluster-page${
+        resourceView === "clusters" ? " cluster-overview-page" : ""
+      }`}
+    >
       <div className="section-heading">
         <div>
           <span className="eyebrow">{c.clusters.eyebrow}</span>
@@ -1084,22 +1107,7 @@ function ClustersPage({
           {c.common.refresh}
         </button>
       </div>
-      <div className="subpage-tabs">
-        <button
-          className={resourceView === "clusters" ? "active" : ""}
-          onClick={() => setResourceView("clusters")}
-        >
-          <Network size={15} />
-          {zh ? "集群视图" : "Clusters"}
-        </button>
-        <button
-          className={resourceView === "nodes" ? "active" : ""}
-          onClick={() => setResourceView("nodes")}
-        >
-          <Server size={15} />
-          {zh ? "节点视图" : "Nodes"}
-        </button>
-      </div>
+      {resourceView === "clusters" && (
       <section className="cluster-overview-grid">
         <MetricCard
           icon={Network}
@@ -1116,20 +1124,14 @@ function ClustersPage({
           note={`${realNodes.filter((n) => n.status?.phase === "Online").length} ${c.status.Online}`}
         />
         <MetricCard
-          icon={CloudCog}
-          tone="violet"
-          label={zh ? "集群分组" : "Namespaces"}
-          value={`${clustersList.length}`}
-          note={zh ? "按命名空间分组" : "namespace groups"}
-        />
-        <MetricCard
           icon={Activity}
           tone="orange"
-          label={zh ? "节点状态" : "Node Status"}
-          value={`${realNodes.filter((n) => n.status?.phase === "Online").length}`}
-          note={`${realNodes.filter((n) => n.status?.phase !== "Online").length} ${zh ? "离线" : "offline"}`}
+          label={zh ? "在线率" : "Online Rate"}
+          value={`${totalNodes > 0 ? Math.round(realNodes.filter((n) => n.status?.phase === "Online").length / totalNodes * 100) : 0}%`}
+          note={`${realNodes.filter((n) => n.status?.phase === "Online").length}/${totalNodes} ${zh ? "在线" : "online"}`}
         />
       </section>
+      )}
       {resourceView === "clusters" && (
         <>
           <section className="cluster-topology-grid">
@@ -1172,56 +1174,59 @@ function ClustersPage({
                 <h3>{zh ? "集群整体情况" : "Cluster Overview"}</h3>
               </div>
             </div>
-            <div className="cluster-card-grid">
-              {clustersList.map(([ns, nsNodes]) => {
-                const onlineCount = nsNodes.filter(
-                  (n) => n.status?.phase === "Online",
-                ).length;
-                const allOnline = onlineCount === nsNodes.length;
-                const phase: Phase =
-                  nsNodes.length === 0
-                    ? "Offline"
-                    : allOnline
-                      ? "Online"
-                      : "Online";
-                return (
-                  <button
-                    key={ns}
-                    className={
-                      selectedCluster?.[0] === ns
-                        ? "cluster-card selected"
-                        : "cluster-card"
-                    }
-                    onClick={() => setSelectedClusterNs(ns)}
-                  >
-                    <div className="cluster-card-head">
-                      <span className="cloud">
-                        <CloudCog size={18} />
-                      </span>
-                      <StatusBadge phase={phase} copy={c} />
-                    </div>
-                    <strong>{ns}</strong>
-                    <small>
-                      {nsNodes.length} {zh ? "节点" : "nodes"}
-                    </small>
-                    <div className="cluster-loads">
-                      <i>
-                        <b
-                          style={{
-                            width: `${nsNodes.length > 0 ? (onlineCount / nsNodes.length) * 100 : 0}%`,
-                          }}
-                        />
-                      </i>
-                    </div>
-                    <div className="cluster-card-foot">
-                      <span>
-                        {onlineCount} / {nsNodes.length}{" "}
-                        {zh ? "在线" : "online"}
-                      </span>
-                    </div>
-                  </button>
-                );
-              })}
+            <div className="cluster-list-scroll">
+              <table className="cluster-list-table">
+                <thead>
+                  <tr>
+                    <th>{zh ? "集群" : "Cluster"}</th>
+                    <th>{zh ? "节点数" : "Nodes"}</th>
+                    <th>{zh ? "在线" : "Online"}</th>
+                    <th>{zh ? "在线率" : "Rate"}</th>
+                    <th>{zh ? "状态" : "Status"}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {clustersList.map(([ns, nsNodes]) => {
+                    const onlineCount = nsNodes.filter(
+                      (n) => n.status?.phase === "Online",
+                    ).length;
+                    const phase: Phase =
+                      nsNodes.length === 0 ? "Offline" : "Online";
+                    const rate = nsNodes.length > 0
+                      ? Math.round((onlineCount / nsNodes.length) * 100)
+                      : 0;
+                    return (
+                      <tr
+                        key={ns}
+                        className={
+                          selectedCluster?.[0] === ns ? "selected" : ""
+                        }
+                        onClick={() => setSelectedClusterNs(ns)}
+                      >
+                        <td>
+                          <span className="cluster-list-name">
+                            <CloudCog size={15} />
+                            <strong>{ns}</strong>
+                          </span>
+                        </td>
+                        <td>{nsNodes.length}</td>
+                        <td>{onlineCount}</td>
+                        <td>
+                          <span className="cluster-list-rate">
+                            <i>
+                              <b style={{ width: `${rate}%` }} />
+                            </i>
+                            <small>{rate}%</small>
+                          </span>
+                        </td>
+                        <td>
+                          <StatusBadge phase={phase} copy={c} />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           </section>
         </>
@@ -1316,15 +1321,14 @@ function ClustersPage({
                             const phase = (node.status?.phase ??
                               "Offline") as Phase;
                             const isSelected =
-                              selectedNode?.metadata.name ===
-                              node.metadata.name;
+                              selectedNodeName === node.metadata.name;
                             return (
                               <div
                                 className={
                                   "node-row" + (isSelected ? " selected" : "")
                                 }
                                 key={node.metadata.name}
-                                onClick={() => setSelectedNode(node)}
+                                onClick={() => onNavigate?.(node.metadata.name)}
                               >
                                 <span
                                   className={
@@ -1345,7 +1349,6 @@ function ClustersPage({
                 },
               )}
             </div>
-            {selectedNode && <NodeDetailReal node={selectedNode} copy={c} />}
           </div>
         </section>
       )}
@@ -1369,42 +1372,26 @@ function ClusterDetailReal({
   const phase: Phase = clusterNodes.length === 0 ? "Offline" : "Online";
   return (
     <div className="panel selected-cluster-panel">
-      <div className="detail-header">
-        <div>
-          <span className="eyebrow">{c.clusters.selected}</span>
-          <h3>{namespace}</h3>
-          <p>
-            {zh
-              ? `命名空间 ${namespace} 下的节点`
-              : `Nodes in namespace ${namespace}`}
-          </p>
-        </div>
-        <StatusBadge phase={phase} copy={c} />
-      </div>
-      <div className="cluster-detail-stats">
-        <div>
-          <span>{zh ? "命名空间" : "Namespace"}</span>
+      <div className="cluster-detail-header">
+        <div className="cluster-detail-title">
+          <CloudCog size={18} />
           <strong>{namespace}</strong>
-          <small>{zh ? "集群标识" : "Cluster ID"}</small>
+          <StatusBadge phase={phase} copy={c} />
         </div>
-        <div>
-          <span>{zh ? "节点规模" : "Nodes"}</span>
-          <strong>{clusterNodes.length}</strong>
-          <small>
-            {onlineCount} {zh ? "在线" : "online"}
-          </small>
-        </div>
-        <div>
-          <span>{zh ? "接入形态" : "Agent Types"}</span>
-          <strong>
+        <div className="cluster-detail-meta">
+          <span>{clusterNodes.length} {zh ? "节点" : "nodes"}</span>
+          <i className="dot" />
+          <span>{onlineCount} {zh ? "在线" : "online"}</span>
+          <i className="dot" />
+          <span>
             {Array.from(
               new Set(clusterNodes.map((n) => n.spec.agentType ?? "—")),
             ).join(", ") || "—"}
-          </strong>
+          </span>
         </div>
       </div>
-      <div className="table-panel" style={{ marginTop: 12 }}>
-        <table className="admin-node-table">
+      <div className="cluster-node-table-wrap">
+        <table className="cluster-node-table">
           <thead>
             <tr>
               <th>{zh ? "节点名称" : "Name"}</th>
@@ -1615,6 +1602,9 @@ function crdToJob(crd: CRDJob): Job {
     const c = t.kubernetes?.workload?.template.spec.containers?.[0];
     const res = c?.resources?.requests ?? {};
     const gpu = res["nvidia.com/gpu"] ?? "0";
+    const devices = Object.entries(res)
+      .filter(([k]) => k.startsWith("rlinf.io/"))
+      .map(([name, quantity]) => ({ name, quantity: String(quantity) }));
     const ns = t.nodeSelector ?? {};
     const nsStr = Object.entries(ns)
       .map(([k, v]) => `${k}=${v}`)
@@ -1657,6 +1647,7 @@ function crdToJob(crd: CRDJob): Job {
       cpu: res.cpu ?? "",
       memory: res.memory ?? "",
       gpu,
+      devices,
       image: c?.image ?? "",
       prepareScript: t.prepareScript ?? "",
       env: taskEnv,
@@ -3637,6 +3628,7 @@ function makeDefaultRoleResources(
       cpu: "",
       memory: "",
       gpu: index === 0 ? "4" : "0",
+      devices: [],
       image: "",
       prepareScript: "",
       envs: [{ key: "RLARK_TASK_ROLE", value: role }],
@@ -4276,6 +4268,7 @@ function CreateWorkflowModal({
       cpu: "",
       memory: "",
       gpu: "0",
+      devices: [],
       image: "",
       prepareScript: "",
       envs: [{ key: "RLARK_TASK_ROLE", value: newRole }],
@@ -4694,6 +4687,80 @@ function CreateWorkflowModal({
                             />
                           </label>
                         </div>
+                        {(() => {
+                          const clusterNodes = allNodes.filter((n) => {
+                            const ns = n.metadata.namespace ?? "";
+                            return ns === rr.cluster;
+                          });
+                          const deviceSet = new Set<string>();
+                          for (const n of clusterNodes) {
+                            const alloc = n.status?.allocatable ?? {};
+                            for (const k of Object.keys(alloc)) {
+                              if (k.startsWith("rlinf.io/")) deviceSet.add(k);
+                            }
+                          }
+                          const availableDevices = Array.from(deviceSet).sort();
+                          return (rr.devices ?? []).length > 0 || availableDevices.length > 0 ? (
+                            <div className="form-section" style={{ marginTop: 12 }}>
+                              <div className="form-section-head">
+                                <small>{zh ? "设备资源" : "Device Resources"}</small>
+                                {availableDevices.length > 0 && (
+                                  <button
+                                    type="button"
+                                    className="secondary-button"
+                                    style={{ padding: "2px 10px", fontSize: 12 }}
+                                    onClick={() => {
+                                      const next = [...(rr.devices ?? []), { name: availableDevices[0] ?? "", quantity: "1" }];
+                                      updateRR(role, "devices", next);
+                                    }}
+                                  >
+                                    <Plus size={13} />
+                                    {zh ? "添加" : "Add"}
+                                  </button>
+                                )}
+                              </div>
+                              {(rr.devices ?? []).map((dev, di) => (
+                                <div key={di} className="device-row">
+                                  <select
+                                    value={dev.name}
+                                    onChange={(e) => {
+                                      const next = [...(rr.devices ?? [])];
+                                      next[di] = { ...next[di], name: e.target.value };
+                                      updateRR(role, "devices", next);
+                                    }}
+                                  >
+                                    <option value="">{zh ? "选择设备" : "Select device"}</option>
+                                    {availableDevices.map((d) => (
+                                      <option key={d} value={d}>{d}</option>
+                                    ))}
+                                    {dev.name && !availableDevices.includes(dev.name) && (
+                                      <option value={dev.name}>{dev.name}</option>
+                                    )}
+                                  </select>
+                                  <input
+                                    value={dev.quantity}
+                                    onChange={(e) => {
+                                      const next = [...(rr.devices ?? [])];
+                                      next[di] = { ...next[di], quantity: e.target.value };
+                                      updateRR(role, "devices", next);
+                                    }}
+                                    placeholder="1"
+                                  />
+                                  <button
+                                    type="button"
+                                    className="icon-button danger"
+                                    onClick={() => {
+                                      const next = (rr.devices ?? []).filter((_, j) => j !== di);
+                                      updateRR(role, "devices", next);
+                                    }}
+                                  >
+                                    <X size={14} />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          ) : null;
+                        })()}
                         <div className="form-section" style={{ marginTop: 12 }}>
                           <div className="form-section-head">
                             <small>{zh ? "镜像" : "Image"}</small>
@@ -4965,10 +5032,40 @@ function CreateWorkflowModal({
             {step < 3 ? (
               <button
                 className="primary-button"
-                onClick={() => setStep(step + 1)}
+                onClick={() => {
+                  if (step === 2 && activeJob) {
+                    const roles = activeJob.roles;
+                    const currentRole = activeRoleTab || roles[0];
+                    const roleIdx = roles.indexOf(currentRole);
+                    if (roleIdx >= 0 && roleIdx < roles.length - 1) {
+                      setActiveRoleTab(roles[roleIdx + 1]);
+                      return;
+                    }
+                    const jobIdx = jobs.findIndex((j) => j.id === activeJobId);
+                    if (jobIdx >= 0 && jobIdx < jobs.length - 1) {
+                      const nextJob = jobs[jobIdx + 1];
+                      setActiveJobId(nextJob.id);
+                      if (nextJob.roles.length > 0) {
+                        setActiveRoleTab(nextJob.roles[0]);
+                      }
+                      return;
+                    }
+                  }
+                  setStep(step + 1);
+                }}
                 disabled={step === 1 && !workflowName.trim()}
               >
-                {zh ? "下一步" : "Next"}
+                {step === 2 && activeJob && (() => {
+                  const roles = activeJob.roles;
+                  const currentRole = activeRoleTab || roles[0];
+                  const roleIdx = roles.indexOf(currentRole);
+                  const isLastRole = roleIdx < 0 || roleIdx === roles.length - 1;
+                  const jobIdx = jobs.findIndex((j) => j.id === activeJobId);
+                  const isLastJob = jobIdx < 0 || jobIdx === jobs.length - 1;
+                  if (!isLastRole) return zh ? "下一个角色" : "Next Role";
+                  if (!isLastJob) return zh ? "下一个任务" : "Next Job";
+                  return zh ? "下一步" : "Next";
+                })()}
               </button>
             ) : (
               <button
@@ -5088,6 +5185,7 @@ interface RoleResource {
   cpu: string;
   memory: string;
   gpu: string;
+  devices: Array<{ name: string; quantity: string }>;
   image: string;
   prepareScript: string;
   envs: Array<{ key: string; value: string }>;
@@ -5249,11 +5347,25 @@ function generateJobCRD(opts: {
                             ...(res.gpu && res.gpu !== "0"
                               ? { "nvidia.com/gpu": res.gpu }
                               : {}),
+                            ...Object.fromEntries(
+                              (res.devices ?? [])
+                                .filter(
+                                  (d) => d.name && d.quantity && d.quantity !== "0",
+                                )
+                                .map((d) => [d.name, d.quantity]),
+                            ),
                           },
                           limits: {
                             ...(res.gpu && res.gpu !== "0"
                               ? { "nvidia.com/gpu": res.gpu }
                               : {}),
+                            ...Object.fromEntries(
+                              (res.devices ?? [])
+                                .filter(
+                                  (d) => d.name && d.quantity && d.quantity !== "0",
+                                )
+                                .map((d) => [d.name, d.quantity]),
+                            ),
                           },
                         }
                       : undefined,
@@ -5333,7 +5445,10 @@ interface CRDNodeLite {
     namespace?: string;
     labels?: Record<string, string>;
   };
-  status?: { phase?: string };
+  status?: {
+    phase?: string;
+    allocatable?: Record<string, string>;
+  };
 }
 
 function parseNodeSelectorStr(s: string): Record<string, string> {
@@ -5379,9 +5494,7 @@ function useNodeLabels() {
       nodes.map((n) => n.metadata.namespace).filter((v): v is string => !!v),
     ),
   );
-  const clusterDisplayNames = clusterNames.map((n) =>
-    n.startsWith("rlark-") ? n.slice(6) : n,
-  );
+  const clusterDisplayNames = clusterNames;
   return { nodes, loading, clusterNames, clusterDisplayNames };
 }
 
@@ -5405,19 +5518,8 @@ function NodeSelectorPicker({
   const [open, setOpen] = useState(false);
   const selectorMap = parseNodeSelectorStr(value);
 
-  const normalizedCluster = cluster
-    ? cluster.startsWith("rlark-")
-      ? cluster.slice(6)
-      : cluster
-    : undefined;
-
-  const clusterNodes = normalizedCluster
-    ? nodes.filter(
-        (n) =>
-          (n.metadata.namespace?.startsWith("rlark-")
-            ? n.metadata.namespace.slice(6)
-            : n.metadata.namespace) === normalizedCluster,
-      )
+  const clusterNodes = cluster
+    ? nodes.filter((n) => n.metadata.namespace === cluster)
     : nodes;
 
   const labelMap: Record<string, Set<string>> = {};
@@ -5425,6 +5527,8 @@ function NodeSelectorPicker({
     const labels = n.metadata.labels ?? {};
     for (const [k, v] of Object.entries(labels)) {
       if (!k.startsWith("kubernetes.io/") && !k.startsWith("rlark.io/"))
+        continue;
+      if (k === "rlark.io/cluster-id")
         continue;
       if (!labelMap[k]) labelMap[k] = new Set();
       labelMap[k].add(v);
@@ -5778,6 +5882,7 @@ function CreateJobModal({
         cpu: "",
         memory: "",
         gpu: res.gpu,
+        devices: res.devices?.map((d) => ({ ...d })) ?? [],
         image: res.image,
         prepareScript: res.prepareScript ?? "",
         envs: res.env.map((e) => ({ ...e })),
@@ -5801,6 +5906,7 @@ function CreateJobModal({
         cpu: "",
         memory: "",
         gpu: index === 0 ? "4" : "0",
+        devices: [],
         image: "",
         prepareScript: "",
         envs: [{ key: "RLARK_TASK_ROLE", value: role }],
@@ -5863,6 +5969,7 @@ function CreateJobModal({
         cpu: "",
         memory: "",
         gpu: index === 0 ? "4" : "0",
+        devices: [],
         image: "",
         prepareScript: "",
         envs: [{ key: "RLARK_TASK_ROLE", value: role }],
@@ -5892,6 +5999,7 @@ function CreateJobModal({
         cpu: "",
         memory: "",
         gpu: "0",
+        devices: [],
         image: "",
         prepareScript: "",
         envs: [],
@@ -5934,7 +6042,7 @@ function CreateJobModal({
   const updateRR = (
     role: string,
     field: keyof RoleResource,
-    v: string | number,
+    v: any,
   ) => {
     setRoleResources((prev) => ({
       ...prev,
@@ -6268,6 +6376,80 @@ function CreateJobModal({
                           />
                         </label>
                       </div>
+                      {(() => {
+                        const clusterNodes = allNodes.filter((n) => {
+                          const ns = n.metadata.namespace ?? "";
+                          return ns === rr.cluster;
+                        });
+                        const deviceSet = new Set<string>();
+                        for (const n of clusterNodes) {
+                          const alloc = n.status?.allocatable ?? {};
+                          for (const k of Object.keys(alloc)) {
+                            if (k.startsWith("rlinf.io/")) deviceSet.add(k);
+                          }
+                        }
+                        const availableDevices = Array.from(deviceSet).sort();
+                        return (rr.devices ?? []).length > 0 || availableDevices.length > 0 ? (
+                          <div className="form-section" style={{ marginTop: 12 }}>
+                            <div className="form-section-head">
+                              <small>{zh ? "设备资源" : "Device Resources"}</small>
+                              {availableDevices.length > 0 && (
+                                <button
+                                  type="button"
+                                  className="secondary-button"
+                                  style={{ padding: "2px 10px", fontSize: 12 }}
+                                  onClick={() => {
+                                    const next = [...(rr.devices ?? []), { name: availableDevices[0] ?? "", quantity: "1" }];
+                                    updateRR(role, "devices", next);
+                                  }}
+                                >
+                                  <Plus size={13} />
+                                  {zh ? "添加" : "Add"}
+                                </button>
+                              )}
+                            </div>
+                            {(rr.devices ?? []).map((dev, di) => (
+                              <div key={di} className="device-row">
+                                <select
+                                  value={dev.name}
+                                  onChange={(e) => {
+                                    const next = [...(rr.devices ?? [])];
+                                    next[di] = { ...next[di], name: e.target.value };
+                                    updateRR(role, "devices", next);
+                                  }}
+                                >
+                                  <option value="">{zh ? "选择设备" : "Select device"}</option>
+                                  {availableDevices.map((d) => (
+                                    <option key={d} value={d}>{d}</option>
+                                  ))}
+                                  {dev.name && !availableDevices.includes(dev.name) && (
+                                    <option value={dev.name}>{dev.name}</option>
+                                  )}
+                                </select>
+                                <input
+                                  value={dev.quantity}
+                                  onChange={(e) => {
+                                    const next = [...(rr.devices ?? [])];
+                                    next[di] = { ...next[di], quantity: e.target.value };
+                                    updateRR(role, "devices", next);
+                                  }}
+                                  placeholder="1"
+                                />
+                                <button
+                                  type="button"
+                                  className="icon-button danger"
+                                  onClick={() => {
+                                    const next = (rr.devices ?? []).filter((_, j) => j !== di);
+                                    updateRR(role, "devices", next);
+                                  }}
+                                >
+                                  <X size={14} />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        ) : null;
+                      })()}
                       <div className="form-section" style={{ marginTop: 12 }}>
                         <div className="form-section-head">
                           <small>{zh ? "镜像" : "Image"}</small>
@@ -6543,10 +6725,21 @@ function CreateJobModal({
             {step < 4 ? (
               <button
                 className="primary-button"
-                onClick={() => setStep(step + 1)}
+                onClick={() => {
+                  if (step === 2 && roles.length > 1) {
+                    const idx = roles.indexOf(activeRoleTab || roles[0]);
+                    if (idx >= 0 && idx < roles.length - 1) {
+                      setActiveRoleTab(roles[idx + 1]);
+                      return;
+                    }
+                  }
+                  setStep(step + 1);
+                }}
                 disabled={step === 1 && roles.length === 0}
               >
-                {zh ? "下一步" : "Next"}
+                {step === 2 && roles.length > 1 && (activeRoleTab || roles[0]) !== roles[roles.length - 1]
+                  ? (zh ? "下一个角色" : "Next Role")
+                  : (zh ? "下一步" : "Next")}
               </button>
             ) : (
               <button
@@ -6856,6 +7049,718 @@ kubernetes:
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function AddonsPage({ copy: c, lang }: { copy: Copy; lang: Lang }) {
+  const zh = lang === "zh";
+  const [clusters, setClusters] = useState<{ id: string; name: string }[]>([]);
+  const [catalog, setCatalog] = useState<any[]>([]);
+  const [installed, setInstalled] = useState<any[]>([]);
+  const [clusterFilter, setClusterFilter] = useState("");
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [installAddonName, setInstallAddonName] = useState("");
+  const [configInstalled, setConfigInstalled] = useState<any>(null);
+
+  useEffect(() => {
+    fetch("/api/v1/clusters")
+      .then((r) => r.json())
+      .then((data) => setClusters(data.data || []))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    fetch("/api/v1/addons")
+      .then((r) => r.json())
+      .then((data) => setCatalog(data.data || []))
+      .catch(() => {});
+  }, []);
+
+  const fetchInstalled = () => {
+    const q = clusterFilter ? `?cluster=${clusterFilter}` : "";
+    fetch(`/api/v1/installed-addons${q}`)
+      .then((r) => r.json())
+      .then((data) => setInstalled(data.data || []))
+      .catch(() => {});
+  };
+
+  useEffect(() => {
+    fetchInstalled();
+    const interval = setInterval(fetchInstalled, 5000);
+    return () => clearInterval(interval);
+  }, [clusterFilter]);
+
+  useEffect(() => { setPage(1); }, [clusterFilter]);
+
+  const phaseColor = (phase: string) => {
+    switch (phase) {
+      case "Ready":
+        return "#26b985";
+      case "Failed":
+        return "#ef4444";
+      case "Installing":
+      case "Upgrading":
+        return "#f59e35";
+      default:
+        return "#7f8998";
+    }
+  };
+
+  const totalPages = Math.ceil(installed.length / pageSize);
+  const pagedInstalled = installed.slice((page - 1) * pageSize, page * pageSize);
+
+  if (installAddonName) {
+    const addon = catalog.find((a) => a.name === installAddonName);
+    if (addon) {
+      return (
+        <AddonInstallPage
+          addon={addon}
+          clusters={clusters}
+          lang={lang}
+          onBack={() => setInstallAddonName("")}
+          onInstalled={() => {
+            setInstallAddonName("");
+            fetchInstalled();
+          }}
+        />
+      );
+    }
+  }
+
+  if (configInstalled) {
+    const addon = catalog.find((a) => a.name === configInstalled.spec?.addonName);
+    if (addon) {
+      return (
+        <AddonConfigPage
+          addon={addon}
+          installed={configInstalled}
+          lang={lang}
+          onBack={() => setConfigInstalled(null)}
+          onSaved={() => {
+            setConfigInstalled(null);
+            fetchInstalled();
+          }}
+        />
+      );
+    }
+  }
+
+  return (
+    <div className="page-content" style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+      <div className="section-heading">
+        <div>
+          <span className="eyebrow">
+            <Package size={13} />
+            {zh ? "组件市场" : "Addons"}
+          </span>
+          <h2>{zh ? "组件市场" : "Addon Catalog"}</h2>
+        </div>
+      </div>
+
+      {error && <div style={{ color: "#ef4444", fontSize: 13 }}>{error}</div>}
+
+      {/* Catalog grid */}
+      <div className="addon-catalog-grid">
+        {catalog.map((addon) => (
+          <div key={addon.name} className="addon-card">
+            <div className="addon-card-header">
+              <Package size={18} />
+              <div>
+                <strong>{addon.displayName}</strong>
+                <span className="addon-card-version">{addon.version}</span>
+              </div>
+            </div>
+            <p className="addon-card-desc">{addon.description}</p>
+            <div className="addon-card-footer">
+              <span className="addon-card-category">{addon.category}</span>
+              <button
+                onClick={() => setInstallAddonName(addon.name)}
+                style={{
+                  padding: "4px 14px",
+                  borderRadius: 6,
+                  border: "none",
+                  background: "var(--blue)",
+                  color: "#fff",
+                  cursor: "pointer",
+                  fontSize: 12,
+                  fontWeight: 500,
+                }}
+              >
+                {zh ? "安装" : "Install"}
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Installed addons table */}
+      <div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+          <h3 style={{ fontSize: 15, margin: 0 }}>
+            {zh ? "已安装组件" : "Installed Addons"}
+            <span className="muted" style={{ fontSize: 12, marginLeft: 8 }}>
+              ({installed.length})
+            </span>
+          </h3>
+          <select
+            value={clusterFilter}
+            onChange={(e) => setClusterFilter(e.target.value)}
+            style={{
+              padding: "6px 10px",
+              borderRadius: 6,
+              border: "1px solid var(--line)",
+              fontSize: 13,
+            }}
+          >
+            <option value="">{zh ? "所有集群" : "All clusters"}</option>
+            {clusters.map((cl) => (
+              <option key={cl.id} value={cl.id}>
+                {cl.name || cl.id}
+              </option>
+            ))}
+          </select>
+        </div>
+        {installed.length > 0 ? (
+          <>
+            <table className="addon-installed-table">
+              <thead>
+                <tr>
+                  <th>{zh ? "组件" : "Addon"}</th>
+                  <th>{zh ? "集群" : "Cluster"}</th>
+                  <th>{zh ? "版本" : "Version"}</th>
+                  <th>{zh ? "状态" : "Phase"}</th>
+                  <th>{zh ? "信息" : "Message"}</th>
+                  <th>{zh ? "操作" : "Actions"}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pagedInstalled.map((a) => (
+                  <tr key={`${a.clusterId}-${a.metadata?.name}`}>
+                    <td>{a.spec?.addonName}</td>
+                    <td className="muted">{a.clusterId}</td>
+                    <td>{a.status?.version || a.spec?.version || "-"}</td>
+                    <td>
+                      <span style={{ color: phaseColor(a.status?.phase) }}>
+                        {a.status?.phase || "Pending"}
+                      </span>
+                    </td>
+                    <td className="muted">{a.status?.message || "-"}</td>
+                    <td>
+                      <div style={{ display: "flex", gap: 6 }}>
+                        <button
+                          onClick={() => setConfigInstalled(a)}
+                          style={{
+                            padding: "4px 10px",
+                            borderRadius: 6,
+                            border: "1px solid var(--line)",
+                            background: "transparent",
+                            cursor: "pointer",
+                            fontSize: 12,
+                            color: "var(--blue)",
+                          }}
+                        >
+                          {zh ? "配置" : "Config"}
+                        </button>
+                        <button
+                          onClick={() =>
+                            fetch(`/api/v1/clusters/${a.clusterId}/addons/${a.metadata?.name}`, {
+                              method: "DELETE",
+                            })
+                              .then((r) => { if (!r.ok) throw new Error("Uninstall failed"); return r.json(); })
+                              .then(() => fetchInstalled())
+                              .catch((e) => setError(e.message))
+                          }
+                          style={{
+                            padding: "4px 10px",
+                            borderRadius: 6,
+                            border: "1px solid var(--line)",
+                            background: "transparent",
+                            cursor: "pointer",
+                            fontSize: 12,
+                            color: "#ef4444",
+                          }}
+                        >
+                          {zh ? "卸载" : "Uninstall"}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {totalPages > 1 && (
+              <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8, marginTop: 12 }}>
+                <button
+                  onClick={() => setPage(page - 1)}
+                  disabled={page <= 1}
+                  style={{
+                    padding: "4px 12px",
+                    borderRadius: 6,
+                    border: "1px solid var(--line)",
+                    background: page <= 1 ? "#f5f5f5" : "#fff",
+                    cursor: page <= 1 ? "not-allowed" : "pointer",
+                    fontSize: 12,
+                  }}
+                >
+                  {zh ? "上一页" : "Prev"}
+                </button>
+                <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                  {page} / {totalPages}
+                </span>
+                <button
+                  onClick={() => setPage(page + 1)}
+                  disabled={page >= totalPages}
+                  style={{
+                    padding: "4px 12px",
+                    borderRadius: 6,
+                    border: "1px solid var(--line)",
+                    background: page >= totalPages ? "#f5f5f5" : "#fff",
+                    cursor: page >= totalPages ? "not-allowed" : "pointer",
+                    fontSize: 12,
+                  }}
+                >
+                  {zh ? "下一页" : "Next"}
+                </button>
+              </div>
+            )}
+          </>
+        ) : (
+          <p className="muted" style={{ fontSize: 13 }}>
+            {zh ? "暂无已安装组件" : "No installed addons"}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function AddonInstallPage({
+  addon,
+  clusters,
+  lang,
+  onBack,
+  onInstalled,
+}: {
+  addon: any;
+  clusters: { id: string; name: string }[];
+  lang: Lang;
+  onBack: () => void;
+  onInstalled: () => void;
+}) {
+  const zh = lang === "zh";
+  const [installCluster, setInstallCluster] = useState("");
+  const [values, setValues] = useState<Record<string, string>>(() => {
+    const defaults: Record<string, string> = {};
+    (addon.parameters || []).forEach((p: any) => {
+      defaults[p.name] = p.default || "";
+    });
+    return defaults;
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleInstall = () => {
+    if (!installCluster) return;
+    setLoading(true);
+    setError("");
+    fetch(`/api/v1/clusters/${installCluster}/addons`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        addonName: addon.name,
+        version: addon.version,
+        values,
+      }),
+    })
+      .then((r) => {
+        if (!r.ok) throw new Error("Install failed");
+        return r.json();
+      })
+      .then(() => {
+        setLoading(false);
+        onInstalled();
+      })
+      .catch((e) => {
+        setError(e.message);
+        setLoading(false);
+      });
+  };
+
+  return (
+    <div className="page-content" style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+      <button
+        onClick={onBack}
+        style={{
+          border: "none",
+          background: "transparent",
+          cursor: "pointer",
+          fontSize: 13,
+          color: "var(--blue)",
+          display: "flex",
+          alignItems: "center",
+          gap: 4,
+          padding: 0,
+          width: "fit-content",
+        }}
+      >
+        ← {zh ? "返回组件市场" : "Back to catalog"}
+      </button>
+
+      <div className="section-heading">
+        <div>
+          <span className="eyebrow">
+            <Package size={13} />
+            {zh ? "安装组件" : "Install Addon"}
+          </span>
+          <h2>{addon.displayName}</h2>
+          <p>{addon.description}</p>
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <span className="addon-card-version">{addon.version}</span>
+          <span className="addon-card-category">{addon.category}</span>
+        </div>
+      </div>
+
+      {error && <div style={{ color: "#ef4444", fontSize: 13 }}>{error}</div>}
+
+      <div className="addon-install-form">
+        <div className="form-section">
+          <div className="form-section-head">
+            <strong>{zh ? "目标集群" : "Target Cluster"}</strong>
+            <span style={{ color: "#ef4444" }}>*</span>
+          </div>
+          <select
+            value={installCluster}
+            onChange={(e) => setInstallCluster(e.target.value)}
+            style={{
+              width: "100%",
+              padding: "10px 12px",
+              borderRadius: 8,
+              border: "1px solid var(--line)",
+              fontSize: 14,
+              boxSizing: "border-box",
+            }}
+          >
+            <option value="">{zh ? "选择集群" : "Select cluster"}</option>
+            {clusters.map((cl) => (
+              <option key={cl.id} value={cl.id}>
+                {cl.name || cl.id}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {(addon.parameters || []).length > 0 && (
+          <div className="form-section">
+            <div className="form-section-head">
+              <strong>{zh ? "参数配置" : "Parameters"}</strong>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              {addon.parameters.map((p: any) => (
+                <div key={p.name} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <label style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>
+                    {p.displayName}
+                    {p.required && <span style={{ color: "#ef4444" }}> *</span>}
+                  </label>
+                  {p.description && (
+                    <span className="muted" style={{ fontSize: 12, whiteSpace: "pre-wrap" }}>
+                      {p.description}
+                    </span>
+                  )}
+                  {p.type === "enum" ? (
+                    <select
+                      value={values[p.name] || ""}
+                      onChange={(e) => setValues({ ...values, [p.name]: e.target.value })}
+                      style={{
+                        padding: "10px 12px",
+                        borderRadius: 8,
+                        border: "1px solid var(--line)",
+                        fontSize: 14,
+                        boxSizing: "border-box",
+                        width: "100%",
+                      }}
+                    >
+                      {(p.options || []).map((opt: string) => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
+                    </select>
+                  ) : p.type === "text" ? (
+                    <textarea
+                      value={values[p.name] || ""}
+                      onChange={(e) => setValues({ ...values, [p.name]: e.target.value })}
+                      rows={8}
+                      placeholder={p.description || ""}
+                      className="addon-textarea"
+                    />
+                  ) : (
+                    <input
+                      type={p.type === "int" ? "number" : p.type === "bool" ? "checkbox" : "text"}
+                      value={p.type === "bool" ? undefined : values[p.name] || ""}
+                      checked={p.type === "bool" ? values[p.name] === "true" : undefined}
+                      onChange={(e) =>
+                        setValues({
+                          ...values,
+                          [p.name]: p.type === "bool" ? (e.target.checked ? "true" : "false") : e.target.value,
+                        })
+                      }
+                      style={{
+                        padding: p.type === "bool" ? undefined : "10px 12px",
+                        borderRadius: 8,
+                        border: "1px solid var(--line)",
+                        fontSize: 14,
+                        boxSizing: "border-box",
+                        width: p.type === "bool" ? undefined : "100%",
+                      }}
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8 }}>
+          <button
+            onClick={onBack}
+            style={{
+              padding: "10px 20px",
+              borderRadius: 10,
+              border: "1px solid var(--line)",
+              background: "#fff",
+              cursor: "pointer",
+              fontSize: 13,
+              fontWeight: 600,
+              color: "var(--text)",
+            }}
+          >
+            {zh ? "取消" : "Cancel"}
+          </button>
+          <button
+            onClick={handleInstall}
+            disabled={loading || !installCluster}
+            style={{
+              padding: "10px 24px",
+              borderRadius: 10,
+              border: "none",
+              background: loading || !installCluster ? "#ccc" : "var(--blue)",
+              color: "#fff",
+              cursor: loading || !installCluster ? "not-allowed" : "pointer",
+              fontSize: 13,
+              fontWeight: 600,
+            }}
+          >
+            {loading ? (zh ? "安装中..." : "Installing...") : zh ? "安装" : "Install"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AddonConfigPage({
+  addon,
+  installed,
+  lang,
+  onBack,
+  onSaved,
+}: {
+  addon: any;
+  installed: any;
+  lang: Lang;
+  onBack: () => void;
+  onSaved: () => void;
+}) {
+  const zh = lang === "zh";
+  const clusterId = installed.clusterId;
+  const addonName = installed.metadata?.name;
+  const [values, setValues] = useState<Record<string, string>>(() => {
+    const init: Record<string, string> = {};
+    (addon.parameters || []).forEach((p: any) => {
+      init[p.name] = installed.spec?.values?.[p.name] ?? p.default ?? "";
+    });
+    return init;
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleSave = () => {
+    setLoading(true);
+    setError("");
+    fetch(`/api/v1/clusters/${clusterId}/addons/${addonName}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        addonName: addon.name,
+        version: addon.version,
+        values,
+      }),
+    })
+      .then((r) => {
+        if (!r.ok) throw new Error("Update failed");
+        return r.json();
+      })
+      .then(() => {
+        setLoading(false);
+        onSaved();
+      })
+      .catch((e) => {
+        setError(e.message);
+        setLoading(false);
+      });
+  };
+
+  return (
+    <div className="page-content" style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+      <button
+        onClick={onBack}
+        style={{
+          border: "none",
+          background: "transparent",
+          cursor: "pointer",
+          fontSize: 13,
+          color: "var(--blue)",
+          display: "flex",
+          alignItems: "center",
+          gap: 4,
+          padding: 0,
+          width: "fit-content",
+        }}
+      >
+        ← {zh ? "返回组件市场" : "Back to catalog"}
+      </button>
+
+      <div className="section-heading">
+        <div>
+          <span className="eyebrow">
+            <Package size={13} />
+            {zh ? "配置组件" : "Configure Addon"}
+          </span>
+          <h2>{addon.displayName}</h2>
+          <p>{addon.description}</p>
+        </div>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <span className="addon-card-version">{addon.version}</span>
+          <span className="addon-card-category">{addon.category}</span>
+          <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
+            {zh ? "集群" : "Cluster"}: <strong>{clusterId}</strong>
+          </span>
+        </div>
+      </div>
+
+      {error && <div style={{ color: "#ef4444", fontSize: 13 }}>{error}</div>}
+
+      <div className="addon-install-form">
+        {(addon.parameters || []).length > 0 ? (
+          <div className="form-section">
+            <div className="form-section-head">
+              <strong>{zh ? "参数配置" : "Parameters"}</strong>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              {addon.parameters.map((p: any) => (
+                <div key={p.name} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <label style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>
+                    {p.displayName}
+                    {p.required && <span style={{ color: "#ef4444" }}> *</span>}
+                  </label>
+                  {p.description && (
+                    <span className="muted" style={{ fontSize: 12, whiteSpace: "pre-wrap" }}>
+                      {p.description}
+                    </span>
+                  )}
+                  {p.type === "enum" ? (
+                    <select
+                      value={values[p.name] || ""}
+                      onChange={(e) => setValues({ ...values, [p.name]: e.target.value })}
+                      style={{
+                        padding: "10px 12px",
+                        borderRadius: 8,
+                        border: "1px solid var(--line)",
+                        fontSize: 14,
+                        boxSizing: "border-box",
+                        width: "100%",
+                      }}
+                    >
+                      {(p.options || []).map((opt: string) => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
+                    </select>
+                  ) : p.type === "text" ? (
+                    <textarea
+                      value={values[p.name] || ""}
+                      onChange={(e) => setValues({ ...values, [p.name]: e.target.value })}
+                      rows={8}
+                      placeholder={p.description || ""}
+                      className="addon-textarea"
+                    />
+                  ) : (
+                    <input
+                      type={p.type === "int" ? "number" : p.type === "bool" ? "checkbox" : "text"}
+                      value={p.type === "bool" ? undefined : values[p.name] || ""}
+                      checked={p.type === "bool" ? values[p.name] === "true" : undefined}
+                      onChange={(e) =>
+                        setValues({
+                          ...values,
+                          [p.name]: p.type === "bool" ? (e.target.checked ? "true" : "false") : e.target.value,
+                        })
+                      }
+                      style={{
+                        padding: p.type === "bool" ? undefined : "10px 12px",
+                        borderRadius: 8,
+                        border: "1px solid var(--line)",
+                        fontSize: 14,
+                        boxSizing: "border-box",
+                        width: p.type === "bool" ? undefined : "100%",
+                      }}
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <p className="muted" style={{ fontSize: 13 }}>
+            {zh ? "该组件无可配置参数" : "This addon has no configurable parameters"}
+          </p>
+        )}
+
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8 }}>
+          <button
+            onClick={onBack}
+            style={{
+              padding: "10px 20px",
+              borderRadius: 10,
+              border: "1px solid var(--line)",
+              background: "#fff",
+              cursor: "pointer",
+              fontSize: 13,
+              fontWeight: 600,
+              color: "var(--text)",
+            }}
+          >
+            {zh ? "取消" : "Cancel"}
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={loading}
+            style={{
+              padding: "10px 24px",
+              borderRadius: 10,
+              border: "none",
+              background: loading ? "#ccc" : "var(--blue)",
+              color: "#fff",
+              cursor: loading ? "not-allowed" : "pointer",
+              fontSize: 13,
+              fontWeight: 600,
+            }}
+          >
+            {loading ? (zh ? "保存中..." : "Saving...") : zh ? "保存" : "Save"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -7430,10 +8335,11 @@ function NodeDetailPanel({
             <span className="node-detail-label">
               {zh ? "资源" : "Resources"}
             </span>
+            <div className="node-detail-scroll">
             <table className="node-resource-table">
               <thead>
                 <tr>
-                  <th>{zh ? "资源" : "Resource"}</th>
+                  <th>{zh ? "资源类型" : "Resource Type"}</th>
                   <th>{zh ? "总量" : "Capacity"}</th>
                   <th>{zh ? "可分配" : "Allocatable"}</th>
                   <th>{zh ? "已用" : "Used"}</th>
@@ -7452,11 +8358,13 @@ function NodeDetailPanel({
                 ))}
               </tbody>
             </table>
+            </div>
           </div>
         )}
 
         <div className="node-detail-section">
           <span className="node-detail-label">{zh ? "标签" : "Labels"}</span>
+          <div className="node-detail-scroll">
           {isEditing ? (
             <div className="label-editor">
               {Object.entries(ctx.labelDraft).map(([k, v]) => (
@@ -7536,13 +8444,14 @@ function NodeDetailPanel({
               )}
             </div>
           )}
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-function AdminPage({ copy: c }: { copy: Copy }) {
+function AdminPage({ copy: c, selectedNode, onNavigate }: { copy: Copy; selectedNode: string; onNavigate: (sub?: string) => void }) {
   const zh = c.nav.overview === "总览";
   const [nodes, setNodes] = useState<CRDNode[]>([]);
   const [loading, setLoading] = useState(true);
@@ -7553,7 +8462,6 @@ function AdminPage({ copy: c }: { copy: Copy }) {
   const [newLabelValue, setNewLabelValue] = useState("");
   const [saving, setSaving] = useState(false);
   const [cordoning, setCordoning] = useState(false);
-  const [selectedNode, setSelectedNode] = useState<string | null>(null);
 
   const fetchNodes = async (isInitial = true) => {
     if (isInitial) setLoading(true);
@@ -7707,6 +8615,28 @@ function AdminPage({ copy: c }: { copy: Copy }) {
   const selectedNodeObj =
     nodes.find((n) => n.metadata.name === selectedNode) ?? null;
 
+  if (selectedNodeObj) {
+    return (
+      <div className="page-content resource-page node-detail-page">
+        <div className="section-heading">
+          <div>
+            <button
+              className="plain-button back-button"
+              onClick={() => onNavigate()}
+            >
+              ← {zh ? "返回节点列表" : "Back"}
+            </button>
+            <span className="eyebrow">
+              <Settings size={13} />
+              {zh ? "节点详情" : "Node Detail"}
+            </span>
+          </div>
+        </div>
+        <NodeDetailPanel node={selectedNodeObj} {...sharedProps} />
+      </div>
+    );
+  }
+
   return (
     <div className="page-content resource-page">
       <div className="section-heading">
@@ -7753,15 +8683,12 @@ function AdminPage({ copy: c }: { copy: Copy }) {
                 key={cat}
                 cat={cat}
                 catNodes={nodesByCategory[cat]}
-                selectedNode={selectedNode}
-                onSelectNode={setSelectedNode}
+                selectedNode={null}
+                onSelectNode={(name) => onNavigate(name)}
                 {...sharedProps}
               />
             ))}
           </div>
-          {selectedNodeObj && (
-            <NodeDetailPanel node={selectedNodeObj} {...sharedProps} />
-          )}
         </div>
       )}
     </div>
@@ -7796,6 +8723,7 @@ const adminNavItems: AdminNavItem[] = [
         zh: "创建集群",
         en: "Create Cluster",
       },
+      { id: "addons", icon: Package, zh: "组件市场", en: "Addons" },
     ],
   },
   { id: "jobs", icon: Boxes, zh: "任务管理", en: "Jobs" },
@@ -7978,6 +8906,7 @@ function AdminApp() {
       "clusters-overview",
       "create-cluster",
       "clusters-nodes",
+      "addons",
       "jobs",
       "domains",
       "api",
@@ -8015,9 +8944,9 @@ function AdminApp() {
         .replace(/\/+$/, "");
       const parts = p.split("/").filter(Boolean);
       const valid = [
-        "clusters-overview",
         "create-cluster",
         "clusters-nodes",
+        "addons",
         "jobs",
         "domains",
         "api",
@@ -8138,7 +9067,13 @@ function AdminApp() {
         {adminPage === "clusters-overview" && (
           <ClustersOverviewAdminPage copy={c} />
         )}
-        {adminPage === "clusters-nodes" && <AdminPage copy={c} />}
+        {adminPage === "clusters-nodes" && (
+          <AdminPage
+            copy={c}
+            selectedNode={adminSub}
+            onNavigate={(sub?: string) => navigate("clusters-nodes", sub)}
+          />
+        )}
         {adminPage === "jobs" && (
           <div className="page-content">
             <div className="section-heading">
@@ -8164,6 +9099,7 @@ function AdminApp() {
         {adminPage === "create-cluster" && (
           <CreateClusterPage copy={c} lang={lang} />
         )}
+        {adminPage === "addons" && <AddonsPage copy={c} lang={lang} />}
         {adminPage === "config" && (
           <div className="page-content">
             <div className="section-heading">
@@ -8288,9 +9224,11 @@ function parseRoute() {
   const top = (parts[0] as Page) ?? "overview";
   if ((top as string) === "clusters") {
     const sub = parts[1] ?? "overview";
-    return sub === "nodes"
-      ? { page: "clusters-nodes" as Page, sub: "" }
-      : { page: "clusters-overview" as Page, sub: "" };
+    if (sub === "nodes") {
+      const nodeName = parts.slice(2).join("/");
+      return { page: "clusters-nodes" as Page, sub: decodeURIComponent(nodeName) };
+    }
+    return { page: "clusters-overview" as Page, sub: "" };
   }
   if (!valid.includes(top)) return { page: "overview" as Page, sub: "" };
   const sub = parts.slice(1).join("/");
@@ -8324,7 +9262,7 @@ export default function App() {
     } else if (next === "clusters-overview") {
       path = "/clusters";
     } else if (next === "clusters-nodes") {
-      path = "/clusters/nodes";
+      path = sub ? `/clusters/nodes/${sub}` : "/clusters/nodes";
     } else {
       path = `/${next}${sub ? "/" + sub : ""}`;
     }
@@ -8438,7 +9376,12 @@ export default function App() {
           <ClustersPage copy={c} initialView="clusters" />
         )}{" "}
         {page === "clusters-nodes" && (
-          <ClustersPage copy={c} initialView="nodes" />
+          <ClustersPage
+            copy={c}
+            initialView="nodes"
+            selectedNodeName={sub}
+            onNavigate={(name?: string) => navigate("clusters-nodes", name)}
+          />
         )}{" "}
         {page === "jobs" && (
           <JobsPage
