@@ -27,6 +27,10 @@ type FakeRlinfV1alpha1 struct {
 	*testing.Fake
 }
 
+func (c *FakeRlinfV1alpha1) Addons(namespace string) v1alpha1.AddonInterface {
+	return newFakeAddons(c, namespace)
+}
+
 func (c *FakeRlinfV1alpha1) Domains() v1alpha1.DomainInterface {
 	return newFakeDomains(c)
 }

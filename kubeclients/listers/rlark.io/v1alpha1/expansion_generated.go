@@ -17,6 +17,14 @@ limitations under the License.
 
 package v1alpha1
 
+// AddonListerExpansion allows custom methods to be added to
+// AddonLister.
+type AddonListerExpansion interface{}
+
+// AddonNamespaceListerExpansion allows custom methods to be added to
+// AddonNamespaceLister.
+type AddonNamespaceListerExpansion interface{}
+
 // DomainListerExpansion allows custom methods to be added to
 // DomainLister.
 type DomainListerExpansion interface{}

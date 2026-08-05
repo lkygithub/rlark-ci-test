@@ -3,6 +3,7 @@ package apis
 const (
 	RLarkAgentNamespacePrefix    = "rlark-"
 	RLarkAgentServiceAccountName = "rlark-agent"
+	Namespace                    = "rlark-system"
 )
 
 const (

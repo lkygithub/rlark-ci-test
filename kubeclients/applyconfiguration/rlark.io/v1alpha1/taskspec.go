@@ -28,8 +28,9 @@ type TaskSpecApplyConfiguration struct {
 	Role      *rlarkiov1alpha1.TaskRole  `json:"role,omitempty"`
 	Domain    *string                    `json:"domain,omitempty"`
 	// 所属 Domain 名称，从 Job 继承
-	DownstreamName *string                               `json:"downstreamName,omitempty"`
-	NodeSelector   map[string]string                     `json:"nodeSelector,omitempty"`
+	DownstreamName *string           `json:"downstreamName,omitempty"`
+	NodeSelector   map[string]string `json:"nodeSelector,omitempty"`
+	// value 可以是 ',' 分隔的多个值
 	Kubernetes     *KubernetesTaskSpecApplyConfiguration `json:"kubernetes,omitempty"`
 	Docker         *DockerTaskSpecApplyConfiguration     `json:"docker,omitempty"`
 	Raw            *RawTaskSpecApplyConfiguration        `json:"raw,omitempty"`

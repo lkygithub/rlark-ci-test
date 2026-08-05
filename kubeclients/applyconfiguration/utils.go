@@ -31,6 +31,12 @@ import (
 func ForKind(kind schema.GroupVersionKind) interface{} {
 	switch kind {
 	// Group=rlinf.io, Version=v1alpha1
+	case v1alpha1.SchemeGroupVersion.WithKind("Addon"):
+		return &rlarkiov1alpha1.AddonApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("AddonSpec"):
+		return &rlarkiov1alpha1.AddonSpecApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("AddonStatus"):
+		return &rlarkiov1alpha1.AddonStatusApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("DockerContainerSpec"):
 		return &rlarkiov1alpha1.DockerContainerSpecApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("DockerTaskSpec"):
