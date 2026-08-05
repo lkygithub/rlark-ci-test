@@ -6670,7 +6670,7 @@ ${r.agent_key
 
 kubernetes:
   kubeconfig: /path/to/kubeconfig.yaml
-  agent-image: harbor.infini-ai.com/share/rlark-agent:latest
+  agent-image: rlark-agent:latest
 `;
 
   const deployYaml = result ? buildDeployYaml(result) : "";

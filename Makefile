@@ -3,7 +3,7 @@ CRD_DIR ?= config/crd/bases
 SAMPLES_DIR ?= config/samples
 API_DOC ?= docs/api/reference.md
 
-IMAGE_REGISTRY ?= harbor.infini-ai.com/share
+IMAGE_REGISTRY ?= docker.io/rlark
 IMAGE_TAG ?= latest
 IMAGE_PLATFORMS ?= linux/amd64
 
