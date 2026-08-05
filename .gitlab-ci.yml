@@ -8,6 +8,7 @@ variables:
   VERSION: v0.1.0
   CI_IMAGE: harbor.infini-ai.com/share/mizar-ci:1.26.5-bookworm
   DOCKER_CLIENT_TIMEOUT: "300"
+  IMAGE_REGISTRY: harbor.infini-ai.com/share
 
 build-images-dev:
   image: ${CI_IMAGE}
