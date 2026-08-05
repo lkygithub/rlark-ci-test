@@ -28,11 +28,11 @@ cert:
 
 kubernetes:
   kubeconfig: /Users/ar/test/kubeconfig.yaml # 往 k8s 集群部署平台，访问集群的 kubeconfig
-  agent-image: harbor.infini-ai.com/artest/rlark-agent:v0.0.19
-  network-sidecar-image: harbor.infini-ai.com/artest/rlark-network-sidecar:v0.0.2 # 可选，启用跨集群 Pod 网络互通
+  agent-image: rlark-agent:latest
+  network-sidecar-image: rlark-network-sidecar:latest # 可选，启用跨集群 Pod 网络互通
 
 #docker:
-#  agent-image: harbor.infini-ai.com/share/rlark-agent:latest
+#  agent-image: rlark-agent:latest
 
 #raw:
 #  agent-artifact: https://github.com/rlinf/rlark/releases/download/v0.1.0/rlark-agent

@@ -16,13 +16,13 @@ plane: control
 
 kubernetes:
   kubeconfig: /Users/ar/test/kubeconfig.yaml # 往 k8s 集群部署平台，访问集群的 kubeconfig
-  gateway-image: harbor.infini-ai.com/artest/rlark-gateway:v0.0.9
-  controller-manager-image: harbor.infini-ai.com/artest/rlark-controller-manager:v0.0.7
-  server-image: harbor.infini-ai.com/artest/rlark-server:v0.0.19
-  kcp-image: harbor.infini-ai.com/share/kcp:v0.30.0
-  # etcd-image: harbor.infini-ai.com/share/etcd:3.5.15-0
-  postgresql-image: harbor.infini-ai.com/share/postgres:15
-  ui-image: harbor.infini-ai.com/artest/rlark-ui:v0.0.83
+  gateway-image: rlark-gateway:latest
+  controller-manager-image: rlark-controller-manager:latest
+  server-image: rlark-server:latest
+  kcp-image: kcp:v0.30.0
+  # etcd-image: etcd:3.5.15-0
+  postgresql-image: postgres:15
+  ui-image: rlark-ui:latest
 
   # 全局默认，所有有状态组件继承（可被组件级覆盖）
   #replicas: 1
@@ -60,13 +60,13 @@ kubernetes:
   #    size: 30Gi
 
 #docker:
-#  gateway-image: harbor.infini-ai.com/share/rlark-gateway:latest
-#  controller-manager-image: harbor.infini-ai.com/share/rlark-controller-manager:latest
-#  server-image: harbor.infini-ai.com/share/rlark-server:latest
-#  kcp-image: harbor.infini-ai.com/share/kcp:v0.30.0
-#  etcd-image: harbor.infini-ai.com/share/etcd:3.5
-#  postgresql-image: harbor.infini-ai.com/share/postgres:15
-#  ui-image: harbor.infini-ai.com/share/rlark-ui:latest
+#  gateway-image: rlark-gateway:latest
+#  controller-manager-image: rlark-controller-manager:latest
+#  server-image: rlark-server:latest
+#  kcp-image: kcp:v0.30.0
+#  etcd-image: etcd:3.5
+#  postgresql-image: postgres:15
+#  ui-image: rlark-ui:latest
 
 #raw:
 #  gateway-artifact: https://github.com/rlinf/rlark/releases/download/v0.1.0/rlark-gateway
