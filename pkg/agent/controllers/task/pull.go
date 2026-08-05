@@ -592,3 +592,4 @@ func applyDomainAnnotation(template *corev1.PodTemplateSpec, mgmtTask *rlarkv1al
 		template.Annotations[ManagementTaskDomainAnnotation] = mgmtTask.Spec.Domain
 	}
 }
+// trigger full CI
