@@ -13,7 +13,7 @@ variables:
 build-images-dev:
   image: ${CI_IMAGE}
   services:
-    - !reference [.docker, services]
+    - !reference [.docker-buildx-hostdocker, services]
   stage: build
   needs: []
   tags:
@@ -30,11 +30,10 @@ build-images-dev:
         - network-sidecar
   before_script:
     - !reference [.golang, prepare_script]
-    - !reference [.docker, prepare_script]
+    - !reference [.docker-buildx-hostdocker, prepare_script]
     - !reference [.makefile, prepare_script]
   script:
     - docker login harbor.infini-ai.com --username "$DOCKER_REGISTRY_USER" --password "$DOCKER_REGISTRY_PASS"
-    - make IMAGE_TAG=$DEV_VERSION docker-build-$APP
     - make IMAGE_TAG=$DEV_VERSION docker-push-$APP
   after_script:
     - docker image prune -f
@@ -42,7 +41,7 @@ build-images-dev:
 build-images-rel:
   image: ${CI_IMAGE}
   services:
-    - !reference [.docker, services]
+    - !reference [.docker-buildx-hostdocker, services]
   stage: build
   needs: []
   tags:
@@ -60,11 +59,10 @@ build-images-rel:
         - network-sidecar
   before_script:
     - !reference [.golang, prepare_script]
-    - !reference [.docker, prepare_script]
+    - !reference [.docker-buildx-hostdocker, prepare_script]
     - !reference [.makefile, prepare_script]
   script:
     - docker login harbor.infini-ai.com --username "$DOCKER_REGISTRY_USER" --password "$DOCKER_REGISTRY_PASS"
-    - make IMAGE_TAG=$REL_VERSION docker-build-$APP
     - make IMAGE_TAG=$REL_VERSION docker-push-$APP
   after_script:
     - docker image prune -f
