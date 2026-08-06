@@ -19,6 +19,7 @@ func (s *Server) registerHTTPSHandlers(r *gin.Engine) {
 	// Peer connection and proxy endpoints
 	api.GET("connect", s.handleProxyConnect)
 	api.Any("proxy/:target/*path", s.handleProxy)
+	api.GET("terminal/:target/:namespace/:pod", s.handleTerminalProxy)
 
 	// Sign and revoke certificate endpoints
 	api.POST("sign", s.handleSignCertificate)

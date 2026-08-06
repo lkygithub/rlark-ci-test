@@ -58,6 +58,7 @@ func (g *Gateway) RegisterRoutes(r gin.IRouter) {
 		pods.GET("", g.rlinfv1alpha1ListPods)
 		pods.GET("/:name", g.rlinfv1alpha1GetPod)
 		pods.PATCH("/:name", g.rlinfv1alpha1PatchPod)
+		pods.GET("/:name/terminal", g.handlePodTerminal)
 	}
 
 	domains := rlinfv1alpha1.Group("/domains")

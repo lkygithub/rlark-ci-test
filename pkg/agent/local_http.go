@@ -12,6 +12,7 @@ func (a *Agent) runLocalHTTPServer(ctx context.Context) error {
 	logger := log.FromContext(ctx)
 	r := gin.Default()
 	r.Any("/api/kubernetes/*path", a.handleKubernetesProxy)
+	r.GET("/api/terminal/:namespace/:pod", a.handleTerminal)
 
 	server := http.Server{
 		Handler: r,
