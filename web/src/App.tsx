@@ -9890,10 +9890,12 @@ function StorageClassCreatePage({
       </div>
       <form onSubmit={handleSubmit} className="form-card">
         <div className="form-section">
-          <strong>{c.storageClass.basicInfo}</strong>
+          <div className="form-section-head">
+            <strong>{c.storageClass.basicInfo}</strong>
+          </div>
           <div className="form-grid">
             <label>
-              {c.storageClass.name} *
+              <span>{c.storageClass.name} *</span>
               <input
                 required
                 value={form.name}
@@ -9902,7 +9904,7 @@ function StorageClassCreatePage({
               />
             </label>
             <label>
-              {c.storageClass.namespace}
+              <span>{c.storageClass.namespace}</span>
               <input
                 value={form.namespace}
                 onChange={(e) => setForm({ ...form, namespace: e.target.value })}
@@ -9910,7 +9912,7 @@ function StorageClassCreatePage({
               />
             </label>
             <label>
-              {c.storageClass.provider} *
+              <span>{c.storageClass.provider} *</span>
               <select
                 value={form.provider}
                 onChange={(e) => setForm({ ...form, provider: e.target.value as StorageProvider })}
@@ -9921,7 +9923,7 @@ function StorageClassCreatePage({
               </select>
             </label>
             <label>
-              {c.storageClass.clusters}
+              <span>{c.storageClass.clusters}</span>
               <input
                 value={form.clusters.join(", ")}
                 onChange={(e) =>
@@ -9936,10 +9938,12 @@ function StorageClassCreatePage({
           </div>
         </div>
         <div className="form-section">
-          <strong>{c.storageClass.connection}</strong>
+          <div className="form-section-head">
+            <strong>{c.storageClass.connection}</strong>
+          </div>
           <div className="form-grid">
             <label>
-              {c.storageClass.endpoint} *
+              <span>{c.storageClass.endpoint} *</span>
               <input
                 required
                 value={form.endpoint}
@@ -9948,7 +9952,7 @@ function StorageClassCreatePage({
               />
             </label>
             <label>
-              {c.storageClass.region} *
+              <span>{c.storageClass.region} *</span>
               <input
                 required
                 value={form.region}
@@ -9957,7 +9961,7 @@ function StorageClassCreatePage({
               />
             </label>
             <label>
-              {c.storageClass.bucket} *
+              <span>{c.storageClass.bucket} *</span>
               <input
                 required
                 value={form.bucket}
@@ -9965,16 +9969,16 @@ function StorageClassCreatePage({
                 placeholder="my-bucket"
               />
             </label>
-            <label>
-              {c.storageClass.pathStyle}
+            <label className="form-check">
               <input
                 type="checkbox"
                 checked={form.path_style}
                 onChange={(e) => setForm({ ...form, path_style: e.target.checked })}
               />
+              <span>{c.storageClass.pathStyle}</span>
             </label>
             <label>
-              {c.storageClass.accessKeyId} *
+              <span>{c.storageClass.accessKeyId} *</span>
               <input
                 required
                 value={form.access_key_id}
@@ -9983,7 +9987,7 @@ function StorageClassCreatePage({
               />
             </label>
             <label>
-              {c.storageClass.accessKeySecret} *
+              <span>{c.storageClass.accessKeySecret} *</span>
               <input
                 required
                 type="password"
@@ -9995,8 +9999,11 @@ function StorageClassCreatePage({
           </div>
         </div>
         <div className="form-section">
-          <label>
-            {c.storageClass.description} *
+          <div className="form-section-head">
+            <strong>{c.storageClass.description}</strong>
+          </div>
+          <label className="full-label">
+            <span>{c.storageClass.description} *</span>
             <textarea
               required
               value={form.description}
@@ -10535,7 +10542,7 @@ export default function App() {
             onSelect={(name?: string) => navigate("domains", name)}
           />
         )}
-        {page === "storageClass" && (
+        {page === "storageClass" && sub !== "create" && (
           <StorageClassesPage
             copy={c}
             selectedName={sub}
