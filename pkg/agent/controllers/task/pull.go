@@ -461,8 +461,6 @@ func applyTemplateMutations(template *corev1.PodTemplateSpec, mgmtTask *rlarkv1a
 	ensureLabels(template, mgmtTask.Name)
 	applyNodeSelector(&template.Spec, mgmtTask.Spec.NodeSelector)
 	applyAntiAffinity(template)
-	template.Spec.HostNetwork = true                            // 新增 Device Plugin 之后去掉
-	template.Spec.DNSPolicy = corev1.DNSClusterFirstWithHostNet // 新增 Device Plugin 之后去掉
 }
 
 func buildDeployment(mgmtTask *rlarkv1alpha1.Task, spec *rlarkv1alpha1.KubernetesWorkloadSpec) *appsv1.Deployment {

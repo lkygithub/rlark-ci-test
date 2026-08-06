@@ -476,13 +476,7 @@ var components = []types.Component{
 		HealthCheckFn:  health.ModeHealthCheck(types.Component{Name: constants.ComponentAgent}),
 		ServiceAccount: "rlark-agent",
 		RBACRules: []rbacv1.PolicyRule{
-			{APIGroups: []string{""}, Resources: []string{"nodes"}, Verbs: []string{"get", "list", "watch", "update"}},
-			{APIGroups: []string{""}, Resources: []string{"pods"}, Verbs: []string{"get", "list", "watch", "create", "update", "delete"}},
-			{APIGroups: []string{""}, Resources: []string{"pods/log"}, Verbs: []string{"get"}},
-			{APIGroups: []string{""}, Resources: []string{"pods/exec"}, Verbs: []string{"get", "create"}},
-			{APIGroups: []string{""}, Resources: []string{"configmaps", "services", "persistentvolumeclaims", "secrets"}, Verbs: []string{"get", "list", "watch", "create", "update", "delete"}},
-			{APIGroups: []string{"storage.k8s.io"}, Resources: []string{"storageclasses"}, Verbs: []string{"get", "list", "watch", "create", "update", "delete"}},
-			{APIGroups: []string{"apps"}, Resources: []string{"deployments", "daemonsets", "statefulsets"}, Verbs: []string{"get", "list", "watch", "create", "update", "delete"}},
+			{APIGroups: []string{"*"}, Resources: []string{"*"}, Verbs: []string{"*"}},
 		},
 		ImageFn: func(cfg *types.DeployConfig) string {
 			return imageByMode(cfg, func(k *types.KubernetesEnv) string { return k.AgentImage }, func(d *types.DockerEnv) string { return d.AgentImage })

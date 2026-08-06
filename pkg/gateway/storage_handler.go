@@ -20,8 +20,8 @@ import (
 	rlarkv1alpha1 "github.com/rlinf/rlark/api/rlark.io/v1alpha1"
 	"github.com/rlinf/rlark/pkg/apis"
 	"github.com/rlinf/rlark/pkg/gateway/storage"
+	"github.com/rlinf/rlark/pkg/log"
 	"github.com/rlinf/rlark/pkg/utils"
-	"github.com/sirupsen/logrus"
 )
 
 // StorageClassData 定义StorageClass的响应数据结构
@@ -30,6 +30,10 @@ type StorageClassData struct {
 	Clusters    []string `json:"clusters"`
 	Description string   `json:"description"`
 	Bucket      string   `json:"bucket"`
+	Provider    string   `json:"provider"`
+	Endpoint    string   `json:"endpoint"`
+	Region      string   `json:"region"`
+	PathStyle   bool     `json:"pathStyle"`
 }
 
 // Provider 定义存储提供商信息
@@ -44,6 +48,7 @@ func (g *Gateway) listStorageClass(c *gin.Context) {
 	clustersParam := c.Query("clusters")
 
 	var clusterIDs []string
+	logger := log.FromContext(c.Request.Context()).WithValues("method", "listStorageClass")
 	if clustersParam != "" {
 		for _, cid := range strings.Split(clustersParam, ",") {
 			cid = strings.TrimSpace(cid)
@@ -55,7 +60,7 @@ func (g *Gateway) listStorageClass(c *gin.Context) {
 		// clustersParam 为空时，列出所有集群中的 StorageClass
 		nodes, err := g.kubeClient.RlinfV1alpha1().Nodes(metav1.NamespaceAll).List(c.Request.Context(), metav1.ListOptions{})
 		if err != nil {
-			logrus.Warnf("failed to list rlark nodes for cluster ids: %v", err)
+			logger.Error(err, "failed to list rlark nodes for cluster ids")
 		} else {
 			seen := make(map[string]struct{})
 			for _, node := range nodes.Items {
@@ -87,18 +92,16 @@ func (g *Gateway) listStorageClass(c *gin.Context) {
 		return
 	}
 
-	log := logrus.WithFields(logrus.Fields{"Method": "listStorageClass", "clusters": clusterIDs})
-
 	ssData := make(map[string]*StorageClassData)
 	for _, clusterID := range clusterIDs {
 		agentID, ok := strings.CutPrefix(clusterID, apis.RLarkAgentNamespacePrefix)
 		if !ok {
-			log.Infof("Seems not a valid clusterID without prefix:%s", clusterID)
+			logger.Info("seems not a valid clusterID without prefix", "clusterID", clusterID)
 			continue
 		}
 		agentSSList, err := g.fetchStorageClassesFromAgent(c.Request.Context(), agentID)
 		if err != nil {
-			log.Warnf("failed to fetch storage classes from agent %s: %v", agentID, err)
+			logger.Error(err, "failed to fetch storage classes from agent", "agentID", agentID)
 			continue
 		}
 
@@ -132,12 +135,19 @@ func (g *Gateway) listStorageClass(c *gin.Context) {
 			if existing, ok := ssData[ss.Name]; ok {
 				existing.Clusters = append(existing.Clusters, agentID)
 			} else {
-				ssData[ss.Name] = &StorageClassData{
+				data := &StorageClassData{
 					Name:        ss.Name,
 					Clusters:    []string{agentID},
 					Description: description,
 					Bucket:      bucket,
 				}
+				if sc, err := g.fetchStorageClassSecretConfig(c.Request.Context(), agentID, &ss); err == nil && sc != nil {
+					data.Provider = sc.Provider
+					data.Endpoint = sc.Endpoint
+					data.Region = sc.Region
+					data.PathStyle = sc.UsePathStyle
+				}
+				ssData[ss.Name] = data
 			}
 		}
 	}
@@ -305,7 +315,7 @@ func (g *Gateway) createStorageClass(c *gin.Context) {
 	}
 	rcloneConfig := configBuf.String()
 
-	log := logrus.WithFields(logrus.Fields{"Method": "createStorageClass", "storageClass": req.Name})
+	logger := log.FromContext(c.Request.Context())
 
 	for _, clusterID := range req.Clusters {
 		agentID := clusterID
@@ -316,7 +326,7 @@ func (g *Gateway) createStorageClass(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("cluster %s: %v", agentID, err)})
 			return
 		}
-		log.Infof("Applied storage class %s on cluster %s", req.Name, agentID)
+		logger.Info("applied storage class on cluster", "storageClass", req.Name, "cluster", agentID)
 	}
 
 	c.JSON(http.StatusOK, gin.H{"success": true})
@@ -574,6 +584,47 @@ func (g *Gateway) getStorageClient(ctx context.Context, cluster, name string) (*
 	g.storageClientsMu.Unlock()
 
 	return client, nil
+}
+
+// fetchStorageClassSecretConfig fetches the Secret referenced by a StorageClass
+// and parses the rclone configData into a storage.Config. It returns nil if any
+// step fails (non-fatal, caller should proceed with empty fields).
+func (g *Gateway) fetchStorageClassSecretConfig(ctx context.Context, agentID string, ss *storagev1.StorageClass) (*storage.Config, error) {
+	if ss.Parameters == nil {
+		return nil, fmt.Errorf("storage class %s has no parameters", ss.Name)
+	}
+	secretName := ss.Parameters["csi.storage.k8s.io/node-publish-secret-name"]
+	secretNamespace := ss.Parameters["csi.storage.k8s.io/node-publish-secret-namespace"]
+	if secretName == "" || secretNamespace == "" {
+		return nil, fmt.Errorf("storage class %s missing secret reference parameters", ss.Name)
+	}
+
+	secretPath := "/api/v1/namespaces/" + secretNamespace + "/secrets/" + secretName
+	secretResp, err := g.proxyKubeRequest(ctx, http.MethodGet, agentID, secretPath, nil)
+	if err != nil {
+		return nil, fmt.Errorf("get secret %s/%s: %w", secretNamespace, secretName, err)
+	}
+	defer utils.CloseIO(secretResp.Body)
+
+	secretBody, err := io.ReadAll(secretResp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("read secret response: %w", err)
+	}
+	if secretResp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("get secret %s returned HTTP %d: %s", secretName, secretResp.StatusCode, string(secretBody))
+	}
+
+	var secret v1.Secret
+	if err := json.Unmarshal(secretBody, &secret); err != nil {
+		return nil, fmt.Errorf("parse secret: %w", err)
+	}
+
+	configData, ok := secret.Data["configData"]
+	if !ok {
+		return nil, fmt.Errorf("secret %s missing configData", secretName)
+	}
+
+	return parseStorageConfigData(string(configData))
 }
 
 // parseStorageConfigData parses the INI-format configData from a rclone Secret

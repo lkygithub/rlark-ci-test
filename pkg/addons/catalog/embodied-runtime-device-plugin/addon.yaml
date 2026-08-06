@@ -51,7 +51,7 @@ parameters:
     displayName: 设备插件镜像
     description: device-plugin 容器镜像地址
     type: string
-    default: harbor.infini-ai.com/share/rlinf/embodied-runtime:v0.1.0-8541df1a
+    default: harbor.infini-ai.com/share/rlinf/embodied-runtime:v0.1.0-b4b4d6f8
     required: true
 
   - name: cameraImage
