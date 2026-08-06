@@ -183,6 +183,8 @@ func (s *Server) handlePeerConnectProxy(ctx *gin.Context) {
 }
 
 // handleProxy 处理通过服务器代理的 HTTP 请求。它会根据请求的目标和路径，使用默认的代理传输将请求转发到目标地址。
+// target: 目标集群名称
+// path: 要访问的目标集群 Agent 的 Local Server 的路径
 func (s *Server) handleProxy(ctx *gin.Context) {
 	// 对应 GetDial 参数为
 	// - dialType = "default"
@@ -206,6 +208,46 @@ func (s *Server) handleProxy(ctx *gin.Context) {
 	proxy.Transport = s.defaultProxyTransport
 	proxy.ServeHTTP(ctx.Writer, ctx.Request)
 	metrics.IncProxyRequest(target, "ok")
+}
+
+// handlePodProxy 处理通过服务器代理的 Pod 请求。
+// target: 目标 Pod 的名称 + 端口
+// path: 要访问的目标 Pod 的路径
+func (s *Server) handlePodProxy(ctx *gin.Context) {
+	target := ctx.Param("target")
+	podName, port, err := net.SplitHostPort(target)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("invalid target format: %v", err)})
+		return
+	}
+	pod, ok := s.podCache.GetPodByName(podName)
+	if !ok {
+		ctx.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprintf("pod %s not found", podName)})
+		return
+	}
+	if pod.Status.IP == "" {
+		ctx.JSON(http.StatusServiceUnavailable, gin.H{"error": fmt.Sprintf("pod %s not ready", podName)})
+		return
+	}
+	targetAgent := strings.TrimPrefix(pod.Namespace, apis.RLarkAgentNamespacePrefix)
+	certMeta := GetCertMetaFromContext(ctx)
+	if !auth.PermissionChecker.HasAgentProxyPermission(certMeta, targetAgent) {
+		metrics.IncProxyRequest(targetAgent, "forbidden")
+		ctx.JSON(http.StatusForbidden, gin.H{"error": "client certificate does not have proxy permission for the target"})
+		return
+	}
+
+	// 构造从目标 Agent 的 /api/proxy 接口转发到 Pod 的请求路径
+	path := ctx.Param("path")
+	ctx.Request.URL.Path = "/api/proxy/http://" + pod.Status.IP + ":" + port + path
+	url := &url.URL{
+		Scheme: cmp.Or(ctx.Request.Header.Get("Proxy-Scheme"), "http"),
+		Host:   targetAgent,
+	}
+	proxy := httputil.NewSingleHostReverseProxy(url)
+	proxy.Transport = s.defaultProxyTransport
+	proxy.ServeHTTP(ctx.Writer, ctx.Request)
+	metrics.IncProxyRequest(targetAgent, "ok")
 }
 
 // handleKubernetesProxy 处理通过服务器代理的 Kubernetes API 请求。它会根据客户端证书中的元数据，
