@@ -10,19 +10,26 @@ data:
     skip_register: false
     camera:
       manager_mode: pod
+      http_addr: :8080
       pod:
         namespace: rlark-system
         image: {{ .Values.cameraImage }}
         pod_generate_name: camera-controller
+        subdomain: camera-controller-headless
+        labels:
+          app.kubernetes.io/name: camera-controller
       auto_detect_v4l2: true
       cameras: []
     ros:
       manager_mode: pod
+      http_addr: :8080
       pod:
         namespace: rlark-system
         image: {{ .Values.rosImage }}
         pod_generate_name: ros-controller
-        web_proxy_port: 8080
+        subdomain: ros-controller-headless
+        labels:
+          app.kubernetes.io/name: ros-controller
       types:
         - type: franka
           modes:

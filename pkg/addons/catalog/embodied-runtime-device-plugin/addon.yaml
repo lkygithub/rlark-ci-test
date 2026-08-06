@@ -68,6 +68,13 @@ parameters:
     default: harbor.infini-ai.com/share/rlinf/serl_franka_controllers:v0.1.0-libfranka-0.19.0-frankaros-0.10.2
     required: true
 
+  - name: rendererImage
+    displayName: 配置渲染镜像
+    description: 节点级配置渲染 initContainer 使用的 yq 镜像地址（仅 nodeOverrides 非空时启用）
+    type: string
+    default: harbor.infini-ai.com/artest/yq:4.53.2
+    required: false
+
   - name: robotTolerationKey
     displayName: 机器人节点 Toleration Key
     description: DaemonSet 调度到机器人节点的 toleration key
