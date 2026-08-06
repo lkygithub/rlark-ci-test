@@ -33,22 +33,22 @@ const (
 )
 
 type AddonParameter struct {
-	Name        string   `yaml:"name" json:"name"`
-	DisplayName string   `yaml:"displayName" json:"displayName"`
-	Description string   `yaml:"description,omitempty" json:"description,omitempty"`
+	Name        string        `yaml:"name" json:"name"`
+	DisplayName string        `yaml:"displayName" json:"displayName"`
+	Description string        `yaml:"description,omitempty" json:"description,omitempty"`
 	Type        ParameterType `yaml:"type" json:"type"`
-	Default     string   `yaml:"default,omitempty" json:"default,omitempty"`
-	Options     []string `yaml:"options,omitempty" json:"options,omitempty"`
-	Required    bool     `yaml:"required,omitempty" json:"required,omitempty"`
+	Default     string        `yaml:"default,omitempty" json:"default,omitempty"`
+	Options     []string      `yaml:"options,omitempty" json:"options,omitempty"`
+	Required    bool          `yaml:"required,omitempty" json:"required,omitempty"`
 }
 
 type AddonMeta struct {
-	Name        string          `yaml:"name" json:"name"`
-	DisplayName string          `yaml:"displayName" json:"displayName"`
-	Category    string          `yaml:"category" json:"category"`
-	Version     string          `yaml:"version" json:"version"`
-	Description string          `yaml:"description" json:"description"`
-	Icon        string          `yaml:"icon,omitempty" json:"icon,omitempty"`
+	Name        string           `yaml:"name" json:"name"`
+	DisplayName string           `yaml:"displayName" json:"displayName"`
+	Category    string           `yaml:"category" json:"category"`
+	Version     string           `yaml:"version" json:"version"`
+	Description string           `yaml:"description" json:"description"`
+	Icon        string           `yaml:"icon,omitempty" json:"icon,omitempty"`
 	Parameters  []AddonParameter `yaml:"parameters,omitempty" json:"parameters,omitempty"`
 }
 
@@ -110,8 +110,8 @@ func (r *registry) load() error {
 		}
 
 		a := &embeddedAddon{
-			meta:         meta,
-			dir:          entry.Name(),
+			meta:          meta,
+			dir:           entry.Name(),
 			manifestFiles: manifestFiles,
 		}
 		r.addons[meta.Name] = a
@@ -162,16 +162,16 @@ func (a *embeddedAddon) Render(values map[string]string, namespace string, addon
 	}
 
 	data := struct {
-		Values     map[string]interface{}
-		Namespace  string
-		AddonName string
-		AddonUID  string
+		Values      map[string]interface{}
+		Namespace   string
+		AddonName   string
+		AddonUID    string
 		AddonLabels map[string]string
 	}{
-		Values:     renderValues,
-		Namespace:  namespace,
-		AddonName:  addonName,
-		AddonUID:   addonUID,
+		Values:      renderValues,
+		Namespace:   namespace,
+		AddonName:   addonName,
+		AddonUID:    addonUID,
 		AddonLabels: addonLabels,
 	}
 
@@ -184,17 +184,17 @@ func (a *embeddedAddon) Render(values map[string]string, namespace string, addon
 		}
 
 		tmpl, err := template.New(fname).Funcs(template.FuncMap{
-		"splitList": func(sep, s string) []string {
-			if s == "" {
-				return nil
-			}
-			return strings.Split(s, sep)
-		},
-		"indent": func(n int, s string) string {
-			prefix := strings.Repeat(" ", n)
-			return prefix + strings.ReplaceAll(s, "\n", "\n"+prefix)
-		},
-	}).Parse(string(raw))
+			"splitList": func(sep, s string) []string {
+				if s == "" {
+					return nil
+				}
+				return strings.Split(s, sep)
+			},
+			"indent": func(n int, s string) string {
+				prefix := strings.Repeat(" ", n)
+				return prefix + strings.ReplaceAll(s, "\n", "\n"+prefix)
+			},
+		}).Parse(string(raw))
 		if err != nil {
 			return nil, fmt.Errorf("parse template %s: %w", fname, err)
 		}

@@ -125,8 +125,8 @@ type wsPipe struct {
 	rcond  *sync.Cond
 	closed bool
 
-	kubeConfig  *rest.Config
-	kubeClient  kubernetes.Interface
+	kubeConfig *rest.Config
+	kubeClient kubernetes.Interface
 	namespace  string
 	podName    string
 	container  string

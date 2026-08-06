@@ -12,8 +12,8 @@ import (
 
 	rlarkv1alpha1 "github.com/rlinf/rlark/api/rlark.io/v1alpha1"
 	"github.com/rlinf/rlark/pkg/agent/controllers"
-	"github.com/rlinf/rlark/pkg/agent/controllers/base"
 	"github.com/rlinf/rlark/pkg/agent/controllers/addon"
+	"github.com/rlinf/rlark/pkg/agent/controllers/base"
 	"github.com/rlinf/rlark/pkg/agent/controllers/node"
 	"github.com/rlinf/rlark/pkg/agent/controllers/pod"
 	"github.com/rlinf/rlark/pkg/agent/controllers/task"
