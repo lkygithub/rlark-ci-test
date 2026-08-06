@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"sync"
 
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -15,6 +16,7 @@ import (
 
 	versioned "github.com/rlinf/rlark/kubeclients/clientset/versioned"
 	"github.com/rlinf/rlark/pkg/db"
+	"github.com/rlinf/rlark/pkg/gateway/storage"
 	"github.com/rlinf/rlark/pkg/log"
 )
 
@@ -32,6 +34,9 @@ type Gateway struct {
 	stores    map[string]*db.ResourceStore
 	accessors map[string]*resourceAccessor
 
+	storageClients   map[string]*storage.Client
+	storageClientsMu sync.RWMutex
+
 	serverTransport *http.Transport
 }
 
@@ -40,7 +45,8 @@ type Gateway struct {
 // fall back to the Kubernetes API server.
 func NewGateway(config Config) *Gateway {
 	return &Gateway{
-		config: config,
+		config:         config,
+		storageClients: make(map[string]*storage.Client),
 	}
 }
 

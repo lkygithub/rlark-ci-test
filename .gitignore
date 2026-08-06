@@ -7,3 +7,4 @@ tmp/
 /agent
 /controller-manager
 /crd-api-docgen
+pkg/gateway/storage/unsafe_client_test.go
