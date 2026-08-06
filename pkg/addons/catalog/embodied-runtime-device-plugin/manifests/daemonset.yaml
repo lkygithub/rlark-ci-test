@@ -30,7 +30,7 @@ spec:
       {{- if .Values.nodeOverrides }}
       initContainers:
         - name: config-renderer
-          image: harbor.infini-ai.com/artest/yq:4.53.2
+          image: {{ .Values.rendererImage }}
           command: ["/bin/sh", "/etc/rlinf/template/render.sh"]
           env:
             - name: NODE_NAME
