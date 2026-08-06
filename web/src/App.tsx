@@ -86,7 +86,6 @@ type Page =
   | "clusters-nodes"
   | "jobs"
   | "workflows"
-  | "domains"
   | "storageClass"
   | "files"
   | "api";
@@ -107,7 +106,6 @@ const navItems: NavParent[] = [
   },
   { id: "jobs", icon: Workflow },
   { id: "workflows", icon: Boxes },
-  { id: "domains", icon: CloudCog },
   { id: "storageClass", icon: HardDrive },
 ];
 type Lang = "zh" | "en";
@@ -837,7 +835,9 @@ function Overview({
         <div>
           <span className="eyebrow">
             <Sparkles size={13} />
-            {c.overview.date}
+            {isZh
+              ? `${new Date().getFullYear()} 年 ${new Date().getMonth() + 1} 月 ${new Date().getDate()} 日`
+              : new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
           </span>
           <h2>{c.overview.title}</h2>
           <p>{c.overview.desc}</p>
@@ -9072,23 +9072,16 @@ const adminNavItems: AdminNavItem[] = [
     en: "Clusters",
     children: [
       {
-        id: "clusters-overview",
-        icon: Network,
-        zh: "集群概览",
-        en: "Clusters",
-      },
-      { id: "clusters-nodes", icon: Server, zh: "节点管理", en: "Nodes" },
-      {
         id: "create-cluster",
         icon: Shield,
         zh: "创建集群",
         en: "Create Cluster",
       },
+      { id: "clusters-nodes", icon: Server, zh: "节点管理", en: "Nodes" },
       { id: "addons", icon: Package, zh: "组件市场", en: "Addons" },
     ],
   },
   { id: "jobs", icon: Boxes, zh: "任务管理", en: "Jobs" },
-  { id: "domains", icon: CloudCog, zh: "网络域", en: "Domains" },
   { id: "api", icon: Braces, zh: "接口参考", en: "API Reference" },
   { id: "config", icon: Settings, zh: "系统配置", en: "Config" },
   { id: "storageClass", icon: HardDrive, zh: "存储管理", en: "Storage" },
@@ -9265,17 +9258,15 @@ function AdminApp() {
       .replace(/\/+$/, "");
     const parts = p.split("/").filter(Boolean);
     const valid = [
-      "clusters-overview",
       "create-cluster",
       "clusters-nodes",
       "addons",
       "jobs",
-      "domains",
       "api",
       "config",
       "storageClass",
     ];
-    return valid.includes(parts[0]) ? parts[0] : "clusters-overview";
+    return valid.includes(parts[0]) ? parts[0] : "create-cluster";
   });
   const [adminSub, setAdminSub] = useState(() => {
     const p = window.location.pathname
@@ -9295,7 +9286,7 @@ function AdminApp() {
   const navigate = (id: string, sub?: string) => {
     setAdminPage(id);
     setAdminSub(sub ?? "");
-    let path = id === "clusters-overview" ? "/admin" : `/admin/${id}`;
+    let path = id === "create-cluster" ? "/admin" : `/admin/${id}`;
     if (sub) path += "/" + encodeURIComponent(sub);
     window.history.pushState({}, "", path);
   };
@@ -9311,12 +9302,11 @@ function AdminApp() {
         "clusters-nodes",
         "addons",
         "jobs",
-        "domains",
         "api",
         "config",
         "storageClass",
       ];
-      setAdminPage(valid.includes(parts[0]) ? parts[0] : "clusters-overview");
+      setAdminPage(valid.includes(parts[0]) ? parts[0] : "create-cluster");
       setAdminSub(
         parts.length > 1 ? decodeURIComponent(parts.slice(1).join("/")) : "",
       );
@@ -9428,9 +9418,6 @@ function AdminApp() {
           onCreate={() => navigate("create-cluster")}
           createLabel={zh ? "创建集群" : "Create Cluster"}
         />
-        {adminPage === "clusters-overview" && (
-          <ClustersOverviewAdminPage copy={c} />
-        )}
         {adminPage === "clusters-nodes" && (
           <AdminPage
             copy={c}
@@ -9451,13 +9438,6 @@ function AdminApp() {
             </div>
             <p className="muted">{zh ? "即将推出" : "Coming soon"}</p>
           </div>
-        )}
-        {adminPage === "domains" && (
-          <DomainsPage
-            copy={c}
-            selectedName={adminSub}
-            onSelect={(name?: string) => navigate("domains", name)}
-          />
         )}
         {adminPage === "api" && <ApiPage copy={c} />}
         {adminPage === "create-cluster" && (
@@ -9626,11 +9606,11 @@ function StorageClassesPage({
     if (!fetched) fetchClasses();
   }, [fetched]);
 
-  const handleDelete = async (id: string, name: string) => {
+  const handleDelete = async (name: string) => {
     if (!confirm(zh ? `确定删除存储类 "${name}" 吗?` : `Delete storage class "${name}"?`))
       return;
     try {
-      const resp = await fetch(`/api/v1/storage/storageclass/${encodeURIComponent(id)}`, {
+      const resp = await fetch(`/api/v1/storage/storageclass/${encodeURIComponent(name)}`, {
         method: "DELETE",
       });
       if (resp.ok) fetchClasses();
@@ -9704,7 +9684,7 @@ function StorageClassesPage({
               </tr>
             )}
             {filtered.map((sc) => (
-              <tr key={sc.id} className="clickable" onClick={() => onSelect(sc.name)}>
+              <tr key={sc.name} className="clickable" onClick={() => onSelect(sc.name)}>
                 <td><strong>{sc.name}</strong></td>
                 <td>{sc.bucket}</td>
                 <td>{sc.clusters.join(", ") || "—"}</td>
@@ -9730,7 +9710,7 @@ function StorageClassesPage({
                     className="btn-icon btn-icon-danger"
                     onClick={(e) => {
                       e.stopPropagation();
-                      handleDelete(sc.id, sc.name);
+                      handleDelete(sc.name);
                     }}
                   >
                     <Trash2 size={14} />
@@ -9773,42 +9753,51 @@ function StorageClassDetailPage({
           {zh ? "返回" : "Back"}
         </button>
       </div>
-      <div className="detail-grid">
-        <div className="detail-item">
-          <span>{c.storageClass.provider}</span>
-          <strong>{storageClass.provider}</strong>
-        </div>
-        <div className="detail-item">
-          <span>{c.storageClass.bucket}</span>
-          <strong>{storageClass.bucket}</strong>
-        </div>
-        <div className="detail-item">
-          <span>{c.storageClass.region}</span>
-          <strong>{storageClass.region || "—"}</strong>
-        </div>
-        <div className="detail-item">
-          <span>{c.storageClass.createdAt}</span>
-          <strong>{storageClass.createdAt || "—"}</strong>
-        </div>
-      </div>
-      <div className="detail-section">
-        <small>{c.storageClass.connection}</small>
-        <div className="detail-grid">
-          <div className="detail-item">
-            <span>{c.storageClass.endpoint}</span>
-            <strong>{storageClass.endpoint || "—"}</strong>
+      <div className="node-detail-body">
+        <div className="node-detail-section">
+          <span className="node-detail-label">{c.storageClass.basicInfo}</span>
+          <div className="node-detail-grid">
+            <div>
+              <span className="muted">{c.storageClass.provider}</span>
+              <strong>{storageClass.provider || "—"}</strong>
+            </div>
+            <div>
+              <span className="muted">{c.storageClass.bucket}</span>
+              <strong>{storageClass.bucket || "—"}</strong>
+            </div>
+            <div>
+              <span className="muted">{c.storageClass.region}</span>
+              <strong>{storageClass.region || "—"}</strong>
+            </div>
+            <div>
+              <span className="muted">{c.storageClass.description}</span>
+              <strong>{storageClass.description || "—"}</strong>
+            </div>
           </div>
-          <div className="detail-item">
-            <span>{c.storageClass.pathStyle}</span>
-            <strong>{storageClass.pathStyle ? (zh ? "启用" : "Enabled") : (zh ? "禁用" : "Disabled")}</strong>
+        </div>
+        <div className="node-detail-section">
+          <span className="node-detail-label">{c.storageClass.connection}</span>
+          <div className="node-detail-grid">
+            <div>
+              <span className="muted">{c.storageClass.endpoint}</span>
+              <strong>{storageClass.endpoint || "—"}</strong>
+            </div>
+            <div>
+              <span className="muted">{c.storageClass.pathStyle}</span>
+              <strong>{storageClass.pathStyle ? (zh ? "启用" : "Enabled") : (zh ? "禁用" : "Disabled")}</strong>
+            </div>
           </div>
-          <div className="detail-item">
-            <span>{c.storageClass.clusters}</span>
-            <strong>{storageClass.clusters.join(", ") || "—"}</strong>
-          </div>
-          <div className="detail-item">
-            <span>{c.storageClass.description}</span>
-            <strong>{storageClass.description || "—"}</strong>
+        </div>
+        <div className="node-detail-section">
+          <span className="node-detail-label">{c.storageClass.clusters}</span>
+          <div className="node-detail-value">
+            {storageClass.clusters.length > 0
+              ? storageClass.clusters.map((cl) => (
+                  <span key={cl} className="label-chip">
+                    <code>{cl}</code>
+                  </span>
+                ))
+              : "—"}
           </div>
         </div>
       </div>
@@ -10347,7 +10336,6 @@ function parseRoute() {
     "clusters-nodes",
     "jobs",
     "workflows",
-    "domains",
     "storageClass",
     "files",
   ];
@@ -10535,13 +10523,6 @@ export default function App() {
             }}
           />
         )}{" "}
-        {page === "domains" && (
-          <DomainsPage
-            copy={c}
-            selectedName={sub}
-            onSelect={(name?: string) => navigate("domains", name)}
-          />
-        )}
         {page === "storageClass" && sub !== "create" && (
           <StorageClassesPage
             copy={c}

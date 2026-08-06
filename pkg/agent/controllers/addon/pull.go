@@ -11,6 +11,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
@@ -220,6 +221,8 @@ func (r *pullReconciler) cleanupAddon(ctx context.Context, mgmtAddon *rlarkv1alp
 		&rbacv1.RoleBindingList{},
 		&rbacv1.RoleList{},
 		&corev1.ServiceAccountList{},
+		&storagev1.CSIDriverList{},
+		&storagev1.StorageClassList{},
 	}
 
 	for _, list := range resources {
@@ -468,6 +471,18 @@ func extractItems(list client.ObjectList) []client.Object {
 		}
 		return result
 	case *rbacv1.RoleBindingList:
+		result := make([]client.Object, 0, len(l.Items))
+		for i := range l.Items {
+			result = append(result, &l.Items[i])
+		}
+		return result
+	case *storagev1.CSIDriverList:
+		result := make([]client.Object, 0, len(l.Items))
+		for i := range l.Items {
+			result = append(result, &l.Items[i])
+		}
+		return result
+	case *storagev1.StorageClassList:
 		result := make([]client.Object, 0, len(l.Items))
 		for i := range l.Items {
 			result = append(result, &l.Items[i])
