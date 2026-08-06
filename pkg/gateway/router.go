@@ -96,6 +96,14 @@ func (g *Gateway) RegisterRoutes(r gin.IRouter) {
 		storage.GET("/storageclass", g.listStorageClass)
 		storage.POST("/storageclass", g.createStorageClass)
 		storage.GET("/storageclass/provider", g.listProvider)
+
+		scFiles := storage.Group("/storageclass/:cluster/:name")
+		{
+			scFiles.GET("/list", g.listStorageClassFiles)
+			scFiles.POST("/upload", g.uploadStorageClassFile)
+			scFiles.GET("/object/*key", g.getStorageClassObject)
+			scFiles.DELETE("/object/*key", g.deleteStorageClassObject)
+		}
 	}
 
 	// Addon Catalog APIs
