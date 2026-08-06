@@ -3,6 +3,9 @@ package agent
 import (
 	"context"
 	"net/http"
+	"net/http/httputil"
+	"net/url"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/rlinf/rlark/pkg/log"
@@ -13,6 +16,7 @@ func (a *Agent) runLocalHTTPServer(ctx context.Context) error {
 	r := gin.Default()
 	r.Any("/api/kubernetes/*path", a.handleKubernetesProxy)
 	r.GET("/api/terminal/:namespace/:pod", a.handleTerminal)
+	r.Any("/api/proxy/*path", a.handleProxy)
 
 	server := http.Server{
 		Handler: r,
@@ -37,4 +41,15 @@ func (a *Agent) handleKubernetesProxy(ctx *gin.Context) {
 	}
 	ctx.Request.URL.Path = ctx.Param("path")
 	a.localKubeHandler.ServeHTTP(ctx.Writer, ctx.Request)
+}
+
+func (a *Agent) handleProxy(ctx *gin.Context) {
+	target := strings.TrimPrefix(ctx.Param("path"), "/")
+	targetUrl, err := url.Parse(target)
+	if err != nil {
+		ctx.AbortWithStatus(http.StatusBadRequest)
+		return
+	}
+	proxy := httputil.NewSingleHostReverseProxy(targetUrl)
+	proxy.ServeHTTP(ctx.Writer, ctx.Request)
 }
