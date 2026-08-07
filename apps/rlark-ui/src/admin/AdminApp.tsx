@@ -13,6 +13,7 @@ import { type Copy, type Lang, type Theme, copy } from "../i18n";
 import { adminNavItems } from "../constants";
 import { ApiPage } from "../pages/Api";
 import { DomainsPage } from "../pages/Domains";
+import { ClusterManagementPage } from "../pages/ClusterManagement";
 import {
   StorageClassesPage,
   StorageClassCreatePage,
@@ -183,16 +184,19 @@ export function AdminApp() {
   const [theme, setTheme] = useState<Theme>("light");
   const [loggedIn, setLoggedIn] = useState(
     () =>
-      typeof sessionStorage !== "undefined" &&
-      sessionStorage.getItem("rlark-admin-auth") === "1",
+      import.meta.env.DEV ||
+      (typeof sessionStorage !== "undefined" &&
+        sessionStorage.getItem("rlark-admin-auth") === "1"),
   );
   const [collapsed, setCollapsed] = useState(false);
+  const [storageRefreshKey, setStorageRefreshKey] = useState(0);
   const [adminPage, setAdminPage] = useState(() => {
     const p = window.location.pathname
       .replace(/^\/admin\/?/, "")
       .replace(/\/+$/, "");
     const parts = p.split("/").filter(Boolean);
     const valid = [
+      "clusters-list",
       "create-cluster",
       "clusters-nodes",
       "addons",
@@ -202,27 +206,42 @@ export function AdminApp() {
       "config",
       "storageClass",
     ];
-    return valid.includes(parts[0]) ? parts[0] : "clusters-nodes";
+    if (valid.includes(parts[0])) return parts[0];
+    return parts.length > 0 ? "clusters-nodes" : "clusters-list";
   });
   const [adminSub, setAdminSub] = useState(() => {
     const p = window.location.pathname
       .replace(/^\/admin\/?/, "")
       .replace(/\/+$/, "");
     const parts = p.split("/").filter(Boolean);
-    return parts.length > 1 ? decodeURIComponent(parts.slice(1).join("/")) : "";
+    const explicitPages = [
+      "clusters-list",
+      "create-cluster",
+      "clusters-nodes",
+      "addons",
+      "jobs",
+      "domains",
+      "api",
+      "config",
+      "storageClass",
+    ];
+    const subParts = explicitPages.includes(parts[0]) ? parts.slice(1) : parts;
+    return subParts.length > 0 ? decodeURIComponent(subParts.join("/")) : "";
   });
   const c = copy[lang];
   const zh = lang === "zh";
 
   const adminPageTitle = useMemo(() => {
-    const item = adminNavItems.find((i) => i.id === adminPage);
+    const item = adminNavItems
+      .flatMap((navItem) => [navItem, ...(navItem.children ?? [])])
+      .find((navItem) => navItem.id === adminPage);
     return item ? (zh ? item.zh : item.en) : "";
   }, [adminPage, zh]);
 
   const navigate = (id: string, sub?: string) => {
     setAdminPage(id);
     setAdminSub(sub ?? "");
-    let path = id === "clusters-nodes" ? "/admin" : `/admin/${id}`;
+    let path = id === "clusters-list" && !sub ? "/admin" : `/admin/${id}`;
     if (sub) path += "/" + encodeURIComponent(sub);
     window.history.pushState({}, "", path);
   };
@@ -234,6 +253,7 @@ export function AdminApp() {
         .replace(/\/+$/, "");
       const parts = p.split("/").filter(Boolean);
       const valid = [
+        "clusters-list",
         "create-cluster",
         "clusters-nodes",
         "addons",
@@ -243,9 +263,16 @@ export function AdminApp() {
         "config",
         "storageClass",
       ];
-      setAdminPage(valid.includes(parts[0]) ? parts[0] : "clusters-nodes");
+      setAdminPage(
+        valid.includes(parts[0])
+          ? parts[0]
+          : parts.length > 0
+            ? "clusters-nodes"
+            : "clusters-list",
+      );
+      const subParts = valid.includes(parts[0]) ? parts.slice(1) : parts;
       setAdminSub(
-        parts.length > 1 ? decodeURIComponent(parts.slice(1).join("/")) : "",
+        subParts.length > 0 ? decodeURIComponent(subParts.join("/")) : "",
       );
     };
     window.addEventListener("popstate", onPop);
@@ -276,6 +303,7 @@ export function AdminApp() {
           <span className="nav-label">{zh ? "管理后台" : "Admin"}</span>
           {adminNavItems.map((item) => {
             const Icon = item.icon;
+            const itemLabel = zh ? item.zh : item.en;
             const isParent = item.children && item.children.length > 0;
             const isActive = adminPage === item.id;
             const isChildActive = isParent
@@ -285,6 +313,8 @@ export function AdminApp() {
             return (
               <div key={item.id} className={isParent ? "nav-parent" : ""}>
                 <button
+                  aria-label={itemLabel}
+                  title={itemLabel}
                   className={
                     (isParent
                       ? isChildActive
@@ -303,20 +333,23 @@ export function AdminApp() {
                   }
                 >
                   <Icon size={18} />
-                  <span>{zh ? item.zh : item.en}</span>
+                  <span>{itemLabel}</span>
                 </button>
                 {isParent && expanded && (
                   <div className="nav-children">
                     {item.children!.map((ch) => {
                       const ChIcon = ch.icon;
+                      const childLabel = zh ? ch.zh : ch.en;
                       return (
                         <button
                           key={ch.id}
+                          aria-label={childLabel}
+                          title={childLabel}
                           className={adminPage === ch.id ? "active" : ""}
                           onClick={() => navigate(ch.id)}
                         >
                           <ChIcon size={16} />
-                          <span>{zh ? ch.zh : ch.en}</span>
+                          <span>{childLabel}</span>
                         </button>
                       );
                     })}
@@ -353,6 +386,10 @@ export function AdminApp() {
           onLangChange={setLang}
           onThemeChange={setTheme}
           onCreate={() => navigate("create-cluster")}
+          onLogout={() => {
+            sessionStorage.removeItem("rlark-admin-auth");
+            setLoggedIn(false);
+          }}
           createLabel={zh ? "创建集群" : "Create Cluster"}
         />
         {adminPage === "clusters-nodes" && (
@@ -360,6 +397,14 @@ export function AdminApp() {
             copy={c}
             selectedNode={adminSub}
             onNavigate={(sub?: string) => navigate("clusters-nodes", sub)}
+          />
+        )}
+        {adminPage === "clusters-list" && (
+          <ClusterManagementPage
+            copy={c}
+            selectedClusterID={adminSub}
+            onSelectCluster={(id?: string) => navigate("clusters-list", id)}
+            onSelectNode={(name: string) => navigate("clusters-nodes", name)}
           />
         )}
         {adminPage === "jobs" && (
@@ -405,6 +450,7 @@ export function AdminApp() {
         {adminPage === "storageClass" && adminSub === "create" && (
           <StorageClassCreatePage
             copy={c}
+            onCreated={() => setStorageRefreshKey((key) => key + 1)}
             onBack={() => navigate("storageClass")}
           />
         )}
@@ -414,6 +460,7 @@ export function AdminApp() {
             selectedName={adminSub}
             onSelect={(name?: string) => navigate("storageClass", name)}
             onCreate={() => navigate("storageClass", "create")}
+            refreshKey={storageRefreshKey}
           />
         )}
       </main>

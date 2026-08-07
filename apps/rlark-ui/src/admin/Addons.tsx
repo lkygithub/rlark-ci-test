@@ -19,14 +19,14 @@ export function AddonsPage({ copy: c, lang }: { copy: Copy; lang: Lang }) {
     fetch("/api/v1/clusters")
       .then((r) => r.json())
       .then((data) => setClusters(data.data || []))
-      .catch(() => {});
+      .catch((e) => setError(e instanceof Error ? e.message : String(e)));
   }, []);
 
   useEffect(() => {
     fetch("/api/v1/addons")
       .then((r) => r.json())
       .then((data) => setCatalog(data.data || []))
-      .catch(() => {});
+      .catch((e) => setError(e instanceof Error ? e.message : String(e)));
   }, []);
 
   const fetchInstalled = () => {
@@ -34,7 +34,7 @@ export function AddonsPage({ copy: c, lang }: { copy: Copy; lang: Lang }) {
     fetch(`/api/v1/installed-addons${q}`)
       .then((r) => r.json())
       .then((data) => setInstalled(data.data || []))
-      .catch(() => {});
+      .catch((e) => setError(e instanceof Error ? e.message : String(e)));
   };
 
   useEffect(() => {
@@ -215,14 +215,20 @@ export function AddonsPage({ copy: c, lang }: { copy: Copy; lang: Lang }) {
                           {zh ? "配置" : "Config"}
                         </button>
                         <button
-                          onClick={() =>
+                          onClick={() => {
+                            const label = a.spec?.addonName || a.metadata?.name;
+                            if (!window.confirm(
+                              zh
+                                ? `确定从集群 ${a.clusterId} 卸载组件“${label}”吗？`
+                                : `Uninstall “${label}” from ${a.clusterId}?`,
+                            )) return;
                             fetch(`/api/v1/clusters/${a.clusterId}/addons/${a.metadata?.name}`, {
                               method: "DELETE",
                             })
                               .then((r) => { if (!r.ok) throw new Error("Uninstall failed"); return r.json(); })
                               .then(() => fetchInstalled())
-                              .catch((e) => setError(e.message))
-                          }
+                              .catch((e) => setError(e.message));
+                          }}
                           style={{
                             padding: "4px 10px",
                             borderRadius: 6,

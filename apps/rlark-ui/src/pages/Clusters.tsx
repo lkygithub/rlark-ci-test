@@ -1,42 +1,43 @@
 import { useMemo, useState } from "react";
 import {
   Activity,
+  ArrowUpRight,
   CloudCog,
   Cpu,
   HardDrive,
+  MemoryStick,
   Network,
+  Package,
   RefreshCw,
   Server,
   Settings,
 } from "lucide-react";
-import { nodes, type Phase } from "../data";
+import type { Phase } from "../data";
 import type { Copy } from "../i18n";
-import type { CRDNode, NodeCategory } from "../types";
+import type { CRDNode } from "../types";
 import { useAutoRefresh } from "../hooks";
 import {
   buildMockCRDNodes,
   categoryLabels,
   getNodeCategory,
 } from "../utils/nodes";
-import {
-  MetricCard,
-  PageToolbar,
-  StatusBadge,
-} from "../components/shared";
+import { MetricCard, StatusBadge } from "../components/shared";
+import { NodeResourceBrowser } from "../components/NodeResourceBrowser";
 
 export function ClustersPage({
   copy: c,
   initialView,
   selectedNodeName,
   onNavigate,
+  onTaskNavigate,
 }: {
   copy: Copy;
   initialView?: "clusters" | "nodes";
   selectedNodeName?: string;
   onNavigate?: (name?: string) => void;
+  onTaskNavigate?: (name: string) => void;
 }) {
   const zh = c.nav.overview === "总览";
-  const [query, setQuery] = useState("");
   const [realNodes, setRealNodes] = useState<CRDNode[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -46,7 +47,6 @@ export function ClustersPage({
   const [selectedClusterNs, setSelectedClusterNs] = useState<string | null>(
     null,
   );
-  const [phaseFilter, setPhaseFilter] = useState<"All" | Phase>("All");
 
   const fetchNodes = async (isInitial = true) => {
     if (isInitial) setLoading(true);
@@ -60,51 +60,6 @@ export function ClustersPage({
       setRealNodes(buildMockCRDNodes());
       setError("");
       console.warn("API request failed, using mock data:", e);
-      // Fallback to mock data when API is not available
-      const mockNodes: CRDNode[] = nodes.map((node, index) => ({
-        apiVersion: "rlinf.io/v1alpha1",
-        kind: "Node",
-        metadata: {
-          name: node.name,
-          namespace: "default",
-          labels: {
-            "rlinf.io/cluster": node.cluster,
-            "rlinf.io/kind": node.kind,
-          },
-          creationTimestamp: new Date(
-            Date.now() - index * 86400000,
-          ).toISOString(),
-        },
-        spec: {
-          agentType: node.kind === "Robot" ? "robot" : "kubernetes",
-        },
-        status: {
-          phase: node.phase,
-          nodeInfo: {
-            architecture: "amd64",
-            kernelVersion: "5.15.0",
-            agentVersion: "v1.0.0",
-            operatingSystem: "linux",
-          },
-          addresses: [{ type: "InternalIP", address: node.address }],
-          allocatable: {
-            cpu: "8",
-            memory: "16Gi",
-            "nvidia.com/gpu": node.kind === "CloudCompute" ? "8" : "1",
-          },
-          capacity: {
-            cpu: "8",
-            memory: "16Gi",
-            "nvidia.com/gpu": node.kind === "CloudCompute" ? "8" : "1",
-          },
-          used: {
-            cpu: `${node.cpu}`,
-            memory: `${node.memory}%`,
-            "nvidia.com/gpu": node.gpu ? node.gpu.split("/")[0] : "0",
-          },
-        },
-      }));
-      setRealNodes(mockNodes);
     } finally {
       setLoading(false);
     }
@@ -125,16 +80,6 @@ export function ClustersPage({
   const selectedCluster =
     clustersList.find(([ns]) => ns === selectedClusterNs) ?? clustersList[0];
   const selectedClusterNodes = selectedCluster?.[1] ?? [];
-
-  const filteredNodes = realNodes.filter((n) => {
-    const hit =
-      `${n.metadata.name} ${n.metadata.namespace ?? ""} ${n.spec.agentType ?? ""}`
-        .toLowerCase()
-        .includes(query.toLowerCase());
-    const phase = (n.status?.phase ?? "Offline") as Phase;
-    const phaseHit = phaseFilter === "All" || phase === phaseFilter;
-    return hit && phaseHit;
-  });
 
   const onlineClusters = clustersList.filter(([, nsNodes]) =>
     nsNodes.some((n) => n.status?.phase === "Online"),
@@ -197,7 +142,11 @@ export function ClustersPage({
             </span>
           </div>
         </div>
-        <NodeDetailReal node={selectedNodeObj} copy={c} />
+        <NodeDetailReal
+          node={selectedNodeObj}
+          copy={c}
+          onTaskNavigate={onTaskNavigate}
+        />
       </div>
     );
   }
@@ -279,68 +228,6 @@ export function ClustersPage({
               copy={c}
             />
           </section>
-          <section className="panel cluster-list-panel">
-            <div className="panel-title">
-              <div>
-                <span>{c.clusters.clusterList}</span>
-                <h3>{zh ? "集群整体情况" : "Cluster Overview"}</h3>
-              </div>
-            </div>
-            <div className="cluster-list-scroll">
-              <table className="cluster-list-table">
-                <thead>
-                  <tr>
-                    <th>{zh ? "集群" : "Cluster"}</th>
-                    <th>{zh ? "节点数" : "Nodes"}</th>
-                    <th>{zh ? "在线" : "Online"}</th>
-                    <th>{zh ? "在线率" : "Rate"}</th>
-                    <th>{zh ? "状态" : "Status"}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {clustersList.map(([ns, nsNodes]) => {
-                    const onlineCount = nsNodes.filter(
-                      (n) => n.status?.phase === "Online",
-                    ).length;
-                    const phase: Phase =
-                      nsNodes.length === 0 ? "Offline" : "Online";
-                    const rate = nsNodes.length > 0
-                      ? Math.round((onlineCount / nsNodes.length) * 100)
-                      : 0;
-                    return (
-                      <tr
-                        key={ns}
-                        className={
-                          selectedCluster?.[0] === ns ? "selected" : ""
-                        }
-                        onClick={() => setSelectedClusterNs(ns)}
-                      >
-                        <td>
-                          <span className="cluster-list-name">
-                            <CloudCog size={15} />
-                            <strong>{ns}</strong>
-                          </span>
-                        </td>
-                        <td>{nsNodes.length}</td>
-                        <td>{onlineCount}</td>
-                        <td>
-                          <span className="cluster-list-rate">
-                            <i>
-                              <b style={{ width: `${rate}%` }} />
-                            </i>
-                            <small>{rate}%</small>
-                          </span>
-                        </td>
-                        <td>
-                          <StatusBadge phase={phase} copy={c} />
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </section>
         </>
       )}
       {resourceView === "nodes" && (
@@ -351,117 +238,17 @@ export function ClustersPage({
               <h2>{zh ? "节点资源" : "Node Resources"}</h2>
               <p>
                 {zh
-                  ? "按状态筛选，查看节点详情。"
-                  : "Filter by status to view node details."}
+                  ? "按类型和状态快速筛选，在统一列表中查看节点详情。"
+                  : "Filter by type and status in one unified node list."}
               </p>
             </div>
           </div>
-          <PageToolbar
-            placeholder={c.clusters.search}
-            value={query}
-            onChange={setQuery}
-            count={filteredNodes.length}
+          <NodeResourceBrowser
+            nodes={realNodes}
             copy={c}
             onRefresh={() => fetchNodes()}
+            onSelectNode={(name) => onNavigate?.(name)}
           />
-          <div className="node-filter-bar">
-            {(["All", "Online", "Offline"] as const).map((phase) => (
-              <button
-                key={phase}
-                className={phaseFilter === phase ? "active" : ""}
-                onClick={() => setPhaseFilter(phase)}
-              >
-                {phase === "All" ? (zh ? "全部状态" : "All") : c.status[phase]}
-              </button>
-            ))}
-          </div>
-          <div className="node-admin-layout">
-            <div
-              className="node-category-grid"
-              style={{
-                display: "grid",
-                gridTemplateColumns: `repeat(${
-                  (
-                    ["cloud", "edge", "robot", "unknown"] as NodeCategory[]
-                  ).filter((cat) => {
-                    const cn = filteredNodes.filter(
-                      (n) => getNodeCategory(n) === cat,
-                    );
-                    return cn.length > 0 || cat === "unknown";
-                  }).length
-                }, 1fr)`,
-                gap: 16,
-              }}
-            >
-              {(["cloud", "edge", "robot", "unknown"] as NodeCategory[]).map(
-                (cat) => {
-                  const catNodes = filteredNodes.filter(
-                    (n) => getNodeCategory(n) === cat,
-                  );
-                  if (catNodes.length === 0 && cat !== "unknown") return null;
-                  const info = categoryLabels[cat];
-                  const Icon = info.icon;
-                  const onlineCount = catNodes.filter(
-                    (n) => n.status?.phase === "Online",
-                  ).length;
-                  return (
-                    <div
-                      key={cat}
-                      className={"panel node-category-column cat-" + cat}
-                    >
-                      <div className="node-category-header">
-                        <span className="node-category-icon">
-                          <Icon size={18} />
-                        </span>
-                        <div>
-                          <strong>{zh ? info.zh : info.en}</strong>
-                          <small>
-                            {catNodes.length} {zh ? "节点" : "nodes"} ·{" "}
-                            {onlineCount} {zh ? "在线" : "online"}
-                          </small>
-                        </div>
-                      </div>
-                      {catNodes.length === 0 ? (
-                        <div className="node-category-empty">
-                          <small className="muted">
-                            {zh ? "暂无节点" : "No nodes"}
-                          </small>
-                        </div>
-                      ) : (
-                        <div className="node-category-list">
-                          {catNodes.map((node) => {
-                            const phase = (node.status?.phase ??
-                              "Offline") as Phase;
-                            const isSelected =
-                              selectedNodeName === node.metadata.name;
-                            return (
-                              <div
-                                className={
-                                  "node-row" + (isSelected ? " selected" : "")
-                                }
-                                key={node.metadata.name}
-                                onClick={() => onNavigate?.(node.metadata.name)}
-                              >
-                                <span
-                                  className={
-                                    "node-status-ring " + phase.toLowerCase()
-                                  }
-                                />
-                                <span className="node-row-name">
-                                  {node.metadata.name}
-                                </span>
-                                <StatusBadge phase={phase} copy={c} />
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  );
-                },
-              )}
-            </div>
-          </div>
         </section>
       )}
     </div>
@@ -481,7 +268,7 @@ export function ClusterDetailReal({
   const onlineCount = clusterNodes.filter(
     (n) => n.status?.phase === "Online",
   ).length;
-  const phase: Phase = clusterNodes.length === 0 ? "Offline" : "Online";
+  const phase: Phase = onlineCount > 0 ? "Online" : "Offline";
   return (
     <div className="panel selected-cluster-panel">
       <div className="cluster-detail-header">
@@ -555,88 +342,169 @@ export function ClusterDetailReal({
   );
 }
 
-export function NodeDetailReal({ node, copy: c }: { node: CRDNode; copy: Copy }) {
+export function NodeDetailReal({
+  node,
+  copy: c,
+  hideLabels = false,
+  onTaskNavigate,
+}: {
+  node: CRDNode;
+  copy: Copy;
+  hideLabels?: boolean;
+  onTaskNavigate?: (name: string) => void;
+}) {
   const zh = c.nav.overview === "总览";
   const phase = (node.status?.phase ?? "Offline") as Phase;
   const labels = node.metadata.labels ?? {};
   const labelEntries = Object.entries(labels);
+  const addresses = node.status?.addresses ?? [];
+  const internalAddress =
+    addresses.find((address) => address.type === "InternalIP")?.address ??
+    addresses[0]?.address ??
+    "—";
+  const category = getNodeCategory(node);
+  const categoryInfo = categoryLabels[category];
+  const taskName =
+    labels["rlark.io/embodied-task-name"] ?? labels["rlark.io/task-name"] ?? "";
+  const hasTask = labels["rlark.io/embodied-task"] === "true" || Boolean(taskName);
+  const canOpenTask = Boolean(taskName && onTaskNavigate);
+  const capacity = node.status?.capacity ?? {};
+  const allocatable = node.status?.allocatable ?? {};
+  const used = node.status?.used ?? {};
+  const getPercent = (key: string) => {
+    const rawUsed = used[key];
+    if (rawUsed?.endsWith("%")) return Math.min(100, Math.max(0, Number.parseFloat(rawUsed)));
+    const usedNumber = Number.parseFloat(rawUsed ?? "");
+    const capacityNumber = Number.parseFloat(capacity[key] ?? "");
+    return Number.isFinite(usedNumber) && Number.isFinite(capacityNumber) && capacityNumber > 0
+      ? Math.min(100, Math.max(0, Math.round((usedNumber / capacityNumber) * 100)))
+      : null;
+  };
+  const resourceItems = [
+    { key: "cpu", label: "CPU", icon: Cpu },
+    { key: "memory", label: zh ? "内存" : "Memory", icon: MemoryStick },
+    { key: "nvidia.com/gpu", label: "GPU", icon: Activity },
+  ];
+  const created = node.metadata.creationTimestamp
+    ? new Date(node.metadata.creationTimestamp).toLocaleString(zh ? "zh-CN" : "en-US")
+    : "—";
   return (
-    <div className="node-resource-detail">
-      <div className="detail-header">
-        <div>
-          <span className="eyebrow">{c.clusters.selected}</span>
-          <h3>{node.metadata.name}</h3>
-          <p>
-            {node.metadata.namespace ?? "default"} ·{" "}
-            {(node.status?.addresses ?? []).map((a) => a.address).join(", ") ||
-              "—"}
-          </p>
+    <div className="node-resource-detail node-insight-detail">
+      <header className="node-insight-hero">
+        <div className="node-insight-identity">
+          <span className={`node-insight-icon ${phase.toLowerCase()}`}>
+            <Server size={22} />
+          </span>
+          <div>
+            <span className="eyebrow">{zh ? "节点运行概况" : "Node overview"}</span>
+            <h3>{node.metadata.name}</h3>
+            <p>
+              <Network size={13} /> {node.metadata.namespace ?? "default"}
+              <span />
+              {internalAddress}
+            </p>
+          </div>
         </div>
-        <StatusBadge phase={phase} copy={c} />
+        <div className="node-insight-state">
+          <StatusBadge phase={phase} copy={c} />
+          <span className={node.spec.unschedulable ? "schedule-chip blocked" : "schedule-chip"}>
+            {node.spec.unschedulable
+              ? (zh ? "已停止调度" : "Unschedulable")
+              : (zh ? "可调度" : "Schedulable")}
+          </span>
+        </div>
+      </header>
+
+      {node.status?.reason && (
+        <div className="node-health-message">
+          <Activity size={15} />
+          <span>{node.status.reason}</span>
+        </div>
+      )}
+
+      <div className="node-insight-facts">
+        <div><small>{zh ? "节点类型" : "Node type"}</small><strong>{zh ? categoryInfo.zh : categoryInfo.en}</strong></div>
+        <div><small>{zh ? "接入形态" : "Agent type"}</small><strong>{node.spec.agentType ?? "—"}</strong></div>
+        <div><small>{zh ? "系统 / 架构" : "System / Arch"}</small><strong>{node.status?.nodeInfo?.operatingSystem ?? "—"} · {node.status?.nodeInfo?.architecture ?? "—"}</strong></div>
+        <div><small>{zh ? "Agent 版本" : "Agent version"}</small><strong>{node.status?.nodeInfo?.agentVersion ?? "—"}</strong></div>
       </div>
-      <div className="node-health compact-health">
-        <div className="gpu-card">
-          <span>
-            <Cpu size={18} />
-          </span>
-          <strong>{node.status?.nodeInfo?.architecture ?? "—"}</strong>
-          <small>{zh ? "架构" : "Arch"}</small>
-        </div>
-        <div className="gpu-card">
-          <span>
-            <Server size={18} />
-          </span>
-          <strong>{node.spec.agentType ?? "—"}</strong>
-          <small>{zh ? "接入形态" : "Agent Type"}</small>
-        </div>
-        <div className="gpu-card">
-          <span>
-            <HardDrive size={18} />
-          </span>
-          <strong>{node.status?.nodeInfo?.operatingSystem ?? "—"}</strong>
-          <small>{zh ? "系统" : "OS"}</small>
-        </div>
-        <div className="gpu-card">
-          <span>
-            <Activity size={18} />
-          </span>
-          <strong>{node.status?.nodeInfo?.agentVersion ?? "—"}</strong>
-          <small>{zh ? "Agent 版本" : "Agent Version"}</small>
-        </div>
-      </div>
-      <div style={{ marginTop: 12 }}>
-        <div className="form-section-head">
-          <small>{zh ? "标签" : "Labels"}</small>
-        </div>
-        <div className="label-list">
-          {labelEntries.length === 0 ? (
-            <small className="muted">{zh ? "无标签" : "No labels"}</small>
-          ) : (
-            labelEntries.map(([k, v]) => (
-              <span key={k} className="label-chip" title={`${k}=${v}`}>
-                <code>{k}</code>
-                <i>{v}</i>
-              </span>
-            ))
-          )}
-        </div>
-      </div>
-      {node.status?.capacity &&
-        Object.keys(node.status.capacity).length > 0 && (
-          <div style={{ marginTop: 12 }}>
-            <div className="form-section-head">
-              <small>{zh ? "容量" : "Capacity"}</small>
+
+      <div className="node-insight-layout">
+        <div className="node-insight-main">
+          <section className="node-insight-section">
+            <div className="node-insight-section-head">
+              <div><span>{zh ? "健康与容量" : "Health & capacity"}</span><small>{zh ? "节点当前资源状态" : "Current node resources"}</small></div>
             </div>
+            <div className="node-capacity-grid">
+              {resourceItems.map(({ key, label, icon: Icon }) => {
+                const percent = getPercent(key);
+                return (
+                  <div className="node-capacity-card" key={key}>
+                    <div className="node-capacity-title"><span><Icon size={16} /></span><strong>{label}</strong><b>{percent === null ? "—" : `${percent}%`}</b></div>
+                    <div className="node-capacity-track"><i style={{ width: `${percent ?? 0}%` }} /></div>
+                    <small>
+                      {zh ? "已用" : "Used"} {used[key] ?? "—"}
+                      <span> / </span>
+                      {zh ? "可分配" : "Allocatable"} {allocatable[key] ?? capacity[key] ?? "—"}
+                    </small>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+
+          <section className="node-insight-section">
+            <div className="node-insight-section-head">
+              <div><span>{zh ? "具身任务" : "Embodied task"}</span><small>{zh ? "当前与节点关联的任务" : "Task currently associated with this node"}</small></div>
+            </div>
+            <button
+              type="button"
+              className={`node-task-callout${hasTask ? " active" : ""}${canOpenTask ? " interactive" : ""}`}
+              disabled={!canOpenTask}
+              onClick={() => taskName && onTaskNavigate?.(taskName)}
+              aria-label={canOpenTask ? `${zh ? "查看任务" : "View task"} ${taskName}` : undefined}
+            >
+              <span><Package size={19} /></span>
+              <div>
+                <strong>{hasTask ? (taskName || (zh ? "运行中的具身任务" : "Active embodied task")) : (zh ? "当前没有关联任务" : "No associated task")}</strong>
+                <small>{hasTask
+                  ? (zh ? "节点标签报告该任务正在关联运行" : "Reported by node task labels")
+                  : phase === "Online" && !node.spec.unschedulable
+                    ? (zh ? "节点当前可用于新的任务调度" : "The node is available for new workloads")
+                    : (zh ? "节点当前不可用于任务调度" : "The node is not available for scheduling")}</small>
+              </div>
+              <b>{hasTask ? (zh ? "运行中" : "Running") : (zh ? "空闲" : "Idle")}</b>
+              {canOpenTask && <ArrowUpRight size={16} className="node-task-link-icon" />}
+            </button>
+          </section>
+        </div>
+
+        <aside className="node-insight-side">
+          <section className="node-insight-section">
+            <div className="node-insight-section-head"><div><span>{zh ? "基础信息" : "Details"}</span></div></div>
+            <dl className="node-info-list">
+              <div><dt>{zh ? "所属集群" : "Cluster"}</dt><dd>{node.metadata.namespace ?? "default"}</dd></div>
+              <div><dt>{zh ? "内部地址" : "Internal IP"}</dt><dd><code>{internalAddress}</code></dd></div>
+              <div><dt>{zh ? "节点型号" : "Model"}</dt><dd>{labels["rlark.io/model"] ?? "—"}</dd></div>
+              <div><dt>{zh ? "内核版本" : "Kernel"}</dt><dd>{node.status?.nodeInfo?.kernelVersion ?? "—"}</dd></div>
+              <div><dt>{zh ? "创建时间" : "Created"}</dt><dd>{created}</dd></div>
+            </dl>
+          </section>
+
+          {!hideLabels && <section className="node-insight-section node-label-section">
+            <div className="node-insight-section-head"><div><span>{zh ? "节点标签" : "Labels"}</span><small>{labelEntries.length} {zh ? "项" : "items"}</small></div></div>
             <div className="label-list">
-              {Object.entries(node.status.capacity).map(([k, v]) => (
-                <span key={k} className="label-chip">
-                  <code>{k}</code>
-                  <i>{v}</i>
+              {labelEntries.length === 0 ? (
+                <small className="muted">{zh ? "无标签" : "No labels"}</small>
+              ) : labelEntries.map(([key, value]) => (
+                <span key={key} className="label-chip" title={`${key}=${value}`}>
+                  <code>{key}</code><i>{value}</i>
                 </span>
               ))}
             </div>
-          </div>
-        )}
+          </section>}
+        </aside>
+      </div>
     </div>
   );
 }

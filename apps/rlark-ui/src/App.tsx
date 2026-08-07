@@ -8,6 +8,7 @@ import { useIsAdminPath, parseRoute } from "./utils/route";
 import { Logo, Header } from "./components/shared";
 import { Overview } from "./pages/Overview";
 import { ClustersPage } from "./pages/Clusters";
+import { ClusterManagementPage } from "./pages/ClusterManagement";
 import { JobsPage } from "./pages/Jobs";
 import { WorkflowsPage, CreateWorkflowModal } from "./pages/Workflows";
 import {
@@ -25,30 +26,45 @@ export default function App() {
   const [collapsed, setCollapsed] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [createWfOpen, setCreateWfOpen] = useState(false);
+  const [storageCreateOpen, setStorageCreateOpen] = useState(() => {
+    const route = parseRoute();
+    return route.page === "storageClass" && route.sub === "create";
+  });
+  const [storageRefreshKey, setStorageRefreshKey] = useState(0);
   const [cloneJob, setCloneJob] = useState<Job | null>(null);
   const [editJob, setEditJob] = useState<Job | null>(null);
   const [lang, setLang] = useState<Lang>("zh");
   const [theme, setTheme] = useState<Theme>("light");
   const [userLoggedIn, setUserLoggedIn] = useState(
     () =>
-      typeof sessionStorage !== "undefined" &&
-      sessionStorage.getItem("rlark-user-auth") === "1",
+      import.meta.env.DEV ||
+      (typeof sessionStorage !== "undefined" &&
+        sessionStorage.getItem("rlark-user-auth") === "1"),
   );
   const c = copy[lang];
   const pageTitle = useMemo(() => c.nav[page], [c, page]);
 
+  useEffect(() => {
+    document.title = isAdmin ? "RLark 管理后台" : "RLark一站式具身平台";
+    const favicon = document.querySelector<HTMLLinkElement>("#app-favicon");
+    if (favicon) {
+      favicon.href = "/favicon.png";
+    }
+  }, [isAdmin]);
+
   const navigate = (next: Page, name?: string) => {
-    const sub = name ? encodeURIComponent(name) : "";
+    const sub = name ?? "";
+    const encodedSub = name ? encodeURIComponent(name) : "";
     setRoute({ page: next, sub });
     let path: string;
     if (next === "overview" && !sub) {
       path = "/";
-    } else if (next === "clusters-overview") {
-      path = "/clusters";
+    } else if (next === "clusters-management") {
+      path = encodedSub ? `/clusters/${encodedSub}` : "/clusters";
     } else if (next === "clusters-nodes") {
-      path = sub ? `/clusters/nodes/${sub}` : "/clusters/nodes";
+      path = encodedSub ? `/nodes/${encodedSub}` : "/nodes";
     } else {
-      path = `/${next}${sub ? "/" + sub : ""}`;
+      path = `/${next}${encodedSub ? "/" + encodedSub : ""}`;
     }
     window.history.pushState({}, "", path);
   };
@@ -75,6 +91,7 @@ export default function App() {
           {navItems.map((item) => {
             const Icon = item.icon;
             const isParent = item.children && item.children.length > 0;
+            const itemLabel = isParent ? c.nav.clustersParent : c.nav[item.id];
             const isActive = page === item.id && !sub;
             const isChildActive = isParent
               ? item.children!.some((ch) => ch.id === page)
@@ -84,6 +101,8 @@ export default function App() {
             return (
               <div key={item.id} className={isParent ? "nav-parent" : ""}>
                 <button
+                  aria-label={itemLabel}
+                  title={itemLabel}
                   className={
                     (isParent
                       ? isChildActive
@@ -102,22 +121,23 @@ export default function App() {
                   }
                 >
                   <Icon size={18} />
-                  <span>
-                    {isParent ? c.nav.clustersParent : c.nav[item.id]}
-                  </span>
+                  <span>{itemLabel}</span>
                 </button>
                 {isParent && expanded && (
                   <div className="nav-children">
                     {item.children!.map((ch) => {
                       const ChIcon = ch.icon;
+                      const childLabel = c.nav[ch.id];
                       return (
                         <button
                           key={ch.id}
+                          aria-label={childLabel}
+                          title={childLabel}
                           className={page === ch.id ? "active" : ""}
                           onClick={() => navigate(ch.id)}
                         >
                           <ChIcon size={16} />
-                          <span>{c.nav[ch.id]}</span>
+                          <span>{childLabel}</span>
                         </button>
                       );
                     })}
@@ -154,10 +174,19 @@ export default function App() {
           onLangChange={setLang}
           onThemeChange={setTheme}
           onCreate={() => setCreateOpen(true)}
+          onLogout={() => {
+            sessionStorage.removeItem("rlark-user-auth");
+            setUserLoggedIn(false);
+          }}
         />
         {page === "overview" && <Overview navigate={navigate} copy={c} />}{" "}
-        {page === "clusters-overview" && (
-          <ClustersPage copy={c} initialView="clusters" />
+        {page === "clusters-management" && (
+          <ClusterManagementPage
+            copy={c}
+            selectedClusterID={sub}
+            onSelectCluster={(id?: string) => navigate("clusters-management", id)}
+            onSelectNode={(name: string) => navigate("clusters-nodes", name)}
+          />
         )}{" "}
         {page === "clusters-nodes" && (
           <ClustersPage
@@ -165,6 +194,7 @@ export default function App() {
             initialView="nodes"
             selectedNodeName={sub}
             onNavigate={(name?: string) => navigate("clusters-nodes", name)}
+            onTaskNavigate={(name: string) => navigate("jobs", name)}
           />
         )}{" "}
         {page === "jobs" && (
@@ -192,15 +222,10 @@ export default function App() {
         {page === "storageClass" && (
           <StorageClassesPage
             copy={c}
-            selectedName={sub}
+            selectedName={sub === "create" ? undefined : sub}
             onSelect={(name?: string) => navigate("storageClass", name)}
-            onCreate={() => navigate("storageClass", "create")}
-          />
-        )}
-        {page === "storageClass" && sub === "create" && (
-          <StorageClassCreatePage
-            copy={c}
-            onBack={() => navigate("storageClass")}
+            onCreate={() => setStorageCreateOpen(true)}
+            refreshKey={storageRefreshKey}
           />
         )}
         {page === "files" && (
@@ -234,6 +259,16 @@ export default function App() {
       )}
       {createWfOpen && (
         <CreateWorkflowModal onClose={() => setCreateWfOpen(false)} copy={c} />
+      )}
+      {storageCreateOpen && (
+        <StorageClassCreatePage
+          copy={c}
+          onCreated={() => setStorageRefreshKey((key) => key + 1)}
+          onBack={() => {
+            setStorageCreateOpen(false);
+            if (sub === "create") navigate("storageClass");
+          }}
+        />
       )}
     </div>
   );

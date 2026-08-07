@@ -1991,6 +1991,9 @@ Responses:
       "name": "Beijing GPU Cluster",
       "type": "cloud",
       "phase": "Online",
+      "totalNodes": 4,
+      "onlineNodes": 4,
+      "offlineNodes": 0,
       "cloudNodes": 4,
       "embodiedNodes": 0,
       "robots": 0,
@@ -2004,6 +2007,17 @@ Responses:
   "success": true
 }
 ```
+
+### `GET /api/v1/clusters/{cluster_id}`
+
+Get aggregated information and the complete node list for one cluster.
+
+Parameters:
+- `cluster_id` (path): Cluster ID from `rlark.io/cluster-id`
+
+The response uses the same aggregate fields as the list endpoint and adds a
+`nodes` array containing the cluster's RLark Node resources. Returns `404` when
+the cluster does not exist.
 
 ---
 

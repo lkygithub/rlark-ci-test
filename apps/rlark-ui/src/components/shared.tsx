@@ -1,10 +1,11 @@
+import { useEffect, useRef, useState } from "react";
 import {
   Bell,
-  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Languages,
   ListFilter,
   Moon,
-  MoreHorizontal,
   Plus,
   RefreshCw,
   Search,
@@ -17,7 +18,16 @@ import type { ResourceRow } from "../types";
 export function Logo() {
   return (
     <div className="brand">
-      <img src="/rlark-logo.png" alt="RLark" className="brand-logo" />
+      <img
+        src="/rlark-logo.png"
+        alt="RLark"
+        className="brand-logo brand-logo-light"
+      />
+      <img
+        src="/rlark-logo-white.png"
+        alt="RLark"
+        className="brand-logo brand-logo-dark"
+      />
     </div>
   );
 }
@@ -39,6 +49,7 @@ export function Header({
   onLangChange,
   onThemeChange,
   onCreate,
+  onLogout,
   createLabel,
 }: {
   title: string;
@@ -48,19 +59,56 @@ export function Header({
   onLangChange: (lang: Lang) => void;
   onThemeChange: (theme: Theme) => void;
   onCreate: () => void;
+  onLogout?: () => void;
   createLabel?: string;
 }) {
+  const zh = lang === "zh";
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
+  const notificationMenuRef = useRef<HTMLDivElement>(null);
+  const accountMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!notificationsOpen && !accountOpen) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as Node;
+      if (!notificationMenuRef.current?.contains(target)) {
+        setNotificationsOpen(false);
+      }
+      if (!accountMenuRef.current?.contains(target)) {
+        setAccountOpen(false);
+      }
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setNotificationsOpen(false);
+        setAccountOpen(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [notificationsOpen, accountOpen]);
+
   return (
     <header className="topbar">
-      <div>
-        <h1 data-search={c.common.search}>{title}</h1>
+      <div className="topbar-context">
+        <span>{zh ? "当前页面" : "Current page"}</span>
+        <h1>{title}</h1>
       </div>
       <div className="topbar-actions">
-        <button className="cluster-picker">
+        <div
+          className="cluster-picker environment-status"
+          title={zh ? "当前环境" : "Current environment"}
+        >
           <span className="online-pulse" />
           {c.common.production}
-          <ChevronDown size={14} />
-        </button>
+        </div>
         <div className="segmented-control">
           <button
             className={lang === "zh" ? "active" : ""}
@@ -90,15 +138,63 @@ export function Header({
             {c.common.dark}
           </button>
         </div>
-        <div className="icon-button">
-          <Bell size={18} />
-          <em>3</em>
+        <div className="topbar-menu" ref={notificationMenuRef}>
+          <button
+            type="button"
+            className="icon-button notification-button"
+            aria-label={zh ? "通知" : "Notifications"}
+            aria-expanded={notificationsOpen}
+            onClick={() => {
+              setNotificationsOpen((open) => !open);
+              setAccountOpen(false);
+            }}
+          >
+            <Bell size={18} />
+            <em>3</em>
+          </button>
+          {notificationsOpen && (
+            <div className="topbar-popover notification-popover">
+              <strong>{zh ? "运行通知" : "Notifications"}</strong>
+              <span>{zh ? "2 个任务正在运行" : "2 jobs are running"}</span>
+              <span>{zh ? "1 个节点需要关注" : "1 node needs attention"}</span>
+            </div>
+          )}
         </div>
         <button className="primary-button" onClick={onCreate}>
           <Plus size={17} />
-          {createLabel ?? c.common.createJob}
+          <span>{createLabel ?? c.common.createJob}</span>
         </button>
-        <div className="avatar">BW</div>
+        <div className="topbar-menu" ref={accountMenuRef}>
+          <button
+            type="button"
+            className="avatar"
+            aria-label={zh ? "用户菜单" : "User menu"}
+            aria-expanded={accountOpen}
+            onClick={() => {
+              setAccountOpen((open) => !open);
+              setNotificationsOpen(false);
+            }}
+          >
+            BW
+          </button>
+          {accountOpen && (
+            <div className="topbar-popover account-popover">
+              <strong>BW</strong>
+              <span>{zh ? "平台用户" : "Platform user"}</span>
+              {onLogout && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAccountOpen(false);
+                    onLogout();
+                  }}
+                >
+                  {zh ? "退出登录" : "Sign out"}
+                </button>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </header>
   );
@@ -125,7 +221,6 @@ export function MetricCard({
         <span className="metric-icon">
           <Icon size={18} />
         </span>
-        <MoreHorizontal size={17} />
       </div>
       <span className="metric-label">{label}</span>
       <div className="metric-value-row">
@@ -151,6 +246,69 @@ export function MetricCard({
   return <div className={"metric-card tone-" + tone}>{content}</div>;
 }
 
+export function Pagination({
+  page,
+  pageSize,
+  total,
+  onPageChange,
+  onPageSizeChange,
+  zh,
+  pageSizeOptions = [10, 20, 50],
+}: {
+  page: number;
+  pageSize: number;
+  total: number;
+  onPageChange: (page: number) => void;
+  onPageSizeChange?: (pageSize: number) => void;
+  zh: boolean;
+  pageSizeOptions?: number[];
+}) {
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const currentPage = Math.min(Math.max(page, 1), totalPages);
+  const start = total === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+  const end = Math.min(currentPage * pageSize, total);
+
+  return (
+    <div className="pagination-bar" aria-label={zh ? "分页" : "Pagination"}>
+      <small className="pagination-summary">
+        {zh ? `共 ${total} 条，当前 ${start}-${end}` : `${start}-${end} of ${total}`}
+      </small>
+      {onPageSizeChange && (
+        <label className="pagination-size">
+          <span>{zh ? "每页" : "Rows"}</span>
+          <select
+            value={pageSize}
+            onChange={(event) => onPageSizeChange(Number(event.target.value))}
+          >
+            {pageSizeOptions.map((size) => (
+              <option key={size} value={size}>{size}</option>
+            ))}
+          </select>
+        </label>
+      )}
+      <button
+        type="button"
+        className="icon-button"
+        disabled={currentPage <= 1}
+        onClick={() => onPageChange(currentPage - 1)}
+        aria-label={zh ? "上一页" : "Previous page"}
+      >
+        <ChevronLeft size={16} />
+      </button>
+      <small>{zh ? `${currentPage} / ${totalPages} 页` : `${currentPage} / ${totalPages}`}</small>
+      <button
+        type="button"
+        className="icon-button"
+        disabled={currentPage >= totalPages}
+        onClick={() => onPageChange(currentPage + 1)}
+        aria-label={zh ? "下一页" : "Next page"}
+      >
+        <ChevronRight size={16} />
+      </button>
+    </div>
+  );
+}
+
 export function Gauge({ value, label }: { value: number; label: string }) {
   return (
     <div className="gauge">
@@ -173,6 +331,9 @@ export function PageToolbar({
   count,
   copy: c,
   onRefresh,
+  filterValue,
+  onFilterChange,
+  filterOptions,
 }: {
   placeholder: string;
   value: string;
@@ -180,6 +341,9 @@ export function PageToolbar({
   count: number;
   copy: Copy;
   onRefresh?: () => void;
+  filterValue?: string;
+  onFilterChange?: (value: string) => void;
+  filterOptions?: Array<{ value: string; label: string }>;
 }) {
   return (
     <div className="page-toolbar">
@@ -190,17 +354,30 @@ export function PageToolbar({
           value={value}
           onChange={(e) => onChange(e.target.value)}
         />
-        <kbd>⌘ K</kbd>
       </div>
-      <button className="secondary-button">
-        <ListFilter size={16} />
-        {c.common.filters}
-        <span>2</span>
-      </button>
-      <button className="secondary-button" onClick={onRefresh}>
-        <RefreshCw size={16} />
-        {c.common.refresh}
-      </button>
+      {filterOptions && filterOptions.length > 0 && (
+        <label className="toolbar-filter">
+          <ListFilter size={16} />
+          <span className="sr-only">{c.common.filters}</span>
+          <select
+            value={filterValue}
+            onChange={(event) => onFilterChange?.(event.target.value)}
+            aria-label={c.common.filters}
+          >
+            {filterOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      {onRefresh && (
+        <button type="button" className="secondary-button" onClick={onRefresh}>
+          <RefreshCw size={16} />
+          {c.common.refresh}
+        </button>
+      )}
       <small>
         {count} {c.common.results}
       </small>

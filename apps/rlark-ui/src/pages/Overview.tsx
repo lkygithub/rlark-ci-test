@@ -125,7 +125,7 @@ export function Overview({
           label={c.overview.cloudClusters}
           value={`${cloudClusters.length}`}
           note={isZh ? `${regionCount} 个地域` : `${regionCount} regions`}
-          onClick={() => navigate("clusters-overview")}
+          onClick={() => navigate("clusters-management")}
         />
         <MetricCard
           icon={Server}
@@ -137,7 +137,7 @@ export function Overview({
               ? `${gpuModelList.length} 种 GPU 型号`
               : `${gpuModelList.length} GPU models`
           }
-          onClick={() => navigate("clusters-overview")}
+          onClick={() => navigate("clusters-nodes")}
         />
         <MetricCard
           icon={Bot}
@@ -149,7 +149,7 @@ export function Overview({
               ? `${embodiedClusters.length} 个具身集群 · ${robotModelList.length} 种真机`
               : `${embodiedClusters.length} embodied clusters · ${robotModelList.length} robot models`
           }
-          onClick={() => navigate("clusters-overview")}
+          onClick={() => navigate("clusters-nodes")}
         />
         <MetricCard
           icon={Workflow}
@@ -173,7 +173,7 @@ export function Overview({
             </div>
             <button
               className="plain-button"
-              onClick={() => navigate("clusters-overview")}
+              onClick={() => navigate("clusters-nodes")}
             >
               {c.common.viewAll}
               <ArrowRight size={14} />
@@ -189,7 +189,7 @@ export function Overview({
             </div>
             <button
               className="plain-button"
-              onClick={() => navigate("clusters-overview")}
+              onClick={() => navigate("clusters-nodes")}
             >
               {c.common.details}
               <ArrowRight size={14} />

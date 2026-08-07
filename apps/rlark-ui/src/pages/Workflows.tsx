@@ -27,7 +27,7 @@ import {
 import { toYaml } from "../utils/yaml";
 import { useNodeLabels } from "../utils/nodes";
 import { NodeSelectorPicker, RoleNameInput } from "../components/create";
-import { PageToolbar, StatusBadge } from "../components/shared";
+import { PageToolbar, Pagination, StatusBadge } from "../components/shared";
 
 export function WorkflowDetailPage({
   wf,
@@ -364,6 +364,9 @@ export function WorkflowsPage({
   const [workflows, setWorkflows] = useState<CRDWorkflow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [query, setQuery] = useState("");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
 
   const fetchWorkflows = async (isInitial = true) => {
     if (isInitial) setLoading(true);
@@ -401,6 +404,20 @@ export function WorkflowsPage({
   };
 
   const items = workflows.map(crdToWorkflow);
+  const filteredItems = items.filter((workflow) =>
+    `${workflow.name} ${workflow.phase}`.toLowerCase().includes(query.trim().toLowerCase()),
+  );
+  const totalPages = Math.max(1, Math.ceil(filteredItems.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const pagedItems = filteredItems.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize,
+  );
+
+  useEffect(() => setPage(1), [query, pageSize]);
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
 
   const selected =
     selectedName && items.length > 0
@@ -434,9 +451,9 @@ export function WorkflowsPage({
       </div>
       <PageToolbar
         placeholder={c.workflows.search}
-        value=""
-        onChange={() => {}}
-        count={items.length}
+        value={query}
+        onChange={setQuery}
+        count={filteredItems.length}
         copy={c}
         onRefresh={() => fetchWorkflows()}
       />
@@ -457,7 +474,7 @@ export function WorkflowsPage({
             </tr>
           </thead>
           <tbody>
-            {items.map((wf) => (
+            {pagedItems.map((wf) => (
               <tr
                 key={wf.name}
                 onClick={() => onSelect(wf.name)}
@@ -491,7 +508,10 @@ export function WorkflowsPage({
                   <div className="row-actions">
                     <button
                       className="icon-button danger"
-                      onClick={() => handleDelete(wf.name)}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        handleDelete(wf.name);
+                      }}
                       title={zh ? "删除" : "Delete"}
                     >
                       <Trash2 size={15} />
@@ -500,14 +520,16 @@ export function WorkflowsPage({
                 </td>
               </tr>
             ))}
-            {items.length === 0 && !loading && (
+            {filteredItems.length === 0 && !loading && (
               <tr>
                 <td
                   colSpan={5}
                   style={{ textAlign: "center", padding: "32px" }}
                 >
                   <small className="muted">
-                    {zh ? "暂无工作流" : "No workflows"}
+                    {query
+                      ? (zh ? "没有匹配的工作流" : "No matching workflows")
+                      : (zh ? "暂无工作流" : "No workflows")}
                   </small>
                 </td>
               </tr>
@@ -515,6 +537,14 @@ export function WorkflowsPage({
           </tbody>
         </table>
       </div>
+      <Pagination
+        page={currentPage}
+        pageSize={pageSize}
+        total={filteredItems.length}
+        onPageChange={setPage}
+        onPageSizeChange={setPageSize}
+        zh={zh}
+      />
     </div>
   );
 }
@@ -1173,7 +1203,7 @@ export function CreateWorkflowModal({
       className="modal-backdrop"
       onMouseDown={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="modal create-job-modal">
+      <div className="modal create-job-modal" role="dialog" aria-modal="true">
         <div className="modal-head">
           <div>
             <span className="eyebrow">{c.workflows.eyebrow}</span>

@@ -11,6 +11,7 @@ import {
   TerminalSquare,
   Trash2,
   Video,
+  Workflow,
   X,
   Zap,
 } from "lucide-react";
@@ -24,7 +25,7 @@ import type { Copy as CopyType, Lang } from "../i18n";
 import type { CRDJob } from "../types";
 import { useAutoRefresh } from "../hooks";
 import { crdToJob } from "../utils/crd";
-import { PageToolbar, StatusBadge } from "../components/shared";
+import { PageToolbar, Pagination, StatusBadge } from "../components/shared";
 import { TerminalModal } from "../components/terminal";
 
 export function JobsPage({
@@ -44,9 +45,12 @@ export function JobsPage({
 }) {
   const zh = c.nav.overview === "总览";
   const [query, setQuery] = useState("");
+  const [phaseFilter, setPhaseFilter] = useState<"All" | Phase>("All");
   const [realJobs, setRealJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
 
   const fetchJobs = async (isInitial = true) => {
     if (isInitial) setLoading(true);
@@ -57,8 +61,9 @@ export function JobsPage({
       const data = await resp.json();
       const items: CRDJob[] = data.items ?? [];
       setRealJobs(items.map(crdToJob));
-    } catch {
+    } catch (e) {
       setRealJobs([]);
+      setError(e instanceof Error ? e.message : String(e));
     } finally {
       setLoading(false);
     }
@@ -85,11 +90,21 @@ export function JobsPage({
   };
 
   const allJobs = realJobs;
-  const filtered = allJobs.filter((j) =>
-    `${j.name} ${j.type} ${j.target}`
+  const filtered = allJobs.filter((j) => {
+    const queryHit = `${j.name} ${j.type} ${j.target}`
       .toLowerCase()
-      .includes(query.toLowerCase()),
-  );
+      .includes(query.toLowerCase());
+    const phaseHit = phaseFilter === "All" || j.phase === phaseFilter;
+    return queryHit && phaseHit;
+  });
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const pagedJobs = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  useEffect(() => setPage(1), [query, phaseFilter, pageSize]);
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
 
   const selected =
     selectedName && allJobs.length > 0
@@ -126,6 +141,15 @@ export function JobsPage({
         count={filtered.length}
         copy={c}
         onRefresh={() => fetchJobs()}
+        filterValue={phaseFilter}
+        onFilterChange={(value) => setPhaseFilter(value as "All" | Phase)}
+        filterOptions={[
+          { value: "All", label: zh ? "全部状态" : "All statuses" },
+          { value: "Running", label: c.status.Running },
+          { value: "Pending", label: c.status.Pending },
+          { value: "Succeeded", label: c.status.Succeeded },
+          { value: "Failed", label: c.status.Failed },
+        ]}
       />
       {error && (
         <div className="cert-error" style={{ marginBottom: 12 }}>
@@ -149,15 +173,26 @@ export function JobsPage({
           <tbody>
             {filtered.length === 0 && !loading && (
               <tr>
-                <td
-                  colSpan={8}
-                  style={{ textAlign: "center", padding: "32px" }}
-                >
-                  <small className="muted">{zh ? "暂无任务" : "No jobs"}</small>
+                <td colSpan={8}>
+                  <div className="table-empty-state">
+                    <span>
+                      <Workflow size={22} />
+                    </span>
+                    <strong>{zh ? "还没有任务" : "No jobs yet"}</strong>
+                    <small>
+                      {zh
+                        ? "创建强化学习、数据采集、评测或自定义任务。"
+                        : "Create an RL, data collection, evaluation, or custom job."}
+                    </small>
+                    <button className="secondary-button" onClick={onCreate}>
+                      <Plus size={15} />
+                      {c.common.createJob}
+                    </button>
+                  </div>
                 </td>
               </tr>
             )}
-            {filtered.map((job) => (
+            {pagedJobs.map((job) => (
               <tr key={job.id}>
                 <td>
                   <button
@@ -224,6 +259,14 @@ export function JobsPage({
           </tbody>
         </table>
       </div>
+      <Pagination
+        page={currentPage}
+        pageSize={pageSize}
+        total={filtered.length}
+        onPageChange={setPage}
+        onPageSizeChange={setPageSize}
+        zh={zh}
+      />
     </div>
   );
 }

@@ -9,6 +9,7 @@ func (g *Gateway) RegisterRoutes(r gin.IRouter) {
 	clusters := r.Group("/api/v1/clusters")
 	{
 		clusters.GET("", g.listClusters)
+		clusters.GET("/:cluster_id", g.getCluster)
 	}
 
 	nodes := rlinfv1alpha1.Group("/nodes")
