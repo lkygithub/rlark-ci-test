@@ -8,7 +8,7 @@ setup(
     long_description_content_type="text/markdown",
     author="rlinf",
     author_email="pigeonligh@hotmail.com",
-    url="https://github.com/rlinf/embodied-runtime",
+    url="https://github.com/rlinf/rlark/apps/embodied-runtime",
     license="MIT",
     packages=find_packages(include=["embodied_runtime", "embodied_runtime.*"]),
     include_package_data=True,

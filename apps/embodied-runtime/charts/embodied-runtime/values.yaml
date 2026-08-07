@@ -1,0 +1,72 @@
+# embodied-runtime Helm chart values
+
+namespace: rlark-system
+
+nameOverride: ""
+fullnameOverride: ""
+
+devicePlugin:
+  image: rlinf/embodied-runtime:v0.1.0
+  imagePullPolicy: Always
+  priorityClassName: system-cluster-critical
+  nodeSelector: {}
+  tolerations:
+    - key: rlinf.io/robot
+      operator: Exists
+      effect: NoSchedule
+
+# device-plugin configuration file. Keys are snake_case to match the binary's
+# config schema. init_image / node_name are omitted: the device-plugin
+# auto-fills them from its own pod. pod.namespace is templated from
+# .Values.namespace. pod.subdomain MUST equal the corresponding headless
+# Service name (rendered from this same value, so they stay in sync).
+#
+# Each controller is toggled by `enabled` (true → pod mode, false →
+# disabled). This chart does NOT manage "local" mode. Pod-mode fields
+# (http_addr, pod, ...) are emitted only when enabled==true; a disabled
+# controller renders just its manager_mode line, and its headless Service
+# is omitted. http_addr is derived per-controller from httpPort
+# (→ "http_addr: :<httpPort>").
+config:
+  model: ""
+  device_count: 1
+  skip_register: false
+
+  # Host device passthrough: mount host /dev/* nodes directly into pods at
+  # Allocate time. No controller is launched — devices are passed through
+  # based on this list. Empty = no passthrough.
+  #   host_path:     required, host device node (e.g. /dev/video0)
+  #   container_path: optional, defaults to host_path
+  #   permissions:   optional, any of r/w/m; defaults to rwm
+  hostDevices: []
+  # - host_path: /dev/video0
+  #   # container_path: /dev/video0
+  #   # permissions: rwm
+  # - host_path: /dev/ttyUSB0
+  #   permissions: rw
+
+  camera:
+    enabled: false
+    httpPort: 8080
+    pod:
+      image: rlinf/camera-base:v0.1.0
+      pod_generate_name: camera-controller
+      subdomain: camera-controller-headless
+      labels:
+        app.kubernetes.io/name: camera-controller
+    auto_detect_v4l2: true
+    cameras: []
+
+  ros:
+    enabled: false
+    httpPort: 8080
+    pod:
+      image: rlinf/serl_franka_controllers:v0.1.0-libfranka-0.19.0-frankaros-0.10.2
+      pod_generate_name: ros-controller
+      subdomain: ros-controller-headless
+      labels:
+        app.kubernetes.io/name: ros-controller
+    macvlans: []
+    types: []
+    robots: []
+    allowed_launch_packages: []
