@@ -146,14 +146,18 @@ export type StorageProvider =
   | "Tencent COS";
 
 export interface StorageClass {
+  id: string;
   name: string;
+  namespace: string;
+  provider: StorageProvider;
   clusters: string[];
-  description: string;
-  bucket: string;
-  provider: string;
   endpoint: string;
   region: string;
+  bucket: string;
+  accessKeyId: string;
   pathStyle: boolean;
+  description: string;
+  createdAt: string;
 }
 
 export interface StorageClassCreateRequest {
@@ -172,34 +176,46 @@ export interface StorageClassCreateRequest {
 
 export const storageClasses: StorageClass[] = [
   {
+    id: "sc-standard",
     name: "standard",
+    namespace: "default",
+    provider: "AWS S3",
     clusters: ["cloud-east-a", "cloud-north-b"],
-    description: "标准存储池，适用于一般工作负载",
-    bucket: "rlark-standard-bucket",
-    provider: "AWS",
     endpoint: "https://s3.amazonaws.com",
     region: "us-east-1",
+    bucket: "rlark-standard-bucket",
+    accessKeyId: "AKIAIOSFODNN7EXAMPLE",
     pathStyle: false,
+    description: "标准存储池，适用于一般工作负载",
+    createdAt: "2026-06-15T10:30:00Z",
   },
   {
+    id: "sc-embodied",
     name: "embodied-storage",
+    namespace: "default",
+    provider: "MinIO",
     clusters: ["robot-lab-sh", "robot-warehouse-hz"],
-    description: "具身数据存储池，用于机器人实验数据存储",
-    bucket: "rlark-embodied-data",
-    provider: "Minio",
     endpoint: "https://minio.internal:9000",
     region: "cn-shanghai",
+    bucket: "rlark-embodied-data",
+    accessKeyId: "minioadmin",
     pathStyle: true,
+    description: "具身数据存储池，用于机器人实验数据存储",
+    createdAt: "2026-06-20T14:00:00Z",
   },
   {
+    id: "sc-training",
     name: "training-storage",
+    namespace: "default",
+    provider: "Aliyun OSS",
     clusters: ["cloud-east-a"],
-    description: "训练数据存储池，用于强化学习数据集存储",
-    bucket: "rlark-training-data",
-    provider: "Alibaba",
     endpoint: "https://oss-cn-hangzhou.aliyuncs.com",
     region: "cn-hangzhou",
+    bucket: "rlark-training-data",
+    accessKeyId: "LTAI5tExampleKey",
     pathStyle: false,
+    description: "训练数据存储池，用于强化学习数据集存储",
+    createdAt: "2026-07-01T08:00:00Z",
   },
 ];
 export const clusters: Cluster[] = [

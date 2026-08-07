@@ -2,6 +2,7 @@
 set -e
 
 export RLINF_NODE_RANK=$((RLARK_NODE_RANK_START + ${POD_NAME##*-}))
+echo "RLINF_NODE_RANK: $RLINF_NODE_RANK"
 
 if [ -n "$WAIT_NETWORK_SCRIPT" ]; then
     bash "$WAIT_NETWORK_SCRIPT" "network"
