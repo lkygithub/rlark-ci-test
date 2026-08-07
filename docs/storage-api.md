@@ -1,114 +1,211 @@
 # Storage API 文档
 
-基于参考 `/home/ethan/workspace/mizar-edge/pkg/cloud/volume.go` 中的API实现，已将storageclass列举API迁移到RLark项目中。
+## 概述
 
-## 新增API端点
+Storage API 提供多集群 StorageClass 管理能力。Gateway 通过 Server 代理向各数据面 Agent 查询 StorageClass 信息，聚合后返回。
 
-### 1. 获取StorageClass列表
+## API 端点
+
+### 1. 获取 StorageClass 列表
 **GET** `/api/v1/storage/storageclass`
 
-列出所有带有 `controller: rlark` 标签的StorageClass资源。
+通过 Server 代理，从指定集群的 Agent 查询 StorageClass 列表。过滤掉默认 StorageClass（`default`、`local-path`、`hostpath`），按名称分组聚合。
 
 #### 查询参数
-- `cluster` (可选): 集群名称（当前版本仅支持单个集群，保留此参数用于未来多集群支持）
+- `clusters` (可选): 逗号分隔的集群 ID 列表，如 `?clusters=agent-beijing,agent-shanghai`。不传则查询所有集群。
 
 #### 响应示例
 ```json
 {
   "data": {
-    "test-storageclass": {
-      "name": "test-storageclass",
-      "clusters": ["default"],
-      "description": "Test StorageClass",
-      "bucket": "test-bucket"
+    "ceph-rbd": {
+      "name": "ceph-rbd",
+      "clusters": ["agent-beijing", "agent-shanghai"],
+      "description": "Ceph RBD StorageClass",
+      "bucket": "",
+      "provider": "s3",
+      "endpoint": "https://s3.amazonaws.com",
+      "region": "us-east-1",
+      "pathStyle": false
     }
   },
   "success": true
 }
 ```
 
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `name` | `string` | StorageClass 名称 |
+| `clusters` | `[]string` | 该 StorageClass 可用的集群 ID 列表 |
+| `description` | `string` | 可读描述 |
+| `bucket` | `string` | 存储桶名称 |
+| `provider` | `string` | 存储提供商类型（s3, gcs, azureblob 等） |
+| `endpoint` | `string` | 存储服务端点地址 |
+| `region` | `string` | 存储区域 |
+| `pathStyle` | `bool` | 是否使用 path-style 寻址 |
+
 ### 2. 获取存储提供商列表
 **GET** `/api/v1/storage/storageclass/provider`
 
-列出支持的存储提供商列表。
+列出支持的存储提供商列表（AWS S3、阿里云 OSS、MinIO、Ceph 等共 31 个提供商）。
 
 #### 响应示例
 ```json
 {
   "data": [
-    {
-      "name": "AWS S3",
-      "value": "AWS"
-    },
-    {
-      "name": "阿里云 OSS",
-      "value": "Alibaba"
-    },
-    {
-      "name": "腾讯云 COS",
-      "value": "TencentCOS"
-    },
-    // ... 更多提供商
+    { "name": "AWS S3", "value": "AWS" },
+    { "name": "阿里云 OSS", "value": "Alibaba" },
+    { "name": "MinIO", "value": "MinIO" }
   ],
   "success": true
 }
 ```
 
-### 3. 创建StorageClass（待实现）
+### 3. 创建 StorageClass（待实现）
 **POST** `/api/v1/storage/storageclass`
 
-创建新的StorageClass资源（当前返回501 Not Implemented）。
+创建新的 StorageClass 资源（当前返回 501 Not Implemented）。
+
+### 4. 列出存储桶文件
+**GET** `/api/v1/storage/storageclass/{cluster}/{name}/list`
+
+列出指定集群中 StorageClass 存储桶下的文件列表。
+
+#### 路径参数
+- `cluster`：集群 ID（如 `agent-beijing`）
+- `name`：StorageClass 名称
+
+#### 响应示例
+```json
+{
+  "data": [
+    {"name": "model-checkpoint.pt", "size": 1048576, "modified": "2026-07-30T10:00:00Z"},
+    {"name": "logs/training.log", "size": 2048, "modified": "2026-07-30T09:30:00Z"}
+  ],
+  "success": true
+}
+```
+
+### 5. 上传文件
+**POST** `/api/v1/storage/storageclass/{cluster}/{name}/upload`
+
+向指定 StorageClass 存储桶上传文件，使用 multipart/form-data 格式。
+
+#### 路径参数
+- `cluster`：集群 ID
+- `name`：StorageClass 名称
+
+#### 请求体
+multipart/form-data，字段 `file` 为上传的文件。
+
+#### 响应示例
+```json
+{
+  "data": {"key": "model-checkpoint.pt", "size": 1048576},
+  "success": true
+}
+```
+
+### 6. 下载文件
+**GET** `/api/v1/storage/storageclass/{cluster}/{name}/object/*key`
+
+下载指定存储桶中的对象，返回原始文件内容。
+
+#### 路径参数
+- `cluster`：集群 ID
+- `name`：StorageClass 名称
+- `key`：对象路径（如 `model-checkpoint.pt` 或 `logs/training.log`）
+
+#### 响应
+- `200`：文件内容（二进制流）
+- `404`：文件不存在
+
+### 7. 删除文件
+**DELETE** `/api/v1/storage/storageclass/{cluster}/{name}/object/*key`
+
+删除指定存储桶中的对象。
+
+#### 路径参数
+- `cluster`：集群 ID
+- `name`：StorageClass 名称
+- `key`：对象路径
+
+#### 响应示例
+```json
+{
+  "data": {"deleted": true},
+  "success": true
+}
+```
 
 ## 实现说明
 
-### 文件结构
-1. **`pkg/gateway/storage_handler.go`** - 存储相关的API处理函数
-   - `listStorageClass()` - 处理StorageClass列表请求
-   - `listProvider()` - 处理存储提供商列表请求
-   - `createStorageClass()` - 创建StorageClass（待实现）
+### 多集群代理架构
 
-2. **`pkg/gateway/router.go`** - 注册新的API路由
-   - 添加了 `/api/v1/storage` 路由组
-   - 注册了3个新的API端点
+```
+Gateway ──▶ Server ──▶ Agent (cluster A) ──▶ K8s API (list StorageClasses)
+                  ──▶ Agent (cluster B) ──▶ K8s API (list StorageClasses)
+```
+
+1. Gateway 接收请求后，解析 `clusters` 参数获取目标集群列表
+2. 通过 Server 的代理接口 (`/api/proxy/{agentID}/api/kubernetes/apis/storage.k8s.io/v1/storageclasses`) 向各 Agent 发起查询
+3. Agent 查询本地 K8s 集群的 StorageClass 资源
+4. Gateway 聚合结果：过滤默认 StorageClass，按名称分组，汇总各集群信息
+
+### 文件结构
+- **`pkg/gateway/storage_handler.go`** - 存储 API 处理函数
+- **`pkg/gateway/clusters_handler.go`** - 集群列表聚合
+- **`pkg/gateway/router.go`** - 路由注册
 
 ### 数据结构
 ```go
-// StorageClassData 定义StorageClass的响应数据结构
 type StorageClassData struct {
     Name        string   `json:"name"`
     Clusters    []string `json:"clusters"`
     Description string   `json:"description"`
     Bucket      string   `json:"bucket"`
+    Provider    string   `json:"provider"`
+    Endpoint    string   `json:"endpoint"`
+    Region      string   `json:"region"`
+    PathStyle   bool     `json:"pathStyle"`
 }
 
-// Provider 定义存储提供商信息
 type Provider struct {
     Name  string `json:"name"`
     Value string `json:"value"`
 }
 ```
 
-### 与参考实现的差异
-1. **多集群支持**: 当前实现仅支持单个Kubernetes集群，而参考实现支持多集群。未来可以根据需要扩展多集群支持。
-2. **标签选择器**: 使用 `controller: rlark` 标签选择器，而不是参考实现中的 `controller: mizar-edge`。
-3. **API路径**: API路径为 `/api/v1/storage/*`，与参考实现保持一致。
-4. **响应格式**: 使用统一的 `{"data": ..., "success": true}` 格式。
+### Agent RBAC 要求
+
+Agent 需要 `storage.k8s.io` API 组的 `storageclasses` 资源读取权限，`rlarkadm` 部署时自动配置。
 
 ## 使用示例
 
-### 获取StorageClass列表
+### 获取所有集群的 StorageClass
 ```bash
-curl -X GET "http://localhost:8080/api/v1/storage/storageclass"
+curl "http://localhost:8080/api/v1/storage/storageclass"
+```
+
+### 获取指定集群的 StorageClass
+```bash
+curl "http://localhost:8080/api/v1/storage/storageclass?clusters=agent-beijing"
 ```
 
 ### 获取存储提供商列表
 ```bash
-curl -X GET "http://localhost:8080/api/v1/storage/storageclass/provider"
+curl "http://localhost:8080/api/v1/storage/storageclass/provider"
 ```
 
-## 未来扩展
+## 与 Task PVC 挂载的集成
 
-1. **多集群支持**: 可以扩展Gateway结构体以支持多集群客户端
-2. **完整实现**: 实现createStorageClass功能
-3. **权限控制**: 添加适当的权限验证
-4. **错误处理**: 增强错误处理和日志记录
+Task 通过 `pvcStorageMap` 声明需要挂载的 PVC：
+
+```yaml
+kubernetes:
+  workload:
+    pvcStorageMap:
+      my-data-pvc: "ceph-rbd"
+```
+
+Agent 的 Pull 控制器在创建 workload 前，调用 `ensurePVCs` 根据 `pvcStorageMap` 创建对应的 PVC。前端通过 Storage API 获取可用 StorageClass 列表供用户选择。
