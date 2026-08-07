@@ -129,6 +129,7 @@ export function generateJobCRD(opts: {
   roleResources: Record<string, RoleResource>;
   runScript: string;
   domain: string;
+  tensorBoardDir?: string;
 }) {
   const tasks = opts.roles
     .map((role) => {
@@ -182,6 +183,9 @@ export function generateJobCRD(opts: {
         nodeSelector: res ? parseNodeSelector(res.nodeSelector) : {},
         prepareScript: res?.prepareScript ?? "",
         ...(isHead ? { runScript: opts.runScript } : {}),
+        ...(isHead && opts.tensorBoardDir
+          ? { tensorBoardDir: opts.tensorBoardDir }
+          : {}),
         kubernetes: {
           workload: {
             kind: "StatefulSet",

@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -15,6 +16,8 @@ import (
 	"k8s.io/client-go/kubernetes"
 
 	versioned "github.com/rlinf/rlark/kubeclients/clientset/versioned"
+	"github.com/rlinf/rlark/kubeclients/informers/externalversions"
+	listerv1alpha1 "github.com/rlinf/rlark/kubeclients/listers/rlark.io/v1alpha1"
 	"github.com/rlinf/rlark/pkg/db"
 	"github.com/rlinf/rlark/pkg/gateway/storage"
 	"github.com/rlinf/rlark/pkg/log"
@@ -26,6 +29,12 @@ type Gateway struct {
 
 	kubeClient versioned.Interface
 	rawClient  kubernetes.Interface
+
+	// podLister is a cached view of rlark Pod CRs, backed by a shared
+	// informer. It is used by the TensorBoard proxy handler to look up
+	// the data-plane pod name for a task without hitting the API server
+	// on every request.
+	podLister listerv1alpha1.PodLister
 
 	dbClient     *db.DB // may be nil if DBConfigPath is not provided, should be checked before use
 	rcStore      *db.RevokedCertificateStore
@@ -81,6 +90,16 @@ func (g *Gateway) init(ctx context.Context) error {
 	g.rawClient, err = kubernetes.NewForConfig(restConfig)
 	if err != nil {
 		return fmt.Errorf("create raw Kubernetes client: %w", err)
+	}
+
+	// init pod informer/lister for cached Pod lookups (used by the
+	// TensorBoard proxy handler).
+	factory := externalversions.NewSharedInformerFactory(g.kubeClient, 30*time.Minute)
+	g.podLister = factory.Rlinf().V1alpha1().Pods().Lister()
+	factory.StartWithContext(ctx)
+	synced := factory.WaitForCacheSyncWithContext(ctx)
+	if err := synced.AsError(); err != nil {
+		return fmt.Errorf("wait for pod informer cache sync: %w", err)
 	}
 
 	// init accessors
