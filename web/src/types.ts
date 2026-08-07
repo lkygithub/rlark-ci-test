@@ -58,6 +58,7 @@ export interface CRDJobTask {
   nodeSelector: Record<string, string>;
   prepareScript?: string;
   runScript?: string;
+  tensorBoardDir?: string;
   kubernetes?: {
     workload?: CRDWorkload;
   };

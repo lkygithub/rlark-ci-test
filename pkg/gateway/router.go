@@ -45,12 +45,13 @@ func (g *Gateway) RegisterRoutes(r gin.IRouter) {
 
 	tasks := rlinfv1alpha1.Group("/tasks")
 	{
-		tasks.GET("", g.rlinfv1alpha1ListTasks)
+		tasks.GET("", g.rlinfv1alpha1ListTasksWithProxy)
 		tasks.POST("", g.rlinfv1alpha1CreateTask)
-		tasks.GET("/:name", g.rlinfv1alpha1GetTask)
+		tasks.GET("/:name", g.rlinfv1alpha1GetTaskWithProxy)
 		tasks.PUT("/:name", g.rlinfv1alpha1UpdateTask)
 		tasks.PATCH("/:name", g.rlinfv1alpha1PatchTask)
 		tasks.DELETE("/:name", g.rlinfv1alpha1DeleteTask)
+		tasks.Any("/:name/tensorboard/*path", g.handleTaskTensorBoardProxy)
 	}
 
 	pods := rlinfv1alpha1.Group("/pods")
@@ -166,9 +167,7 @@ func (g *Gateway) rlinfv1alpha1JobMetrics(c *gin.Context) {
 
 // --- Task handlers ---
 
-func (g *Gateway) rlinfv1alpha1ListTasks(c *gin.Context)  { g.handleList("tasks")(c) }
 func (g *Gateway) rlinfv1alpha1CreateTask(c *gin.Context) { g.handleKubeCreate("tasks")(c) }
-func (g *Gateway) rlinfv1alpha1GetTask(c *gin.Context)    { g.handleGet("tasks")(c) }
 func (g *Gateway) rlinfv1alpha1UpdateTask(c *gin.Context) { g.handleKubeUpdate("tasks")(c) }
 func (g *Gateway) rlinfv1alpha1PatchTask(c *gin.Context)  { g.handleKubePatch("tasks")(c) }
 func (g *Gateway) rlinfv1alpha1DeleteTask(c *gin.Context) { g.handleKubeDelete("tasks")(c) }

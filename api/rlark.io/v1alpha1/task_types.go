@@ -86,13 +86,14 @@ type TaskSpec struct {
 }
 
 type TaskStatus struct {
-	Phase          TaskPhase          `json:"phase,omitempty"`
-	ObservedNodes  []string           `json:"observedNodes,omitempty"`
-	Conditions     []metav1.Condition `json:"conditions,omitempty"`
-	StartTime      *metav1.Time       `json:"startTime,omitempty"`
-	CompletionTime *metav1.Time       `json:"completionTime,omitempty"`
-	Message        string             `json:"message,omitempty"`
-	RetryCount     int32              `json:"retryCount,omitempty"`
+	Phase            TaskPhase          `json:"phase,omitempty"`
+	ObservedNodes    []string           `json:"observedNodes,omitempty"`
+	Conditions       []metav1.Condition `json:"conditions,omitempty"`
+	StartTime        *metav1.Time       `json:"startTime,omitempty"`
+	CompletionTime   *metav1.Time       `json:"completionTime,omitempty"`
+	Message          string             `json:"message,omitempty"`
+	RetryCount       int32              `json:"retryCount,omitempty"`
+	TensorBoardProxy string             `json:"tensorBoardProxy,omitempty"` // 由 gateway 计算填入，指向对应 Pod 6006 端口的代理相对地址
 }
 
 // +genclient

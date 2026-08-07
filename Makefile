@@ -96,7 +96,8 @@ nerd-build: $(addprefix nerd-build-,$(COMPONENTS))
 nerd-push: $(addprefix nerd-push-,$(COMPONENTS))
 
 nerd-build-%: build-% build/%/Dockerfile
-	nerdctl build --platform $(IMAGE_PLATFORMS) -t $(IMAGE_REGISTRY)/rlark-$*:$(IMAGE_TAG) -f build/$*/Dockerfile .
+	$(eval IMG := $(if $(filter ui,$*),$(BASE_IMAGE_UI),$(BASE_IMAGE)))
+	nerdctl build --platform $(IMAGE_PLATFORMS) -t $(IMAGE_REGISTRY)/rlark-$*:$(IMAGE_TAG) --build-arg BASE_IMAGE=$(IMG) -f build/$*/Dockerfile .
 
 nerd-push-%: build-% build/%/Dockerfile
 	$(eval IMG := $(if $(filter ui,$*),$(BASE_IMAGE_UI),$(BASE_IMAGE)))

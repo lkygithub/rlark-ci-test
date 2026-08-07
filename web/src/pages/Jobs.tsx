@@ -3,6 +3,7 @@ import {
   Check,
   ChevronDown,
   Copy,
+  ExternalLink,
   KeyRound,
   Network,
   Pencil,
@@ -241,6 +242,7 @@ export function JobDetailPage({
     "config",
   );
   const [taskNodes, setTaskNodes] = useState<Record<string, string>>({});
+  const [tensorBoardProxy, setTensorBoardProxy] = useState<string>("");
   const [pods, setPods] = useState<PodInfo[]>([]);
   const [domainIPMap, setDomainIPMap] = useState<Record<string, string>>({});
   const [podLogs, setPodLogs] = useState<
@@ -267,12 +269,17 @@ export function JobDetailPage({
       const data = await resp.json();
       const items = data.items ?? [];
       const nodeMap: Record<string, string> = {};
+      let tbProxy = "";
       for (const item of items) {
         const taskName = item.metadata?.name ?? "";
         const observedNodes = item.status?.observedNodes ?? [];
         nodeMap[taskName] = observedNodes.join(", ") || "—";
+        if (item.status?.tensorBoardProxy) {
+          tbProxy = item.status.tensorBoardProxy;
+        }
       }
       setTaskNodes(nodeMap);
+      setTensorBoardProxy(tbProxy);
     },
     10000,
     [job.name],
@@ -447,7 +454,7 @@ export function JobDetailPage({
       </div>
       {activeTab === "config" && (
         <div className="config-with-channel">
-          <JobConfigSummary job={job} />
+          <JobConfigSummary job={job} tensorBoardProxy={tensorBoardProxy} />
           <div className="embodied-channel" style={{ marginTop: 18 }}>
             <div className="channel-screen">
               <Video size={28} />
@@ -596,7 +603,14 @@ export function JobDetailPage({
   );
 }
 
-export function JobConfigSummary({ job }: { job: Job }) {
+export function JobConfigSummary({
+  job,
+  tensorBoardProxy,
+}: {
+  job: Job;
+  tensorBoardProxy?: string;
+}) {
+  const zh = navigator.language.startsWith("zh");
   return (
     <div className="job-config-summary">
       <div>
@@ -610,6 +624,20 @@ export function JobConfigSummary({ job }: { job: Job }) {
         <span>Run Script</span>
         <pre>{job.command}</pre>
       </div>
+      {tensorBoardProxy && (
+        <div>
+          <span>Tensorboard</span>
+          <a
+            href={tensorBoardProxy}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
+          >
+            <ExternalLink size={15} />
+            {zh ? "打开 TensorBoard" : "Open TensorBoard"}
+          </a>
+        </div>
+      )}
       {job.resources.map((item) => (
         <div key={item.role}>
           <span>

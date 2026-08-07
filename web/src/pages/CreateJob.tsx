@@ -51,6 +51,9 @@ export function CreateJobModal({
       "python train.py --config /mnt/config/train.yaml --dataset /mnt/dataset --output /mnt/checkpoints",
   );
   const [domain, setDomain] = useState(sourceJob?.domain ?? "");
+  const [tensorBoardDir, setTensorBoardDir] = useState(
+    sourceJob?.tensorBoardDir ?? "",
+  );
   const [domains, setDomains] = useState<{ name: string; cidr: string }[]>([]);
   const {
     clusterDisplayNames,
@@ -425,6 +428,7 @@ export function CreateJobModal({
     roleResources,
     runScript,
     domain,
+    tensorBoardDir,
   });
   const yaml = toYaml(crd);
   const steps = zh
@@ -989,6 +993,20 @@ export function CreateJobModal({
                   value={runScript}
                   onChange={(e) => setRunScript(e.target.value)}
                   placeholder="python train.py --config /mnt/config/train.yaml"
+                />
+              </div>
+              <div className="form-section">
+                <div className="form-section-head">
+                  <small>
+                    {zh
+                      ? "TensorBoard 日志目录 (可选)"
+                      : "TensorBoard Log Directory (optional)"}
+                  </small>
+                </div>
+                <input
+                  value={tensorBoardDir}
+                  onChange={(e) => setTensorBoardDir(e.target.value)}
+                  placeholder="/data/tensorboard/train"
                 />
               </div>
             </>

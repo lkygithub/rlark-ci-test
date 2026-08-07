@@ -2,6 +2,8 @@ package task
 
 import (
 	"fmt"
+	"path"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -15,6 +17,11 @@ const (
 	rayPort            = "6379"
 
 	rayInitVolumeName = "ray-init-scripts"
+
+	tensorBoardSidecarName = "tensorboard"
+	tensorBoardImage       = "harbor.infini-ai.com/share/tensorboard:2.15.1-rc1"
+	tensorBoardVolumeName  = "rlark-tensorboard"
+	tensorBoardPort        = 6006
 )
 
 type rayRoleConfig struct {
@@ -169,4 +176,97 @@ func applyRayInit(template *corev1.PodTemplateSpec, mgmtTask *rlarkv1alpha1.Task
 			},
 		},
 	})
+
+	applyTensorBoardSidecar(template, mgmtTask)
+}
+
+// applyTensorBoardSidecar injects a TensorBoard sidecar that shares the
+// TensorBoardDir with the main container. If the main container already has a
+// volume mount whose mountPath covers TensorBoardDir, the sidecar reuses that
+// volume (mounting it at the same path); otherwise a new emptyDir volume is
+// added and mounted at TensorBoardDir in both the main container and the sidecar.
+func applyTensorBoardSidecar(template *corev1.PodTemplateSpec, mgmtTask *rlarkv1alpha1.Task) {
+	if mgmtTask.Spec.TensorBoardDir == nil || *mgmtTask.Spec.TensorBoardDir == "" {
+		return
+	}
+	tbDir := path.Clean(*mgmtTask.Spec.TensorBoardDir)
+
+	var mainContainer *corev1.Container
+	for i := range template.Spec.Containers {
+		if template.Spec.Containers[i].Name == "main" {
+			mainContainer = &template.Spec.Containers[i]
+			break
+		}
+	}
+	if mainContainer == nil {
+		return
+	}
+
+	for _, c := range template.Spec.Containers {
+		if c.Name == tensorBoardSidecarName {
+			return
+		}
+	}
+
+	var volumeName, mountPath, subPath string
+	for i := range mainContainer.VolumeMounts {
+		vm := &mainContainer.VolumeMounts[i]
+		if pathCovers(vm.MountPath, tbDir) {
+			volumeName = vm.Name
+			mountPath = vm.MountPath
+			subPath = vm.SubPath
+			break
+		}
+	}
+
+	if volumeName == "" {
+		volumeName = tensorBoardVolumeName
+		mountPath = tbDir
+		template.Spec.Volumes = append(template.Spec.Volumes, corev1.Volume{
+			Name: volumeName,
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		})
+		mainContainer.VolumeMounts = append(mainContainer.VolumeMounts, corev1.VolumeMount{
+			Name:      volumeName,
+			MountPath: mountPath,
+		})
+	}
+
+	template.Spec.Containers = append(template.Spec.Containers, corev1.Container{
+		Name:            tensorBoardSidecarName,
+		Image:           tensorBoardImage,
+		ImagePullPolicy: corev1.PullIfNotPresent,
+		Command:         []string{"tensorboard"},
+		Args: []string{
+			"--logdir=" + tbDir,
+			"--bind_all",
+		},
+		Ports: []corev1.ContainerPort{
+			{
+				Name:          "tensorboard",
+				ContainerPort: int32(tensorBoardPort),
+				Protocol:      corev1.ProtocolTCP,
+			},
+		},
+		VolumeMounts: []corev1.VolumeMount{
+			{
+				Name:      volumeName,
+				MountPath: mountPath,
+				SubPath:   subPath,
+			},
+		},
+	})
+}
+
+// pathCovers reports whether mountPath covers dir, i.e. dir equals mountPath or
+// is a subdirectory of it. Both paths are cleaned before comparison.
+func pathCovers(mountPath, dir string) bool {
+	mp := path.Clean(mountPath)
+	d := path.Clean(dir)
+	if mp == "/" {
+		return true
+	}
+	return d == mp || strings.HasPrefix(d, mp+"/")
 }

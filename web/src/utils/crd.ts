@@ -125,6 +125,7 @@ export function crdToJob(crd: CRDJob): Job {
     defaultRoles: roles,
     image: container?.image ?? "",
     command: headerTask?.runScript ?? "",
+    tensorBoardDir: headerTask?.tensorBoardDir ?? "",
     env,
     mounts,
     headerRole: headerTask?.name ?? "",

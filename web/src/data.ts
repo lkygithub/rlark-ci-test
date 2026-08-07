@@ -1,4 +1,4 @@
-﻿export type Phase =
+export type Phase =
   "Running" | "Pending" | "Succeeded" | "Failed" | "Online" | "Offline";
 
 export type ClusterType = "Cloud" | "Embodied";
@@ -86,6 +86,7 @@ export interface Job {
   headerWorker: string;
   sshAddress: string;
   domain?: string;
+  tensorBoardDir?: string;
   resources: Array<{
     role: string;
     cluster: string;

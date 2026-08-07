@@ -50,6 +50,16 @@ func (a *Agent) handleProxy(ctx *gin.Context) {
 		ctx.AbortWithStatus(http.StatusBadRequest)
 		return
 	}
+	// Reset the request path to the target URL's path so that
+	// NewSingleHostReverseProxy doesn't concatenate the proxy prefix
+	// (e.g. /api/proxy/http://host:port) onto the upstream path.
+	// Clear targetUrl.Path afterwards, otherwise the reverse proxy joins it
+	// with the (now identical) request path again and duplicates it
+	// (e.g. /index.js -> /index.js/index.js), which 404s at the upstream.
+	// The original query string stays on ctx.Request.URL and is forwarded
+	// as-is; do not copy it onto targetUrl or it gets merged twice.
+	ctx.Request.URL.Path = targetUrl.Path
+	targetUrl.Path = ""
 	proxy := httputil.NewSingleHostReverseProxy(targetUrl)
 	proxy.ServeHTTP(ctx.Writer, ctx.Request)
 }
