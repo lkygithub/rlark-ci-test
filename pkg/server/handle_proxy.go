@@ -16,6 +16,7 @@ import (
 	"github.com/rancher/remotedialer"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/rlinf/rlark/api/rlark.io/v1alpha1"
 	"github.com/rlinf/rlark/pkg/apis"
 	"github.com/rlinf/rlark/pkg/auth"
 	"github.com/rlinf/rlark/pkg/server/reverseproxy"
@@ -210,23 +211,9 @@ func (s *Server) handleProxy(ctx *gin.Context) {
 	metrics.IncProxyRequest(target, "ok")
 }
 
-// handlePodProxy 处理通过服务器代理的 Pod 请求。
-// target: 目标 Pod 的名称 + 端口
-// path: 要访问的目标 Pod 的路径
-func (s *Server) handlePodProxy(ctx *gin.Context) {
-	target := ctx.Param("target")
-	podName, port, err := net.SplitHostPort(target)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("invalid target format: %v", err)})
-		return
-	}
-	pod, ok := s.podCache.GetPodByName(podName)
-	if !ok {
-		ctx.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprintf("pod %s not found", podName)})
-		return
-	}
+func (s *Server) handlePodProxyForPod(ctx *gin.Context, pod *v1alpha1.Pod, port string) {
 	if pod.Status.IP == "" {
-		ctx.JSON(http.StatusServiceUnavailable, gin.H{"error": fmt.Sprintf("pod %s not ready", podName)})
+		ctx.JSON(http.StatusServiceUnavailable, gin.H{"error": fmt.Sprintf("pod %s not ready", pod.Spec.PodName)})
 		return
 	}
 	targetAgent := strings.TrimPrefix(pod.Namespace, apis.RLarkAgentNamespacePrefix)
@@ -248,6 +235,42 @@ func (s *Server) handlePodProxy(ctx *gin.Context) {
 	proxy.Transport = s.defaultProxyTransport
 	proxy.ServeHTTP(ctx.Writer, ctx.Request)
 	metrics.IncProxyRequest(targetAgent, "ok")
+}
+
+// handlePodProxy 处理通过服务器代理的 Pod 请求。
+// target: 目标 Pod 的名称 + 端口
+// path: 要访问的目标 Pod 的路径
+func (s *Server) handlePodProxy(ctx *gin.Context) {
+	target := ctx.Param("target")
+	podName, port, err := net.SplitHostPort(target)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("invalid target format: %v", err)})
+		return
+	}
+	pod, ok := s.podCache.GetPodByName(podName)
+	if !ok {
+		ctx.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprintf("pod %s not found", podName)})
+		return
+	}
+	s.handlePodProxyForPod(ctx, pod, port)
+}
+
+// handleTaskProxy 处理通过服务器代理的 Task 请求。
+// target: 目标 Task 的名称 + 端口
+// path: 要访问的目标 Task 的路径
+func (s *Server) handleTaskProxy(ctx *gin.Context) {
+	target := ctx.Param("target")
+	taskName, port, err := net.SplitHostPort(target)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("invalid target format: %v", err)})
+		return
+	}
+	pod, ok := s.podCache.GetPodByTaskName(taskName)
+	if !ok {
+		ctx.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprintf("task %s not found", taskName)})
+		return
+	}
+	s.handlePodProxyForPod(ctx, pod, port)
 }
 
 // handleKubernetesProxy 处理通过服务器代理的 Kubernetes API 请求。它会根据客户端证书中的元数据，

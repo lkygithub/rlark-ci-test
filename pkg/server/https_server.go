@@ -20,6 +20,7 @@ func (s *Server) registerHTTPSHandlers(r *gin.Engine) {
 	api.GET("connect", s.handleProxyConnect)
 	api.Any("proxy/:target/*path", s.handleProxy)
 	api.Any("podproxy/:target/*path", s.handlePodProxy)
+	api.Any("taskproxy/:target/*path", s.handleTaskProxy)
 	api.GET("terminal/:target/:namespace/:pod", s.handleTerminalProxy)
 
 	// Sign and revoke certificate endpoints
