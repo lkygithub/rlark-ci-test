@@ -1,4 +1,4 @@
-.PHONY: lint lint-go fmt-go fmt-web generate generate-api-docs proto build
+.PHONY: lint lint-go fmt-go fmt-web generate generate-api-docs proto build tidy
 .PHONY: docker-build docker-push docker-build-ui docker-push-ui nerd-build nerd-push
 
 lint: lint-go
@@ -23,6 +23,11 @@ generate-api-docs: generate-crd
 
 proto:
 	$(MAKE) -C proto/embodied-runtime proto
+
+tidy:
+	@for dir in $$(grep '^\t\./' go.work | sed 's/^\t//'); do \
+		(cd $$dir && go mod tidy); \
+	done
 
 build:
 	$(MAKE) -C apps/rlark build
