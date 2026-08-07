@@ -617,3 +617,105 @@ curl -X POST "http://localhost:8080/api/v1/rlinf.io/v1alpha1/jobs" \
 7. **PATCH 用 merge-patch**：`Content-Type: application/merge-patch+json` 适合增量更新（如改副本数、改镜像）；但对数组是整体替换，patch `tasks`/`jobTemplates` 时需带完整元素，或改用 JSON-Patch。
 8. **Job/Workflow 的 task/job 模板**：内嵌的 `spec` 即 `JobSpec`，结构与独立 Job 完全一致，前端可复用同一表单组件。
 9. **Task 名称派生规则**：job-controller 创建 Task 时名称为 `<jobName>-<taskName>`，namespace 为 `default`，标签 `rlinf.io/job=<jobName>`；前端可用此标签查询某 Job 下的所有 Task。
+
+---
+
+## 8. 认证 API
+
+### 8.1 用户登录
+
+```bash
+curl -X POST "http://localhost:8080/api/v1/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{"username": "admin", "password": "your-password"}'
+```
+
+```json
+{"ok": true, "role": "admin"}
+```
+
+---
+
+## 9. 存储 API
+
+### 9.1 列出 StorageClass
+
+```bash
+# 列出所有集群的 StorageClass
+curl "http://localhost:8080/api/v1/storage/storageclass"
+
+# 按集群过滤
+curl "http://localhost:8080/api/v1/storage/storageclass?clusters=agent-beijing,agent-shanghai"
+```
+
+```json
+{
+  "data": {
+    "ceph-rbd": {
+      "name": "ceph-rbd",
+      "clusters": ["agent-beijing"],
+      "description": "Ceph RBD StorageClass",
+      "bucket": ""
+    }
+  },
+  "success": true
+}
+```
+
+### 9.2 列出存储提供商
+
+```bash
+curl "http://localhost:8080/api/v1/storage/storageclass/provider"
+```
+
+---
+
+## 10. 集群列表 API
+
+```bash
+curl "http://localhost:8080/api/v1/clusters"
+```
+
+```json
+{
+  "data": [
+    {
+      "id": "agent-beijing",
+      "name": "Beijing GPU Cluster",
+      "type": "cloud",
+      "phase": "Online",
+      "cloudNodes": 4,
+      "embodiedNodes": 0,
+      "robots": 0,
+      "gpuModels": ["A100", "V100"],
+      "cpuUsage": 0.45,
+      "gpuUsage": 0.72,
+      "runningJobs": 3,
+      "description": "Beijing GPU training cluster"
+    }
+  ],
+  "success": true
+}
+```
+
+---
+
+## 11. Job 日志 API
+
+```bash
+curl "http://localhost:8080/api/v1/rlinf.io/v1alpha1/jobs/ppo-cartpole-v1/logs"
+```
+
+```json
+{
+  "pods": [
+    {
+      "taskName": "actor-head",
+      "podName": "actor-head-0",
+      "phase": "Running",
+      "node": "gpu-node-01",
+      "logs": "Training started...\nEpoch 1/100: loss=0.45..."
+    }
+  ]
+}
+```
