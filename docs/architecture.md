@@ -26,12 +26,12 @@ Server is the core of the control plane, responsible for managing all Agent and 
 
 | Function                | Implementation                                                                                | Key File                                                     |
 | ----------------------- | --------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
-| Agent Tunnel Management | Reverse proxy based on remotedialer; Agent actively connects to Server via WebSocket          | [handle\_proxy.go](../../pkg/server/handle_proxy.go)         |
-| Certificate Signing     | X.509 and SSH certificate issuance/revocation, supporting agent/domain/ssh-guest roles        | [sign.go](../../pkg/server/sign.go)                          |
-| SSH Service             | Two-phase user SSH authentication (certificate + public key), direct-tcpip channel forwarding | [ssh\_server.go](../../pkg/server/ssh_server.go)             |
-| Peer Interconnection    | Server-to-Server P2P connections for high availability                                        | [peer\_manager.go](../../pkg/server/peer_manager.go)         |
-| K8s Proxy               | Forward K8s API requests to data plane clusters via Agent tunnels                             | [kube\_proxy.go](../../pkg/server/kube_proxy.go)             |
-| Pod Cache               | In-memory Pod cache based on Informer for fast SSH Pod lookup                                 | [caches/pod\_cache.go](../../pkg/server/caches/pod_cache.go) |
+| Agent Tunnel Management | Reverse proxy based on remotedialer; Agent actively connects to Server via WebSocket          | [handle\_proxy.go](../../apps/rlark/pkg/server/handle_proxy.go)         |
+| Certificate Signing     | X.509 and SSH certificate issuance/revocation, supporting agent/domain/ssh-guest roles        | [sign.go](../../apps/rlark/pkg/server/sign.go)                          |
+| SSH Service             | Two-phase user SSH authentication (certificate + public key), direct-tcpip channel forwarding | [ssh\_server.go](../../apps/rlark/pkg/server/ssh_server.go)             |
+| Peer Interconnection    | Server-to-Server P2P connections for high availability                                        | [peer\_manager.go](../../apps/rlark/pkg/server/peer_manager.go)         |
+| K8s Proxy               | Forward K8s API requests to data plane clusters via Agent tunnels                             | [kube\_proxy.go](../../apps/rlark/pkg/server/kube_proxy.go)             |
+| Pod Cache               | In-memory Pod cache based on Informer for fast SSH Pod lookup                                 | [caches/pod\_cache.go](../../apps/rlark/pkg/server/caches/pod_cache.go) |
 
 **Agent Connection Lifecycle**:
 
@@ -56,11 +56,11 @@ Gateway is the user-facing HTTP API gateway providing RESTful interfaces.
 
 | Function               | Route                                                            | File                                                  |
 | ---------------------- | ---------------------------------------------------------------- | ----------------------------------------------------- |
-| CRD CRUD               | `GET/POST/PUT/PATCH/DELETE /api/v1/rlinf.io/v1alpha1/{resource}` | [router.go](../../pkg/gateway/router.go)              |
-| Certificate Management | `POST /api/v1/certificates/agent`                                | [cert\_handler.go](../../pkg/gateway/cert_handler.go) |
-| SSH Keys               | `GET/POST/DELETE /api/v1/ssh-user-keys`                          | [suk\_handler.go](../../pkg/gateway/suk_handler.go)   |
-| Pod Logs               | `GET /api/v1/.../jobs/:name/logs`                                | [job\_logs.go](../../pkg/gateway/job_logs.go)         |
-| Prometheus Metrics     | Middleware                                                       | [metrics.go](../../pkg/gateway/metrics.go)            |
+| CRD CRUD               | `GET/POST/PUT/PATCH/DELETE /api/v1/rlinf.io/v1alpha1/{resource}` | [router.go](../../apps/rlark/pkg/gateway/router.go)              |
+| Certificate Management | `POST /api/v1/certificates/agent`                                | [cert\_handler.go](../../apps/rlark/pkg/gateway/cert_handler.go) |
+| SSH Keys               | `GET/POST/DELETE /api/v1/ssh-user-keys`                          | [suk\_handler.go](../../apps/rlark/pkg/gateway/suk_handler.go)   |
+| Pod Logs               | `GET /api/v1/.../jobs/:name/logs`                                | [job\_logs.go](../../apps/rlark/pkg/gateway/job_logs.go)         |
+| Prometheus Metrics     | Middleware                                                       | [metrics.go](../../apps/rlark/pkg/gateway/metrics.go)            |
 
 ### 3.3 Controller-Manager
 
@@ -70,11 +70,11 @@ Controller-Manager runs in the control plane, coordinating the lifecycle of high
 
 | Controller          | Responsibility                                                               | Key File                                           |
 | ------------------- | ---------------------------------------------------------------------------- | -------------------------------------------------- |
-| Job Controller      | Split Job into Tasks, drive state machine (Pending→Running→Succeeded/Failed) | [job/](../../pkg/controllermanager/job/)           |
-| Domain Controller   | Manage Domain CRD, allocate IP subnets, sign DomainPeer certificates         | [domain/](../../pkg/controllermanager/domain/)     |
-| Task Controller     | Watch Task status, sync to corresponding Job                                 | [task/](../../pkg/controllermanager/task/)         |
-| Node Controller     | Watch Node registration/offline events                                       | [node/](../../pkg/controllermanager/node/)         |
-| Workflow Controller | DAG orchestration, schedule Jobs in dependency order                         | [workflow/](../../pkg/controllermanager/workflow/) |
+| Job Controller      | Split Job into Tasks, drive state machine (Pending→Running→Succeeded/Failed) | [job/](../../apps/rlark/pkg/controllermanager/job/)           |
+| Domain Controller   | Manage Domain CRD, allocate IP subnets, sign DomainPeer certificates         | [domain/](../../apps/rlark/pkg/controllermanager/domain/)     |
+| Task Controller     | Watch Task status, sync to corresponding Job                                 | [task/](../../apps/rlark/pkg/controllermanager/task/)         |
+| Node Controller     | Watch Node registration/offline events                                       | [node/](../../apps/rlark/pkg/controllermanager/node/)         |
+| Workflow Controller | DAG orchestration, schedule Jobs in dependency order                         | [workflow/](../../apps/rlark/pkg/controllermanager/workflow/) |
 
 **Job State Machine**:
 
@@ -138,7 +138,7 @@ graph LR
 
 Sidecar is injected as a container into each training Pod, enabling cross-cluster Pod-to-Pod network communication.
 
-**Key File**: [sidecar/server.go](../../pkg/network/sidecar/server.go)
+**Key File**: [sidecar/server.go](../../apps/rlark/pkg/network/sidecar/server.go)
 
 **Dual Role**:
 
@@ -164,7 +164,7 @@ graph LR
 
 NodeServer runs on each node (managed by nodeAgent), handling node-level network routing.
 
-**Key File**: [nodeserver/server.go](../../pkg/network/nodeserver/server.go)
+**Key File**: [nodeserver/server.go](../../apps/rlark/pkg/network/nodeserver/server.go)
 
 **Core Functions**:
 
@@ -175,7 +175,7 @@ NodeServer runs on each node (managed by nodeAgent), handling node-level network
 
 ### 4.4 ContainerNetworkAdapter
 
-**Key File**: [container/network.go](../../pkg/agent/container/network.go)
+**Key File**: [container/network.go](../../apps/rlark/pkg/agent/container/network.go)
 
 **Routing Decision**:
 
@@ -192,7 +192,7 @@ func (a *containerNetworkAdapter) GetContainerNetworkDial(...) (utils.Dial, erro
 
 ### 4.5 SSHDialer
 
-**Key File**: [container/ssh\_dialer.go](../../pkg/agent/container/ssh_dialer.go)
+**Key File**: [container/ssh\_dialer.go](../../apps/rlark/pkg/agent/container/ssh_dialer.go)
 
 Per-Domain SSH connection pool. Design highlights:
 

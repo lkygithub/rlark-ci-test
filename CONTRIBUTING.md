@@ -56,21 +56,21 @@ We will review your changes and run CI tests before merging them.
 
   Run linting before committing:
   ```bash
-  golangci-lint run ./...
+  make lint
   ```
 
 * **TypeScript/React** (web UI): Follow standard React/TypeScript conventions.
 
   Run linting before committing:
   ```bash
-  cd web && npm run lint
+  make -C apps/rlark-ui lint
   ```
 
 * **Comments & Documentation**: All code should include sufficient comments to ensure future contributors can easily understand the code. Public functions and types should have doc comments.
 
 * **Error Handling**: All errors should be handled explicitly. Error messages should be clear and meaningful. In Go, never ignore errors with `_` without a comment explaining why.
 
-* **Logging**: Use structured logging via `pkg/log`. Avoid `fmt.Println` for production code.
+* **Logging**: Use structured logging via `apps/rlark/pkg/log`. Avoid `fmt.Println` for production code.
 
 * **Configuration**: Configuration files (YAML) should use static values only. Do not perform calculations or set dynamic values in YAML files. All values should be treated as read-only by code.
 

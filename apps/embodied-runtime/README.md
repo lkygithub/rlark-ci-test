@@ -31,7 +31,7 @@ The device plugin is the entry point. On startup it:
 1. Registers with kubelet and advertises `rlinf.io/device[-<model>]` resources.
 2. Detects hardware and generates the ros-controller / camera-controller YAML configs.
 3. Starts the controllers — each either as a local subprocess or as a Kubernetes Pod (`manager_mode: local | pod | disabled`).
-4. On `Allocate`, injects the socket directory (`/var/run/rlinf`) and CLI binary directory (`/opt/rlinf/bin`) into the requesting pod, plus `RLINF_EMBODIED_*` env vars flagging which runtimes are available and exposing their socket paths (`RLINF_EMBODIED_{ROS,CAMERA}_SOCKET_PATH`) so CLIs and the Python SDK connect without a hard-coded path. Host `/dev/*` nodes declared under `host_devices` are passed through directly as `DeviceSpec` mounts (no controller involved).
+4. On `Allocate`, injects the socket directory (`/var/run/rlinf`) and CLI binary directory (`/opt/rlinf/bin`) into the requesting pod, plus `RLINF_EMBODIED_*` env vars flagging which runtimes are available and exposing their socket paths (`RLINF_EMBODIED_{ROS,CAMERA}_SOCKET_PATH`) so CLIs connect without a hard-coded path. Host `/dev/*` nodes declared under `host_devices` are passed through directly as `DeviceSpec` mounts (no controller involved).
 
 User pods then use the mounted CLIs (or gRPC directly) to control hardware.
 
@@ -49,10 +49,10 @@ User pods then use the mounted CLIs (or gRPC directly) to control hardware.
 
 ### gRPC services
 
-Defined in [`proto/`](./proto) with generated Go code in [`gen/`](./gen):
+Defined in [`proto/embodied-runtime/`](../../proto/embodied-runtime):
 
-- `ros.controller.v1.RobotController` — [`proto/roscontroller/v1/robot.proto`](./proto/roscontroller/v1/robot.proto)
-- `camera.controller.v1.CameraController` — [`proto/cameracontroller/v1/camera.proto`](./proto/cameracontroller/v1/camera.proto)
+- `ros.controller.v1.RobotController` — [`proto/embodied-runtime/roscontroller/v1/robot.proto`](../../proto/embodied-runtime/roscontroller/v1/robot.proto)
+- `camera.controller.v1.CameraController` — [`proto/embodied-runtime/cameracontroller/v1/camera.proto`](../../proto/embodied-runtime/cameracontroller/v1/camera.proto)
 
 Both services are served over **Unix sockets** (`/var/run/rlinf/*.sock`).
 
@@ -62,12 +62,10 @@ Full API reference (RPCs, messages, enums): [`docs/proto-api.md`](./docs/proto-a
 
 ## Build
 
-Requires Go 1.26+ and `protoc` (only if regenerating proto code).
+Requires Go 1.26+.
 
 ```bash
-make              # proto + all binaries + go vet
 make build        # just the binaries → bin/
-make proto        # regenerate gRPC code into gen/
 make test         # unit tests
 make vet          # go vet
 ```
@@ -249,34 +247,6 @@ Global flag: `--socket-path` (default `/var/run/rlinf/camera-ctrl.sock`, or `RLI
 
 ---
 
-## Python SDK
-
-A Python client mirroring the CLIs lives in [`sdk/python/`](./sdk/python). It
-wraps the same gRPC stubs and handles the Unix-socket connection, so user
-pods can drive hardware directly from Python:
-
-```python
-from embodied_runtime import RobotClient, CameraClient, ModeConfig
-
-with RobotClient() as robot:                       # /var/run/rlinf/ros-ctrl.sock
-    robot.start_robot("franka-0", mode="impedance", args={"robot_ip": "172.16.0.2"})
-    robot.start_robot("franka-0", mode_config=ModeConfig(
-        package="serl_franka_controllers", launch_file="impedance.launch",
-        passthrough_robot_args=True,
-    ))
-    print([(r.robot_id, r.mode) for r in robot.list_robots().robots])
-
-with CameraClient() as cam:                        # /var/run/rlinf/camera-ctrl.sock
-    cam.open_camera("camera-0", encoding="h264")
-    for frame in cam.watch_frames("camera-0"):    # streams VideoFrame messages
-        print(frame.sequence, frame.encoding, len(frame.data))
-```
-
-Install: `pip install -e sdk/python` (or `pip install embodied-runtime` once published).
-Regenerate stubs: `make proto-python`. See [`sdk/python/README.md`](./sdk/python/README.md).
-
----
-
 ## Project structure
 
 ```
@@ -291,9 +261,6 @@ pkg/
   roscontroller/           # roscore, roslaunch process, modes, MACVLAN, web proxy, gRPC server
   cameracontroller/        # drivers (ffmpeg/remote/ros), transcoder, gRPC server
   cli/                     # shared output formatting (text/json/yaml)
-proto/                     # .proto definitions (versioned: v1)
-gen/                       # generated Go code (make proto)
-sdk/python/                # Python SDK: RobotClient / CameraClient + generated stubs (make proto-python)
 examples/                  # sample ConfigMaps + Pod manifests
 runtimes/                  # camera-base.dockerfile (ffmpeg runtime deps)
 Dockerfile                 # multi-stage build → all binaries
@@ -306,12 +273,5 @@ Makefile                   # build / proto / docker / lint / test
 
 ```bash
 make fmt-go        # gofmt cmd/ + pkg/
-make fmt-py        # format Python SDK (ruff)
-make lint          # lint Go (golangci-lint) + Python (ruff)
-make lint-py       # lint Python SDK only (ruff)
 make test          # go test ./...
-make proto         # regenerate gen/ + sdk/python stubs (needs protoc + plugins / grpcio-tools)
-make proto-python  # regenerate Python SDK stubs only (needs grpcio-tools)
 ```
-
-Generated code (`gen/`, `sdk/python/embodied_runtime/gen/`) is checked in; regenerate only when protos change.

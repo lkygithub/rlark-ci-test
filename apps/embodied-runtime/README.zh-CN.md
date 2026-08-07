@@ -24,14 +24,14 @@ embodied-runtime 面向机器人学习 / 遥操作集群：每个节点挂载一
 
 ## 架构
 
-![系统架构](../docs/images/architecture.svg)
+![系统架构](./docs/images/architecture.svg)
 
 device-plugin 是入口。启动时它依次：
 
 1. 向 kubelet 注册并申报 `rlinf.io/device[-<model>]` 资源。
 2. 探测硬件，生成 ros-controller 与 camera-controller 的 YAML 配置。
 3. 启动控制器 —— 每个可独立选择本地子进程或 Pod 模式（`manager_mode: local | pod | disabled`）。
-4. 收到 `Allocate` 请求时，把 socket 目录（`/var/run/rlinf`）与 CLI 目录（`/opt/rlinf/bin`）注入业务 Pod，并通过 `RLINF_EMBODIED_*` 环境变量告知哪些运行时可用，同时暴露其 socket 路径（`RLINF_EMBODIED_{ROS,CAMERA}_SOCKET_PATH`），使 CLI 与 Python SDK 无需硬编码即可连接。配置 `host_devices` 下列出的宿主 `/dev/*` 节点会作为 `DeviceSpec` 直接透传挂载（不经过控制器）。
+4. 收到 `Allocate` 请求时，把 socket 目录（`/var/run/rlinf`）与 CLI 目录（`/opt/rlinf/bin`）注入业务 Pod，并通过 `RLINF_EMBODIED_*` 环境变量告知哪些运行时可用，同时暴露其 socket 路径（`RLINF_EMBODIED_{ROS,CAMERA}_SOCKET_PATH`），使 CLI 无需硬编码即可连接。配置 `host_devices` 下列出的宿主 `/dev/*` 节点会作为 `DeviceSpec` 直接透传挂载（不经过控制器）。
 
 业务 Pod 随后用挂载进来的 CLI（或直接走 gRPC）驱动硬件。
 
@@ -49,10 +49,10 @@ device-plugin 是入口。启动时它依次：
 
 ### gRPC 服务
 
-定义在 [`proto/`](../proto)，生成的 Go 代码在 [`gen/`](../gen)：
+定义在 [`proto/embodied-runtime/`](../../proto/embodied-runtime)：
 
-- `ros.controller.v1.RobotController` —— [`proto/roscontroller/v1/robot.proto`](../proto/roscontroller/v1/robot.proto)
-- `camera.controller.v1.CameraController` —— [`proto/cameracontroller/v1/camera.proto`](../proto/cameracontroller/v1/camera.proto)
+- `ros.controller.v1.RobotController` —— [`proto/embodied-runtime/roscontroller/v1/robot.proto`](../../proto/embodied-runtime/roscontroller/v1/robot.proto)
+- `camera.controller.v1.CameraController` —— [`proto/embodied-runtime/cameracontroller/v1/camera.proto`](../../proto/embodied-runtime/cameracontroller/v1/camera.proto)
 
 两个服务均通过 **Unix socket** 提供（`/var/run/rlinf/*.sock`）。
 
@@ -62,12 +62,10 @@ device-plugin 是入口。启动时它依次：
 
 ## 构建
 
-需要 Go 1.26+；若要重新生成 proto 代码，还需安装 `protoc`。
+需要 Go 1.26+。
 
 ```bash
-make              # proto + 全部二进制 + go vet
 make build        # 仅编译二进制 → bin/
-make proto        # 重新生成 gRPC 代码到 gen/
 make test         # 单元测试
 make vet          # go vet
 ```
@@ -93,7 +91,7 @@ make docker-camera REGISTRY=ghcr.io/your-org IMAGE_TAG=v0.1.0
 
 ### device-plugin
 
-通过 `--config <path>` 加载；所有字段均可省略（见 [`examples/device-plugin-config.yaml`](../examples/device-plugin-config.yaml)）。
+通过 `--config <path>` 加载；所有字段均可省略（见 [`examples/device-plugin-config.yaml`](./examples/device-plugin-config.yaml)）。
 
 ```yaml
 # model: franka          # → 资源 rlinf.io/device-franka，
@@ -183,11 +181,11 @@ host_devices:
 
 ## 部署
 
-示例清单见 [`examples/`](../examples)：
+示例清单见 [`examples/`](./examples)：
 
-- [`device-plugin-config.yaml`](../examples/device-plugin-config.yaml) —— device-plugin 配置 ConfigMap。
-- [`ros-controller-pod.yaml`](../examples/ros-controller-pod.yaml) —— ros-controller Pod（hostPID、privileged，使用 ROS workspace 镜像，initContainer 从 embodied-runtime 镜像拷贝二进制）。
-- [`camera-controller-pod.yaml`](../examples/camera-controller-pod.yaml) —— 基于 `camera-base` 镜像的 camera-controller Pod。
+- [`device-plugin-config.yaml`](./examples/device-plugin-config.yaml) —— device-plugin 配置 ConfigMap。
+- [`ros-controller-pod.yaml`](./examples/ros-controller-pod.yaml) —— ros-controller Pod（hostPID、privileged，使用 ROS workspace 镜像，initContainer 从 embodied-runtime 镜像拷贝二进制）。
+- [`camera-controller-pod.yaml`](./examples/camera-controller-pod.yaml) —— 基于 `camera-base` 镜像的 camera-controller Pod。
 
 典型模式：`initContainer` 把 `ros-controller` / `rosctr`（或 `camera-controller` / `camctr`）从 `embodied-runtime` 镜像拷贝到共享的 `emptyDir`；主容器从该目录运行控制器二进制。存活 / 就绪探针通过 CLI（`rosctr list`、`camctr list`）访问 Unix socket 来实现。
 
@@ -248,32 +246,6 @@ camctr watch <camera-id> | ffplay -i -           # 管道喂给 ffplay
 
 ---
 
-## Python SDK
-
-仓库内 [`sdk/python/`](../sdk/python) 提供与 CLI 对应的 Python 客户端，封装同样的 gRPC stub 并处理 Unix socket 连接，业务 Pod 可直接用 Python 驱动硬件：
-
-```python
-from embodied_runtime import RobotClient, CameraClient, ModeConfig
-
-with RobotClient() as robot:                       # /var/run/rlinf/ros-ctrl.sock
-    robot.start_robot("franka-0", mode="impedance", args={"robot_ip": "172.16.0.2"})
-    robot.start_robot("franka-0", mode_config=ModeConfig(
-        package="serl_franka_controllers", launch_file="impedance.launch",
-        passthrough_robot_args=True,
-    ))
-    print([(r.robot_id, r.mode) for r in robot.list_robots().robots])
-
-with CameraClient() as cam:                        # /var/run/rlinf/camera-ctrl.sock
-    cam.open_camera("camera-0", encoding="h264")
-    for frame in cam.watch_frames("camera-0"):    # 持续推送 VideoFrame 消息
-        print(frame.sequence, frame.encoding, len(frame.data))
-```
-
-安装：`pip install -e sdk/python`（发布后可用 `pip install embodied-runtime`）。
-重新生成 stub：`make proto-python`。详见 [`sdk/python/README.zh-CN.md`](../sdk/python/README.zh-CN.md)。
-
----
-
 ## 目录结构
 
 ```
@@ -288,9 +260,6 @@ pkg/
   roscontroller/           # roscore、roslaunch 进程、模式、MACVLAN、Web 代理、gRPC server
   cameracontroller/        # 驱动（ffmpeg/remote/ros）、转码器、gRPC server
   cli/                     # 共享输出格式化（text/json/yaml）
-proto/                     # .proto 定义（按 v1 版本化）
-gen/                       # 生成的 Go 代码（make proto）
-sdk/python/                # Python SDK：RobotClient / CameraClient + 生成 stub（make proto-python）
 examples/                  # 示例 ConfigMap + Pod 清单
 runtimes/                  # camera-base.dockerfile（ffmpeg 运行时依赖）
 Dockerfile                 # 多阶段构建 → 全部二进制
@@ -303,12 +272,5 @@ Makefile                   # 构建 / proto / docker / lint / test
 
 ```bash
 make fmt-go        # gofmt cmd/ 与 pkg/
-make fmt-py        # 格式化 Python SDK（ruff）
-make lint          # 检查 Go（golangci-lint）+ Python（ruff）
-make lint-py       # 仅检查 Python SDK（ruff）
 make test          # go test ./...
-make proto         # 重新生成 gen/ 与 sdk/python stub（需要 protoc 及插件 / grpcio-tools）
-make proto-python  # 仅重新生成 Python SDK stub（需要 grpcio-tools）
 ```
-
-`gen/` 与 `sdk/python/embodied_runtime/gen/` 下的生成代码已入库，仅当 proto 变更时才需重新生成。

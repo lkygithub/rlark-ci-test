@@ -7,7 +7,7 @@ This document describes the two gRPC services exposed by embodied-runtime:
 - **`RobotController`** — robot (ROS) lifecycle and control-mode management.
 - **`CameraController`** — camera capture, single-frame grab, and live streaming.
 
-Both are defined in Protocol Buffers v3 under [`proto/`](../proto) and served over Unix domain sockets. This is a functional reference; the `.proto` files are the authoritative source for field numbers and wire types.
+Both are defined in Protocol Buffers v3 under [`proto/embodied-runtime/`](../../../proto/embodied-runtime) and served over Unix domain sockets. This is a functional reference; the `.proto` files are the authoritative source for field numbers and wire types.
 
 ## Overview
 
@@ -19,8 +19,7 @@ Both are defined in Protocol Buffers v3 under [`proto/`](../proto) and served ov
 ### Transport
 
 - Both services listen on a Unix domain socket under the node-local `/var/run/rlinf` directory, which the device plugin mounts (read-only) into task pods.
-- The device plugin injects `RLINF_EMBODIED_ROS_SOCKET_PATH` and `RLINF_EMBODIED_CAMERA_SOCKET_PATH`; the `rosctr` / `camctr` CLIs and the Python SDK read them automatically (an explicit `--socket-path` / `socket_path` argument always wins).
-- Generated stubs: Go in [`gen/`](../gen), Python in [`sdk/python/embodied_runtime/gen/`](../sdk/python/embodied_runtime/gen).
+- The device plugin injects `RLINF_EMBODIED_ROS_SOCKET_PATH` and `RLINF_EMBODIED_CAMERA_SOCKET_PATH`; the `rosctr` / `camctr` CLIs read them automatically (an explicit `--socket-path` argument always wins).
 
 ### HTTP gateway
 
@@ -63,7 +62,6 @@ For `StartRobot` / `SwitchMode`, the request body is the proto message minus the
 ### Clients
 
 - **Go** — `rosctr` / `camctr` CLIs (`cmd/rosctr`, `cmd/camctr`) or import the stubs directly.
-- **Python** — `embodied_runtime` SDK (`RobotClient` / `CameraClient`); see [`sdk/python/README.md`](../sdk/python/README.md).
 
 ---
 

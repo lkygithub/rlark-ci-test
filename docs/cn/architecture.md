@@ -26,12 +26,12 @@ Server 是控制面核心，负责所有 Agent 和外部客户端的连接管理
 
 | 功能         | 实现                                                      | 关键文件                                                         |
 | ---------- | ------------------------------------------------------- | ------------------------------------------------------------ |
-| Agent 隧道管理 | 基于 remotedialer 的反向代理，Agent 主动连接 Server 建立 WebSocket 隧道 | [handle\_proxy.go](../../pkg/server/handle_proxy.go)         |
-| 证书签发       | X.509 和 SSH 证书的签发/吊销，支持 agent/domain/ssh-guest 等角色      | [sign.go](../../pkg/server/sign.go)                          |
-| SSH 服务     | 用户 SSH 登录认证（证书 + 公钥两阶段），direct-tcpip 通道转发               | [ssh\_server.go](../../pkg/server/ssh_server.go)             |
-| Peer 互联    | Server 间 Peer-to-Peer 连接，支持多 Server 高可用                 | [peer\_manager.go](../../pkg/server/peer_manager.go)         |
-| K8s 代理     | 将 K8s API 请求通过 Agent 隧道转发到数据面集群                         | [kube\_proxy.go](../../pkg/server/kube_proxy.go)             |
-| Pod 缓存     | 基于 Informer 的内存 Pod 缓存，用于 SSH 快速查找目标 Pod                | [caches/pod\_cache.go](../../pkg/server/caches/pod_cache.go) |
+| Agent 隧道管理 | 基于 remotedialer 的反向代理，Agent 主动连接 Server 建立 WebSocket 隧道 | [handle\_proxy.go](../../apps/rlark/pkg/server/handle_proxy.go)         |
+| 证书签发       | X.509 和 SSH 证书的签发/吊销，支持 agent/domain/ssh-guest 等角色      | [sign.go](../../apps/rlark/pkg/server/sign.go)                          |
+| SSH 服务     | 用户 SSH 登录认证（证书 + 公钥两阶段），direct-tcpip 通道转发               | [ssh\_server.go](../../apps/rlark/pkg/server/ssh_server.go)             |
+| Peer 互联    | Server 间 Peer-to-Peer 连接，支持多 Server 高可用                 | [peer\_manager.go](../../apps/rlark/pkg/server/peer_manager.go)         |
+| K8s 代理     | 将 K8s API 请求通过 Agent 隧道转发到数据面集群                         | [kube\_proxy.go](../../apps/rlark/pkg/server/kube_proxy.go)             |
+| Pod 缓存     | 基于 Informer 的内存 Pod 缓存，用于 SSH 快速查找目标 Pod                | [caches/pod\_cache.go](../../apps/rlark/pkg/server/caches/pod_cache.go) |
 
 **Agent 连接生命周期**：
 
@@ -56,11 +56,11 @@ Gateway 是面向用户的 HTTP API 网关，提供 RESTful 接口。
 
 | 功能       | 路由                                                               | 文件                                                    |
 | -------- | ---------------------------------------------------------------- | ----------------------------------------------------- |
-| CRD CRUD | `GET/POST/PUT/PATCH/DELETE /api/v1/rlinf.io/v1alpha1/{resource}` | [router.go](../../pkg/gateway/router.go)              |
-| 证书管理     | `POST /api/v1/certificates/agent`                                | [cert\_handler.go](../../pkg/gateway/cert_handler.go) |
-| SSH 密钥   | `GET/POST/DELETE /api/v1/ssh-user-keys`                          | [suk\_handler.go](../../pkg/gateway/suk_handler.go)   |
-| Pod 日志   | `GET /api/v1/.../jobs/:name/logs`                                | [job\_logs.go](../../pkg/gateway/job_logs.go)         |
-| 监控指标     | Prometheus middleware                                            | [metrics.go](../../pkg/gateway/metrics.go)            |
+| CRD CRUD | `GET/POST/PUT/PATCH/DELETE /api/v1/rlinf.io/v1alpha1/{resource}` | [router.go](../../apps/rlark/pkg/gateway/router.go)              |
+| 证书管理     | `POST /api/v1/certificates/agent`                                | [cert\_handler.go](../../apps/rlark/pkg/gateway/cert_handler.go) |
+| SSH 密钥   | `GET/POST/DELETE /api/v1/ssh-user-keys`                          | [suk\_handler.go](../../apps/rlark/pkg/gateway/suk_handler.go)   |
+| Pod 日志   | `GET /api/v1/.../jobs/:name/logs`                                | [job\_logs.go](../../apps/rlark/pkg/gateway/job_logs.go)         |
+| 监控指标     | Prometheus middleware                                            | [metrics.go](../../apps/rlark/pkg/gateway/metrics.go)            |
 
 ### 3.3 Controller-Manager
 
@@ -70,11 +70,11 @@ Controller-Manager 运行在控制面，负责协调高层资源的生命周期�
 
 | 控制器                 | 职责                                                      | 关键文件                                               |
 | ------------------- | ------------------------------------------------------- | -------------------------------------------------- |
-| Job Controller      | 将 Job 拆分为 Task，驱动状态机 (Pending→Running→Succeeded/Failed) | [job/](../../pkg/controllermanager/job/)           |
-| Domain Controller   | 管理 Domain CRD，分配 IP 子网，签发 DomainPeer 证书                 | [domain/](../../pkg/controllermanager/domain/)     |
-| Task Controller     | 监听 Task 状态，同步到对应的 Job                                   | [task/](../../pkg/controllermanager/task/)         |
-| Node Controller     | 监听 Node 注册/离线事件                                         | [node/](../../pkg/controllermanager/node/)         |
-| Workflow Controller | DAG 编排，按依赖顺序调度 Job                                      | [workflow/](../../pkg/controllermanager/workflow/) |
+| Job Controller      | 将 Job 拆分为 Task，驱动状态机 (Pending→Running→Succeeded/Failed) | [job/](../../apps/rlark/pkg/controllermanager/job/)           |
+| Domain Controller   | 管理 Domain CRD，分配 IP 子网，签发 DomainPeer 证书                 | [domain/](../../apps/rlark/pkg/controllermanager/domain/)     |
+| Task Controller     | 监听 Task 状态，同步到对应的 Job                                   | [task/](../../apps/rlark/pkg/controllermanager/task/)         |
+| Node Controller     | 监听 Node 注册/离线事件                                         | [node/](../../apps/rlark/pkg/controllermanager/node/)         |
+| Workflow Controller | DAG 编排，按依赖顺序调度 Job                                      | [workflow/](../../apps/rlark/pkg/controllermanager/workflow/) |
 
 **Job 状态机**：
 
@@ -138,7 +138,7 @@ graph LR
 
 Sidecar 以容器形式注入到每个训练 Pod 中，实现跨集群 Pod 间网络通信。
 
-**关键文件**：[sidecar/server.go](../../pkg/network/sidecar/server.go)
+**关键文件**：[sidecar/server.go](../../apps/rlark/pkg/network/sidecar/server.go)
 
 **双重角色**：
 
@@ -164,7 +164,7 @@ graph LR
 
 NodeServer 运行在每个节点上（由 nodeAgent 管理），负责节点级网络路由。
 
-**关键文件**：[nodeserver/server.go](../../pkg/network/nodeserver/server.go)
+**关键文件**：[nodeserver/server.go](../../apps/rlark/pkg/network/nodeserver/server.go)
 
 **核心功能**：
 
@@ -175,7 +175,7 @@ NodeServer 运行在每个节点上（由 nodeAgent 管理），负责节点级�
 
 ### 4.4 ContainerNetworkAdapter
 
-**关键文件**：[container/network.go](../../pkg/agent/container/network.go)
+**关键文件**：[container/network.go](../../apps/rlark/pkg/agent/container/network.go)
 
 **路由决策**：
 
@@ -192,7 +192,7 @@ func (a *containerNetworkAdapter) GetContainerNetworkDial(...) (utils.Dial, erro
 
 ### 4.5 SSHDialer
 
-**关键文件**：[container/ssh\_dialer.go](../../pkg/agent/container/ssh_dialer.go)
+**关键文件**：[container/ssh\_dialer.go](../../apps/rlark/pkg/agent/container/ssh_dialer.go)
 
 按 Domain 维护的 SSH 连接池，设计要点：
 
