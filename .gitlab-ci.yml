@@ -7,12 +7,13 @@ variables:
   PROJECT: rlark
   VERSION: v0.1.0
   CI_IMAGE: harbor.infini-ai.com/share/mizar-ci:1.26.5-bookworm
+  CI_IMAGE_NODE: harbor.infini-ai.com/share/mizar-ci-node:22-bookworm
   DOCKER_CLIENT_TIMEOUT: "300"
   IMAGE_REGISTRY: harbor.infini-ai.com/share
   BASE_IMAGE: harbor.infini-ai.com/share/ubuntu:22.04
   BASE_IMAGE_UI: harbor.infini-ai.com/share/nginx:1.29.1
 
-build-images-dev:
+.build-go-images:
   image: ${CI_IMAGE}
   services:
     - !reference [.docker-buildx-hostdocker, services]
@@ -20,7 +21,6 @@ build-images-dev:
   needs: []
   tags:
     - mizar-cpu-runner
-  extends: .only-default-manual
   parallel:
     matrix:
       - APP:
@@ -28,7 +28,6 @@ build-images-dev:
         - controller-manager
         - gateway
         - agent
-        - ui
         - network-sidecar
   before_script:
     - !reference [.golang, prepare_script]
@@ -36,35 +35,55 @@ build-images-dev:
     - !reference [.makefile, prepare_script]
   script:
     - docker login harbor.infini-ai.com --username "$DOCKER_REGISTRY_USER" --password "$DOCKER_REGISTRY_PASS"
-    - make IMAGE_TAG=$DEV_VERSION docker-push-$APP
+    - make IMAGE_TAG=$IMAGE_VERSION docker-push-$APP
   after_script:
     - docker image prune -f
 
-build-images-rel:
-  image: ${CI_IMAGE}
+.build-node-images:
+  image: ${CI_IMAGE_NODE}
   services:
     - !reference [.docker-buildx-hostdocker, services]
   stage: build
   needs: []
   tags:
     - mizar-cpu-runner
-  only:
-    - tags
   parallel:
     matrix:
       - APP:
-        - server
-        - controller-manager
-        - gateway
-        - agent
         - ui
-        - network-sidecar
   before_script:
-    - !reference [.golang, prepare_script]
     - !reference [.docker-buildx-hostdocker, prepare_script]
     - !reference [.makefile, prepare_script]
   script:
     - docker login harbor.infini-ai.com --username "$DOCKER_REGISTRY_USER" --password "$DOCKER_REGISTRY_PASS"
-    - make IMAGE_TAG=$REL_VERSION docker-push-$APP
+    - make IMAGE_TAG=$IMAGE_VERSION docker-push-$APP
   after_script:
     - docker image prune -f
+
+build-images-dev:
+  extends:
+    - .build-go-images
+    - .only-default-manual
+  variables:
+    IMAGE_VERSION: $DEV_VERSION
+
+build-images-rel:
+  extends: .build-go-images
+  only:
+    - tags
+  variables:
+    IMAGE_VERSION: $REL_VERSION
+
+build-node-images-dev:
+  extends:
+    - .build-node-images
+    - .only-default-manual
+  variables:
+    IMAGE_VERSION: $DEV_VERSION
+
+build-node-images-rel:
+  extends: .build-node-images
+  only:
+    - tags
+  variables:
+    IMAGE_VERSION: $REL_VERSION
