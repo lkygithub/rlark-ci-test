@@ -7,7 +7,7 @@
 - **`RobotController`** —— 机器人（ROS）生命周期与控制模式管理。
 - **`CameraController`** —— 摄像头采集、单帧抓取与实时推流。
 
-二者均以 Protocol Buffers v3 定义于 [`proto/`](../proto)，并通过 Unix domain socket 提供服务。本文为功能参考；字段编号与线缆类型以 `.proto` 源文件为准。
+二者均以 Protocol Buffers v3 定义于 [`proto/embodied-runtime/`](../../../proto/embodied-runtime)，并通过 Unix domain socket 提供服务。本文为功能参考；字段编号与线缆类型以 `.proto` 源文件为准。
 
 ## 概览
 
@@ -19,8 +19,7 @@
 ### 传输
 
 - 两个服务均监听节点本地 `/var/run/rlinf` 目录下的 Unix domain socket；device plugin 会将该目录以只读方式挂载进 task pod。
-- device plugin 会注入 `RLINF_EMBODIED_ROS_SOCKET_PATH` 与 `RLINF_EMBODIED_CAMERA_SOCKET_PATH`；`rosctr` / `camctr` CLI 与 Python SDK 会自动读取（显式传入的 `--socket-path` / `socket_path` 参数始终优先）。
-- 生成的 stub：Go 见 [`gen/`](../gen)，Python 见 [`sdk/python/embodied_runtime/gen/`](../sdk/python/embodied_runtime/gen)。
+- device plugin 会注入 `RLINF_EMBODIED_ROS_SOCKET_PATH` 与 `RLINF_EMBODIED_CAMERA_SOCKET_PATH`；`rosctr` / `camctr` CLI 会自动读取（显式传入的 `--socket-path` 参数始终优先）。
 
 ### HTTP 网关
 
@@ -63,7 +62,6 @@
 ### 客户端
 
 - **Go** —— `rosctr` / `camctr` CLI（`cmd/rosctr`、`cmd/camctr`），或直接导入 stub。
-- **Python** —— `embodied_runtime` SDK（`RobotClient` / `CameraClient`）；见 [`sdk/python/README.zh-CN.md`](../sdk/python/README.zh-CN.md)。
 
 ---
 

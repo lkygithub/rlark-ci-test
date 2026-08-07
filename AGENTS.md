@@ -8,30 +8,18 @@ Brief for AI coding agents working on RLark. For full contribution flow, code st
 
 ## Code structure
 
-- **`api/`** -- CRD type definitions: `rlinf.io/v1alpha1` (Domain, Node, Job, Task, Workflow, DomainPeer).
-- **`kubeclients/`** -- Generated Kubernetes client code for CRD resources.
-- **`cmd/`** -- Entry points:
-  - `server/` -- Control plane Server (HTTPS, SSH, proxy, certificates).
-  - `gateway/` -- API Gateway (REST API, metrics, logs).
-  - `controller-manager/` -- Control plane controllers (Job, Domain, Node, Workflow).
-  - `agent/` -- Data plane Agent (cluster + node controllers).
-  - `network-sidecar/` -- Pod network Sidecar (TUN device, gVisor netstack).
-  - `rlarkadm/` -- Deployment CLI tool.
-- **`pkg/`** -- Core logic:
-  - `server/` -- Server: HTTPS server, SSH server, reverse proxy, certificate management.
-  - `gateway/` -- Gateway: HTTP API handlers, router, auth, storage, clusters.
-  - `controllermanager/` -- Controllers: Job builder, Domain controller, Node controller, Workflow controller.
-  - `agent/` -- Agent: cluster controller (resource sync, task pull), node controller (network, SSH dialer).
-  - `network/` -- Network: NodeServer (routing decisions), Sidecar (TUN + gVisor), SSHDialer.
-  - `auth/` -- Authentication & authorization (X.509 + SSH certificates).
-  - `db/` -- Database models (PostgreSQL via Bun ORM).
-  - `log/` -- Structured logging.
-  - `metrics/` -- Prometheus metrics.
-  - `rlarkadm/` -- Deployment tooling (Kubernetes installer, component definitions).
-- **`web/`** -- Frontend management UI: React + TypeScript + Vite. Nginx serves static files and proxies `/api/` to Gateway.
+- **`api/`** -- CRD type definitions (`rlinf.io/v1alpha1`) + generated Kubernetes client code (`kubeclients/`) + code generation scripts (`hack/`).
+- **`apps/rlark/`** -- Main Go project (control plane + data plane agents):
+  - `cmd/` -- Entry points: `server/`, `gateway/`, `controller-manager/`, `agent/`, `network-sidecar/`, `rlarkadm/`, `rlarkctl/`, `crd-api-docgen/`.
+  - `pkg/` -- Core logic: `server/`, `gateway/`, `agent/`, `controllermanager/`, `network/`, `auth/`, `db/`, `log/`, `metrics/`, `rlarkadm/`, `rlarkctl/`, `addons/`, `apis/`, `configs/`, `utils/`.
+- **`apps/embodied-runtime/`** -- Embodied runtime: manages robot (ROS) and camera hardware on edge nodes via Kubernetes Device Plugin.
+  - `cmd/` -- `device-plugin/`, `ros-controller/`, `camera-controller/`, `rosctr/`, `camctr/`.
+  - `pkg/` -- `deviceplugin/`, `roscontroller/`, `cameracontroller/`, `cli/`.
+- **`apps/rlark-ui/`** -- Frontend management UI: React + TypeScript + Vite. Nginx serves static files and proxies `/api/` to Gateway.
+- **`sdks/embodied-runtime-go/`** -- Go SDK for embodied-runtime gRPC stubs.
+- **`sdks/embodied-runtime-python/`** -- Python SDK for embodied-runtime (RobotClient / CameraClient).
+- **`proto/embodied-runtime/`** -- Proto definitions for embodied-runtime gRPC services.
 - **`docs/`** -- Documentation (EN + CN): architecture, concepts, quickstart, deployment, API reference, examples.
-- **`config/`** -- CRD YAML definitions.
-- **`build/`** -- Dockerfiles for all components.
 
 ---
 
@@ -66,7 +54,7 @@ Pods communicate across clusters via a virtual network:
 ## Build and run
 
 ```bash
-# Build all binaries
+# Build all rlark binaries
 make build
 
 # Build specific components
@@ -77,8 +65,19 @@ make build-agent
 make build-network-sidecar
 make build-rlarkadm
 
+# Build embodied-runtime
+make -C apps/embodied-runtime build
+
+# Generate proto code
+make proto
+
 # Build Docker images
 make docker-build
+make docker-build-ui
+
+# Lint
+make lint
+make -C apps/rlark-ui lint
 ```
 
 ### Running locally
@@ -118,8 +117,8 @@ make docker-build
 
 ## Style and contributing
 
-- **Go**: Follow [Effective Go](https://go.dev/doc/effective_go) and standard Go conventions. Run `golangci-lint` before committing.
-- **TypeScript/React**: Follow standard React conventions. Run `npm run lint` in `web/`.
+- **Go**: Follow [Effective Go](https://go.dev/doc/effective_go) and standard Go conventions. Run `make lint` before committing.
+- **TypeScript/React**: Follow standard React conventions. Run `make -C apps/rlark-ui lint` before committing.
 - **Commits**: [Conventional Commits](https://www.conventionalcommits.org/) format. Every commit must include `Signed-off-by:` (use `git commit -s`).
 - **PRs**: Same title format as commits. Fill in the PR template. Link related issues.
 - **Tests**: New features should include tests where applicable. Go tests use standard `go test`.

@@ -49,33 +49,25 @@ LDFLAGS := -s -w
 # Code style targets
 # ---------------------------------------------------------------------------
 
-.PHONY: lint lint-go lint-py fmt-go fmt-py
+.PHONY: lint lint-go fmt-go
 
-lint: lint-go lint-py
+lint: lint-go
 
 lint-go:
 	@echo "Running golangci-lint..."
 	@golangci-lint run
-
-lint-py:
-	@echo "Running ruff check (Python)..."
-	@cd sdk/python && ruff check embodied_runtime scripts examples
 
 fmt-go:
 	@echo "Running gofmt..."
 	@go fmt ./cmd
 	@go fmt ./pkg
 
-fmt-py:
-	@echo "Running ruff format (Python)..."
-	@cd sdk/python && ruff format embodied_runtime scripts examples
-
 # ---------------------------------------------------------------------------
 # Go targets
 # ---------------------------------------------------------------------------
 
 .PHONY: all
-all: proto build vet
+all: build vet
 
 .PHONY: build
 build: $(DEVPLUGIN_BIN) $(ROS_CTRL_BIN) $(ROSCTR_BIN) $(CAM_CTRL_BIN) $(CAMCTR_BIN)
@@ -113,64 +105,7 @@ test:
 .PHONY: clean
 clean:
 	go clean -cache
-	rm -rf $(GEN_DIR) bin/
-
-# ---------------------------------------------------------------------------
-# Proto targets
-# ---------------------------------------------------------------------------
-
-.PHONY: proto
-proto: proto-ros-controller proto-camera-controller proto-python
-
-PROTO_DIR := proto
-GEN_DIR   := gen
-SDK_PY_GEN_DIR := sdk/python/embodied_runtime/gen
-PYTHON    ?= python3
-
-# ros-controller
-ROSCTRL_PROTO := $(PROTO_DIR)/roscontroller/v1/robot.proto
-ROSCTRL_OUT   := $(GEN_DIR)/roscontroller/v1
-
-.PHONY: proto-ros-controller
-proto-ros-controller:
-	@mkdir -p $(ROSCTRL_OUT)
-	protoc \
-		--proto_path=$(PROTO_DIR) \
-		--go_out=$(GEN_DIR) \
-		--go_opt=paths=source_relative \
-		--go-grpc_out=$(GEN_DIR) \
-		--go-grpc_opt=paths=source_relative \
-		$(ROSCTRL_PROTO)
-	@echo "Generated: $(ROSCTRL_OUT)/"
-
-# camera-controller
-CAMCTRL_PROTO := $(PROTO_DIR)/cameracontroller/v1/camera.proto
-CAMCTRL_OUT   := $(GEN_DIR)/cameracontroller/v1
-
-.PHONY: proto-camera-controller
-proto-camera-controller:
-	@mkdir -p $(CAMCTRL_OUT)
-	protoc \
-		--proto_path=$(PROTO_DIR) \
-		--go_out=$(GEN_DIR) \
-		--go_opt=paths=source_relative \
-		--go-grpc_out=$(GEN_DIR) \
-		--go-grpc_opt=paths=source_relative \
-		$(CAMCTRL_PROTO)
-	@echo "Generated: $(CAMCTRL_OUT)/"
-
-# python SDK
-.PHONY: proto-python
-proto-python:
-	@$(PYTHON) sdk/python/scripts/gen_proto.py
-
-.PHONY: proto-python-clean
-proto-python-clean:
-	rm -rf $(SDK_PY_GEN_DIR)
-
-.PHONY: proto-clean
-proto-clean: proto-python-clean
-	rm -rf $(GEN_DIR)
+	rm -rf bin/
 
 # ---------------------------------------------------------------------------
 # Docker targets (buildx)
@@ -223,14 +158,10 @@ help:
 	@echo "Usage: make <target>"
 	@echo ""
 	@echo "Lint & format:"
-	@echo "  lint                        Lint Go + Python"
 	@echo "  lint-go                     Lint Go (golangci-lint)"
-	@echo "  lint-py                     Lint Python SDK (ruff check)"
 	@echo "  fmt-go                      Format Go (go fmt)"
-	@echo "  fmt-py                      Format Python SDK (ruff format)"
 	@echo ""
 	@echo "Go targets:"
-	@echo "  all                          Build proto + Go + vet (default)"
 	@echo "  build                        Build all binaries into bin/"
 	@echo "  $(DEVPLUGIN_BIN)             Build device-plugin binary"
 	@echo "  $(ROS_CTRL_BIN)              Build ros-controller binary"
@@ -239,14 +170,7 @@ help:
 	@echo "  $(CAMCTR_BIN)                Build camctr binary"
 	@echo "  vet                          Run go vet"
 	@echo "  test                         Run tests"
-	@echo "  clean                        Clean Go cache, generated code, and bin/"
-	@echo ""
-	@echo "Proto targets:"
-	@echo "  proto                        Generate all proto code (Go + Python)"
-	@echo "  proto-ros-controller         Generate RobotController proto (Go)"
-	@echo "  proto-camera-controller      Generate CameraController proto (Go)"
-	@echo "  proto-python                 Generate Python SDK gRPC stubs"
-	@echo "  proto-clean                  Remove generated proto code"
+	@echo "  clean                        Clean Go cache and bin/"
 	@echo ""
 	@echo "Docker targets (buildx):"
 	@echo "  docker                       Build embodied-runtime image (all binaries)"
