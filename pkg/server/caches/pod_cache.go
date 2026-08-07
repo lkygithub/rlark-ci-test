@@ -12,12 +12,14 @@ type PodCache struct {
 	mutex       sync.RWMutex
 	podInformer cache.SharedIndexInformer
 	pods        map[string]*v1alpha1.Pod
+	taskPods    map[string]*v1alpha1.Pod
 }
 
 func NewPodCache(podInformer cache.SharedIndexInformer) *PodCache {
 	c := &PodCache{
 		podInformer: podInformer,
 		pods:        make(map[string]*v1alpha1.Pod),
+		taskPods:    make(map[string]*v1alpha1.Pod),
 	}
 	_, _ = podInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    c.onAdd,
@@ -25,6 +27,25 @@ func NewPodCache(podInformer cache.SharedIndexInformer) *PodCache {
 		DeleteFunc: c.onDelete,
 	})
 	return c
+}
+
+func (c *PodCache) setIfNewer(pod *v1alpha1.Pod) {
+	// set pod by podName
+	if existPod, exists := c.pods[pod.Spec.PodName]; exists {
+		if pod.CreationTimestamp.After(existPod.CreationTimestamp.Time) {
+			c.pods[pod.Spec.PodName] = pod
+		}
+	} else {
+		c.pods[pod.Spec.PodName] = pod
+	}
+	// set pod by taskName
+	if existPod, exists := c.taskPods[pod.Spec.TaskName]; exists {
+		if pod.CreationTimestamp.After(existPod.CreationTimestamp.Time) {
+			c.taskPods[pod.Spec.TaskName] = pod
+		}
+	} else {
+		c.taskPods[pod.Spec.TaskName] = pod
+	}
 }
 
 func (c *PodCache) onAdd(obj interface{}) {
@@ -35,7 +56,7 @@ func (c *PodCache) onAdd(obj interface{}) {
 	if !ok {
 		return
 	}
-	c.pods[pod.Spec.PodName] = pod
+	c.setIfNewer(pod)
 }
 
 func (c *PodCache) onUpdate(oldObj, newObj interface{}) {
@@ -46,7 +67,7 @@ func (c *PodCache) onUpdate(oldObj, newObj interface{}) {
 	if !ok {
 		return
 	}
-	c.pods[pod.Spec.PodName] = pod
+	c.setIfNewer(pod)
 }
 
 func (c *PodCache) onDelete(obj interface{}) {
@@ -57,7 +78,16 @@ func (c *PodCache) onDelete(obj interface{}) {
 	if !ok {
 		return
 	}
-	delete(c.pods, pod.Spec.PodName)
+	if existPod, exists := c.pods[pod.Spec.PodName]; exists {
+		if pod.UID == existPod.UID {
+			delete(c.pods, pod.Spec.PodName)
+		}
+	}
+	if existPod, exists := c.taskPods[pod.Spec.TaskName]; exists {
+		if pod.UID == existPod.UID {
+			delete(c.taskPods, pod.Spec.TaskName)
+		}
+	}
 }
 
 func (c *PodCache) GetPodByName(podName string) (*v1alpha1.Pod, bool) {
@@ -65,5 +95,13 @@ func (c *PodCache) GetPodByName(podName string) (*v1alpha1.Pod, bool) {
 	defer c.mutex.RUnlock()
 
 	pod, exists := c.pods[podName]
+	return pod, exists
+}
+
+func (c *PodCache) GetPodByTaskName(taskName string) (*v1alpha1.Pod, bool) {
+	c.mutex.RLock()
+	defer c.mutex.RUnlock()
+
+	pod, exists := c.taskPods[taskName]
 	return pod, exists
 }
