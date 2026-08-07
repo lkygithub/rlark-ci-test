@@ -1,0 +1,28 @@
+CONTROLLER_GEN ?= $(shell go env GOPATH)/bin/controller-gen
+CRD_DIR ?= config/crd/bases
+SAMPLES_DIR ?= config/samples
+
+.PHONY: lint generate-manifests generate-clients generate-crd samples clean-samples
+
+lint:
+	@echo "Running golangci-lint (api)..."
+	@golangci-lint run
+
+generate-manifests: $(CONTROLLER_GEN)
+	mkdir -p $(CRD_DIR)
+	$(CONTROLLER_GEN) object paths=./rlark.io/...
+	$(CONTROLLER_GEN) crd paths=./rlark.io/... output:crd:artifacts:config=$(CRD_DIR)
+
+generate-clients:
+	./hack/generate-clients.sh --with-watch
+
+generate-crd: generate-manifests generate-clients
+
+samples:
+	@test -d $(SAMPLES_DIR)
+
+clean-samples:
+	rm -rf $(SAMPLES_DIR)
+
+$(CONTROLLER_GEN):
+	GOBIN=$(shell go env GOPATH)/bin go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.16.5

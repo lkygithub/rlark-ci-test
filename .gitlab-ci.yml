@@ -1,7 +1,7 @@
 include:
   - project: 'mizar/ci-templates'
     ref: main
-    file: 'common.yml'
+    file: 'base.yml'
 
 variables:
   PROJECT: rlark
@@ -13,7 +13,7 @@ variables:
   BASE_IMAGE: harbor.infini-ai.com/share/ubuntu:22.04
   BASE_IMAGE_UI: harbor.infini-ai.com/share/nginx:1.29.1
 
-.build-go-images:
+.build-go-image:
   image: ${CI_IMAGE}
   services:
     - !reference [.docker-buildx-hostdocker, services]
@@ -21,25 +21,17 @@ variables:
   needs: []
   tags:
     - mizar-cpu-runner
-  parallel:
-    matrix:
-      - APP:
-        - server
-        - controller-manager
-        - gateway
-        - agent
-        - network-sidecar
   before_script:
     - !reference [.golang, prepare_script]
     - !reference [.docker-buildx-hostdocker, prepare_script]
     - !reference [.makefile, prepare_script]
   script:
     - docker login harbor.infini-ai.com --username "$DOCKER_REGISTRY_USER" --password "$DOCKER_REGISTRY_PASS"
-    - make IMAGE_TAG=$IMAGE_VERSION docker-push-$APP
+    - make IMAGE_TAG=$IMAGE_VERSION docker-push
   after_script:
     - docker image prune -f
 
-.build-node-images:
+.build-ui-image:
   image: ${CI_IMAGE_NODE}
   services:
     - !reference [.docker-buildx-hostdocker, services]
@@ -47,42 +39,38 @@ variables:
   needs: []
   tags:
     - mizar-cpu-runner
-  parallel:
-    matrix:
-      - APP:
-        - ui
   before_script:
     - !reference [.docker-buildx-hostdocker, prepare_script]
     - !reference [.makefile, prepare_script]
   script:
     - docker login harbor.infini-ai.com --username "$DOCKER_REGISTRY_USER" --password "$DOCKER_REGISTRY_PASS"
-    - make IMAGE_TAG=$IMAGE_VERSION docker-push-$APP
+    - make IMAGE_TAG=$IMAGE_VERSION docker-push-ui
   after_script:
     - docker image prune -f
 
 build-images-dev:
   extends:
-    - .build-go-images
+    - .build-go-image
     - .only-default-manual
   variables:
     IMAGE_VERSION: $DEV_VERSION
 
 build-images-rel:
-  extends: .build-go-images
+  extends: .build-go-image
   only:
     - tags
   variables:
     IMAGE_VERSION: $REL_VERSION
 
-build-node-images-dev:
+build-ui-images-dev:
   extends:
-    - .build-node-images
+    - .build-ui-image
     - .only-default-manual
   variables:
     IMAGE_VERSION: $DEV_VERSION
 
-build-node-images-rel:
-  extends: .build-node-images
+build-ui-images-rel:
+  extends: .build-ui-image
   only:
     - tags
   variables:
