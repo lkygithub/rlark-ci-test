@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ChevronDown, X } from "lucide-react";
 import type { CRDNodeLite } from "../types";
 import { parseNodeSelectorStr, selectorToStr } from "../utils/job";
@@ -21,6 +21,7 @@ export function NodeSelectorPicker({
   loading: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const pickerRef = useRef<HTMLDivElement>(null);
   const selectorMap = parseNodeSelectorStr(value);
 
   const clusterNodes = cluster
@@ -57,6 +58,26 @@ export function NodeSelectorPicker({
     onMatchedCount?.(matchedCount);
   }, [matchedCount]);
 
+  useEffect(() => {
+    if (!open) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!pickerRef.current?.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open]);
+
   const toggleLabel = (key: string, val: string) => {
     const next = { ...selectorMap };
     const current = next[key] ? next[key].split(",") : [];
@@ -83,8 +104,21 @@ export function NodeSelectorPicker({
   const labelKeys = Object.keys(labelMap).sort();
 
   return (
-    <div className="node-selector-picker">
-      <div className="selector-chips-area" onClick={() => setOpen(!open)}>
+    <div className="node-selector-picker" ref={pickerRef}>
+      <div
+        className="selector-chips-area"
+        onClick={() => setOpen(!open)}
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        role="button"
+        tabIndex={0}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            setOpen(!open);
+          }
+        }}
+      >
         {Object.keys(selectorMap).length === 0 ? (
           <span className="selector-placeholder">
             {zh ? "点击选择节点标签…" : "Click to select node labels…"}

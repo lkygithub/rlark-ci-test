@@ -24,7 +24,7 @@ export function parseRoute() {
     .filter(Boolean);
   const valid: Page[] = [
     "overview",
-    "clusters-overview",
+    "clusters-management",
     "clusters-nodes",
     "jobs",
     "workflows",
@@ -33,13 +33,31 @@ export function parseRoute() {
     "files",
   ];
   const top = (parts[0] as Page) ?? "overview";
+  if ((top as string) === "nodes") {
+    const nodeName = parts.slice(1).join("/");
+    return {
+      page: "clusters-nodes" as Page,
+      sub: decodeURIComponent(nodeName),
+    };
+  }
   if ((top as string) === "clusters") {
     const sub = parts[1] ?? "overview";
     if (sub === "nodes") {
       const nodeName = parts.slice(2).join("/");
       return { page: "clusters-nodes" as Page, sub: decodeURIComponent(nodeName) };
     }
-    return { page: "clusters-overview" as Page, sub: "" };
+    if (sub === "manage") {
+      const clusterID = parts.slice(2).join("/");
+      return {
+        page: "clusters-management" as Page,
+        sub: decodeURIComponent(clusterID),
+      };
+    }
+    const clusterID = parts.slice(1).join("/");
+    return {
+      page: "clusters-management" as Page,
+      sub: decodeURIComponent(clusterID),
+    };
   }
   if (!valid.includes(top)) return { page: "overview" as Page, sub: "" };
   const sub = parts.slice(1).join("/");

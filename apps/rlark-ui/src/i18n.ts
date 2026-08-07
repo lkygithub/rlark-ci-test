@@ -5,15 +5,15 @@ export const copy = {
   zh: {
     nav: {
       overview: "总览",
-      "clusters-overview": "集群概览",
-      "clusters-nodes": "节点管理",
+      "clusters-management": "集群",
+      "clusters-nodes": "节点",
       clustersParent: "集群管理",
       clustersOverview: "集群概览",
       clustersNodes: "节点管理",
       jobs: "任务",
       workflows: "工作流",
       domains: "网络域",
-      storageClass: "存储管理",
+      storageClass: "存储",
       files: "文件管理",
       api: "接口参考",
       createCluster: "创建集群",
@@ -193,7 +193,7 @@ export const copy = {
   en: {
     nav: {
       overview: "Overview",
-      "clusters-overview": "Clusters Overview",
+      "clusters-management": "Clusters",
       "clusters-nodes": "Nodes",
       clustersParent: "Clusters",
       clustersOverview: "Clusters Overview",

@@ -1,17 +1,22 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import {
+  Boxes,
   ChevronLeft,
   ChevronRight,
+  Database,
   Download,
   FileText,
   Folder,
   FolderOpen,
   HardDrive,
+  Link2,
   Plus,
   RefreshCw,
   Search,
+  Server,
   Trash2,
   Upload,
+  X,
 } from "lucide-react";
 import {
   type StorageClass,
@@ -19,23 +24,29 @@ import {
   type StorageProvider,
 } from "../data";
 import { copy, type Copy } from "../i18n";
+import { PageToolbar, Pagination } from "../components/shared";
 
 export function StorageClassesPage({
   copy: c,
   selectedName,
   onSelect,
   onCreate,
+  refreshKey = 0,
 }: {
   copy: Copy;
   selectedName?: string;
   onSelect: (name?: string) => void;
   onCreate: () => void;
+  refreshKey?: number;
 }) {
   const zh = c === copy.zh;
   const [realClasses, setRealClasses] = useState<StorageClass[]>([]);
   const [loading, setLoading] = useState(false);
   const [fetched, setFetched] = useState(false);
   const [search, setSearch] = useState("");
+  const [providerFilter, setProviderFilter] = useState("All");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
 
   const selected = useMemo(
     () => realClasses.find((sc) => sc.name === selectedName),
@@ -66,6 +77,12 @@ export function StorageClassesPage({
     if (!fetched) fetchClasses();
   }, [fetched]);
 
+  useEffect(() => {
+    setFetched(false);
+  }, [refreshKey]);
+
+  useEffect(() => setPage(1), [search, providerFilter, pageSize]);
+
   const handleDelete = async (id: string, name: string) => {
     if (!confirm(zh ? `确定删除存储类 "${name}" 吗?` : `Delete storage class "${name}"?`))
       return;
@@ -89,15 +106,27 @@ export function StorageClassesPage({
     );
   }
 
-  const filtered = realClasses.filter(
-    (sc) =>
-      sc.name.toLowerCase().includes(search.toLowerCase()) ||
-      sc.provider.toLowerCase().includes(search.toLowerCase()) ||
-      sc.bucket.toLowerCase().includes(search.toLowerCase()),
+  const filtered = realClasses.filter((sc) => {
+    const query = search.toLowerCase();
+    const matchesSearch =
+      sc.name.toLowerCase().includes(query) ||
+      sc.provider.toLowerCase().includes(query) ||
+      sc.bucket.toLowerCase().includes(query) ||
+      sc.clusters.some((cluster) => cluster.toLowerCase().includes(query));
+    return matchesSearch &&
+      (providerFilter === "All" || sc.provider === providerFilter);
+  });
+  const providers = Array.from(new Set(realClasses.map((sc) => sc.provider)));
+  const associatedClusters = new Set(realClasses.flatMap((sc) => sc.clusters));
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const pagedClasses = filtered.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize,
   );
 
   return (
-    <div className="page-content">
+    <div className="page-content resource-page storage-class-page">
       <div className="section-heading">
         <div>
           <span className="eyebrow">
@@ -114,21 +143,59 @@ export function StorageClassesPage({
           </button>
         </div>
       </div>
-      <div className="page-toolbar">
-        <div className="search-field">
-          <Search size={16} />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder={c.storageClass.search}
-          />
+      <section className="storage-overview-grid" aria-label={zh ? "存储资源概况" : "Storage overview"}>
+        <div className="storage-overview-card purple">
+          <span><Database size={18} /></span>
+          <div>
+            <small>{zh ? "存储类" : "Storage classes"}</small>
+            <strong>{realClasses.length}</strong>
+            <em>{zh ? "个可用存储配置" : "available configurations"}</em>
+          </div>
         </div>
-      </div>
-      <div className="table-card">
+        <div className="storage-overview-card green">
+          <span><Server size={18} /></span>
+          <div>
+            <small>{zh ? "关联集群" : "Linked clusters"}</small>
+            <strong>{associatedClusters.size}</strong>
+            <em>{zh ? "个集群已接入存储" : "clusters with storage"}</em>
+          </div>
+        </div>
+        <div className="storage-overview-card orange">
+          <span><Boxes size={18} /></span>
+          <div>
+            <small>{zh ? "存储提供商" : "Providers"}</small>
+            <strong>{providers.length}</strong>
+            <em>{providers.join(" · ") || "—"}</em>
+          </div>
+        </div>
+      </section>
+      <PageToolbar
+        placeholder={c.storageClass.search}
+        value={search}
+        onChange={setSearch}
+        count={filtered.length}
+        copy={c}
+        onRefresh={fetchClasses}
+        filterValue={providerFilter}
+        onFilterChange={setProviderFilter}
+        filterOptions={[
+          { value: "All", label: zh ? "全部提供商" : "All providers" },
+          ...providers.map((provider) => ({ value: provider, label: provider })),
+        ]}
+      />
+      <section className="table-panel storage-class-table-panel">
+        <div className="storage-table-heading">
+          <div>
+            <strong>{zh ? "存储资源" : "Storage resources"}</strong>
+            <small>{zh ? "管理存储桶、集群关联和访问配置" : "Manage buckets, cluster links and access settings"}</small>
+          </div>
+          <span>{zh ? `共 ${filtered.length} 项` : `${filtered.length} items`}</span>
+        </div>
         <table>
           <thead>
             <tr>
               <th>{c.storageClass.name}</th>
+              <th>{c.storageClass.provider}</th>
               <th>{c.storageClass.bucket}</th>
               <th>{c.storageClass.clusters}</th>
               <th>{c.storageClass.description}</th>
@@ -138,20 +205,33 @@ export function StorageClassesPage({
           <tbody>
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={5} className="muted" style={{ textAlign: "center" }}>
+                <td colSpan={6} className="storage-empty-cell">
                   {loading ? (zh ? "加载中..." : "Loading...") : c.storageClass.noData}
                 </td>
               </tr>
             )}
-            {filtered.map((sc) => (
-              <tr key={sc.id} className="clickable" onClick={() => onSelect(sc.name)}>
-                <td><strong>{sc.name}</strong></td>
-                <td>{sc.bucket}</td>
-                <td>{sc.clusters.join(", ") || "—"}</td>
-                <td>{sc.description || "—"}</td>
+            {pagedClasses.map((sc) => (
+              <tr key={sc.id} className="clickable-row" onClick={() => onSelect(sc.name)}>
                 <td>
+                  <button className="storage-name-cell" onClick={() => onSelect(sc.name)}>
+                    <span><HardDrive size={16} /></span>
+                    <span><strong>{sc.name}</strong><small>{sc.namespace}</small></span>
+                  </button>
+                </td>
+                <td><span className="storage-provider-chip">{sc.provider}</span></td>
+                <td><code className="inline-code">{sc.bucket}</code></td>
+                <td>
+                  <div className="storage-cluster-list">
+                    {sc.clusters.length > 0
+                      ? sc.clusters.map((cluster) => <span key={cluster}>{cluster}</span>)
+                      : "—"}
+                  </div>
+                </td>
+                <td><span className="storage-description">{sc.description || "—"}</span></td>
+                <td>
+                  <div className="row-actions">
                   <button
-                    className="btn-icon"
+                    className="icon-button"
                     title={c.files.eyebrow}
                     onClick={(e) => {
                       e.stopPropagation();
@@ -167,7 +247,7 @@ export function StorageClassesPage({
                     <FolderOpen size={14} />
                   </button>
                   <button
-                    className="btn-icon btn-icon-danger"
+                    className="icon-button danger"
                     onClick={(e) => {
                       e.stopPropagation();
                       handleDelete(sc.id, sc.name);
@@ -175,12 +255,21 @@ export function StorageClassesPage({
                   >
                     <Trash2 size={14} />
                   </button>
+                  </div>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
-      </div>
+      </section>
+      <Pagination
+        page={currentPage}
+        pageSize={pageSize}
+        total={filtered.length}
+        onPageChange={setPage}
+        onPageSizeChange={setPageSize}
+        zh={zh}
+      />
     </div>
   );
 }
@@ -196,8 +285,8 @@ export function StorageClassDetailPage({
 }) {
   const zh = c === copy.zh;
   return (
-    <div className="page-content">
-      <div className="section-heading">
+    <div className="page-content resource-page storage-detail-page">
+      <div className="section-heading storage-detail-hero">
         <div>
           <span className="eyebrow">
             <HardDrive size={13} />
@@ -207,16 +296,26 @@ export function StorageClassDetailPage({
           <p>
             {storageClass.provider} · {storageClass.bucket}
           </p>
+          <div className="storage-detail-badges">
+            <span>{storageClass.namespace}</span>
+            <span>{storageClass.pathStyle ? (zh ? "Path Style 已启用" : "Path Style enabled") : (zh ? "标准访问模式" : "Standard access")}</span>
+          </div>
         </div>
-        <button className="secondary-button" onClick={onBack}>
+        <button
+          type="button"
+          className="secondary-button"
+          aria-label={zh ? "关闭" : "Close"}
+          onClick={onBack}
+        >
           <ChevronLeft size={17} />
           {zh ? "返回" : "Back"}
         </button>
       </div>
-      <div className="node-detail-body">
-        <div className="node-detail-section">
-          <span className="node-detail-label">{c.storageClass.basicInfo}</span>
-          <div className="node-detail-grid">
+      <div className="node-detail-body storage-detail-layout">
+        <section className="node-detail-section storage-detail-panel">
+          <span className="node-detail-label"><Database size={15} />{c.storageClass.basicInfo}</span>
+          <p className="storage-detail-section-copy">{zh ? "存储资源的归属与基础配置" : "Ownership and base configuration"}</p>
+          <div className="node-detail-grid storage-detail-info-grid">
             <div>
               <span className="muted">{c.storageClass.provider}</span>
               <strong>{storageClass.provider}</strong>
@@ -234,10 +333,11 @@ export function StorageClassDetailPage({
               <strong>{storageClass.createdAt || "—"}</strong>
             </div>
           </div>
-        </div>
-        <div className="node-detail-section">
-          <span className="node-detail-label">{c.storageClass.connection}</span>
-          <div className="node-detail-grid">
+        </section>
+        <section className="node-detail-section storage-detail-panel">
+          <span className="node-detail-label"><Link2 size={15} />{c.storageClass.connection}</span>
+          <p className="storage-detail-section-copy">{zh ? "访问端点、集群范围与连接方式" : "Endpoint, cluster scope and connection mode"}</p>
+          <div className="node-detail-grid storage-detail-info-grid">
             <div>
               <span className="muted">{c.storageClass.endpoint}</span>
               <strong>{storageClass.endpoint || "—"}</strong>
@@ -255,7 +355,7 @@ export function StorageClassDetailPage({
               <strong>{storageClass.description || "—"}</strong>
             </div>
           </div>
-        </div>
+        </section>
       </div>
     </div>
   );
@@ -264,9 +364,11 @@ export function StorageClassDetailPage({
 export function StorageClassCreatePage({
   copy: c,
   onBack,
+  onCreated,
 }: {
   copy: Copy;
   onBack: () => void;
+  onCreated?: () => void;
 }) {
   const zh = c === copy.zh;
   const [submitting, setSubmitting] = useState(false);
@@ -294,6 +396,14 @@ export function StorageClassCreatePage({
     "Tencent COS",
   ];
 
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !submitting) onBack();
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [onBack, submitting]);
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
@@ -309,6 +419,7 @@ export function StorageClassCreatePage({
         setError(c.storageClass.createFailed + ": " + msg);
         return;
       }
+      onCreated?.();
       onBack();
     } catch (err) {
       setError(c.storageClass.createFailed);
@@ -318,8 +429,14 @@ export function StorageClassCreatePage({
   };
 
   return (
-    <div className="page-content">
-      <div className="section-heading">
+    <div
+      className="modal-backdrop storage-create-backdrop"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget && !submitting) onBack();
+      }}
+    >
+      <div className="modal storage-create-modal" role="dialog" aria-modal="true">
+      <div className="modal-head storage-create-head">
         <div>
           <span className="eyebrow">
             <HardDrive size={13} />
@@ -328,12 +445,17 @@ export function StorageClassCreatePage({
           <h2>{c.storageClass.createTitle}</h2>
           <p>{c.storageClass.desc}</p>
         </div>
-        <button className="secondary-button" onClick={onBack}>
-          <ChevronLeft size={17} />
+        <button
+          type="button"
+          className="icon-button storage-create-close"
+          aria-label={zh ? "关闭" : "Close"}
+          onClick={onBack}
+        >
+          <X size={18} />
           {zh ? "返回" : "Back"}
         </button>
       </div>
-      <form onSubmit={handleSubmit} className="form-card">
+      <form onSubmit={handleSubmit} className="storage-create-form">
         <div className="form-section">
           <strong>{c.storageClass.basicInfo}</strong>
           <div className="form-grid">
@@ -462,6 +584,7 @@ export function StorageClassCreatePage({
           </button>
         </div>
       </form>
+      </div>
     </div>
   );
 }
@@ -487,6 +610,8 @@ export function StorageClassFilesPage({
   const [search, setSearch] = useState("");
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState("");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
 
   const fetchFiles = async () => {
     if (!cluster || !name) {
@@ -595,6 +720,14 @@ export function StorageClassFilesPage({
   const filteredPrefixes = commonPrefixes.filter((folder) =>
     folder.toLowerCase().includes(search.toLowerCase()),
   );
+  const totalPages = Math.max(1, Math.ceil(filteredObjects.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const pagedObjects = filteredObjects.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize,
+  );
+
+  useEffect(() => setPage(1), [prefix, search, pageSize]);
 
   const formatSize = (bytes: number) => {
     if (bytes < 1024) return bytes + " B";
@@ -612,14 +745,18 @@ export function StorageClassFilesPage({
   const breadcrumbs = () => {
     if (!prefix) return [<span key="root">{c.files.rootPath}</span>];
     const parts = prefix.split("/").filter(Boolean);
-    const crumbs = [<span key="root" onClick={() => setPrefix("")}>{c.files.rootPath}</span>];
+    const crumbs = [
+      <button type="button" key="root" onClick={() => setPrefix("")}>
+        {c.files.rootPath}
+      </button>,
+    ];
     let path = "";
     for (const part of parts) {
       path += part + "/";
       crumbs.push(
-        <span key={path} onClick={() => setPrefix(path)}>
+        <button type="button" key={path} onClick={() => setPrefix(path)}>
           {part}
-        </span>,
+        </button>,
       );
     }
     return crumbs;
@@ -730,7 +867,7 @@ export function StorageClassFilesPage({
                 </tr>
               );
             })}
-            {!loading && filteredObjects.map((obj) => {
+            {!loading && pagedObjects.map((obj) => {
               const fileName = obj.key.split("/").pop() || obj.key;
               return (
                 <tr key={obj.key}>
@@ -769,6 +906,16 @@ export function StorageClassFilesPage({
           </tbody>
         </table>
       </div>
+      {!loading && filteredObjects.length > 0 && (
+        <Pagination
+          page={currentPage}
+          pageSize={pageSize}
+          total={filteredObjects.length}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+          zh={zh}
+        />
+      )}
     </div>
   );
 }

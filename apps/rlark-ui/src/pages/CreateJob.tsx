@@ -228,6 +228,25 @@ export function CreateJobModal({
   const [activeRoleTab, setActiveRoleTab] = useState<string>(roles[0] ?? "");
 
   useEffect(() => {
+    if (availableClusters.length === 0) return;
+    setRoleResources((prev) => {
+      let changed = false;
+      const next = Object.fromEntries(
+        Object.entries(prev).map(([role, resource]) => {
+          const matchedCluster = availableClusters.find(
+            (cluster) =>
+              cluster.id === resource.cluster || cluster.name === resource.cluster,
+          );
+          const nextCluster = matchedCluster?.id ?? availableClusters[0].id;
+          if (nextCluster !== resource.cluster) changed = true;
+          return [role, { ...resource, cluster: nextCluster }];
+        }),
+      );
+      return changed ? next : prev;
+    });
+  }, [availableClusters]);
+
+  useEffect(() => {
     if (clusterDisplayNames.length === 0) return;
     setRoleResources((prev) => {
       let changed = false;
@@ -435,7 +454,88 @@ export function CreateJobModal({
     ? ["角色和资源", "Worker 配置", "公共配置", "YAML 预览"]
     : ["Roles & Resources", "Worker Config", "Common Config", "YAML Preview"];
 
+  const validateStep = (targetStep: number) => {
+    if (targetStep === 1) {
+      const trimmedName = jobName.trim();
+      if (!trimmedName) return zh ? "请输入任务名称。" : "Enter a job name.";
+      if (
+        trimmedName.length > 63 ||
+        !/^[a-z0-9]([-a-z0-9]*[a-z0-9])?$/.test(trimmedName)
+      )
+        return zh
+          ? "任务名称需为 1-63 位小写字母、数字或连字符，且不能以连字符开头或结尾。"
+          : "Use 1-63 lowercase letters, numbers, or hyphens; do not start or end with a hyphen.";
+      if (roles.length === 0)
+        return zh ? "至少添加一个角色。" : "Add at least one role.";
+      const normalizedRoles = roles.map((role) => role.trim().toLowerCase());
+      if (normalizedRoles.some((role) => !role))
+        return zh ? "角色名称不能为空。" : "Role names cannot be empty.";
+      if (new Set(normalizedRoles).size !== normalizedRoles.length)
+        return zh ? "角色名称不能重复。" : "Role names must be unique.";
+      if (!effectiveHeader || !roles.includes(effectiveHeader))
+        return zh ? "请选择 Header 角色。" : "Select a header role.";
+    }
+
+    if (targetStep === 2) {
+      for (const role of roles) {
+        const resource = roleResources[role];
+        if (!resource?.cluster)
+          return zh ? `请为 ${role} 选择集群。` : `Select a cluster for ${role}.`;
+        if (!resource.image.trim())
+          return zh ? `请为 ${role} 输入镜像。` : `Enter an image for ${role}.`;
+        if (!Number.isFinite(Number(resource.replicas)) || resource.replicas < 1)
+          return zh
+            ? `${role} 当前没有匹配到可用节点，请调整集群或节点选择条件。`
+            : `${role} has no matched nodes. Adjust its cluster or node selector.`;
+        for (const mount of resource.mounts) {
+          if (!mount.mountPath.trim())
+            return zh
+              ? `${role} 的挂载目录不能为空。`
+              : `${role} has a mount without a target path.`;
+          if (mount.type === "host" && !mount.hostPath.trim())
+            return zh
+              ? `${role} 的主机路径不能为空。`
+              : `${role} has an empty host path.`;
+          if (mount.type === "storage" && !mount.objectStorage.trim())
+            return zh
+              ? `${role} 需要选择对象存储。`
+              : `${role} needs an object storage class.`;
+        }
+      }
+    }
+
+    if (targetStep === 3 && !runScript.trim())
+      return zh ? "请输入运行命令。" : "Enter a run command.";
+    return "";
+  };
+
+  const goToStep = (nextStep: number) => {
+    if (nextStep <= step) {
+      setError("");
+      setStep(nextStep);
+      return;
+    }
+    for (let currentStep = 1; currentStep < nextStep; currentStep += 1) {
+      const message = validateStep(currentStep);
+      if (message) {
+        setError(message);
+        setStep(currentStep);
+        return;
+      }
+    }
+    setError("");
+    setStep(nextStep);
+  };
+
   const handleSubmit = async () => {
+    for (let currentStep = 1; currentStep <= 3; currentStep += 1) {
+      const message = validateStep(currentStep);
+      if (message) {
+        setError(message);
+        setStep(currentStep);
+        return;
+      }
+    }
     setSubmitting(true);
     setError("");
     try {
@@ -465,7 +565,7 @@ export function CreateJobModal({
       className="modal-backdrop"
       onMouseDown={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="modal create-job-modal">
+      <div className="modal create-job-modal" role="dialog" aria-modal="true">
         <div className="modal-head">
           <div>
             <span className="eyebrow">
@@ -484,7 +584,7 @@ export function CreateJobModal({
             <button
               key={label}
               className={step >= index + 1 ? "active" : ""}
-              onClick={() => setStep(index + 1)}
+              onClick={() => goToStep(index + 1)}
             >
               <span>{index + 1}</span>
               {label}
@@ -492,6 +592,11 @@ export function CreateJobModal({
           ))}
         </div>
         <div className="modal-body create-job-body">
+          {error && (
+            <div className="form-error-banner" role="alert">
+              {error}
+            </div>
+          )}
           {step === 1 && (
             <>
               <div className="form-row">
@@ -630,6 +735,9 @@ export function CreateJobModal({
                               }
                             }}
                           >
+                            <option value="" disabled>
+                              {zh ? "请选择集群" : "Select a cluster"}
+                            </option>
                             {availableClusters.map((cl) => (
                               <option key={cl.id} value={cl.id}>
                                 {cl.name}
@@ -654,7 +762,6 @@ export function CreateJobModal({
                       </div>
                       <div
                         className="resource-input-row"
-                        style={{ gridTemplateColumns: "1fr 1fr" }}
                       >
                         <label>
                           {zh
@@ -665,6 +772,22 @@ export function CreateJobModal({
                             value={rr.replicas}
                             readOnly
                             style={{ opacity: 0.6 }}
+                          />
+                        </label>
+                        <label>
+                          CPU
+                          <input
+                            value={rr.cpu}
+                            onChange={(e) => updateRR(role, "cpu", e.target.value)}
+                            placeholder="4"
+                          />
+                        </label>
+                        <label>
+                          {zh ? "内存" : "Memory"}
+                          <input
+                            value={rr.memory}
+                            onChange={(e) => updateRR(role, "memory", e.target.value)}
+                            placeholder="16Gi"
                           />
                         </label>
                         <label>
@@ -1033,7 +1156,7 @@ export function CreateJobModal({
             {step > 1 && (
               <button
                 className="secondary-button"
-                onClick={() => setStep(step - 1)}
+                onClick={() => goToStep(step - 1)}
               >
                 {zh ? "上一步" : "Previous"}
               </button>
@@ -1041,17 +1164,7 @@ export function CreateJobModal({
             {step < 4 ? (
               <button
                 className="primary-button"
-                onClick={() => {
-                  if (step === 2 && roles.length > 1) {
-                    const idx = roles.indexOf(activeRoleTab || roles[0]);
-                    if (idx >= 0 && idx < roles.length - 1) {
-                      setActiveRoleTab(roles[idx + 1]);
-                      return;
-                    }
-                  }
-                  setStep(step + 1);
-                }}
-                disabled={step === 1 && roles.length === 0}
+                onClick={() => goToStep(step + 1)}
               >
                 {step === 2 && roles.length > 1 && (activeRoleTab || roles[0]) !== roles[roles.length - 1]
                   ? (zh ? "下一个角色" : "Next Role")

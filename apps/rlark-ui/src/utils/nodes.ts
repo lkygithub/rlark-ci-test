@@ -18,7 +18,7 @@ export const categoryLabels: Record<
   cloud: { zh: "云算力", en: "Cloud", icon: CloudCog },
   edge: { zh: "端算力", en: "Edge", icon: Server },
   robot: { zh: "端真机", en: "Robot", icon: Bot },
-  unknown: { zh: "未知", en: "Unknown", icon: CircleDot },
+  unknown: { zh: "其他", en: "Other", icon: CircleDot },
 };
 
 export { NODE_CATEGORY_LABEL };
@@ -39,6 +39,15 @@ export function buildMockCRDNodes(): CRDNode[] {
       labels: {
         [NODE_CATEGORY_LABEL]: categoryByKind[node.kind],
         "rlark.io/model": node.model,
+        ...(node.kind !== "CloudCompute" && node.tasks > 0
+          ? {
+              "rlark.io/embodied-task": "true",
+              "rlark.io/embodied-task-name":
+                node.kind === "Robot"
+                  ? `robot-operation-${node.id.replace(/^robot-/, "")}`
+                  : `edge-inference-${node.id.replace(/^edge-/, "")}`,
+            }
+          : {}),
       },
       creationTimestamp: "2026-06-29T10:00:00Z",
     },

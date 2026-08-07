@@ -3,7 +3,7 @@ import type { JobType } from "./data";
 
 export type Page =
   | "overview"
-  | "clusters-overview"
+  | "clusters-management"
   | "clusters-nodes"
   | "jobs"
   | "workflows"
@@ -23,6 +23,25 @@ export interface ResourceRow {
   count: number;
   models: string;
   color: string;
+}
+
+export interface ClusterSummary {
+  id: string;
+  name: string;
+  type: "Cloud" | "Embodied" | "Hybrid" | string;
+  region: string;
+  location: string;
+  phase: "Online" | "Degraded" | "Offline" | string;
+  totalNodes: number;
+  onlineNodes: number;
+  offlineNodes: number;
+  cloudNodes: number;
+  embodiedNodes: number;
+  robots: number;
+  gpuModels: string[];
+  robotModels: string[];
+  runningJobs: number;
+  description: string;
 }
 
 export interface CRDWorkload {
