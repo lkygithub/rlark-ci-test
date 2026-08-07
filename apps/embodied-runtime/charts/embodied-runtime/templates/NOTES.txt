@@ -1,0 +1,31 @@
+embodied-runtime device-plugin deployed in namespace {{ .Values.namespace }}.
+
+Advertises resource: rlinf.io/device{{- if .Values.config.model }}-{{ .Values.config.model }}{{- end }}.
+{{- with .Values.devicePlugin.nodeSelector }}
+
+DaemonSet node selector:
+{{ toYaml . | trimSuffix "\n" }}
+{{- end }}
+{{- if .Values.config.camera.enabled }}
+
+camera-controller (pod mode) — reachable via headless Service DNS (substitute <node>):
+  CAM=http://{{ .Values.config.camera.pod.pod_generate_name }}-<node>.{{ .Values.config.camera.pod.subdomain }}.{{ .Values.namespace }}.svc:{{ .Values.config.camera.httpPort }}/v1/cameras
+  curl $CAM/v1/cameras
+  curl $CAM/v1/cameras/camera0/frame -o frame.jpg
+{{- end }}
+{{- if .Values.config.ros.enabled }}
+
+ros-controller (pod mode) — reachable via headless Service DNS (substitute <node>):
+  ROS=http://{{ .Values.config.ros.pod.pod_generate_name }}-<node>.{{ .Values.config.ros.pod.subdomain }}.{{ .Values.namespace }}.svc:{{ .Values.config.ros.httpPort }}/v1/robots
+  curl $ROS/v1/robots
+  curl $ROS/v1/robots/<robot_id>/status
+  curl $ROS/v1/robots/<robot_id>/proxy/   # → robot's web_service
+{{- end }}
+{{- if and (not .Values.config.camera.enabled) (not .Values.config.ros.enabled) }}
+
+No controllers are launched (neither is enabled).
+{{- end }}
+
+Verify:
+  kubectl -n {{ .Values.namespace }} get daemonset {{ include "embodied-runtime.devicePluginName" . }}
+  kubectl -n {{ .Values.namespace }} logs -l app={{ include "embodied-runtime.devicePluginName" . }} -f

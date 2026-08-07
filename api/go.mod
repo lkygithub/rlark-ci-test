@@ -3,10 +3,10 @@ module github.com/rlinf/rlark/api
 go 1.26.0
 
 require (
-	k8s.io/api v0.36.2
-	k8s.io/apimachinery v0.36.2
-	k8s.io/client-go v0.36.2
-	sigs.k8s.io/structured-merge-diff/v6 v6.3.2
+	k8s.io/api v0.36.3
+	k8s.io/apimachinery v0.36.3
+	k8s.io/client-go v0.36.3
+	sigs.k8s.io/structured-merge-diff/v6 v6.3.3
 )
 
 require (

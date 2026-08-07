@@ -4,7 +4,7 @@ English | [简体中文](./README.zh-CN.md)
 
 A Python client for the [embodied-runtime][repo] robot (ROS) and camera gRPC services. Both controllers are exposed over **Unix domain sockets** inside a task pod; this SDK mirrors the `rosctr` / `camctr` Go CLIs and handles the socket plumbing for you.
 
-[repo]: https://github.com/rlinf/embodied-runtime
+[repo]: https://github.com/rlinf/rlark/apps/embodied-runtime
 
 Generated gRPC stubs live under `embodied_runtime/gen/`; the wrapper clients live in `embodied_runtime.robot` and `embodied_runtime.camera`.
 

@@ -1,0 +1,83 @@
+{{- $name := include "embodied-runtime.devicePluginName" . -}}
+{{- $sa := include "embodied-runtime.serviceAccountName" . -}}
+{{- $cm := include "embodied-runtime.configMapName" . -}}
+{{- $namespace := .Values.namespace -}}
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ $name }}
+  namespace: {{ $namespace }}
+  labels:
+    app: {{ $name }}
+    {{- include "embodied-runtime.labels" . | nindent 4 }}
+    app.kubernetes.io/component: device-plugin
+spec:
+  selector:
+    matchLabels:
+      app: {{ $name }}
+  template:
+    metadata:
+      labels:
+        app: {{ $name }}
+        {{- include "embodied-runtime.selectorLabels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ $sa }}
+
+      {{- with .Values.devicePlugin.priorityClassName }}
+      priorityClassName: {{ . }}
+      {{- end }}
+
+      {{- with .Values.devicePlugin.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+
+      {{- with .Values.devicePlugin.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+
+      containers:
+        - name: device-plugin
+          image: {{ .Values.devicePlugin.image }}
+          imagePullPolicy: {{ .Values.devicePlugin.imagePullPolicy }}
+
+          args:
+            - --config=/etc/rlinf/device-plugin.yaml
+
+          env:
+            # Downward API — required by pod-mode managers to discover the
+            # current pod (owner ref, tolerations, image, node name).
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+
+          volumeMounts:
+            - name: device-plugin-config
+              mountPath: /etc/rlinf/device-plugin.yaml
+              subPath: device-plugin.yaml
+            - name: kubelet-device-plugins
+              mountPath: /var/lib/kubelet/device-plugins
+            - name: socket-dir
+              mountPath: /var/run/rlinf
+
+          securityContext:
+            privileged: true
+
+      volumes:
+        - name: device-plugin-config
+          configMap:
+            name: {{ $cm }}
+        - name: kubelet-device-plugins
+          hostPath:
+            path: /var/lib/kubelet/device-plugins
+            type: DirectoryOrCreate
+        - name: socket-dir
+          hostPath:
+            path: /var/run/rlinf
+            type: DirectoryOrCreate

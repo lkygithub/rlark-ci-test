@@ -1,0 +1,40 @@
+{{- $namespace := .Values.namespace -}}
+{{- if .Values.config.camera.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.config.camera.pod.subdomain }}
+  namespace: {{ $namespace }}
+  labels:
+    {{- include "embodied-runtime.labels" . | nindent 4 }}
+    app.kubernetes.io/component: camera-controller
+spec:
+  clusterIP: None
+  selector:
+{{ toYaml .Values.config.camera.pod.labels | indent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.config.camera.httpPort }}
+      targetPort: {{ .Values.config.camera.httpPort }}
+{{- end }}
+{{- if and .Values.config.camera.enabled .Values.config.ros.enabled }}
+---
+{{- end }}
+{{- if .Values.config.ros.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.config.ros.pod.subdomain }}
+  namespace: {{ $namespace }}
+  labels:
+    {{- include "embodied-runtime.labels" . | nindent 4 }}
+    app.kubernetes.io/component: ros-controller
+spec:
+  clusterIP: None
+  selector:
+{{ toYaml .Values.config.ros.pod.labels | indent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.config.ros.httpPort }}
+      targetPort: {{ .Values.config.ros.httpPort }}
+{{- end }}
