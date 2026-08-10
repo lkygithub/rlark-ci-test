@@ -90,6 +90,50 @@ function aggregateClusters(nodes: CRDNode[]): ClusterSummary[] {
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
+function validCount(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0;
+}
+
+function normalizeClusterSummary(
+  cluster: ClusterSummary,
+  nodeAggregate?: ClusterSummary,
+): ClusterSummary {
+  const categoryTotal =
+    (validCount(cluster.cloudNodes) ? cluster.cloudNodes : 0) +
+    (validCount(cluster.embodiedNodes) ? cluster.embodiedNodes : 0) +
+    (validCount(cluster.robots) ? cluster.robots : 0);
+  const totalNodes = nodeAggregate?.totalNodes ??
+    (validCount(cluster.totalNodes) ? cluster.totalNodes : categoryTotal);
+  const onlineNodes = nodeAggregate?.onlineNodes ??
+    (validCount(cluster.onlineNodes)
+      ? cluster.onlineNodes
+      : cluster.phase === "Online"
+        ? totalNodes
+        : 0);
+  const offlineNodes = nodeAggregate?.offlineNodes ??
+    (validCount(cluster.offlineNodes)
+      ? cluster.offlineNodes
+      : Math.max(0, totalNodes - onlineNodes));
+
+  return {
+    ...cluster,
+    type: nodeAggregate?.type ?? cluster.type,
+    phase: nodeAggregate?.phase ?? cluster.phase,
+    totalNodes,
+    onlineNodes,
+    offlineNodes,
+    cloudNodes: nodeAggregate?.cloudNodes ?? cluster.cloudNodes ?? 0,
+    embodiedNodes: nodeAggregate?.embodiedNodes ?? cluster.embodiedNodes ?? 0,
+    robots: nodeAggregate?.robots ?? cluster.robots ?? 0,
+    gpuModels: cluster.gpuModels ?? nodeAggregate?.gpuModels ?? [],
+    robotModels: cluster.robotModels ?? nodeAggregate?.robotModels ?? [],
+    runningJobs: nodeAggregate?.runningJobs ?? cluster.runningJobs ?? 0,
+    region: cluster.region ?? "",
+    location: cluster.location ?? "",
+    description: cluster.description ?? "",
+  };
+}
+
 function ClusterStatus({ phase, zh }: { phase: string; zh: boolean }) {
   const label =
     phase === "Online"
@@ -143,7 +187,15 @@ export function ClusterManagementPage({
       const response = await fetch("/api/v1/clusters");
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const body = await response.json();
-      resolvedClusters = body.data ?? [];
+      const nodeAggregates = new Map(
+        aggregateClusters(resolvedNodes).map((cluster) => [cluster.id, cluster]),
+      );
+      resolvedClusters = ((body.data ?? []) as ClusterSummary[]).map((cluster) =>
+        normalizeClusterSummary(
+          cluster,
+          nodeAggregates.get(cluster.id || cluster.name),
+        ),
+      );
     } catch {
       resolvedClusters = [];
     }

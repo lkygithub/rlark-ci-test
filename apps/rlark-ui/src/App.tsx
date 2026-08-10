@@ -19,11 +19,17 @@ import {
 import { CreateJobModal } from "./pages/CreateJob";
 import { UserLogin } from "./pages/Login";
 import { AdminApp } from "./admin/AdminApp";
+import { useBackendMode, usePersistentState } from "./hooks";
+
+type NavigateOptions = {
+  replace?: boolean;
+  query?: Record<string, string | undefined>;
+};
 
 export default function App() {
   const isAdmin = useIsAdminPath();
   const [{ page, sub }, setRoute] = useState(parseRoute);
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = usePersistentState("rlark-sidebar-collapsed", false);
   const [createOpen, setCreateOpen] = useState(false);
   const [createWfOpen, setCreateWfOpen] = useState(false);
   const [storageCreateOpen, setStorageCreateOpen] = useState(() => {
@@ -33,14 +39,18 @@ export default function App() {
   const [storageRefreshKey, setStorageRefreshKey] = useState(0);
   const [cloneJob, setCloneJob] = useState<Job | null>(null);
   const [editJob, setEditJob] = useState<Job | null>(null);
-  const [lang, setLang] = useState<Lang>("zh");
-  const [theme, setTheme] = useState<Theme>("light");
+  const [lang, setLang] = usePersistentState<Lang>("rlark-language", "zh");
+  const [theme, setTheme] = usePersistentState<Theme>("rlark-theme", "light");
   const [userLoggedIn, setUserLoggedIn] = useState(
     () =>
       import.meta.env.DEV ||
       (typeof sessionStorage !== "undefined" &&
         sessionStorage.getItem("rlark-user-auth") === "1"),
   );
+  const [userName, setUserName] = useState(
+    () => sessionStorage.getItem("rlark-user-name") || "user",
+  );
+  const { isMockMode } = useBackendMode();
   const c = copy[lang];
   const pageTitle = useMemo(() => c.nav[page], [c, page]);
 
@@ -52,7 +62,7 @@ export default function App() {
     }
   }, [isAdmin]);
 
-  const navigate = (next: Page, name?: string) => {
+  const navigate = (next: Page, name?: string, options: NavigateOptions = {}) => {
     const sub = name ?? "";
     const encodedSub = name ? encodeURIComponent(name) : "";
     setRoute({ page: next, sub });
@@ -66,7 +76,12 @@ export default function App() {
     } else {
       path = `/${next}${encodedSub ? "/" + encodedSub : ""}`;
     }
-    window.history.pushState({}, "", path);
+    const params = new URLSearchParams();
+    Object.entries(options.query ?? {}).forEach(([key, value]) => {
+      if (value) params.set(key, value);
+    });
+    if (params.size) path += `?${params.toString()}`;
+    window.history[options.replace ? "replaceState" : "pushState"]({}, "", path);
   };
 
   useEffect(() => {
@@ -76,7 +91,16 @@ export default function App() {
   }, []);
 
   if (isAdmin) return <AdminApp />;
-  if (!userLoggedIn) return <UserLogin onLogin={() => setUserLoggedIn(true)} />;
+  if (!userLoggedIn) {
+    return (
+      <UserLogin
+        onLogin={(name) => {
+          setUserName(name);
+          setUserLoggedIn(true);
+        }}
+      />
+    );
+  }
 
   return (
     <div
@@ -92,7 +116,7 @@ export default function App() {
             const Icon = item.icon;
             const isParent = item.children && item.children.length > 0;
             const itemLabel = isParent ? c.nav.clustersParent : c.nav[item.id];
-            const isActive = page === item.id && !sub;
+            const isActive = page === item.id;
             const isChildActive = isParent
               ? item.children!.some((ch) => ch.id === page)
               : false;
@@ -148,17 +172,19 @@ export default function App() {
           })}
         </nav>
         <div className="sidebar-bottom">
-          <div className="environment-card">
-            <span>
-              <CloudCog size={16} />
-            </span>
-            <div>
-              <small>{c.common.env}</small>
-              <strong>{c.common.production}</strong>
-              <b className="env-meta">{c.common.envMeta}</b>
+          {isMockMode && (
+            <div className="environment-card">
+              <span>
+                <CloudCog size={16} />
+              </span>
+              <div>
+                <small>{c.common.env}</small>
+                <strong>{lang === "zh" ? "Mock 环境" : "Mock environment"}</strong>
+                <b className="env-meta">{c.common.envMeta}</b>
+              </div>
+              <i />
             </div>
-            <i />
-          </div>
+          )}
           <button onClick={() => setCollapsed(!collapsed)}>
             <CircleDot size={17} />
             <span>{c.common.collapse}</span>
@@ -173,18 +199,21 @@ export default function App() {
           copy={c}
           onLangChange={setLang}
           onThemeChange={setTheme}
+          showMockEnvironment={isMockMode}
+          userName={userName}
           onCreate={() => setCreateOpen(true)}
           onLogout={() => {
             sessionStorage.removeItem("rlark-user-auth");
+            sessionStorage.removeItem("rlark-user-name");
             setUserLoggedIn(false);
           }}
         />
-        {page === "overview" && <Overview navigate={navigate} copy={c} />}{" "}
+        {page === "overview" && <Overview navigate={navigate} copy={c} isMockMode={isMockMode} />}{" "}
         {page === "clusters-management" && (
           <ClusterManagementPage
             copy={c}
             selectedClusterID={sub}
-            onSelectCluster={(id?: string) => navigate("clusters-management", id)}
+            onSelectCluster={(id?: string) => navigate("clusters-management", id, { replace: !id })}
             onSelectNode={(name: string) => navigate("clusters-nodes", name)}
           />
         )}{" "}
@@ -193,7 +222,7 @@ export default function App() {
             copy={c}
             initialView="nodes"
             selectedNodeName={sub}
-            onNavigate={(name?: string) => navigate("clusters-nodes", name)}
+            onNavigate={(name?: string) => navigate("clusters-nodes", name, { replace: !name })}
             onTaskNavigate={(name: string) => navigate("jobs", name)}
           />
         )}{" "}
@@ -201,7 +230,7 @@ export default function App() {
           <JobsPage
             copy={c}
             selectedName={sub}
-            onSelect={(name?: string) => navigate("jobs", name)}
+            onSelect={(name?: string) => navigate("jobs", name, { replace: !name })}
             onCreate={() => {
               setCloneJob(null);
               setEditJob(null);
@@ -223,7 +252,7 @@ export default function App() {
           <StorageClassesPage
             copy={c}
             selectedName={sub === "create" ? undefined : sub}
-            onSelect={(name?: string) => navigate("storageClass", name)}
+            onSelect={(name?: string) => navigate("storageClass", name, { replace: !name })}
             onCreate={() => setStorageCreateOpen(true)}
             refreshKey={storageRefreshKey}
           />
@@ -232,14 +261,14 @@ export default function App() {
           <StorageClassFilesPage
             copy={c}
             sub={sub}
-            onBack={() => navigate("storageClass")}
+            onBack={() => navigate("storageClass", undefined, { replace: true })}
           />
         )}
         {page === "workflows" && (
           <WorkflowsPage
             copy={c}
             selectedName={sub}
-            onSelect={(name?: string) => navigate("workflows", name)}
+            onSelect={(name?: string) => navigate("workflows", name, { replace: !name })}
             onCreate={() => setCreateWfOpen(true)}
             onJobClick={(name) => navigate("jobs", name)}
           />

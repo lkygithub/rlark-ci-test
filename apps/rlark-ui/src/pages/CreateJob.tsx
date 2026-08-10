@@ -11,6 +11,7 @@ import {
 import { toYaml } from "../utils/yaml";
 import { useNodeLabels } from "../utils/nodes";
 import { NodeSelectorPicker, RoleNameInput } from "../components/create";
+import { CodeEditorField } from "../components/CodeEditor";
 
 export function CreateJobModal({
   onClose,
@@ -30,6 +31,14 @@ export function CreateJobModal({
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !submitting) onClose();
+    };
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [onClose, submitting]);
 
   const [roles, setRoles] = useState<string[]>(
     sourceJob?.defaultRoles ?? ROLE_TEMPLATES[type],
@@ -563,7 +572,7 @@ export function CreateJobModal({
   return (
     <div
       className="modal-backdrop"
-      onMouseDown={(e) => e.target === e.currentTarget && onClose()}
+      onMouseDown={(e) => e.target === e.currentTarget && !submitting && onClose()}
     >
       <div className="modal create-job-modal" role="dialog" aria-modal="true">
         <div className="modal-head">
@@ -575,7 +584,7 @@ export function CreateJobModal({
               {isEdit ? (zh ? "编辑任务" : "Edit Job") : c.jobs.createTitle}
             </h2>
           </div>
-          <button className="icon-button" onClick={onClose}>
+          <button className="icon-button" onClick={onClose} aria-label={zh ? "关闭创建任务" : "Close job creator"} disabled={submitting}>
             ×
           </button>
         </div>
@@ -895,13 +904,13 @@ export function CreateJobModal({
                               : "Prepare Script (before Ray starts)"}
                           </small>
                         </div>
-                        <textarea
-                          className="code-textarea"
-                          style={{ minHeight: 60 }}
+                        <CodeEditorField
                           value={rr.prepareScript}
                           onChange={(e) =>
                             updateRR(role, "prepareScript", e.target.value)
                           }
+                          minHeight={92}
+                          label={`${role}/prepare.sh`}
                           placeholder={
                             zh
                               ? "pip install ray[default] or other setup commands"
@@ -1110,11 +1119,11 @@ export function CreateJobModal({
                       : "Run Script (after Ray cluster ready, head only)"}
                   </small>
                 </div>
-                <textarea
-                  className="code-textarea"
-                  style={{ minHeight: 80 }}
+                <CodeEditorField
                   value={runScript}
                   onChange={(e) => setRunScript(e.target.value)}
+                  minHeight={112}
+                  label="run.sh"
                   placeholder="python train.py --config /mnt/config/train.yaml"
                 />
               </div>

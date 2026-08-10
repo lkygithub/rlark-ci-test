@@ -38,6 +38,16 @@ export function ClustersPage({
   onTaskNavigate?: (name: string) => void;
 }) {
   const zh = c.nav.overview === "总览";
+  const searchParams = new URLSearchParams(window.location.search);
+  const requestedCategory = searchParams.get("category");
+  const initialCategory =
+    requestedCategory === "cloud" ||
+    requestedCategory === "edge" ||
+    requestedCategory === "robot" ||
+    requestedCategory === "unknown"
+      ? requestedCategory
+      : "all";
+  const initialQuery = searchParams.get("city") ?? searchParams.get("q") ?? "";
   const [realNodes, setRealNodes] = useState<CRDNode[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -246,6 +256,8 @@ export function ClustersPage({
           <NodeResourceBrowser
             nodes={realNodes}
             copy={c}
+            initialCategory={initialCategory}
+            initialQuery={initialQuery}
             onRefresh={() => fetchNodes()}
             onSelectNode={(name) => onNavigate?.(name)}
           />

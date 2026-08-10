@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { ArrowRight, Shield } from "lucide-react";
 
-export function UserLogin({ onLogin }: { onLogin: () => void }) {
+export function UserLogin({ onLogin }: { onLogin: (username: string) => void }) {
   const [username, setUsername] = useState("user");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -31,7 +31,8 @@ export function UserLogin({ onLogin }: { onLogin: () => void }) {
       )
       .then(() => {
         sessionStorage.setItem("rlark-user-auth", "1");
-        onLogin();
+        sessionStorage.setItem("rlark-user-name", username.trim());
+        onLogin(username.trim());
       })
       .catch((err) => {
         setError(err.message);

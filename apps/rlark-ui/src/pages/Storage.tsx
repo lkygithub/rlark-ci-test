@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import {
+  AlertCircle,
   Boxes,
   ChevronLeft,
   ChevronRight,
@@ -9,6 +10,7 @@ import {
   Folder,
   FolderOpen,
   HardDrive,
+  Home,
   Link2,
   Plus,
   RefreshCw,
@@ -211,9 +213,9 @@ export function StorageClassesPage({
               </tr>
             )}
             {pagedClasses.map((sc) => (
-              <tr key={sc.id} className="clickable-row" onClick={() => onSelect(sc.name)}>
+              <tr key={sc.id}>
                 <td>
-                  <button className="storage-name-cell" onClick={() => onSelect(sc.name)}>
+                  <button className="storage-name-cell" onClick={() => onSelect(sc.name)} aria-label={`${zh ? "查看存储类" : "View storage class"} ${sc.name}`}>
                     <span><HardDrive size={16} /></span>
                     <span><strong>{sc.name}</strong><small>{sc.namespace}</small></span>
                   </button>
@@ -763,8 +765,8 @@ export function StorageClassFilesPage({
   };
 
   return (
-    <div className="page-content files-page">
-      <div className="section-heading">
+    <div className="page-content resource-page files-page storage-files-page">
+      <div className="section-heading storage-files-hero">
         <div>
           <span className="eyebrow">
             <FolderOpen size={13} />
@@ -774,6 +776,10 @@ export function StorageClassFilesPage({
           <p>
             {c.files.cluster}: {cluster || "—"} · {c.files.storageClass}: {name || "—"}
           </p>
+          <div className="storage-detail-badges">
+            <span>{cluster || "—"}</span>
+            <span>{prefix ? (zh ? "子目录" : "Subfolder") : (zh ? "根目录" : "Root directory")}</span>
+          </div>
         </div>
         <div className="section-actions">
           <button className="secondary-button" onClick={onBack}>
@@ -783,12 +789,19 @@ export function StorageClassFilesPage({
         </div>
       </div>
 
+      <section className="storage-files-summary" aria-label={zh ? "文件资源概况" : "File resource overview"}>
+        <div><span><HardDrive size={17} /></span><small>{zh ? "存储类" : "Storage class"}</small><strong>{name || "—"}</strong></div>
+        <div><span><Server size={17} /></span><small>{zh ? "所属集群" : "Cluster"}</small><strong>{cluster || "—"}</strong></div>
+        <div><span><FolderOpen size={17} /></span><small>{zh ? "当前目录内容" : "Current contents"}</small><strong>{commonPrefixes.length + objects.length} <em>{zh ? "项" : "items"}</em></strong></div>
+      </section>
+
       <div className="files-breadcrumb">
+        <Home size={15} />
         <span className="breadcrumb-label">{c.files.currentPath}:</span>
         {breadcrumbs()}
       </div>
 
-      <div className="page-toolbar">
+      <div className="page-toolbar storage-files-toolbar">
         <div className="search-field">
           <Search size={16} />
           <input
@@ -820,9 +833,28 @@ export function StorageClassFilesPage({
         </button>
       </div>
 
-      {error && <div className="error-text" style={{ marginBottom: 12 }}>{error}</div>}
+      {error && (
+        <div className="storage-files-error" role="alert">
+          <AlertCircle size={18} />
+          <div>
+            <strong>{zh ? "目录内容加载失败" : "Failed to load directory"}</strong>
+            <span>{error}</span>
+          </div>
+          <button type="button" className="secondary-button" onClick={fetchFiles}>
+            <RefreshCw size={14} />
+            {zh ? "重试" : "Retry"}
+          </button>
+        </div>
+      )}
 
-      <div className="table-card files-table">
+      <section className="table-panel files-table storage-files-table-panel">
+        <div className="storage-table-heading">
+          <div>
+            <strong>{zh ? "目录内容" : "Directory contents"}</strong>
+            <small>{zh ? "浏览文件夹并管理当前路径下的对象" : "Browse folders and manage objects in the current path"}</small>
+          </div>
+          <span>{zh ? `共 ${filteredPrefixes.length + filteredObjects.length} 项` : `${filteredPrefixes.length + filteredObjects.length} items`}</span>
+        </div>
         <table>
           <thead>
             <tr>
@@ -834,17 +866,20 @@ export function StorageClassFilesPage({
           </thead>
           <tbody>
             {prefix && (
-              <tr className="clickable" onClick={goUp}>
-                <td colSpan={4} style={{ color: "var(--blue)", fontWeight: 600 }}>
-                  <ChevronLeft size={14} style={{ display: "inline", verticalAlign: "middle" }} />
+              <tr className="clickable storage-go-up-row" onClick={goUp}>
+                <td colSpan={4}>
+                  <ChevronLeft size={15} />
                   {zh ? "返回上级目录" : "Go up"}
                 </td>
               </tr>
             )}
             {loading && (
               <tr>
-                <td colSpan={4} className="muted" style={{ textAlign: "center" }}>
-                  {zh ? "加载中..." : "Loading..."}
+                <td colSpan={4}>
+                  <div className="storage-files-state">
+                    <span className="storage-files-spinner"><RefreshCw size={20} /></span>
+                    <strong>{zh ? "正在加载目录内容..." : "Loading directory contents..."}</strong>
+                  </div>
                 </td>
               </tr>
             )}
@@ -854,13 +889,15 @@ export function StorageClassFilesPage({
               return (
                 <tr key={folder} className="clickable" onClick={() => navigateFolder(folder)}>
                   <td>
-                    <Folder size={16} style={{ display: "inline", marginRight: 8, color: "var(--blue)" }} />
-                    <strong>{displayName}</strong>
+                    <span className="storage-file-name folder">
+                      <i><Folder size={17} /></i>
+                      <span><strong>{displayName}</strong><small>{zh ? "文件夹" : "Folder"}</small></span>
+                    </span>
                   </td>
-                  <td>—</td>
-                  <td>—</td>
+                  <td className="muted">—</td>
+                  <td className="muted">—</td>
                   <td>
-                    <button className="btn-icon" title={zh ? "进入目录" : "Enter folder"}>
+                    <button className="icon-button" title={zh ? "进入目录" : "Enter folder"}>
                       <ChevronRight size={14} />
                     </button>
                   </td>
@@ -872,40 +909,48 @@ export function StorageClassFilesPage({
               return (
                 <tr key={obj.key}>
                   <td>
-                    <FileText size={16} style={{ display: "inline", marginRight: 8, color: "#7c8492" }} />
-                    <strong>{fileName}</strong>
+                    <span className="storage-file-name file">
+                      <i><FileText size={17} /></i>
+                      <span><strong>{fileName}</strong><small>{zh ? "对象文件" : "Object"}</small></span>
+                    </span>
                   </td>
                   <td>{formatSize(obj.size || 0)}</td>
                   <td>{formatDate(obj.last_modified)}</td>
                   <td>
+                    <div className="row-actions">
                     <button
-                      className="btn-icon"
+                      className="icon-button"
                       title={c.files.download}
                       onClick={() => handleDownload(obj.key)}
                     >
                       <Download size={14} />
                     </button>
                     <button
-                      className="btn-icon btn-icon-danger"
+                      className="icon-button danger"
                       title={c.files.delete}
                       onClick={() => handleDelete(obj.key)}
                     >
                       <Trash2 size={14} />
                     </button>
+                    </div>
                   </td>
                 </tr>
               );
             })}
             {!loading && filteredObjects.length === 0 && filteredPrefixes.length === 0 && !error && (
               <tr>
-                <td colSpan={4} className="muted" style={{ textAlign: "center" }}>
-                  {c.files.noData}
+                <td colSpan={4}>
+                  <div className="storage-files-state empty">
+                    <span><FolderOpen size={22} /></span>
+                    <strong>{c.files.noData}</strong>
+                    <small>{zh ? "可以上传文件，或返回上级目录继续浏览。" : "Upload files or return to the parent directory."}</small>
+                  </div>
                 </td>
               </tr>
             )}
           </tbody>
         </table>
-      </div>
+      </section>
       {!loading && filteredObjects.length > 0 && (
         <Pagination
           page={currentPage}

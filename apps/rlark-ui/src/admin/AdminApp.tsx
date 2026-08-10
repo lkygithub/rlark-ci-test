@@ -22,6 +22,7 @@ import { CreateClusterPage } from "./CreateCluster";
 import { AddonsPage } from "./Addons";
 import { AdminPage } from "./AdminPage";
 import { Header, Logo } from "../components/shared";
+import { useBackendMode, usePersistentState } from "../hooks";
 
 export function AdminLogin({
   copy: c,
@@ -36,7 +37,7 @@ export function AdminLogin({
   onLangChange: (l: Lang) => void;
   theme: Theme;
   onThemeChange: (t: Theme) => void;
-  onLogin: () => void;
+  onLogin: (username: string) => void;
 }) {
   const zh = lang === "zh";
   const [username, setUsername] = useState("admin");
@@ -72,7 +73,8 @@ export function AdminLogin({
       )
       .then(() => {
         sessionStorage.setItem("rlark-admin-auth", "1");
-        onLogin();
+        sessionStorage.setItem("rlark-admin-user-name", username.trim());
+        onLogin(username.trim());
       })
       .catch((err) => {
         setError(err.message);
@@ -180,15 +182,19 @@ export function AdminLogin({
 }
 
 export function AdminApp() {
-  const [lang, setLang] = useState<Lang>("zh");
-  const [theme, setTheme] = useState<Theme>("light");
+  const [lang, setLang] = usePersistentState<Lang>("rlark-language", "zh");
+  const [theme, setTheme] = usePersistentState<Theme>("rlark-theme", "light");
   const [loggedIn, setLoggedIn] = useState(
     () =>
       import.meta.env.DEV ||
       (typeof sessionStorage !== "undefined" &&
         sessionStorage.getItem("rlark-admin-auth") === "1"),
   );
-  const [collapsed, setCollapsed] = useState(false);
+  const [userName, setUserName] = useState(
+    () => sessionStorage.getItem("rlark-admin-user-name") || "admin",
+  );
+  const { isMockMode } = useBackendMode();
+  const [collapsed, setCollapsed] = usePersistentState("rlark-sidebar-collapsed", false);
   const [storageRefreshKey, setStorageRefreshKey] = useState(0);
   const [adminPage, setAdminPage] = useState(() => {
     const p = window.location.pathname
@@ -286,7 +292,10 @@ export function AdminApp() {
         onLangChange={setLang}
         theme={theme}
         onThemeChange={setTheme}
-        onLogin={() => setLoggedIn(true)}
+        onLogin={(name) => {
+          setUserName(name);
+          setLoggedIn(true);
+        }}
       />
     );
   }
@@ -328,7 +337,7 @@ export function AdminApp() {
                   }
                   onClick={() =>
                     isParent
-                      ? navigate(item.children![0].id)
+                      ? navigate(item.id === "clusters" ? "clusters-list" : item.children![0].id)
                       : navigate(item.id)
                   }
                 >
@@ -360,17 +369,19 @@ export function AdminApp() {
           })}
         </nav>
         <div className="sidebar-bottom">
-          <div className="environment-card">
-            <span>
-              <CloudCog size={16} />
-            </span>
-            <div>
-              <small>{c.common.env}</small>
-              <strong>{c.common.production}</strong>
-              <b className="env-meta">ADMIN</b>
+          {isMockMode && (
+            <div className="environment-card">
+              <span>
+                <CloudCog size={16} />
+              </span>
+              <div>
+                <small>{c.common.env}</small>
+                <strong>{zh ? "Mock 环境" : "Mock environment"}</strong>
+                <b className="env-meta">ADMIN · Mock</b>
+              </div>
+              <i />
             </div>
-            <i />
-          </div>
+          )}
           <button onClick={() => setCollapsed(!collapsed)}>
             <CircleDot size={17} />
             <span>{c.common.collapse}</span>
@@ -385,9 +396,12 @@ export function AdminApp() {
           copy={c}
           onLangChange={setLang}
           onThemeChange={setTheme}
+          showMockEnvironment={isMockMode}
+          userName={userName}
           onCreate={() => navigate("create-cluster")}
           onLogout={() => {
             sessionStorage.removeItem("rlark-admin-auth");
+            sessionStorage.removeItem("rlark-admin-user-name");
             setLoggedIn(false);
           }}
           createLabel={zh ? "创建集群" : "Create Cluster"}
