@@ -77,7 +77,7 @@ kubernetes:
 
 ```bash
 # 1. 准备配置文件
-cp docs/examples/deploy-control-plane.yaml my-deploy.yaml
+cp apps/rlark/docs/examples/deploy-control-plane.yaml my-deploy.yaml
 
 # 2. 修改镜像地址和 kubeconfig
 # 3. 执行安装
@@ -104,7 +104,7 @@ kubectl get pods -n rlark-system
 ```bash
 # 1. 从控制面获取证书（通过 Gateway API 或手动签发）
 # 2. 填写配置文件
-cp docs/examples/deploy-data-plane.yaml my-data.yaml
+cp apps/rlark/docs/examples/deploy-data-plane.yaml my-data.yaml
 
 # 3. 执行安装
 rlarkadm install -f my-data.yaml
@@ -208,8 +208,8 @@ rlark 支持三种部署环境模式，在 DeployConfig YAML 中配置：
 | 模式 | 说明 | 适用场景 |
 |------|------|----------|
 | `kubernetes` | 部署到 K8s 集群 | 生产环境、GPU 集群 |
-| `docker` | 通过 Docker API 管理 | 端侧设备、单机部署 |
-| `raw` | 下载 artifact 直接执行 | 裸金属、嵌入式设备 |
+| `docker` | 通过 Docker API 管理（TODO） | 端侧设备、单机部署 |
+| `raw` | 下载 artifact 直接执行（TODO） | 裸金属、嵌入式设备 |
 
 配置文件中需指定且仅指定 `kubernetes`、`docker`、`raw` 中的一个环境块。
 
@@ -227,7 +227,7 @@ Agent 通过 `--mode` 支持三种运行模式：
 
 ## 6. Addon 配置
 
-rlark 支持跨数据面集群的声明式 Addon 管理。Addon 定义在 addon 目录（`pkg/addons/catalog/`）中，通过 Addon API 安装。
+rlark 支持跨数据面集群的声明式 Addon 管理。Addon 定义在 addon 目录（`../pkg/addons/catalog/`）中，通过 Addon API 安装。
 
 ### 6.1 Addon 目录结构
 

@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="docs/images/logo.png" alt="RLark Logo" width="400" />
+  <img src="apps/rlark/docs/images/logo.png" alt="RLark Logo" width="400" />
 </div>
 
 <div align="center">
@@ -30,7 +30,7 @@
 
 ## Architecture Overview
 
-![System Architecture](docs/images/architecture.svg)
+![System Architecture](apps/rlark/docs/images/architecture.svg)
 
 ## Quick Start
 
@@ -40,29 +40,34 @@ git clone https://github.com/RLinf/RLark
 cd rlark && make build
 
 # 2. Deploy control plane (Kubernetes mode)
-./bin/rlarkadm install -f docs/examples/deploy-control-plane.yaml
+./bin/rlarkadm install -f apps/rlark/docs/examples/deploy-control-plane.yaml
 
 # 3. Deploy data plane Agent
-./bin/rlarkadm install -f docs/examples/deploy-data-plane.yaml
+./bin/rlarkadm install -f apps/rlark/docs/examples/deploy-data-plane.yaml
 
 # 4. Create a training job
 curl -X POST http://localhost:8080/api/v1/rlinf.io/v1alpha1/jobs \
   -H "Content-Type: application/json" \
-  -d @docs/examples/job-example.json
+  -d '{"apiVersion":"rlinf.io/v1alpha1","kind":"Job","metadata":{"name":"hello-world"},"spec":{"domain":"my-first-domain","tasks":[{"name":"trainer","head":true,"role":"Actor","agentType":"Kubernetes","kubernetes":{"workload":{"kind":"Deployment","replicas":1,"template":{"spec":{"containers":[{"name":"trainer","image":"busybox:latest","command":["sh","-c","echo Hello from rlark! && sleep 3600"]}]}}}}}}]}}'
 ```
 
 ## Documentation
 
 | Document | Description |
 |----------|-------------|
-| [Architecture](docs/architecture.md) | Complete technical architecture, component interactions, data flows |
-| [Core Concepts](docs/concepts.md) | Domain, Job, Task, Workflow, and other concepts |
-| [Quick Start](docs/quickstart.md) | Local development environment setup and first training job |
-| [Deployment Guide](docs/deployment.md) | Production deployment and configuration |
-| [API Reference](docs/api/reference.md) | Complete REST API reference |
-| [API Examples](docs/api/examples.md) | End-to-end API usage examples |
+| [Architecture](apps/rlark/docs/architecture.md) | RLark core: technical architecture, component interactions, data flows |
+| [Core Concepts](apps/rlark/docs/concepts.md) | Domain, Job, Task, Workflow, and other concepts |
+| [Quick Start](apps/rlark/docs/quickstart.md) | Local development environment setup and first training job |
+| [Deployment Guide](apps/rlark/docs/deployment.md) | Production deployment and configuration |
+| [API Reference](apps/rlark/docs/api/reference.md) | Complete REST API reference |
+| [API Examples](apps/rlark/docs/api/examples.md) | End-to-end API usage examples |
+| [Embodied Runtime](apps/embodied-runtime/README.md) | Robot (ROS) and camera hardware management on edge nodes |
+| [Web UI](apps/rlark-ui/README.md) | Frontend management console |
+| [Python SDK](sdks/embodied-runtime-python/README.md) | Python client for robot/camera gRPC services |
+| [Go SDK](sdks/embodied-runtime-go/README.md) | Go client for embodied-runtime gRPC stubs |
+| [Proto Definitions](proto/embodied-runtime/README.md) | gRPC service definitions for embodied-runtime |
 
-> [中文文档](docs/cn/README.md)
+> [中文文档](apps/rlark/docs/cn/README.md)
 
 ## Tech Stack
 

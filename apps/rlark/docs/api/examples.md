@@ -18,8 +18,8 @@
 
 | 资源 | 创建者 | 前端可操作 |
 |---|---|---|
-| `Node` | agent-controller 的 node controller 从本地向控制面 push（见 [push.go](../../apps/rlark/pkg/agent/controllers/node/push.go)） | 仅 **List / Get / 打污点（PATCH unschedulable）**，不建议前端 Create/Delete |
-| `Task` | 控制面 job-controller 根据 Job 的 task 模板调谐创建（见 [job_controller.go](../../apps/rlark/pkg/controllermanager/job/job_controller.go)、[sync.go](../../apps/rlark/pkg/controllermanager/job/sync.go)） | **只读**（List/Get/Get Status），不建议前端 Create/Update/Delete |
+| `Node` | agent-controller 的 node controller 从本地向控制面 push（见 [push.go](../../pkg/agent/controllers/node/push.go)） | 仅 **List / Get / 打污点（PATCH unschedulable）**，不建议前端 Create/Delete |
+| `Task` | 控制面 job-controller 根据 Job 的 task 模板调谐创建（见 [job_controller.go](../../pkg/controllermanager/job/job_controller.go)、[sync.go](../../pkg/controllermanager/job/sync.go)） | **只读**（List/Get/Get Status），不建议前端 Create/Update/Delete |
 | `Job` | 用户/前端创建 | **全量 CRUD**，前端主要操作对象 |
 | `Workflow` | 用户/前端创建 | **全量 CRUD**，前端主要操作对象 |
 
@@ -255,7 +255,7 @@ curl "http://localhost:8080/api/v1/rlinf.io/v1alpha1/jobs/ppo-cartpole-v1/status
 }
 ```
 
-Job 状态机迁移规则（见 [statemachine.go](../../apps/rlark/pkg/controllermanager/job/statemachine.go)）：
+Job 状态机迁移规则（见 [statemachine.go](../../pkg/controllermanager/job/statemachine.go)）：
 
 | 事件 | 来源 | 迁移 |
 |---|---|---|
@@ -527,6 +527,8 @@ curl -X PATCH "http://localhost:8080/api/v1/rlinf.io/v1alpha1/workflows/ppo-pipe
 ---
 
 ## 5. 其他接入形态（Docker / Raw）在 Job task 模板中的用法
+
+> **开发状态**：Docker 和 Raw 接入形态的代码框架已搭建（`pkg/agent/controllers/base/types.go`），但实际运行时实现尚为 TODO（`LocalDockerClient any // TODO`、`LocalRawClient any // TODO`）。以下展示的 API 结构已定稿，可供前端开发和测试使用。
 
 Job 的 task 模板支持三种互斥的 `agentType`，前端表单应按 agentType 切换分片。以下展示在 Job 内使用 Docker / Raw task 的写法（完整字段见 [reference.md](./reference.md)）。
 

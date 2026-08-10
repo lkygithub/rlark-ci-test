@@ -26,4 +26,4 @@ RLark 文档提供中英文两种语言。
 | [API Reference](../api/reference.md) | Complete REST API reference |
 | [API Examples](../api/examples.md) | End-to-end API usage examples |
 
-> [English README](../../README.md) | [中文 README](../../README.zh-CN.md)
+> [English README](../../../README.md) | [中文 README](../../../README.zh-CN.md)

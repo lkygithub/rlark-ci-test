@@ -1,10 +1,22 @@
+# IDE
 .idea/
-/bin/
+.vscode/
+*.swp
+
+# Build output
+**/bin/
+**/dist/
 tmp/
-/gateway
-/server
-/server-cli
-/agent
-/controller-manager
-/crd-api-docgen
-pkg/gateway/storage/unsafe_client_test.go
+
+# macOS
+**/.DS_Store
+
+# Local config overrides
+*.local
+
+# Go test output
+*.out
+coverage.out
+
+# Dependencies
+**/node_modules/

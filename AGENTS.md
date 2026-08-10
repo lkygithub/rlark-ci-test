@@ -19,7 +19,7 @@ Brief for AI coding agents working on RLark. For full contribution flow, code st
 - **`sdks/embodied-runtime-go/`** -- Go SDK for embodied-runtime gRPC stubs.
 - **`sdks/embodied-runtime-python/`** -- Python SDK for embodied-runtime (RobotClient / CameraClient).
 - **`proto/embodied-runtime/`** -- Proto definitions for embodied-runtime gRPC services.
-- **`docs/`** -- Documentation (EN + CN): architecture, concepts, quickstart, deployment, API reference, examples.
+- **`apps/rlark/docs/`** -- RLark core documentation (EN + CN): architecture, concepts, quickstart, deployment, API reference, examples.
 
 ---
 
@@ -96,10 +96,10 @@ make -C apps/rlark-ui lint
 
 ```bash
 # Deploy control plane to K8s cluster
-./bin/rlarkadm install -f docs/examples/deploy-control-plane.yaml
+./bin/rlarkadm install -f apps/rlark/docs/examples/deploy-control-plane.yaml
 
 # Deploy data plane agent
-./bin/rlarkadm install -f docs/examples/deploy-data-plane.yaml
+./bin/rlarkadm install -f apps/rlark/docs/examples/deploy-data-plane.yaml
 ```
 
 ---

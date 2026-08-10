@@ -1,29 +1,24 @@
 # Documentation
 
-RLark documentation is available in English and Chinese.
+RLark is a monorepo containing multiple subprojects. Each subproject maintains its own documentation.
 
-## English Documentation
+## Project Index
 
-| Document | Description |
-|----------|-------------|
-| [Architecture](architecture.md) | Complete technical architecture, component interactions, data flows |
-| [Core Concepts](concepts.md) | Domain, Job, Task, Workflow, and other concepts |
-| [Quick Start](quickstart.md) | Local development environment setup and first training job |
-| [Deployment Guide](deployment.md) | Production deployment and configuration |
-| [Web Console Behavior](ui-behavior.md) | Data modes, navigation, preferences, and dialog behavior |
-| [API Reference](api/reference.md) | Complete REST API reference |
-| [API Examples](api/examples.md) | End-to-end API usage examples |
+| Project | Documentation | Description |
+|---------|---------------|-------------|
+| **rlark core** (control plane + data plane) | [README](../apps/rlark/README.md) · [Docs](../apps/rlark/docs/README.md) | kcp-based control plane, multi-runtime data plane agents, cross-cluster Pod networking |
+| **embodied-runtime** (edge runtime) | [README](../apps/embodied-runtime/README.md) · [Proto API](../apps/embodied-runtime/docs/proto-api.md) | Robot (ROS) and camera hardware management via Kubernetes Device Plugin |
+| **rlark-ui** (web console) | [README](../apps/rlark-ui/README.md) | React + TypeScript management UI, Nginx + Vite |
+| **Python SDK** | [README](../sdks/embodied-runtime-python/README.md) | RobotClient / CameraClient for embodied-runtime gRPC services |
+| **Go SDK** | [README](../sdks/embodied-runtime-go/README.md) | Go gRPC stubs for embodied-runtime |
+| **Proto definitions** | [README](../proto/embodied-runtime/README.md) | gRPC service definitions for embodied-runtime |
 
-## 中文文档
+## Quick Links
 
-| 文档 | 说明 |
-|------|------|
-| [架构设计](cn/architecture.md) | 完整技术架构、组件交互、数据流 |
-| [核心概念](cn/concepts.md) | Domain、Job、Task、Workflow 等概念解释 |
-| [快速开始](cn/quickstart.md) | 本地开发环境搭建与第一个训练任务 |
-| [部署指南](cn/deployment.md) | 生产环境部署、配置说明 |
-| [Web 控制台交互约定](cn/ui-behavior.md) | 数据模式、导航、偏好设置和弹窗行为 |
-| [API 参考](api/reference.md) | 完整的 REST API 参考 |
-| [API 示例](api/examples.md) | 端到端 API 调用示例 |
+- [RLark Architecture](../apps/rlark/docs/architecture.md)
+- [Core Concepts (Domain, Job, Task, Workflow)](../apps/rlark/docs/concepts.md)
+- [Quick Start Guide](../apps/rlark/docs/quickstart.md)
+- [Deployment Guide](../apps/rlark/docs/deployment.md)
+- [API Reference](../apps/rlark/docs/api/reference.md)
 
-> [English README](../README.md) | [中文 README](../README.zh-CN.md)
+> [中文文档](../apps/rlark/docs/cn/README.md)

@@ -44,7 +44,7 @@ generate-crd: ## Generate CRD manifests and clients
 	$(MAKE) -C api generate-crd $(MAKEOVERRIDES)
 
 generate-api-docs: generate-crd ## Generate API reference docs
-	go run ./apps/rlark/cmd/crd-api-docgen api/config/crd/bases docs/api/reference.md
+	go run ./apps/rlark/cmd/crd-api-docgen api/config/crd/bases apps/rlark/docs/api/reference.md
 
 proto: ## Generate protobuf stubs
 	$(MAKE) -C proto/embodied-runtime proto $(MAKEOVERRIDES)

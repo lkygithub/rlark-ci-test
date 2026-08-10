@@ -203,7 +203,7 @@ kubectl --kubeconfig tmp/test/kind-kubeconfig get pods -A
 
 ```bash
 # Start frontend dev server
-cd web && npm install && npm run dev
+cd apps/rlark-ui && npm install && npm run dev
 ```
 
 Open `http://localhost:5173` in your browser to see:
