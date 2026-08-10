@@ -14,10 +14,7 @@ import { adminNavItems } from "../constants";
 import { ApiPage } from "../pages/Api";
 import { DomainsPage } from "../pages/Domains";
 import { ClusterManagementPage } from "../pages/ClusterManagement";
-import {
-  StorageClassesPage,
-  StorageClassCreatePage,
-} from "../pages/Storage";
+import { StorageClassesPage, StorageClassCreatePage } from "../pages/Storage";
 import { CreateClusterPage } from "./CreateCluster";
 import { AddonsPage } from "./Addons";
 import { AdminPage } from "./AdminPage";
@@ -194,7 +191,10 @@ export function AdminApp() {
     () => sessionStorage.getItem("rlark-admin-user-name") || "admin",
   );
   const { isMockMode } = useBackendMode();
-  const [collapsed, setCollapsed] = usePersistentState("rlark-sidebar-collapsed", false);
+  const [collapsed, setCollapsed] = usePersistentState(
+    "rlark-sidebar-collapsed",
+    false,
+  );
   const [storageRefreshKey, setStorageRefreshKey] = useState(0);
   const [adminPage, setAdminPage] = useState(() => {
     const p = window.location.pathname
@@ -337,7 +337,11 @@ export function AdminApp() {
                   }
                   onClick={() =>
                     isParent
-                      ? navigate(item.id === "clusters" ? "clusters-list" : item.children![0].id)
+                      ? navigate(
+                          item.id === "clusters"
+                            ? "clusters-list"
+                            : item.children![0].id,
+                        )
                       : navigate(item.id)
                   }
                 >

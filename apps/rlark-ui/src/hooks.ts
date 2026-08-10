@@ -32,7 +32,9 @@ export function usePersistentState<T>(
 }
 
 export function useBackendMode(): { isMockMode: boolean; checking: boolean } {
-  const [state, setState] = useState<"checking" | "backend" | "mock">("checking");
+  const [state, setState] = useState<"checking" | "backend" | "mock">(
+    "checking",
+  );
 
   useEffect(() => {
     const controller = new AbortController();

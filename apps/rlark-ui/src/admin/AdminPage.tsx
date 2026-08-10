@@ -389,25 +389,42 @@ export function NodeDetailPanel({
           <strong>{zh ? "调度与标签管理" : "Scheduling and labels"}</strong>
           <small>
             {node.spec.unschedulable
-              ? (zh ? "该节点当前已停止接收新任务" : "This node is not accepting new workloads")
-              : (zh ? "该节点当前允许任务调度" : "This node is accepting workloads")}
+              ? zh
+                ? "该节点当前已停止接收新任务"
+                : "This node is not accepting new workloads"
+              : zh
+                ? "该节点当前允许任务调度"
+                : "This node is accepting workloads"}
           </small>
         </div>
         <div className="row-actions">
           <button
-            className={node.spec.unschedulable ? "primary-button" : "secondary-button admin-cordon-button"}
+            className={
+              node.spec.unschedulable
+                ? "primary-button"
+                : "secondary-button admin-cordon-button"
+            }
             disabled={ctx.cordoning}
             onClick={() => ctx.onToggleCordon(node)}
           >
             <Ban size={14} />
             {ctx.cordoning
-              ? (zh ? "处理中…" : "Updating…")
+              ? zh
+                ? "处理中…"
+                : "Updating…"
               : node.spec.unschedulable
-                ? (zh ? "恢复调度" : "Uncordon")
-                : (zh ? "停止调度" : "Cordon")}
+                ? zh
+                  ? "恢复调度"
+                  : "Uncordon"
+                : zh
+                  ? "停止调度"
+                  : "Cordon"}
           </button>
           {!isEditing && (
-            <button className="primary-button" onClick={() => ctx.onStartEdit(node)}>
+            <button
+              className="primary-button"
+              onClick={() => ctx.onStartEdit(node)}
+            >
               <Pencil size={15} />
               {zh ? "管理标签" : "Manage labels"}
             </button>
@@ -421,9 +438,17 @@ export function NodeDetailPanel({
         <div className="node-insight-section-head">
           <div>
             <span>{zh ? "调度标签" : "Scheduling labels"}</span>
-            <small>{zh ? "标签会直接影响任务的节点选择与调度" : "Labels affect node selection and workload scheduling"}</small>
+            <small>
+              {zh
+                ? "标签会直接影响任务的节点选择与调度"
+                : "Labels affect node selection and workload scheduling"}
+            </small>
           </div>
-          {!isEditing && <b>{Object.keys(labels).length} {zh ? "项" : "items"}</b>}
+          {!isEditing && (
+            <b>
+              {Object.keys(labels).length} {zh ? "项" : "items"}
+            </b>
+          )}
         </div>
         {isEditing ? (
           <div className="label-editor admin-label-editor">
@@ -432,7 +457,9 @@ export function NodeDetailPanel({
                 <code>{key}</code>
                 <input
                   value={value}
-                  onChange={(event) => ctx.onUpdateLabel(key, event.target.value)}
+                  onChange={(event) =>
+                    ctx.onUpdateLabel(key, event.target.value)
+                  }
                   placeholder="value"
                 />
                 <button
@@ -448,7 +475,11 @@ export function NodeDetailPanel({
               <input
                 value={ctx.newLabelKey}
                 onChange={(event) => ctx.onNewLabelKey(event.target.value)}
-                placeholder={zh ? "标签键，例如 rlark.io/zone" : "Label key, e.g. rlark.io/zone"}
+                placeholder={
+                  zh
+                    ? "标签键，例如 rlark.io/zone"
+                    : "Label key, e.g. rlark.io/zone"
+                }
                 onKeyDown={(event) => event.key === "Enter" && ctx.onAddLabel()}
               />
               <input
@@ -466,10 +497,21 @@ export function NodeDetailPanel({
               <button
                 className="primary-button"
                 disabled={ctx.saving}
-                onClick={() => ctx.onSaveLabels(node.metadata.name, node.metadata.namespace ?? "")}
+                onClick={() =>
+                  ctx.onSaveLabels(
+                    node.metadata.name,
+                    node.metadata.namespace ?? "",
+                  )
+                }
               >
                 <Save size={15} />
-                {ctx.saving ? (zh ? "保存中…" : "Saving…") : (zh ? "保存标签" : "Save labels")}
+                {ctx.saving
+                  ? zh
+                    ? "保存中…"
+                    : "Saving…"
+                  : zh
+                    ? "保存标签"
+                    : "Save labels"}
               </button>
               <button className="secondary-button" onClick={ctx.onCancelEdit}>
                 {zh ? "取消" : "Cancel"}
@@ -480,16 +522,31 @@ export function NodeDetailPanel({
           <div className="label-list">
             {Object.entries(labels).length === 0 ? (
               <div className="admin-label-empty">
-                <small>{zh ? "该节点暂无调度标签" : "This node has no scheduling labels"}</small>
-                <button className="secondary-button" onClick={() => ctx.onStartEdit(node)}>
-                  <Plus size={14} />{zh ? "添加标签" : "Add label"}
+                <small>
+                  {zh
+                    ? "该节点暂无调度标签"
+                    : "This node has no scheduling labels"}
+                </small>
+                <button
+                  className="secondary-button"
+                  onClick={() => ctx.onStartEdit(node)}
+                >
+                  <Plus size={14} />
+                  {zh ? "添加标签" : "Add label"}
                 </button>
               </div>
-            ) : Object.entries(labels).map(([key, value]) => (
-              <span key={key} className="label-chip" title={`${key}=${value}`}>
-                <code>{key}</code><i>{value}</i>
-              </span>
-            ))}
+            ) : (
+              Object.entries(labels).map(([key, value]) => (
+                <span
+                  key={key}
+                  className="label-chip"
+                  title={`${key}=${value}`}
+                >
+                  <code>{key}</code>
+                  <i>{value}</i>
+                </span>
+              ))
+            )}
           </div>
         )}
       </section>
@@ -728,7 +785,15 @@ export function NodeDetailPanel({
   */
 }
 
-export function AdminPage({ copy: c, selectedNode, onNavigate }: { copy: Copy; selectedNode: string; onNavigate: (sub?: string) => void }) {
+export function AdminPage({
+  copy: c,
+  selectedNode,
+  onNavigate,
+}: {
+  copy: Copy;
+  selectedNode: string;
+  onNavigate: (sub?: string) => void;
+}) {
   const zh = c.nav.overview === "总览";
   const [nodes, setNodes] = useState<CRDNode[]>([]);
   const [loading, setLoading] = useState(true);

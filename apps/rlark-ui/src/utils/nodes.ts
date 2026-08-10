@@ -38,64 +38,64 @@ export function buildMockCRDNodes(): CRDNode[] {
         : node.cluster.includes("North")
           ? "北京市"
           : "深圳市";
-    return ({
-    apiVersion: "rlinf.io/v1alpha1",
-    kind: "Node",
-    metadata: {
-      name: node.name,
-      namespace: node.cluster,
-      labels: {
-        [NODE_CATEGORY_LABEL]: categoryByKind[node.kind],
-        "rlark.io/model": node.model,
-        "rlark.io/city": city,
-        ...(node.kind !== "CloudCompute" && node.tasks > 0
-          ? {
-              "rlark.io/embodied-task": "true",
-              "rlark.io/embodied-task-name":
-                node.kind === "Robot"
-                  ? `robot-operation-${node.id.replace(/^robot-/, "")}`
-                  : `edge-inference-${node.id.replace(/^edge-/, "")}`,
-            }
-          : {}),
+    return {
+      apiVersion: "rlinf.io/v1alpha1",
+      kind: "Node",
+      metadata: {
+        name: node.name,
+        namespace: node.cluster,
+        labels: {
+          [NODE_CATEGORY_LABEL]: categoryByKind[node.kind],
+          "rlark.io/model": node.model,
+          "rlark.io/city": city,
+          ...(node.kind !== "CloudCompute" && node.tasks > 0
+            ? {
+                "rlark.io/embodied-task": "true",
+                "rlark.io/embodied-task-name":
+                  node.kind === "Robot"
+                    ? `robot-operation-${node.id.replace(/^robot-/, "")}`
+                    : `edge-inference-${node.id.replace(/^edge-/, "")}`,
+              }
+            : {}),
+        },
+        creationTimestamp: "2026-06-29T10:00:00Z",
       },
-      creationTimestamp: "2026-06-29T10:00:00Z",
-    },
-    spec: {
-      agentType:
-        node.kind === "Robot"
-          ? "Robot"
-          : node.kind === "EmbodiedCompute"
-            ? "Edge"
-            : "Kubernetes",
-      unschedulable: node.phase === "Offline",
-    },
-    status: {
-      phase: node.phase,
-      reason: node.robotState,
-      nodeInfo: {
-        architecture: "amd64",
-        kernelVersion: "mock",
-        agentVersion: "demo",
-        operatingSystem: node.kind === "Robot" ? "robot-os" : "linux",
+      spec: {
+        agentType:
+          node.kind === "Robot"
+            ? "Robot"
+            : node.kind === "EmbodiedCompute"
+              ? "Edge"
+              : "Kubernetes",
+        unschedulable: node.phase === "Offline",
       },
-      addresses: [{ type: "InternalIP", address: node.address }],
-      allocatable: {
-        cpu: "16",
-        memory: "64Gi",
-        "nvidia.com/gpu": node.gpu.split(" / ")[1] ?? "0",
+      status: {
+        phase: node.phase,
+        reason: node.robotState,
+        nodeInfo: {
+          architecture: "amd64",
+          kernelVersion: "mock",
+          agentVersion: "demo",
+          operatingSystem: node.kind === "Robot" ? "robot-os" : "linux",
+        },
+        addresses: [{ type: "InternalIP", address: node.address }],
+        allocatable: {
+          cpu: "16",
+          memory: "64Gi",
+          "nvidia.com/gpu": node.gpu.split(" / ")[1] ?? "0",
+        },
+        capacity: {
+          cpu: "16",
+          memory: "64Gi",
+          "nvidia.com/gpu": node.gpu.split(" / ")[1] ?? "0",
+        },
+        used: {
+          cpu: `${node.cpu}%`,
+          memory: `${node.memory}%`,
+          "nvidia.com/gpu": node.gpu.split(" / ")[0] ?? "0",
+        },
       },
-      capacity: {
-        cpu: "16",
-        memory: "64Gi",
-        "nvidia.com/gpu": node.gpu.split(" / ")[1] ?? "0",
-      },
-      used: {
-        cpu: `${node.cpu}%`,
-        memory: `${node.memory}%`,
-        "nvidia.com/gpu": node.gpu.split(" / ")[0] ?? "0",
-      },
-    },
-    });
+    };
   });
 }
 

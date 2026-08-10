@@ -1,7 +1,11 @@
 import { useState, type FormEvent } from "react";
 import { ArrowRight, Shield } from "lucide-react";
 
-export function UserLogin({ onLogin }: { onLogin: (username: string) => void }) {
+export function UserLogin({
+  onLogin,
+}: {
+  onLogin: (username: string) => void;
+}) {
   const [username, setUsername] = useState("user");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");

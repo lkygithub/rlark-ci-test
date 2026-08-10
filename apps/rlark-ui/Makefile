@@ -12,7 +12,7 @@ build: install
 	npm run build
 
 fmt:
-	npx prettier --write .
+	npx prettier --write 'src/' 'index.html' 'package.json' 'vite.config.ts' 'tsconfig*.json'
 
 docker-build: build
 	docker buildx build --platform $(IMAGE_PLATFORMS) --build-arg BASE_IMAGE=$(BASE_IMAGE_UI) -t $(IMAGE_REGISTRY)/rlark-ui:$(IMAGE_TAG) -f Dockerfile . --load

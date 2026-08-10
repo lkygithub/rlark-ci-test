@@ -55,7 +55,8 @@ function aggregateClusters(nodes: CRDNode[]): ClusterSummary[] {
       const type =
         categories.cloud > 0 && categories.edge === 0 && categories.robot === 0
           ? "Cloud"
-          : categories.cloud === 0 && (categories.edge > 0 || categories.robot > 0)
+          : categories.cloud === 0 &&
+              (categories.edge > 0 || categories.robot > 0)
             ? "Embodied"
             : "Hybrid";
       const models = (category: NodeCategory) => [
@@ -102,15 +103,18 @@ function normalizeClusterSummary(
     (validCount(cluster.cloudNodes) ? cluster.cloudNodes : 0) +
     (validCount(cluster.embodiedNodes) ? cluster.embodiedNodes : 0) +
     (validCount(cluster.robots) ? cluster.robots : 0);
-  const totalNodes = nodeAggregate?.totalNodes ??
+  const totalNodes =
+    nodeAggregate?.totalNodes ??
     (validCount(cluster.totalNodes) ? cluster.totalNodes : categoryTotal);
-  const onlineNodes = nodeAggregate?.onlineNodes ??
+  const onlineNodes =
+    nodeAggregate?.onlineNodes ??
     (validCount(cluster.onlineNodes)
       ? cluster.onlineNodes
       : cluster.phase === "Online"
         ? totalNodes
         : 0);
-  const offlineNodes = nodeAggregate?.offlineNodes ??
+  const offlineNodes =
+    nodeAggregate?.offlineNodes ??
     (validCount(cluster.offlineNodes)
       ? cluster.offlineNodes
       : Math.max(0, totalNodes - onlineNodes));
@@ -137,10 +141,16 @@ function normalizeClusterSummary(
 function ClusterStatus({ phase, zh }: { phase: string; zh: boolean }) {
   const label =
     phase === "Online"
-      ? zh ? "在线" : "Online"
+      ? zh
+        ? "在线"
+        : "Online"
       : phase === "Degraded"
-        ? zh ? "部分离线" : "Degraded"
-        : zh ? "离线" : "Offline";
+        ? zh
+          ? "部分离线"
+          : "Degraded"
+        : zh
+          ? "离线"
+          : "Offline";
   return (
     <span className={`cluster-health-badge ${phase.toLowerCase()}`}>
       <i /> {label}
@@ -188,13 +198,17 @@ export function ClusterManagementPage({
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const body = await response.json();
       const nodeAggregates = new Map(
-        aggregateClusters(resolvedNodes).map((cluster) => [cluster.id, cluster]),
-      );
-      resolvedClusters = ((body.data ?? []) as ClusterSummary[]).map((cluster) =>
-        normalizeClusterSummary(
+        aggregateClusters(resolvedNodes).map((cluster) => [
+          cluster.id,
           cluster,
-          nodeAggregates.get(cluster.id || cluster.name),
-        ),
+        ]),
+      );
+      resolvedClusters = ((body.data ?? []) as ClusterSummary[]).map(
+        (cluster) =>
+          normalizeClusterSummary(
+            cluster,
+            nodeAggregates.get(cluster.id || cluster.name),
+          ),
       );
     } catch {
       resolvedClusters = [];
@@ -234,7 +248,8 @@ export function ClusterManagementPage({
   const filteredClusters = useMemo(() => {
     const normalized = query.trim().toLowerCase();
     return clusters.filter((cluster) => {
-      const searchable = `${cluster.name} ${cluster.id} ${cluster.type} ${cluster.region} ${cluster.location}`.toLowerCase();
+      const searchable =
+        `${cluster.name} ${cluster.id} ${cluster.type} ${cluster.region} ${cluster.location}`.toLowerCase();
       return (
         (!normalized || searchable.includes(normalized)) &&
         (phaseFilter === "All" || cluster.phase === phaseFilter)
@@ -256,16 +271,23 @@ export function ClusterManagementPage({
 
   if (selectedClusterID && selectedCluster) {
     const onlineRate = selectedCluster.totalNodes
-      ? Math.round((selectedCluster.onlineNodes / selectedCluster.totalNodes) * 100)
+      ? Math.round(
+          (selectedCluster.onlineNodes / selectedCluster.totalNodes) * 100,
+        )
       : 0;
     return (
       <div className="page-content resource-page cluster-management-page cluster-detail-page">
         <div className="section-heading compact">
           <div>
-            <button className="plain-button back-button" onClick={() => onSelectCluster()}>
+            <button
+              className="plain-button back-button"
+              onClick={() => onSelectCluster()}
+            >
               ← {zh ? "返回集群列表" : "Back to clusters"}
             </button>
-            <span className="eyebrow">{zh ? "集群详情" : "Cluster detail"}</span>
+            <span className="eyebrow">
+              {zh ? "集群详情" : "Cluster detail"}
+            </span>
           </div>
           <button className="secondary-button" onClick={() => fetchClusters()}>
             <RefreshCw size={16} /> {c.common.refresh}
@@ -274,13 +296,18 @@ export function ClusterManagementPage({
 
         <section className="panel cluster-detail-hero">
           <div className="cluster-detail-identity">
-            <span><CloudCog size={24} /></span>
+            <span>
+              <CloudCog size={24} />
+            </span>
             <div>
               <small>{selectedCluster.type || (zh ? "集群" : "Cluster")}</small>
               <h2>{selectedCluster.name}</h2>
               <p>
                 <MapPin size={13} />
-                {[selectedCluster.region, selectedCluster.location].filter(Boolean).join(" · ") || (zh ? "未配置区域信息" : "No region metadata")}
+                {[selectedCluster.region, selectedCluster.location]
+                  .filter(Boolean)
+                  .join(" · ") ||
+                  (zh ? "未配置区域信息" : "No region metadata")}
               </p>
             </div>
           </div>
@@ -288,27 +315,100 @@ export function ClusterManagementPage({
         </section>
 
         <section className="cluster-detail-metrics">
-          <MetricCard icon={Server} tone="blue" label={zh ? "节点总数" : "Nodes"} value={`${selectedCluster.totalNodes}`} note={`${selectedCluster.onlineNodes} ${zh ? "在线" : "online"}`} />
-          <MetricCard icon={Activity} tone="mint" label={zh ? "在线率" : "Online rate"} value={`${onlineRate}%`} note={`${selectedCluster.onlineNodes}/${selectedCluster.totalNodes}`} />
-          <MetricCard icon={Network} tone="orange" label={zh ? "离线节点" : "Offline nodes"} value={`${selectedCluster.offlineNodes}`} note={selectedCluster.offlineNodes ? (zh ? "需要关注" : "Needs attention") : (zh ? "运行正常" : "Healthy")} />
-          <MetricCard icon={Bot} tone="purple" label={zh ? "运行任务" : "Running jobs"} value={`${selectedCluster.runningJobs}`} note={zh ? "节点标签统计" : "From node labels"} />
+          <MetricCard
+            icon={Server}
+            tone="blue"
+            label={zh ? "节点总数" : "Nodes"}
+            value={`${selectedCluster.totalNodes}`}
+            note={`${selectedCluster.onlineNodes} ${zh ? "在线" : "online"}`}
+          />
+          <MetricCard
+            icon={Activity}
+            tone="mint"
+            label={zh ? "在线率" : "Online rate"}
+            value={`${onlineRate}%`}
+            note={`${selectedCluster.onlineNodes}/${selectedCluster.totalNodes}`}
+          />
+          <MetricCard
+            icon={Network}
+            tone="orange"
+            label={zh ? "离线节点" : "Offline nodes"}
+            value={`${selectedCluster.offlineNodes}`}
+            note={
+              selectedCluster.offlineNodes
+                ? zh
+                  ? "需要关注"
+                  : "Needs attention"
+                : zh
+                  ? "运行正常"
+                  : "Healthy"
+            }
+          />
+          <MetricCard
+            icon={Bot}
+            tone="purple"
+            label={zh ? "运行任务" : "Running jobs"}
+            value={`${selectedCluster.runningJobs}`}
+            note={zh ? "节点标签统计" : "From node labels"}
+          />
         </section>
 
         <section className="panel cluster-composition-panel">
-          <div className="panel-title"><div><span>Composition</span><h3>{zh ? "资源构成" : "Resource composition"}</h3></div></div>
+          <div className="panel-title">
+            <div>
+              <span>Composition</span>
+              <h3>{zh ? "资源构成" : "Resource composition"}</h3>
+            </div>
+          </div>
           <div className="cluster-composition-grid">
-            <div><span className="cat-cloud"><CloudCog size={17} /></span><small>{zh ? "云算力" : "Cloud"}</small><strong>{selectedCluster.cloudNodes}</strong></div>
-            <div><span className="cat-edge"><Server size={17} /></span><small>{zh ? "端算力" : "Edge"}</small><strong>{selectedCluster.embodiedNodes}</strong></div>
-            <div><span className="cat-robot"><Bot size={17} /></span><small>{zh ? "端真机" : "Robots"}</small><strong>{selectedCluster.robots}</strong></div>
-            <div><small>{zh ? "资源型号" : "Models"}</small><strong>{[...selectedCluster.gpuModels, ...selectedCluster.robotModels].join("、") || "—"}</strong></div>
+            <div>
+              <span className="cat-cloud">
+                <CloudCog size={17} />
+              </span>
+              <small>{zh ? "云算力" : "Cloud"}</small>
+              <strong>{selectedCluster.cloudNodes}</strong>
+            </div>
+            <div>
+              <span className="cat-edge">
+                <Server size={17} />
+              </span>
+              <small>{zh ? "端算力" : "Edge"}</small>
+              <strong>{selectedCluster.embodiedNodes}</strong>
+            </div>
+            <div>
+              <span className="cat-robot">
+                <Bot size={17} />
+              </span>
+              <small>{zh ? "端真机" : "Robots"}</small>
+              <strong>{selectedCluster.robots}</strong>
+            </div>
+            <div>
+              <small>{zh ? "资源型号" : "Models"}</small>
+              <strong>
+                {[
+                  ...selectedCluster.gpuModels,
+                  ...selectedCluster.robotModels,
+                ].join("、") || "—"}
+              </strong>
+            </div>
           </div>
         </section>
 
         <section className="cluster-detail-nodes">
           <div className="section-heading compact">
-            <div><span className="eyebrow">{zh ? "集群节点" : "Cluster nodes"}</span><h2>{zh ? "节点资源" : "Node resources"}</h2></div>
+            <div>
+              <span className="eyebrow">
+                {zh ? "集群节点" : "Cluster nodes"}
+              </span>
+              <h2>{zh ? "节点资源" : "Node resources"}</h2>
+            </div>
           </div>
-          <NodeResourceBrowser nodes={detailNodes} copy={c} onRefresh={() => fetchClusters()} onSelectNode={onSelectNode} />
+          <NodeResourceBrowser
+            nodes={detailNodes}
+            copy={c}
+            onRefresh={() => fetchClusters()}
+            onSelectNode={onSelectNode}
+          />
         </section>
       </div>
     );
@@ -318,13 +418,23 @@ export function ClusterManagementPage({
     <div className="page-content resource-page cluster-management-page">
       <div className="section-heading">
         <div>
-          <span className="eyebrow">{zh ? "资源纳管" : "Resource management"}</span>
+          <span className="eyebrow">
+            {zh ? "资源纳管" : "Resource management"}
+          </span>
           <h2>{zh ? "集群管理" : "Cluster Management"}</h2>
-          <p>{zh ? "查看集群运行状态和节点规模，点击集群进入资源详情。" : "Review cluster health and capacity, then open a cluster for details."}</p>
+          <p>
+            {zh
+              ? "查看集群运行状态和节点规模，点击集群进入资源详情。"
+              : "Review cluster health and capacity, then open a cluster for details."}
+          </p>
         </div>
       </div>
       <PageToolbar
-        placeholder={zh ? "搜索集群名称、类型或区域..." : "Search cluster, type or region..."}
+        placeholder={
+          zh
+            ? "搜索集群名称、类型或区域..."
+            : "Search cluster, type or region..."
+        }
         value={query}
         onChange={setQuery}
         count={filteredClusters.length}
@@ -341,29 +451,73 @@ export function ClusterManagementPage({
       />
       <section className="panel cluster-management-table-panel">
         <div className="cluster-management-table-head">
-          <span>{zh ? "集群名称" : "Cluster"}</span><span>{zh ? "类型" : "Type"}</span><span>{zh ? "节点数" : "Nodes"}</span><span>{zh ? "在线" : "Online"}</span><span>{zh ? "离线" : "Offline"}</span><span>{zh ? "在线率" : "Rate"}</span><span>{zh ? "状态" : "Status"}</span><span />
+          <span>{zh ? "集群名称" : "Cluster"}</span>
+          <span>{zh ? "类型" : "Type"}</span>
+          <span>{zh ? "节点数" : "Nodes"}</span>
+          <span>{zh ? "在线" : "Online"}</span>
+          <span>{zh ? "离线" : "Offline"}</span>
+          <span>{zh ? "在线率" : "Rate"}</span>
+          <span>{zh ? "状态" : "Status"}</span>
+          <span />
         </div>
         <div className="cluster-management-table-body">
           {loading ? (
-            <div className="cluster-management-empty">{zh ? "正在加载集群..." : "Loading clusters..."}</div>
+            <div className="cluster-management-empty">
+              {zh ? "正在加载集群..." : "Loading clusters..."}
+            </div>
           ) : pagedClusters.length === 0 ? (
-            <div className="cluster-management-empty">{zh ? "没有符合条件的集群" : "No matching clusters"}</div>
-          ) : pagedClusters.map((cluster) => {
-            const rate = cluster.totalNodes ? Math.round((cluster.onlineNodes / cluster.totalNodes) * 100) : 0;
-            return (
-              <button key={cluster.id} type="button" className="cluster-management-row" onClick={() => onSelectCluster(cluster.id)}>
-                <span className="cluster-management-name"><i><CloudCog size={16} /></i><span><strong>{cluster.name}</strong><small>{cluster.region || cluster.id}</small></span></span>
-                <span className="cluster-type-chip">{cluster.type || "—"}</span>
-                <strong>{cluster.totalNodes}</strong><span>{cluster.onlineNodes}</span><span>{cluster.offlineNodes}</span>
-                <span className="cluster-list-rate"><i><b style={{ width: `${rate}%` }} /></i><small>{rate}%</small></span>
-                <ClusterStatus phase={cluster.phase} zh={zh} />
-                <ChevronRight size={15} />
-              </button>
-            );
-          })}
+            <div className="cluster-management-empty">
+              {zh ? "没有符合条件的集群" : "No matching clusters"}
+            </div>
+          ) : (
+            pagedClusters.map((cluster) => {
+              const rate = cluster.totalNodes
+                ? Math.round((cluster.onlineNodes / cluster.totalNodes) * 100)
+                : 0;
+              return (
+                <button
+                  key={cluster.id}
+                  type="button"
+                  className="cluster-management-row"
+                  onClick={() => onSelectCluster(cluster.id)}
+                >
+                  <span className="cluster-management-name">
+                    <i>
+                      <CloudCog size={16} />
+                    </i>
+                    <span>
+                      <strong>{cluster.name}</strong>
+                      <small>{cluster.region || cluster.id}</small>
+                    </span>
+                  </span>
+                  <span className="cluster-type-chip">
+                    {cluster.type || "—"}
+                  </span>
+                  <strong>{cluster.totalNodes}</strong>
+                  <span>{cluster.onlineNodes}</span>
+                  <span>{cluster.offlineNodes}</span>
+                  <span className="cluster-list-rate">
+                    <i>
+                      <b style={{ width: `${rate}%` }} />
+                    </i>
+                    <small>{rate}%</small>
+                  </span>
+                  <ClusterStatus phase={cluster.phase} zh={zh} />
+                  <ChevronRight size={15} />
+                </button>
+              );
+            })
+          )}
         </div>
       </section>
-      <Pagination page={currentPage} pageSize={pageSize} total={filteredClusters.length} onPageChange={setPage} onPageSizeChange={setPageSize} zh={zh} />
+      <Pagination
+        page={currentPage}
+        pageSize={pageSize}
+        total={filteredClusters.length}
+        onPageChange={setPage}
+        onPageSizeChange={setPageSize}
+        zh={zh}
+      />
     </div>
   );
 }

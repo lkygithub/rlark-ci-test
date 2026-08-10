@@ -3,7 +3,13 @@ import { Check, ChevronRight, Shield } from "lucide-react";
 import type { Copy, Lang } from "../i18n";
 import type { AgentCertListItem, SignAgentCertResponse } from "../types";
 
-export function CreateClusterPage({ copy: c, lang }: { copy: Copy; lang: Lang }) {
+export function CreateClusterPage({
+  copy: c,
+  lang,
+}: {
+  copy: Copy;
+  lang: Lang;
+}) {
   const [clusterId, setClusterId] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");

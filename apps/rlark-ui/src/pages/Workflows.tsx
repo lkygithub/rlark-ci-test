@@ -406,7 +406,9 @@ export function WorkflowsPage({
 
   const items = workflows.map(crdToWorkflow);
   const filteredItems = items.filter((workflow) =>
-    `${workflow.name} ${workflow.phase}`.toLowerCase().includes(query.trim().toLowerCase()),
+    `${workflow.name} ${workflow.phase}`
+      .toLowerCase()
+      .includes(query.trim().toLowerCase()),
   );
   const totalPages = Math.max(1, Math.ceil(filteredItems.length / pageSize));
   const currentPage = Math.min(page, totalPages);
@@ -529,8 +531,12 @@ export function WorkflowsPage({
                 >
                   <small className="muted">
                     {query
-                      ? (zh ? "没有匹配的工作流" : "No matching workflows")
-                      : (zh ? "暂无工作流" : "No workflows")}
+                      ? zh
+                        ? "没有匹配的工作流"
+                        : "No matching workflows"
+                      : zh
+                        ? "暂无工作流"
+                        : "No workflows"}
                   </small>
                 </td>
               </tr>
@@ -1210,7 +1216,9 @@ export function CreateWorkflowModal({
   return (
     <div
       className="modal-backdrop"
-      onMouseDown={(e) => e.target === e.currentTarget && !submitting && onClose()}
+      onMouseDown={(e) =>
+        e.target === e.currentTarget && !submitting && onClose()
+      }
     >
       <div className="modal create-job-modal" role="dialog" aria-modal="true">
         <div className="modal-head">
@@ -1218,7 +1226,12 @@ export function CreateWorkflowModal({
             <span className="eyebrow">{c.workflows.eyebrow}</span>
             <h2>{c.workflows.createTitle}</h2>
           </div>
-          <button className="icon-button" onClick={onClose} aria-label={zh ? "关闭创建工作流" : "Close workflow creator"} disabled={submitting}>
+          <button
+            className="icon-button"
+            onClick={onClose}
+            aria-label={zh ? "关闭创建工作流" : "Close workflow creator"}
+            disabled={submitting}
+          >
             ×
           </button>
         </div>
@@ -1599,17 +1612,32 @@ export function CreateWorkflowModal({
                             }
                           }
                           const availableDevices = Array.from(deviceSet).sort();
-                          return (rr.devices ?? []).length > 0 || availableDevices.length > 0 ? (
-                            <div className="form-section" style={{ marginTop: 12 }}>
+                          return (rr.devices ?? []).length > 0 ||
+                            availableDevices.length > 0 ? (
+                            <div
+                              className="form-section"
+                              style={{ marginTop: 12 }}
+                            >
                               <div className="form-section-head">
-                                <small>{zh ? "设备资源" : "Device Resources"}</small>
+                                <small>
+                                  {zh ? "设备资源" : "Device Resources"}
+                                </small>
                                 {availableDevices.length > 0 && (
                                   <button
                                     type="button"
                                     className="secondary-button"
-                                    style={{ padding: "2px 10px", fontSize: 12 }}
+                                    style={{
+                                      padding: "2px 10px",
+                                      fontSize: 12,
+                                    }}
                                     onClick={() => {
-                                      const next = [...(rr.devices ?? []), { name: availableDevices[0] ?? "", quantity: "1" }];
+                                      const next = [
+                                        ...(rr.devices ?? []),
+                                        {
+                                          name: availableDevices[0] ?? "",
+                                          quantity: "1",
+                                        },
+                                      ];
                                       updateRR(role, "devices", next);
                                     }}
                                   >
@@ -1624,23 +1652,36 @@ export function CreateWorkflowModal({
                                     value={dev.name}
                                     onChange={(e) => {
                                       const next = [...(rr.devices ?? [])];
-                                      next[di] = { ...next[di], name: e.target.value };
+                                      next[di] = {
+                                        ...next[di],
+                                        name: e.target.value,
+                                      };
                                       updateRR(role, "devices", next);
                                     }}
                                   >
-                                    <option value="">{zh ? "选择设备" : "Select device"}</option>
+                                    <option value="">
+                                      {zh ? "选择设备" : "Select device"}
+                                    </option>
                                     {availableDevices.map((d) => (
-                                      <option key={d} value={d}>{d}</option>
+                                      <option key={d} value={d}>
+                                        {d}
+                                      </option>
                                     ))}
-                                    {dev.name && !availableDevices.includes(dev.name) && (
-                                      <option value={dev.name}>{dev.name}</option>
-                                    )}
+                                    {dev.name &&
+                                      !availableDevices.includes(dev.name) && (
+                                        <option value={dev.name}>
+                                          {dev.name}
+                                        </option>
+                                      )}
                                   </select>
                                   <input
                                     value={dev.quantity}
                                     onChange={(e) => {
                                       const next = [...(rr.devices ?? [])];
-                                      next[di] = { ...next[di], quantity: e.target.value };
+                                      next[di] = {
+                                        ...next[di],
+                                        quantity: e.target.value,
+                                      };
                                       updateRR(role, "devices", next);
                                     }}
                                     placeholder="1"
@@ -1649,7 +1690,9 @@ export function CreateWorkflowModal({
                                     type="button"
                                     className="icon-button danger"
                                     onClick={() => {
-                                      const next = (rr.devices ?? []).filter((_, j) => j !== di);
+                                      const next = (rr.devices ?? []).filter(
+                                        (_, j) => j !== di,
+                                      );
                                       updateRR(role, "devices", next);
                                     }}
                                   >
@@ -1955,17 +1998,20 @@ export function CreateWorkflowModal({
                 }}
                 disabled={step === 1 && !workflowName.trim()}
               >
-                {step === 2 && activeJob && (() => {
-                  const roles = activeJob.roles;
-                  const currentRole = activeRoleTab || roles[0];
-                  const roleIdx = roles.indexOf(currentRole);
-                  const isLastRole = roleIdx < 0 || roleIdx === roles.length - 1;
-                  const jobIdx = jobs.findIndex((j) => j.id === activeJobId);
-                  const isLastJob = jobIdx < 0 || jobIdx === jobs.length - 1;
-                  if (!isLastRole) return zh ? "下一个角色" : "Next Role";
-                  if (!isLastJob) return zh ? "下一个任务" : "Next Job";
-                  return zh ? "下一步" : "Next";
-                })()}
+                {step === 2 &&
+                  activeJob &&
+                  (() => {
+                    const roles = activeJob.roles;
+                    const currentRole = activeRoleTab || roles[0];
+                    const roleIdx = roles.indexOf(currentRole);
+                    const isLastRole =
+                      roleIdx < 0 || roleIdx === roles.length - 1;
+                    const jobIdx = jobs.findIndex((j) => j.id === activeJobId);
+                    const isLastJob = jobIdx < 0 || jobIdx === jobs.length - 1;
+                    if (!isLastRole) return zh ? "下一个角色" : "Next Role";
+                    if (!isLastJob) return zh ? "下一个任务" : "Next Job";
+                    return zh ? "下一步" : "Next";
+                  })()}
               </button>
             ) : (
               <button

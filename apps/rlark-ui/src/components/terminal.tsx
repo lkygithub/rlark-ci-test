@@ -53,18 +53,33 @@ export function TerminalModal({
     ws.onmessage = (e) => {
       if (typeof e.data === "string") {
         if (e.data.startsWith("{")) {
-          let msg: { type?: string; name?: string; size?: number; success?: boolean; error?: string };
-          try { msg = JSON.parse(e.data); } catch { term.write(e.data); return; }
+          let msg: {
+            type?: string;
+            name?: string;
+            size?: number;
+            success?: boolean;
+            error?: string;
+          };
+          try {
+            msg = JSON.parse(e.data);
+          } catch {
+            term.write(e.data);
+            return;
+          }
           if (msg.type === "file-download-start") {
             downloading = true;
             downloadChunks = [];
             downloadName = msg.name || "download";
-            setTransferStatus(`Downloading ${downloadName} (${msg.size || 0} bytes)...`);
+            setTransferStatus(
+              `Downloading ${downloadName} (${msg.size || 0} bytes)...`,
+            );
             return;
           }
           if (msg.type === "file-download-end") {
             if (downloading) {
-              const blob = new Blob(downloadChunks as BlobPart[], { type: "application/octet-stream" });
+              const blob = new Blob(downloadChunks as BlobPart[], {
+                type: "application/octet-stream",
+              });
               const url = URL.createObjectURL(blob);
               const a = document.createElement("a");
               a.href = url;
@@ -83,7 +98,9 @@ export function TerminalModal({
             if (msg.success) {
               term.writeln("\r\n\x1b[32mFile transfer complete.\x1b[0m");
             } else {
-              term.writeln(`\r\n\x1b[31mFile transfer failed: ${msg.error || "unknown"}\x1b[0m`);
+              term.writeln(
+                `\r\n\x1b[31mFile transfer failed: ${msg.error || "unknown"}\x1b[0m`,
+              );
             }
             return;
           }
@@ -132,12 +149,22 @@ export function TerminalModal({
 
   const handleFileSelected = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
+    if (!file || !wsRef.current || wsRef.current.readyState !== WebSocket.OPEN)
+      return;
     const ws = wsRef.current;
     const destPath = `./${file.name}`;
-    setTransferStatus(`Uploading ${file.name} (${file.size} bytes) to ${destPath}...`);
+    setTransferStatus(
+      `Uploading ${file.name} (${file.size} bytes) to ${destPath}...`,
+    );
 
-    ws.send(JSON.stringify({ type: "file-upload", path: destPath, size: file.size, mode: 0o644 }));
+    ws.send(
+      JSON.stringify({
+        type: "file-upload",
+        path: destPath,
+        size: file.size,
+        mode: 0o644,
+      }),
+    );
 
     const chunkSize = 32 * 1024;
     let offset = 0;
@@ -166,7 +193,12 @@ export function TerminalModal({
   const [dlPath, setDlPath] = useState("");
 
   const handleDownloadSubmit = () => {
-    if (!dlPath || !wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
+    if (
+      !dlPath ||
+      !wsRef.current ||
+      wsRef.current.readyState !== WebSocket.OPEN
+    )
+      return;
     wsRef.current.send(JSON.stringify({ type: "file-download", path: dlPath }));
     setTransferStatus(`Requesting ${dlPath}...`);
     setShowDownloadInput(false);
@@ -188,10 +220,18 @@ export function TerminalModal({
             <h2>{podName}</h2>
           </div>
           <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-            <button className="icon-button" title="Upload file" onClick={handleUploadClick}>
+            <button
+              className="icon-button"
+              title="Upload file"
+              onClick={handleUploadClick}
+            >
               <Upload size={16} />
             </button>
-            <button className="icon-button" title="Download file" onClick={() => setShowDownloadInput((v) => !v)}>
+            <button
+              className="icon-button"
+              title="Download file"
+              onClick={() => setShowDownloadInput((v) => !v)}
+            >
               <Download size={16} />
             </button>
             <button className="icon-button" onClick={handleClose}>
@@ -200,26 +240,57 @@ export function TerminalModal({
           </div>
         </div>
         {showDownloadInput && (
-          <div style={{ display: "flex", gap: 8, padding: "8px 16px", background: "#16162a", borderBottom: "1px solid #2a2a4a" }}>
+          <div
+            style={{
+              display: "flex",
+              gap: 8,
+              padding: "8px 16px",
+              background: "#16162a",
+              borderBottom: "1px solid #2a2a4a",
+            }}
+          >
             <input
               type="text"
               value={dlPath}
               onChange={(e) => setDlPath(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleDownloadSubmit()}
               placeholder="/path/to/file/in/pod"
-              style={{ flex: 1, background: "#1a1a2e", border: "1px solid #3a3a5a", borderRadius: 4, color: "#e0e0f0", padding: "4px 8px", fontSize: 13 }}
+              style={{
+                flex: 1,
+                background: "#1a1a2e",
+                border: "1px solid #3a3a5a",
+                borderRadius: 4,
+                color: "#e0e0f0",
+                padding: "4px 8px",
+                fontSize: 13,
+              }}
             />
-            <button className="secondary-button" onClick={handleDownloadSubmit}>Download</button>
+            <button className="secondary-button" onClick={handleDownloadSubmit}>
+              Download
+            </button>
           </div>
         )}
         {transferStatus && (
-          <div style={{ padding: "4px 16px", background: "#1a1a2e", color: "#7cc7ff", fontSize: 12, borderBottom: "1px solid #2a2a4a" }}>
+          <div
+            style={{
+              padding: "4px 16px",
+              background: "#1a1a2e",
+              color: "#7cc7ff",
+              fontSize: 12,
+              borderBottom: "1px solid #2a2a4a",
+            }}
+          >
             {transferStatus}
           </div>
         )}
         <div className="modal-body">
           <div ref={termRef} className="terminal-container" />
-          <input ref={fileInputRef} type="file" style={{ display: "none" }} onChange={handleFileSelected} />
+          <input
+            ref={fileInputRef}
+            type="file"
+            style={{ display: "none" }}
+            onChange={handleFileSelected}
+          />
         </div>
       </div>
     </div>

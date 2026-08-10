@@ -164,8 +164,13 @@ export function Header({
           >
             <Bell size={18} />
             {notificationSummary &&
-              notificationSummary.runningJobs + notificationSummary.attentionNodes > 0 && (
-                <em>{notificationSummary.runningJobs + notificationSummary.attentionNodes}</em>
+              notificationSummary.runningJobs +
+                notificationSummary.attentionNodes >
+                0 && (
+                <em>
+                  {notificationSummary.runningJobs +
+                    notificationSummary.attentionNodes}
+                </em>
               )}
           </button>
           {notificationsOpen && (
@@ -173,11 +178,21 @@ export function Header({
               <strong>{zh ? "运行通知" : "Notifications"}</strong>
               {notificationSummary ? (
                 <>
-                  <span>{zh ? `${notificationSummary.runningJobs} 个任务正在运行` : `${notificationSummary.runningJobs} jobs are running`}</span>
-                  <span>{zh ? `${notificationSummary.attentionNodes} 个节点需要关注` : `${notificationSummary.attentionNodes} nodes need attention`}</span>
+                  <span>
+                    {zh
+                      ? `${notificationSummary.runningJobs} 个任务正在运行`
+                      : `${notificationSummary.runningJobs} jobs are running`}
+                  </span>
+                  <span>
+                    {zh
+                      ? `${notificationSummary.attentionNodes} 个节点需要关注`
+                      : `${notificationSummary.attentionNodes} nodes need attention`}
+                  </span>
                 </>
               ) : (
-                <span>{zh ? "暂无新的运行通知" : "No new runtime notifications"}</span>
+                <span>
+                  {zh ? "暂无新的运行通知" : "No new runtime notifications"}
+                </span>
               )}
             </div>
           )}
@@ -293,7 +308,9 @@ export function Pagination({
   return (
     <div className="pagination-bar" aria-label={zh ? "分页" : "Pagination"}>
       <small className="pagination-summary">
-        {zh ? `共 ${total} 条，当前 ${start}-${end}` : `${start}-${end} of ${total}`}
+        {zh
+          ? `共 ${total} 条，当前 ${start}-${end}`
+          : `${start}-${end} of ${total}`}
       </small>
       {onPageSizeChange && (
         <label className="pagination-size">
@@ -303,7 +320,9 @@ export function Pagination({
             onChange={(event) => onPageSizeChange(Number(event.target.value))}
           >
             {pageSizeOptions.map((size) => (
-              <option key={size} value={size}>{size}</option>
+              <option key={size} value={size}>
+                {size}
+              </option>
             ))}
           </select>
         </label>
@@ -317,7 +336,11 @@ export function Pagination({
       >
         <ChevronLeft size={16} />
       </button>
-      <small>{zh ? `${currentPage} / ${totalPages} 页` : `${currentPage} / ${totalPages}`}</small>
+      <small>
+        {zh
+          ? `${currentPage} / ${totalPages} 页`
+          : `${currentPage} / ${totalPages}`}
+      </small>
       <button
         type="button"
         className="icon-button"

@@ -179,29 +179,29 @@ export function ClustersPage({
         </button>
       </div>
       {resourceView === "clusters" && (
-      <section className="cluster-overview-grid">
-        <MetricCard
-          icon={Network}
-          tone="blue"
-          label={zh ? "集群总数" : "Clusters"}
-          value={`${clustersList.length}`}
-          note={`${onlineClusters} ${c.status.Online}`}
-        />
-        <MetricCard
-          icon={Server}
-          tone="mint"
-          label={zh ? "节点总数" : "Nodes"}
-          value={`${totalNodes}`}
-          note={`${realNodes.filter((n) => n.status?.phase === "Online").length} ${c.status.Online}`}
-        />
-        <MetricCard
-          icon={Activity}
-          tone="orange"
-          label={zh ? "在线率" : "Online Rate"}
-          value={`${totalNodes > 0 ? Math.round(realNodes.filter((n) => n.status?.phase === "Online").length / totalNodes * 100) : 0}%`}
-          note={`${realNodes.filter((n) => n.status?.phase === "Online").length}/${totalNodes} ${zh ? "在线" : "online"}`}
-        />
-      </section>
+        <section className="cluster-overview-grid">
+          <MetricCard
+            icon={Network}
+            tone="blue"
+            label={zh ? "集群总数" : "Clusters"}
+            value={`${clustersList.length}`}
+            note={`${onlineClusters} ${c.status.Online}`}
+          />
+          <MetricCard
+            icon={Server}
+            tone="mint"
+            label={zh ? "节点总数" : "Nodes"}
+            value={`${totalNodes}`}
+            note={`${realNodes.filter((n) => n.status?.phase === "Online").length} ${c.status.Online}`}
+          />
+          <MetricCard
+            icon={Activity}
+            tone="orange"
+            label={zh ? "在线率" : "Online Rate"}
+            value={`${totalNodes > 0 ? Math.round((realNodes.filter((n) => n.status?.phase === "Online").length / totalNodes) * 100) : 0}%`}
+            note={`${realNodes.filter((n) => n.status?.phase === "Online").length}/${totalNodes} ${zh ? "在线" : "online"}`}
+          />
+        </section>
       )}
       {resourceView === "clusters" && (
         <>
@@ -290,9 +290,13 @@ export function ClusterDetailReal({
           <StatusBadge phase={phase} copy={c} />
         </div>
         <div className="cluster-detail-meta">
-          <span>{clusterNodes.length} {zh ? "节点" : "nodes"}</span>
+          <span>
+            {clusterNodes.length} {zh ? "节点" : "nodes"}
+          </span>
           <i className="dot" />
-          <span>{onlineCount} {zh ? "在线" : "online"}</span>
+          <span>
+            {onlineCount} {zh ? "在线" : "online"}
+          </span>
           <i className="dot" />
           <span>
             {Array.from(
@@ -378,18 +382,25 @@ export function NodeDetailReal({
   const categoryInfo = categoryLabels[category];
   const taskName =
     labels["rlark.io/embodied-task-name"] ?? labels["rlark.io/task-name"] ?? "";
-  const hasTask = labels["rlark.io/embodied-task"] === "true" || Boolean(taskName);
+  const hasTask =
+    labels["rlark.io/embodied-task"] === "true" || Boolean(taskName);
   const canOpenTask = Boolean(taskName && onTaskNavigate);
   const capacity = node.status?.capacity ?? {};
   const allocatable = node.status?.allocatable ?? {};
   const used = node.status?.used ?? {};
   const getPercent = (key: string) => {
     const rawUsed = used[key];
-    if (rawUsed?.endsWith("%")) return Math.min(100, Math.max(0, Number.parseFloat(rawUsed)));
+    if (rawUsed?.endsWith("%"))
+      return Math.min(100, Math.max(0, Number.parseFloat(rawUsed)));
     const usedNumber = Number.parseFloat(rawUsed ?? "");
     const capacityNumber = Number.parseFloat(capacity[key] ?? "");
-    return Number.isFinite(usedNumber) && Number.isFinite(capacityNumber) && capacityNumber > 0
-      ? Math.min(100, Math.max(0, Math.round((usedNumber / capacityNumber) * 100)))
+    return Number.isFinite(usedNumber) &&
+      Number.isFinite(capacityNumber) &&
+      capacityNumber > 0
+      ? Math.min(
+          100,
+          Math.max(0, Math.round((usedNumber / capacityNumber) * 100)),
+        )
       : null;
   };
   const resourceItems = [
@@ -398,7 +409,9 @@ export function NodeDetailReal({
     { key: "nvidia.com/gpu", label: "GPU", icon: Activity },
   ];
   const created = node.metadata.creationTimestamp
-    ? new Date(node.metadata.creationTimestamp).toLocaleString(zh ? "zh-CN" : "en-US")
+    ? new Date(node.metadata.creationTimestamp).toLocaleString(
+        zh ? "zh-CN" : "en-US",
+      )
     : "—";
   return (
     <div className="node-resource-detail node-insight-detail">
@@ -408,7 +421,9 @@ export function NodeDetailReal({
             <Server size={22} />
           </span>
           <div>
-            <span className="eyebrow">{zh ? "节点运行概况" : "Node overview"}</span>
+            <span className="eyebrow">
+              {zh ? "节点运行概况" : "Node overview"}
+            </span>
             <h3>{node.metadata.name}</h3>
             <p>
               <Network size={13} /> {node.metadata.namespace ?? "default"}
@@ -419,10 +434,20 @@ export function NodeDetailReal({
         </div>
         <div className="node-insight-state">
           <StatusBadge phase={phase} copy={c} />
-          <span className={node.spec.unschedulable ? "schedule-chip blocked" : "schedule-chip"}>
+          <span
+            className={
+              node.spec.unschedulable
+                ? "schedule-chip blocked"
+                : "schedule-chip"
+            }
+          >
             {node.spec.unschedulable
-              ? (zh ? "已停止调度" : "Unschedulable")
-              : (zh ? "可调度" : "Schedulable")}
+              ? zh
+                ? "已停止调度"
+                : "Unschedulable"
+              : zh
+                ? "可调度"
+                : "Schedulable"}
           </span>
         </div>
       </header>
@@ -435,29 +460,58 @@ export function NodeDetailReal({
       )}
 
       <div className="node-insight-facts">
-        <div><small>{zh ? "节点类型" : "Node type"}</small><strong>{zh ? categoryInfo.zh : categoryInfo.en}</strong></div>
-        <div><small>{zh ? "接入形态" : "Agent type"}</small><strong>{node.spec.agentType ?? "—"}</strong></div>
-        <div><small>{zh ? "系统 / 架构" : "System / Arch"}</small><strong>{node.status?.nodeInfo?.operatingSystem ?? "—"} · {node.status?.nodeInfo?.architecture ?? "—"}</strong></div>
-        <div><small>{zh ? "Agent 版本" : "Agent version"}</small><strong>{node.status?.nodeInfo?.agentVersion ?? "—"}</strong></div>
+        <div>
+          <small>{zh ? "节点类型" : "Node type"}</small>
+          <strong>{zh ? categoryInfo.zh : categoryInfo.en}</strong>
+        </div>
+        <div>
+          <small>{zh ? "接入形态" : "Agent type"}</small>
+          <strong>{node.spec.agentType ?? "—"}</strong>
+        </div>
+        <div>
+          <small>{zh ? "系统 / 架构" : "System / Arch"}</small>
+          <strong>
+            {node.status?.nodeInfo?.operatingSystem ?? "—"} ·{" "}
+            {node.status?.nodeInfo?.architecture ?? "—"}
+          </strong>
+        </div>
+        <div>
+          <small>{zh ? "Agent 版本" : "Agent version"}</small>
+          <strong>{node.status?.nodeInfo?.agentVersion ?? "—"}</strong>
+        </div>
       </div>
 
       <div className="node-insight-layout">
         <div className="node-insight-main">
           <section className="node-insight-section">
             <div className="node-insight-section-head">
-              <div><span>{zh ? "健康与容量" : "Health & capacity"}</span><small>{zh ? "节点当前资源状态" : "Current node resources"}</small></div>
+              <div>
+                <span>{zh ? "健康与容量" : "Health & capacity"}</span>
+                <small>
+                  {zh ? "节点当前资源状态" : "Current node resources"}
+                </small>
+              </div>
             </div>
             <div className="node-capacity-grid">
               {resourceItems.map(({ key, label, icon: Icon }) => {
                 const percent = getPercent(key);
                 return (
                   <div className="node-capacity-card" key={key}>
-                    <div className="node-capacity-title"><span><Icon size={16} /></span><strong>{label}</strong><b>{percent === null ? "—" : `${percent}%`}</b></div>
-                    <div className="node-capacity-track"><i style={{ width: `${percent ?? 0}%` }} /></div>
+                    <div className="node-capacity-title">
+                      <span>
+                        <Icon size={16} />
+                      </span>
+                      <strong>{label}</strong>
+                      <b>{percent === null ? "—" : `${percent}%`}</b>
+                    </div>
+                    <div className="node-capacity-track">
+                      <i style={{ width: `${percent ?? 0}%` }} />
+                    </div>
                     <small>
                       {zh ? "已用" : "Used"} {used[key] ?? "—"}
                       <span> / </span>
-                      {zh ? "可分配" : "Allocatable"} {allocatable[key] ?? capacity[key] ?? "—"}
+                      {zh ? "可分配" : "Allocatable"}{" "}
+                      {allocatable[key] ?? capacity[key] ?? "—"}
                     </small>
                   </div>
                 );
@@ -467,54 +521,123 @@ export function NodeDetailReal({
 
           <section className="node-insight-section">
             <div className="node-insight-section-head">
-              <div><span>{zh ? "具身任务" : "Embodied task"}</span><small>{zh ? "当前与节点关联的任务" : "Task currently associated with this node"}</small></div>
+              <div>
+                <span>{zh ? "具身任务" : "Embodied task"}</span>
+                <small>
+                  {zh
+                    ? "当前与节点关联的任务"
+                    : "Task currently associated with this node"}
+                </small>
+              </div>
             </div>
             <button
               type="button"
               className={`node-task-callout${hasTask ? " active" : ""}${canOpenTask ? " interactive" : ""}`}
               disabled={!canOpenTask}
               onClick={() => taskName && onTaskNavigate?.(taskName)}
-              aria-label={canOpenTask ? `${zh ? "查看任务" : "View task"} ${taskName}` : undefined}
+              aria-label={
+                canOpenTask
+                  ? `${zh ? "查看任务" : "View task"} ${taskName}`
+                  : undefined
+              }
             >
-              <span><Package size={19} /></span>
+              <span>
+                <Package size={19} />
+              </span>
               <div>
-                <strong>{hasTask ? (taskName || (zh ? "运行中的具身任务" : "Active embodied task")) : (zh ? "当前没有关联任务" : "No associated task")}</strong>
-                <small>{hasTask
-                  ? (zh ? "节点标签报告该任务正在关联运行" : "Reported by node task labels")
-                  : phase === "Online" && !node.spec.unschedulable
-                    ? (zh ? "节点当前可用于新的任务调度" : "The node is available for new workloads")
-                    : (zh ? "节点当前不可用于任务调度" : "The node is not available for scheduling")}</small>
+                <strong>
+                  {hasTask
+                    ? taskName ||
+                      (zh ? "运行中的具身任务" : "Active embodied task")
+                    : zh
+                      ? "当前没有关联任务"
+                      : "No associated task"}
+                </strong>
+                <small>
+                  {hasTask
+                    ? zh
+                      ? "节点标签报告该任务正在关联运行"
+                      : "Reported by node task labels"
+                    : phase === "Online" && !node.spec.unschedulable
+                      ? zh
+                        ? "节点当前可用于新的任务调度"
+                        : "The node is available for new workloads"
+                      : zh
+                        ? "节点当前不可用于任务调度"
+                        : "The node is not available for scheduling"}
+                </small>
               </div>
-              <b>{hasTask ? (zh ? "运行中" : "Running") : (zh ? "空闲" : "Idle")}</b>
-              {canOpenTask && <ArrowUpRight size={16} className="node-task-link-icon" />}
+              <b>
+                {hasTask ? (zh ? "运行中" : "Running") : zh ? "空闲" : "Idle"}
+              </b>
+              {canOpenTask && (
+                <ArrowUpRight size={16} className="node-task-link-icon" />
+              )}
             </button>
           </section>
         </div>
 
         <aside className="node-insight-side">
           <section className="node-insight-section">
-            <div className="node-insight-section-head"><div><span>{zh ? "基础信息" : "Details"}</span></div></div>
+            <div className="node-insight-section-head">
+              <div>
+                <span>{zh ? "基础信息" : "Details"}</span>
+              </div>
+            </div>
             <dl className="node-info-list">
-              <div><dt>{zh ? "所属集群" : "Cluster"}</dt><dd>{node.metadata.namespace ?? "default"}</dd></div>
-              <div><dt>{zh ? "内部地址" : "Internal IP"}</dt><dd><code>{internalAddress}</code></dd></div>
-              <div><dt>{zh ? "节点型号" : "Model"}</dt><dd>{labels["rlark.io/model"] ?? "—"}</dd></div>
-              <div><dt>{zh ? "内核版本" : "Kernel"}</dt><dd>{node.status?.nodeInfo?.kernelVersion ?? "—"}</dd></div>
-              <div><dt>{zh ? "创建时间" : "Created"}</dt><dd>{created}</dd></div>
+              <div>
+                <dt>{zh ? "所属集群" : "Cluster"}</dt>
+                <dd>{node.metadata.namespace ?? "default"}</dd>
+              </div>
+              <div>
+                <dt>{zh ? "内部地址" : "Internal IP"}</dt>
+                <dd>
+                  <code>{internalAddress}</code>
+                </dd>
+              </div>
+              <div>
+                <dt>{zh ? "节点型号" : "Model"}</dt>
+                <dd>{labels["rlark.io/model"] ?? "—"}</dd>
+              </div>
+              <div>
+                <dt>{zh ? "内核版本" : "Kernel"}</dt>
+                <dd>{node.status?.nodeInfo?.kernelVersion ?? "—"}</dd>
+              </div>
+              <div>
+                <dt>{zh ? "创建时间" : "Created"}</dt>
+                <dd>{created}</dd>
+              </div>
             </dl>
           </section>
 
-          {!hideLabels && <section className="node-insight-section node-label-section">
-            <div className="node-insight-section-head"><div><span>{zh ? "节点标签" : "Labels"}</span><small>{labelEntries.length} {zh ? "项" : "items"}</small></div></div>
-            <div className="label-list">
-              {labelEntries.length === 0 ? (
-                <small className="muted">{zh ? "无标签" : "No labels"}</small>
-              ) : labelEntries.map(([key, value]) => (
-                <span key={key} className="label-chip" title={`${key}=${value}`}>
-                  <code>{key}</code><i>{value}</i>
-                </span>
-              ))}
-            </div>
-          </section>}
+          {!hideLabels && (
+            <section className="node-insight-section node-label-section">
+              <div className="node-insight-section-head">
+                <div>
+                  <span>{zh ? "节点标签" : "Labels"}</span>
+                  <small>
+                    {labelEntries.length} {zh ? "项" : "items"}
+                  </small>
+                </div>
+              </div>
+              <div className="label-list">
+                {labelEntries.length === 0 ? (
+                  <small className="muted">{zh ? "无标签" : "No labels"}</small>
+                ) : (
+                  labelEntries.map(([key, value]) => (
+                    <span
+                      key={key}
+                      className="label-chip"
+                      title={`${key}=${value}`}
+                    >
+                      <code>{key}</code>
+                      <i>{value}</i>
+                    </span>
+                  ))
+                )}
+              </div>
+            </section>
+          )}
         </aside>
       </div>
     </div>

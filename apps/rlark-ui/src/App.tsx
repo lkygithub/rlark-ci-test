@@ -29,7 +29,10 @@ type NavigateOptions = {
 export default function App() {
   const isAdmin = useIsAdminPath();
   const [{ page, sub }, setRoute] = useState(parseRoute);
-  const [collapsed, setCollapsed] = usePersistentState("rlark-sidebar-collapsed", false);
+  const [collapsed, setCollapsed] = usePersistentState(
+    "rlark-sidebar-collapsed",
+    false,
+  );
   const [createOpen, setCreateOpen] = useState(false);
   const [createWfOpen, setCreateWfOpen] = useState(false);
   const [storageCreateOpen, setStorageCreateOpen] = useState(() => {
@@ -62,7 +65,11 @@ export default function App() {
     }
   }, [isAdmin]);
 
-  const navigate = (next: Page, name?: string, options: NavigateOptions = {}) => {
+  const navigate = (
+    next: Page,
+    name?: string,
+    options: NavigateOptions = {},
+  ) => {
     const sub = name ?? "";
     const encodedSub = name ? encodeURIComponent(name) : "";
     setRoute({ page: next, sub });
@@ -81,7 +88,11 @@ export default function App() {
       if (value) params.set(key, value);
     });
     if (params.size) path += `?${params.toString()}`;
-    window.history[options.replace ? "replaceState" : "pushState"]({}, "", path);
+    window.history[options.replace ? "replaceState" : "pushState"](
+      {},
+      "",
+      path,
+    );
   };
 
   useEffect(() => {
@@ -179,7 +190,9 @@ export default function App() {
               </span>
               <div>
                 <small>{c.common.env}</small>
-                <strong>{lang === "zh" ? "Mock 环境" : "Mock environment"}</strong>
+                <strong>
+                  {lang === "zh" ? "Mock 环境" : "Mock environment"}
+                </strong>
                 <b className="env-meta">{c.common.envMeta}</b>
               </div>
               <i />
@@ -208,12 +221,16 @@ export default function App() {
             setUserLoggedIn(false);
           }}
         />
-        {page === "overview" && <Overview navigate={navigate} copy={c} isMockMode={isMockMode} />}{" "}
+        {page === "overview" && (
+          <Overview navigate={navigate} copy={c} isMockMode={isMockMode} />
+        )}{" "}
         {page === "clusters-management" && (
           <ClusterManagementPage
             copy={c}
             selectedClusterID={sub}
-            onSelectCluster={(id?: string) => navigate("clusters-management", id, { replace: !id })}
+            onSelectCluster={(id?: string) =>
+              navigate("clusters-management", id, { replace: !id })
+            }
             onSelectNode={(name: string) => navigate("clusters-nodes", name)}
           />
         )}{" "}
@@ -222,7 +239,9 @@ export default function App() {
             copy={c}
             initialView="nodes"
             selectedNodeName={sub}
-            onNavigate={(name?: string) => navigate("clusters-nodes", name, { replace: !name })}
+            onNavigate={(name?: string) =>
+              navigate("clusters-nodes", name, { replace: !name })
+            }
             onTaskNavigate={(name: string) => navigate("jobs", name)}
           />
         )}{" "}
@@ -230,7 +249,9 @@ export default function App() {
           <JobsPage
             copy={c}
             selectedName={sub}
-            onSelect={(name?: string) => navigate("jobs", name, { replace: !name })}
+            onSelect={(name?: string) =>
+              navigate("jobs", name, { replace: !name })
+            }
             onCreate={() => {
               setCloneJob(null);
               setEditJob(null);
@@ -252,7 +273,9 @@ export default function App() {
           <StorageClassesPage
             copy={c}
             selectedName={sub === "create" ? undefined : sub}
-            onSelect={(name?: string) => navigate("storageClass", name, { replace: !name })}
+            onSelect={(name?: string) =>
+              navigate("storageClass", name, { replace: !name })
+            }
             onCreate={() => setStorageCreateOpen(true)}
             refreshKey={storageRefreshKey}
           />
@@ -261,14 +284,18 @@ export default function App() {
           <StorageClassFilesPage
             copy={c}
             sub={sub}
-            onBack={() => navigate("storageClass", undefined, { replace: true })}
+            onBack={() =>
+              navigate("storageClass", undefined, { replace: true })
+            }
           />
         )}
         {page === "workflows" && (
           <WorkflowsPage
             copy={c}
             selectedName={sub}
-            onSelect={(name?: string) => navigate("workflows", name, { replace: !name })}
+            onSelect={(name?: string) =>
+              navigate("workflows", name, { replace: !name })
+            }
             onCreate={() => setCreateWfOpen(true)}
             onJobClick={(name) => navigate("jobs", name)}
           />

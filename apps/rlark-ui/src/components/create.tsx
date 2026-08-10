@@ -34,8 +34,7 @@ export function NodeSelectorPicker({
     for (const [k, v] of Object.entries(labels)) {
       if (!k.startsWith("kubernetes.io/") && !k.startsWith("rlark.io/"))
         continue;
-      if (k === "rlark.io/cluster-id")
-        continue;
+      if (k === "rlark.io/cluster-id") continue;
       if (!labelMap[k]) labelMap[k] = new Set();
       labelMap[k].add(v);
     }

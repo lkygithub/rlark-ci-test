@@ -35,7 +35,12 @@ export const adminNavItems: AdminNavItem[] = [
         zh: "创建集群",
         en: "Create Cluster",
       },
-      { id: "clusters-list", icon: Network, zh: "集群列表", en: "Cluster List" },
+      {
+        id: "clusters-list",
+        icon: Network,
+        zh: "集群列表",
+        en: "Cluster List",
+      },
       { id: "clusters-nodes", icon: Server, zh: "节点管理", en: "Nodes" },
       { id: "addons", icon: Package, zh: "组件市场", en: "Addons" },
     ],
