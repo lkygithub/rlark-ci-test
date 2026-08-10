@@ -1,14 +1,20 @@
-.PHONY: lint lint-go fmt-go fmt-web generate generate-api-docs proto build tidy
+.PHONY: lint-go lint-web fmt-go fmt-web generate generate-api-docs proto build tidy
 .PHONY: docker-build docker-push docker-build-ui docker-push-ui nerd-build nerd-push
-
-lint: lint-go
 
 lint-go:
 	$(MAKE) -C api lint
 	$(MAKE) -C apps/rlark lint
+	$(MAKE) -C apps/embodied-runtime lint
+	$(MAKE) -C sdks/embodied-runtime-go lint
+
+lint-web:
+	$(MAKE) -C apps/rlark-ui lint
 
 fmt-go:
+	$(MAKE) -C api fmt
 	$(MAKE) -C apps/rlark fmt
+	$(MAKE) -C apps/embodied-runtime fmt
+	$(MAKE) -C sdks/embodied-runtime-go fmt
 
 fmt-web:
 	$(MAKE) -C apps/rlark-ui fmt

@@ -44,6 +44,10 @@ jobs:
         working-directory: apps/rlark-ui
         run: npm ci
 
+      - name: Run lint
+        working-directory: apps/rlark-ui
+        run: make lint
+
       - name: Run prettier
         working-directory: apps/rlark-ui
         run: npx prettier --check .
