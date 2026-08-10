@@ -2,7 +2,7 @@ CONTROLLER_GEN ?= $(shell go env GOPATH)/bin/controller-gen
 CRD_DIR ?= config/crd/bases
 SAMPLES_DIR ?= config/samples
 
-.PHONY: lint generate-manifests generate-clients generate-crd samples clean-samples
+.PHONY: lint fmt vet test generate-manifests generate-clients generate-crd samples clean-samples
 
 lint:
 	@echo "Running golangci-lint (api)..."
@@ -13,6 +13,12 @@ fmt:
 	@echo "Running gofmt (api)..."
 	@go mod download
 	@gofmt -l -w ./
+
+vet:
+	go vet ./...
+
+test:
+	go test -v -count=1 ./...
 
 generate-manifests: $(CONTROLLER_GEN)
 	mkdir -p $(CRD_DIR)

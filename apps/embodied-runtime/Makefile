@@ -2,7 +2,7 @@
 #
 # Quick start:
 #   make                          # build everything
-#   make docker                   # build ros-runtime image and push to registry (multi-arch)
+#   make docker-build             # build embodied-runtime image and load into local docker
 
 # ---------------------------------------------------------------------------
 # Variables
@@ -23,17 +23,17 @@ GO_BASE_IMAGE   ?= golang:1.26-alpine
 # Override for distroless, busybox, or custom base as needed.
 RUNTIME_BASE_IMAGE ?= alpine:3.21
 
+# Go build args.
+GOOS    ?= linux
+GOARCH  ?= amd64
+
 # Optional Alpine APK mirror override (e.g. https://mirrors.tuna.tsinghua.edu.cn).
 APK_MIRROR ?=
 # Optional Ubuntu APT mirror host override (e.g. https://mirrors.tuna.tsinghua.edu.cn).
 APT_MIRROR ?=
 
-# embodied-runtime image (all binaries, statically linked).
-RUNTIME_OUTPUT_IMAGE  := $(REGISTRY)/embodied-runtime
-# camera-runtime base image (ffmpeg + runtime deps only, no binaries).
-CAMERA_BASE_OUTPUT_IMAGE := $(REGISTRY)/camera-base
-# ros-runtime base image (ROS / control deps only, no binaries).
-ROS_BASE_OUTPUT_IMAGE := $(REGISTRY)/ros-base
+# Ldflags for version injection.
+LDFLAGS := -s -w
 
 # Binary names.
 DEVPLUGIN_BIN   := device-plugin
@@ -42,8 +42,10 @@ ROSCTR_BIN      := rosctr
 CAM_CTRL_BIN    := camera-controller
 CAMCTR_BIN      := camctr
 
-# Ldflags for version injection.
-LDFLAGS := -s -w
+# Image names.
+RUNTIME_OUTPUT_IMAGE       := $(REGISTRY)/embodied-runtime
+CAMERA_BASE_OUTPUT_IMAGE   := $(REGISTRY)/camera-base
+ROS_BASE_OUTPUT_IMAGE      := $(REGISTRY)/ros-base
 
 # ---------------------------------------------------------------------------
 # Code style targets
@@ -73,25 +75,23 @@ build: $(DEVPLUGIN_BIN) $(ROS_CTRL_BIN) $(ROSCTR_BIN) $(CAM_CTRL_BIN) $(CAMCTR_B
 
 .PHONY: $(DEVPLUGIN_BIN)
 $(DEVPLUGIN_BIN):
-	CGO_ENABLED=0 go build -ldflags="$(LDFLAGS)" -o bin/$@ ./cmd/$@
+	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build -ldflags="$(LDFLAGS)" -o bin/$@ ./cmd/$@
 
-# --- ros binaries ---
 .PHONY: $(ROS_CTRL_BIN)
 $(ROS_CTRL_BIN):
-	CGO_ENABLED=0 go build -ldflags="$(LDFLAGS)" -o bin/$@ ./cmd/$@
+	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build -ldflags="$(LDFLAGS)" -o bin/$@ ./cmd/$@
 
 .PHONY: $(ROSCTR_BIN)
 $(ROSCTR_BIN):
-	CGO_ENABLED=0 go build -ldflags="$(LDFLAGS)" -o bin/$@ ./cmd/$@
+	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build -ldflags="$(LDFLAGS)" -o bin/$@ ./cmd/$@
 
-# --- camera binaries ---
 .PHONY: $(CAM_CTRL_BIN)
 $(CAM_CTRL_BIN):
-	CGO_ENABLED=0 go build -ldflags="$(LDFLAGS)" -o bin/$@ ./cmd/$@
+	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build -ldflags="$(LDFLAGS)" -o bin/$@ ./cmd/$@
 
 .PHONY: $(CAMCTR_BIN)
 $(CAMCTR_BIN):
-	CGO_ENABLED=0 go build -ldflags="$(LDFLAGS)" -o bin/$@ ./cmd/$@
+	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build -ldflags="$(LDFLAGS)" -o bin/$@ ./cmd/$@
 
 .PHONY: vet
 vet:
@@ -110,8 +110,19 @@ clean:
 # Docker targets (buildx)
 # ---------------------------------------------------------------------------
 
-.PHONY: docker
-docker:
+.PHONY: docker-build docker-push
+
+docker-build:
+	docker buildx build \
+		--platform $(BUILDX_PLATFORMS) \
+		--load \
+		--build-arg GO_BASE_IMAGE=$(GO_BASE_IMAGE) \
+		--build-arg RUNTIME_BASE_IMAGE=$(RUNTIME_BASE_IMAGE) \
+		-t $(RUNTIME_OUTPUT_IMAGE):$(IMAGE_TAG) \
+		-f Dockerfile \
+		../..
+
+docker-push:
 	docker buildx build \
 		--platform $(BUILDX_PLATFORMS) \
 		--push \
@@ -119,12 +130,23 @@ docker:
 		--build-arg RUNTIME_BASE_IMAGE=$(RUNTIME_BASE_IMAGE) \
 		-t $(RUNTIME_OUTPUT_IMAGE):$(IMAGE_TAG) \
 		-f Dockerfile \
-		.
+		../..
 
 # camera-runtime base image — runtime dependencies only (ffmpeg, CA certs,
 # tzdata). No Go binaries; they are injected at deploy time via initContainer.
-.PHONY: docker-camera
-docker-camera:
+.PHONY: docker-camera-build docker-camera-push
+
+docker-camera-build:
+	docker buildx build \
+		--platform $(BUILDX_PLATFORMS) \
+		--load \
+		--build-arg RUNTIME_BASE_IMAGE=$(RUNTIME_BASE_IMAGE) \
+		--build-arg APK_MIRROR=$(APK_MIRROR) \
+		-t $(CAMERA_BASE_OUTPUT_IMAGE):$(IMAGE_TAG) \
+		-f runtimes/camera-base.dockerfile \
+		.
+
+docker-camera-push:
 	docker buildx build \
 		--platform $(BUILDX_PLATFORMS) \
 		--push \
@@ -137,8 +159,19 @@ docker-camera:
 # ros-runtime base image — runtime dependencies only (ROS / control /
 # kinematics / gazebo stack). No Go binaries; they are injected at deploy
 # time via initContainer.
-.PHONY: docker-ros
-docker-ros:
+.PHONY: docker-ros-build docker-ros-push
+
+docker-ros-build:
+	docker buildx build \
+		--platform $(BUILDX_PLATFORMS) \
+		--load \
+		--build-arg RUNTIME_BASE_IMAGE=$(RUNTIME_BASE_IMAGE) \
+		--build-arg APT_MIRROR=$(APT_MIRROR) \
+		-t $(ROS_BASE_OUTPUT_IMAGE):$(IMAGE_TAG) \
+		-f runtimes/ros-base.dockerfile \
+		.
+
+docker-ros-push:
 	docker buildx build \
 		--platform $(BUILDX_PLATFORMS) \
 		--push \
@@ -172,9 +205,12 @@ help:
 	@echo "  clean                        Clean Go cache and bin/"
 	@echo ""
 	@echo "Docker targets (buildx):"
-	@echo "  docker                       Build embodied-runtime image (all binaries)"
-	@echo "  docker-camera                Build camera-runtime base image (deps only, no binaries)"
-	@echo "  docker-ros                   Build ros-runtime base image (deps only, no binaries)"
+	@echo "  docker-build                 Build embodied-runtime image (load into local docker)"
+	@echo "  docker-push                  Build embodied-runtime image and push to registry"
+	@echo "  docker-camera-build          Build camera-runtime base image (load into local docker)"
+	@echo "  docker-camera-push           Build camera-runtime base image and push to registry"
+	@echo "  docker-ros-build             Build ros-runtime base image (load into local docker)"
+	@echo "  docker-ros-push              Build ros-runtime base image and push to registry"
 	@echo ""
 	@echo "Variables:"
 	@echo "  REGISTRY=ghcr.io/org         Container registry (default: rlinf)"
