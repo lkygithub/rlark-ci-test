@@ -44,7 +44,10 @@ export function parseRoute() {
     const sub = parts[1] ?? "overview";
     if (sub === "nodes") {
       const nodeName = parts.slice(2).join("/");
-      return { page: "clusters-nodes" as Page, sub: decodeURIComponent(nodeName) };
+      return {
+        page: "clusters-nodes" as Page,
+        sub: decodeURIComponent(nodeName),
+      };
     }
     if (sub === "manage") {
       const clusterID = parts.slice(2).join("/");

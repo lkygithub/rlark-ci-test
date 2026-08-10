@@ -15,7 +15,11 @@ import type { CRDJob, CRDNode, Page, ResourceRow } from "../types";
 import { useAutoRefresh } from "../hooks";
 import { crdToJob } from "../utils/crd";
 import { buildMockCRDNodes, getNodeCategory } from "../utils/nodes";
-import { MetricCard, ResourceDistribution, StatusBadge } from "../components/shared";
+import {
+  MetricCard,
+  ResourceDistribution,
+  StatusBadge,
+} from "../components/shared";
 import { OverviewChinaMap } from "../components/OverviewChinaMap";
 
 export function Overview({
@@ -23,7 +27,11 @@ export function Overview({
   copy: c,
   isMockMode,
 }: {
-  navigate: (page: Page, name?: string, options?: { query?: Record<string, string | undefined> }) => void;
+  navigate: (
+    page: Page,
+    name?: string,
+    options?: { query?: Record<string, string | undefined> },
+  ) => void;
   copy: Copy;
   isMockMode: boolean;
 }) {
@@ -161,12 +169,26 @@ export function Overview({
           <p>{c.overview.desc}</p>
         </div>
         <div className="hero-health">
-          <span>{isMockMode ? (isZh ? "数据模式" : "Data mode") : c.overview.health}</span>
+          <span>
+            {isMockMode ? (isZh ? "数据模式" : "Data mode") : c.overview.health}
+          </span>
           <strong>
             <i />
-            {isMockMode ? (isZh ? "Mock 演示" : "Mock demo") : c.overview.operational}
+            {isMockMode
+              ? isZh
+                ? "Mock 演示"
+                : "Mock demo"
+              : c.overview.operational}
           </strong>
-          <small>{isMockMode ? (isZh ? "未连接后端服务" : "Backend unavailable") : (isZh ? "实时数据" : "Live data")}</small>
+          <small>
+            {isMockMode
+              ? isZh
+                ? "未连接后端服务"
+                : "Backend unavailable"
+              : isZh
+                ? "实时数据"
+                : "Live data"}
+          </small>
         </div>
       </section>
       <section className="metric-grid platform-metrics">

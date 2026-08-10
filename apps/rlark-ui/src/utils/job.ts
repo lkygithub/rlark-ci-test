@@ -211,7 +211,8 @@ export function generateJobCRD(opts: {
                             ...Object.fromEntries(
                               (res.devices ?? [])
                                 .filter(
-                                  (d) => d.name && d.quantity && d.quantity !== "0",
+                                  (d) =>
+                                    d.name && d.quantity && d.quantity !== "0",
                                 )
                                 .map((d) => [d.name, d.quantity]),
                             ),
@@ -223,7 +224,8 @@ export function generateJobCRD(opts: {
                             ...Object.fromEntries(
                               (res.devices ?? [])
                                 .filter(
-                                  (d) => d.name && d.quantity && d.quantity !== "0",
+                                  (d) =>
+                                    d.name && d.quantity && d.quantity !== "0",
                                 )
                                 .map((d) => [d.name, d.quantity]),
                             ),

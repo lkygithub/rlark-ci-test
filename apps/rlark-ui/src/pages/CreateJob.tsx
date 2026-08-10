@@ -244,7 +244,8 @@ export function CreateJobModal({
         Object.entries(prev).map(([role, resource]) => {
           const matchedCluster = availableClusters.find(
             (cluster) =>
-              cluster.id === resource.cluster || cluster.name === resource.cluster,
+              cluster.id === resource.cluster ||
+              cluster.name === resource.cluster,
           );
           const nextCluster = matchedCluster?.id ?? availableClusters[0].id;
           if (nextCluster !== resource.cluster) changed = true;
@@ -368,11 +369,7 @@ export function CreateJobModal({
     if (headerRole === oldName) setHeaderRole(newName);
   };
 
-  const updateRR = (
-    role: string,
-    field: keyof RoleResource,
-    v: any,
-  ) => {
+  const updateRR = (role: string, field: keyof RoleResource, v: any) => {
     setRoleResources((prev) => ({
       ...prev,
       [role]: { ...prev[role], [field]: v },
@@ -489,10 +486,15 @@ export function CreateJobModal({
       for (const role of roles) {
         const resource = roleResources[role];
         if (!resource?.cluster)
-          return zh ? `请为 ${role} 选择集群。` : `Select a cluster for ${role}.`;
+          return zh
+            ? `请为 ${role} 选择集群。`
+            : `Select a cluster for ${role}.`;
         if (!resource.image.trim())
           return zh ? `请为 ${role} 输入镜像。` : `Enter an image for ${role}.`;
-        if (!Number.isFinite(Number(resource.replicas)) || resource.replicas < 1)
+        if (
+          !Number.isFinite(Number(resource.replicas)) ||
+          resource.replicas < 1
+        )
           return zh
             ? `${role} 当前没有匹配到可用节点，请调整集群或节点选择条件。`
             : `${role} has no matched nodes. Adjust its cluster or node selector.`;
@@ -572,7 +574,9 @@ export function CreateJobModal({
   return (
     <div
       className="modal-backdrop"
-      onMouseDown={(e) => e.target === e.currentTarget && !submitting && onClose()}
+      onMouseDown={(e) =>
+        e.target === e.currentTarget && !submitting && onClose()
+      }
     >
       <div className="modal create-job-modal" role="dialog" aria-modal="true">
         <div className="modal-head">
@@ -584,7 +588,12 @@ export function CreateJobModal({
               {isEdit ? (zh ? "编辑任务" : "Edit Job") : c.jobs.createTitle}
             </h2>
           </div>
-          <button className="icon-button" onClick={onClose} aria-label={zh ? "关闭创建任务" : "Close job creator"} disabled={submitting}>
+          <button
+            className="icon-button"
+            onClick={onClose}
+            aria-label={zh ? "关闭创建任务" : "Close job creator"}
+            disabled={submitting}
+          >
             ×
           </button>
         </div>
@@ -769,9 +778,7 @@ export function CreateJobModal({
                           onMatchedCount={(n) => updateRR(role, "replicas", n)}
                         />
                       </div>
-                      <div
-                        className="resource-input-row"
-                      >
+                      <div className="resource-input-row">
                         <label>
                           {zh
                             ? "副本（自动匹配节点数）"
@@ -787,7 +794,9 @@ export function CreateJobModal({
                           CPU
                           <input
                             value={rr.cpu}
-                            onChange={(e) => updateRR(role, "cpu", e.target.value)}
+                            onChange={(e) =>
+                              updateRR(role, "cpu", e.target.value)
+                            }
                             placeholder="4"
                           />
                         </label>
@@ -795,7 +804,9 @@ export function CreateJobModal({
                           {zh ? "内存" : "Memory"}
                           <input
                             value={rr.memory}
-                            onChange={(e) => updateRR(role, "memory", e.target.value)}
+                            onChange={(e) =>
+                              updateRR(role, "memory", e.target.value)
+                            }
                             placeholder="16Gi"
                           />
                         </label>
@@ -823,17 +834,29 @@ export function CreateJobModal({
                           }
                         }
                         const availableDevices = Array.from(deviceSet).sort();
-                        return (rr.devices ?? []).length > 0 || availableDevices.length > 0 ? (
-                          <div className="form-section" style={{ marginTop: 12 }}>
+                        return (rr.devices ?? []).length > 0 ||
+                          availableDevices.length > 0 ? (
+                          <div
+                            className="form-section"
+                            style={{ marginTop: 12 }}
+                          >
                             <div className="form-section-head">
-                              <small>{zh ? "设备资源" : "Device Resources"}</small>
+                              <small>
+                                {zh ? "设备资源" : "Device Resources"}
+                              </small>
                               {availableDevices.length > 0 && (
                                 <button
                                   type="button"
                                   className="secondary-button"
                                   style={{ padding: "2px 10px", fontSize: 12 }}
                                   onClick={() => {
-                                    const next = [...(rr.devices ?? []), { name: availableDevices[0] ?? "", quantity: "1" }];
+                                    const next = [
+                                      ...(rr.devices ?? []),
+                                      {
+                                        name: availableDevices[0] ?? "",
+                                        quantity: "1",
+                                      },
+                                    ];
                                     updateRR(role, "devices", next);
                                   }}
                                 >
@@ -848,23 +871,36 @@ export function CreateJobModal({
                                   value={dev.name}
                                   onChange={(e) => {
                                     const next = [...(rr.devices ?? [])];
-                                    next[di] = { ...next[di], name: e.target.value };
+                                    next[di] = {
+                                      ...next[di],
+                                      name: e.target.value,
+                                    };
                                     updateRR(role, "devices", next);
                                   }}
                                 >
-                                  <option value="">{zh ? "选择设备" : "Select device"}</option>
+                                  <option value="">
+                                    {zh ? "选择设备" : "Select device"}
+                                  </option>
                                   {availableDevices.map((d) => (
-                                    <option key={d} value={d}>{d}</option>
+                                    <option key={d} value={d}>
+                                      {d}
+                                    </option>
                                   ))}
-                                  {dev.name && !availableDevices.includes(dev.name) && (
-                                    <option value={dev.name}>{dev.name}</option>
-                                  )}
+                                  {dev.name &&
+                                    !availableDevices.includes(dev.name) && (
+                                      <option value={dev.name}>
+                                        {dev.name}
+                                      </option>
+                                    )}
                                 </select>
                                 <input
                                   value={dev.quantity}
                                   onChange={(e) => {
                                     const next = [...(rr.devices ?? [])];
-                                    next[di] = { ...next[di], quantity: e.target.value };
+                                    next[di] = {
+                                      ...next[di],
+                                      quantity: e.target.value,
+                                    };
                                     updateRR(role, "devices", next);
                                   }}
                                   placeholder="1"
@@ -873,7 +909,9 @@ export function CreateJobModal({
                                   type="button"
                                   className="icon-button danger"
                                   onClick={() => {
-                                    const next = (rr.devices ?? []).filter((_, j) => j !== di);
+                                    const next = (rr.devices ?? []).filter(
+                                      (_, j) => j !== di,
+                                    );
                                     updateRR(role, "devices", next);
                                   }}
                                 >
@@ -1175,9 +1213,15 @@ export function CreateJobModal({
                 className="primary-button"
                 onClick={() => goToStep(step + 1)}
               >
-                {step === 2 && roles.length > 1 && (activeRoleTab || roles[0]) !== roles[roles.length - 1]
-                  ? (zh ? "下一个角色" : "Next Role")
-                  : (zh ? "下一步" : "Next")}
+                {step === 2 &&
+                roles.length > 1 &&
+                (activeRoleTab || roles[0]) !== roles[roles.length - 1]
+                  ? zh
+                    ? "下一个角色"
+                    : "Next Role"
+                  : zh
+                    ? "下一步"
+                    : "Next"}
               </button>
             ) : (
               <button

@@ -43,7 +43,9 @@ export function AddonsPage({ copy: c, lang }: { copy: Copy; lang: Lang }) {
     return () => clearInterval(interval);
   }, [clusterFilter]);
 
-  useEffect(() => { setPage(1); }, [clusterFilter]);
+  useEffect(() => {
+    setPage(1);
+  }, [clusterFilter]);
 
   const phaseColor = (phase: string) => {
     switch (phase) {
@@ -60,7 +62,10 @@ export function AddonsPage({ copy: c, lang }: { copy: Copy; lang: Lang }) {
   };
 
   const totalPages = Math.ceil(installed.length / pageSize);
-  const pagedInstalled = installed.slice((page - 1) * pageSize, page * pageSize);
+  const pagedInstalled = installed.slice(
+    (page - 1) * pageSize,
+    page * pageSize,
+  );
 
   if (installAddonName) {
     const addon = catalog.find((a) => a.name === installAddonName);
@@ -81,7 +86,9 @@ export function AddonsPage({ copy: c, lang }: { copy: Copy; lang: Lang }) {
   }
 
   if (configInstalled) {
-    const addon = catalog.find((a) => a.name === configInstalled.spec?.addonName);
+    const addon = catalog.find(
+      (a) => a.name === configInstalled.spec?.addonName,
+    );
     if (addon) {
       return (
         <AddonConfigPage
@@ -99,7 +106,10 @@ export function AddonsPage({ copy: c, lang }: { copy: Copy; lang: Lang }) {
   }
 
   return (
-    <div className="page-content" style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+    <div
+      className="page-content"
+      style={{ display: "flex", flexDirection: "column", gap: 18 }}
+    >
       <div className="section-heading">
         <div>
           <span className="eyebrow">
@@ -148,7 +158,14 @@ export function AddonsPage({ copy: c, lang }: { copy: Copy; lang: Lang }) {
 
       {/* Installed addons table */}
       <div>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: 12,
+          }}
+        >
           <h3 style={{ fontSize: 15, margin: 0 }}>
             {zh ? "已安装组件" : "Installed Addons"}
             <span className="muted" style={{ fontSize: 12, marginLeft: 8 }}>
@@ -217,15 +234,24 @@ export function AddonsPage({ copy: c, lang }: { copy: Copy; lang: Lang }) {
                         <button
                           onClick={() => {
                             const label = a.spec?.addonName || a.metadata?.name;
-                            if (!window.confirm(
-                              zh
-                                ? `确定从集群 ${a.clusterId} 卸载组件“${label}”吗？`
-                                : `Uninstall “${label}” from ${a.clusterId}?`,
-                            )) return;
-                            fetch(`/api/v1/clusters/${a.clusterId}/addons/${a.metadata?.name}`, {
-                              method: "DELETE",
-                            })
-                              .then((r) => { if (!r.ok) throw new Error("Uninstall failed"); return r.json(); })
+                            if (
+                              !window.confirm(
+                                zh
+                                  ? `确定从集群 ${a.clusterId} 卸载组件“${label}”吗？`
+                                  : `Uninstall “${label}” from ${a.clusterId}?`,
+                              )
+                            )
+                              return;
+                            fetch(
+                              `/api/v1/clusters/${a.clusterId}/addons/${a.metadata?.name}`,
+                              {
+                                method: "DELETE",
+                              },
+                            )
+                              .then((r) => {
+                                if (!r.ok) throw new Error("Uninstall failed");
+                                return r.json();
+                              })
                               .then(() => fetchInstalled())
                               .catch((e) => setError(e.message));
                           }}
@@ -248,7 +274,15 @@ export function AddonsPage({ copy: c, lang }: { copy: Copy; lang: Lang }) {
               </tbody>
             </table>
             {totalPages > 1 && (
-              <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8, marginTop: 12 }}>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "flex-end",
+                  alignItems: "center",
+                  gap: 8,
+                  marginTop: 12,
+                }}
+              >
                 <button
                   onClick={() => setPage(page - 1)}
                   disabled={page <= 1}
@@ -346,7 +380,10 @@ export function AddonInstallPage({
   };
 
   return (
-    <div className="page-content" style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+    <div
+      className="page-content"
+      style={{ display: "flex", flexDirection: "column", gap: 18 }}
+    >
       <button
         onClick={onBack}
         style={{
@@ -416,20 +453,34 @@ export function AddonInstallPage({
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               {addon.parameters.map((p: any) => (
-                <div key={p.name} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  <label style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>
+                <div
+                  key={p.name}
+                  style={{ display: "flex", flexDirection: "column", gap: 6 }}
+                >
+                  <label
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 600,
+                      color: "var(--text)",
+                    }}
+                  >
                     {p.displayName}
                     {p.required && <span style={{ color: "#ef4444" }}> *</span>}
                   </label>
                   {p.description && (
-                    <span className="muted" style={{ fontSize: 12, whiteSpace: "pre-wrap" }}>
+                    <span
+                      className="muted"
+                      style={{ fontSize: 12, whiteSpace: "pre-wrap" }}
+                    >
                       {p.description}
                     </span>
                   )}
                   {p.type === "enum" ? (
                     <select
                       value={values[p.name] || ""}
-                      onChange={(e) => setValues({ ...values, [p.name]: e.target.value })}
+                      onChange={(e) =>
+                        setValues({ ...values, [p.name]: e.target.value })
+                      }
                       style={{
                         padding: "10px 12px",
                         borderRadius: 8,
@@ -440,26 +491,47 @@ export function AddonInstallPage({
                       }}
                     >
                       {(p.options || []).map((opt: string) => (
-                        <option key={opt} value={opt}>{opt}</option>
+                        <option key={opt} value={opt}>
+                          {opt}
+                        </option>
                       ))}
                     </select>
                   ) : p.type === "text" ? (
                     <textarea
                       value={values[p.name] || ""}
-                      onChange={(e) => setValues({ ...values, [p.name]: e.target.value })}
+                      onChange={(e) =>
+                        setValues({ ...values, [p.name]: e.target.value })
+                      }
                       rows={8}
                       placeholder={p.description || ""}
                       className="addon-textarea"
                     />
                   ) : (
                     <input
-                      type={p.type === "int" ? "number" : p.type === "bool" ? "checkbox" : "text"}
-                      value={p.type === "bool" ? undefined : values[p.name] || ""}
-                      checked={p.type === "bool" ? values[p.name] === "true" : undefined}
+                      type={
+                        p.type === "int"
+                          ? "number"
+                          : p.type === "bool"
+                            ? "checkbox"
+                            : "text"
+                      }
+                      value={
+                        p.type === "bool" ? undefined : values[p.name] || ""
+                      }
+                      checked={
+                        p.type === "bool"
+                          ? values[p.name] === "true"
+                          : undefined
+                      }
                       onChange={(e) =>
                         setValues({
                           ...values,
-                          [p.name]: p.type === "bool" ? (e.target.checked ? "true" : "false") : e.target.value,
+                          [p.name]:
+                            p.type === "bool"
+                              ? e.target.checked
+                                ? "true"
+                                : "false"
+                              : e.target.value,
                         })
                       }
                       style={{
@@ -478,7 +550,14 @@ export function AddonInstallPage({
           </div>
         )}
 
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8 }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: 8,
+            marginTop: 8,
+          }}
+        >
           <button
             onClick={onBack}
             style={{
@@ -508,7 +587,13 @@ export function AddonInstallPage({
               fontWeight: 600,
             }}
           >
-            {loading ? (zh ? "安装中..." : "Installing...") : zh ? "安装" : "Install"}
+            {loading
+              ? zh
+                ? "安装中..."
+                : "Installing..."
+              : zh
+                ? "安装"
+                : "Install"}
           </button>
         </div>
       </div>
@@ -569,7 +654,10 @@ export function AddonConfigPage({
   };
 
   return (
-    <div className="page-content" style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+    <div
+      className="page-content"
+      style={{ display: "flex", flexDirection: "column", gap: 18 }}
+    >
       <button
         onClick={onBack}
         style={{
@@ -616,20 +704,34 @@ export function AddonConfigPage({
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               {addon.parameters.map((p: any) => (
-                <div key={p.name} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  <label style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>
+                <div
+                  key={p.name}
+                  style={{ display: "flex", flexDirection: "column", gap: 6 }}
+                >
+                  <label
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 600,
+                      color: "var(--text)",
+                    }}
+                  >
                     {p.displayName}
                     {p.required && <span style={{ color: "#ef4444" }}> *</span>}
                   </label>
                   {p.description && (
-                    <span className="muted" style={{ fontSize: 12, whiteSpace: "pre-wrap" }}>
+                    <span
+                      className="muted"
+                      style={{ fontSize: 12, whiteSpace: "pre-wrap" }}
+                    >
                       {p.description}
                     </span>
                   )}
                   {p.type === "enum" ? (
                     <select
                       value={values[p.name] || ""}
-                      onChange={(e) => setValues({ ...values, [p.name]: e.target.value })}
+                      onChange={(e) =>
+                        setValues({ ...values, [p.name]: e.target.value })
+                      }
                       style={{
                         padding: "10px 12px",
                         borderRadius: 8,
@@ -640,26 +742,47 @@ export function AddonConfigPage({
                       }}
                     >
                       {(p.options || []).map((opt: string) => (
-                        <option key={opt} value={opt}>{opt}</option>
+                        <option key={opt} value={opt}>
+                          {opt}
+                        </option>
                       ))}
                     </select>
                   ) : p.type === "text" ? (
                     <textarea
                       value={values[p.name] || ""}
-                      onChange={(e) => setValues({ ...values, [p.name]: e.target.value })}
+                      onChange={(e) =>
+                        setValues({ ...values, [p.name]: e.target.value })
+                      }
                       rows={8}
                       placeholder={p.description || ""}
                       className="addon-textarea"
                     />
                   ) : (
                     <input
-                      type={p.type === "int" ? "number" : p.type === "bool" ? "checkbox" : "text"}
-                      value={p.type === "bool" ? undefined : values[p.name] || ""}
-                      checked={p.type === "bool" ? values[p.name] === "true" : undefined}
+                      type={
+                        p.type === "int"
+                          ? "number"
+                          : p.type === "bool"
+                            ? "checkbox"
+                            : "text"
+                      }
+                      value={
+                        p.type === "bool" ? undefined : values[p.name] || ""
+                      }
+                      checked={
+                        p.type === "bool"
+                          ? values[p.name] === "true"
+                          : undefined
+                      }
                       onChange={(e) =>
                         setValues({
                           ...values,
-                          [p.name]: p.type === "bool" ? (e.target.checked ? "true" : "false") : e.target.value,
+                          [p.name]:
+                            p.type === "bool"
+                              ? e.target.checked
+                                ? "true"
+                                : "false"
+                              : e.target.value,
                         })
                       }
                       style={{
@@ -678,11 +801,20 @@ export function AddonConfigPage({
           </div>
         ) : (
           <p className="muted" style={{ fontSize: 13 }}>
-            {zh ? "该组件无可配置参数" : "This addon has no configurable parameters"}
+            {zh
+              ? "该组件无可配置参数"
+              : "This addon has no configurable parameters"}
           </p>
         )}
 
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8 }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: 8,
+            marginTop: 8,
+          }}
+        >
           <button
             onClick={onBack}
             style={{

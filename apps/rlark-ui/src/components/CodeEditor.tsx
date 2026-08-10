@@ -1,19 +1,43 @@
 import { useMemo, useState, type ChangeEventHandler } from "react";
 import { Braces, TerminalSquare } from "lucide-react";
 
-function LineNumbers({ count, offset = 0 }: { count: number; offset?: number }) {
+function LineNumbers({
+  count,
+  offset = 0,
+}: {
+  count: number;
+  offset?: number;
+}) {
   return (
-    <div className="code-editor-lines" aria-hidden="true" style={{ transform: `translateY(${-offset}px)` }}>
-      {Array.from({ length: Math.max(1, count) }, (_, index) => <span key={index}>{index + 1}</span>)}
+    <div
+      className="code-editor-lines"
+      aria-hidden="true"
+      style={{ transform: `translateY(${-offset}px)` }}
+    >
+      {Array.from({ length: Math.max(1, count) }, (_, index) => (
+        <span key={index}>{index + 1}</span>
+      ))}
     </div>
   );
 }
 
-function EditorHeader({ label, language }: { label: string; language: string }) {
+function EditorHeader({
+  label,
+  language,
+}: {
+  label: string;
+  language: string;
+}) {
   return (
     <div className="code-editor-header">
-      <span><TerminalSquare size={13} />{label}</span>
-      <em><Braces size={12} />{language}</em>
+      <span>
+        <TerminalSquare size={13} />
+        {label}
+      </span>
+      <em>
+        <Braces size={12} />
+        {language}
+      </em>
     </div>
   );
 }
@@ -70,7 +94,9 @@ export function CodeBlock({
       <EditorHeader label={label} language={language} />
       <div className="code-editor-body">
         <LineNumbers count={lines.length} />
-        <pre><code>{code}</code></pre>
+        <pre>
+          <code>{code}</code>
+        </pre>
       </div>
     </div>
   );

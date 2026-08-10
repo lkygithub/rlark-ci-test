@@ -100,7 +100,10 @@ export function JobsPage({
   });
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const currentPage = Math.min(page, totalPages);
-  const pagedJobs = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const pagedJobs = filtered.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize,
+  );
 
   useEffect(() => setPage(1), [query, phaseFilter, pageSize]);
   useEffect(() => {
@@ -690,7 +693,10 @@ export function JobConfigSummary({
           </span>
           <strong>{item.image}</strong>
           {item.prepareScript && (
-            <CodeBlock code={item.prepareScript} label={`${item.role}/prepare.sh`} />
+            <CodeBlock
+              code={item.prepareScript}
+              label={`${item.role}/prepare.sh`}
+            />
           )}
           {item.env.length > 0 &&
             item.env.map((e) => (
