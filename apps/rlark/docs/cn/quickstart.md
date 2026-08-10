@@ -203,7 +203,7 @@ kubectl --kubeconfig tmp/test/kind-kubeconfig get pods -A
 
 ```bash
 # 启动前端开发服务器
-cd web && npm install && npm run dev
+cd apps/rlark-ui && npm install && npm run dev
 ```
 
 浏览器访问 `http://localhost:5173`，可以看到：
