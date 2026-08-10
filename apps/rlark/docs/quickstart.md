@@ -6,7 +6,7 @@ This guide walks you through setting up rlark locally and running your first tra
 
 | Tool | Version | Purpose |
 |------|---------|---------|
-| Go | >= 1.22 | Compile Go code |
+| Go | >= 1.26.5 | Compile Go code |
 | Docker | >= 24.0 | Run kcp and kind clusters |
 | kind | >= 0.20 | Run local k8s data plane cluster |
 | kubectl | >= 1.28 | Interact with clusters |
@@ -15,7 +15,7 @@ This guide walks you through setting up rlark locally and running your first tra
 
 ```bash
 git clone https://github.com/RLinf/RLark
-cd rlark
+cd RLark
 make build
 ```
 

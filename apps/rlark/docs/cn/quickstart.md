@@ -6,7 +6,7 @@
 
 | 工具 | 版本 | 说明 |
 |------|------|------|
-| Go | >= 1.22 | 编译 Go 代码 |
+| Go | >= 1.26.5 | 编译 Go 代码 |
 | Docker | >= 24.0 | 运行 kcp 和 kind 集群 |
 | kind | >= 0.20 | 运行本地 k8s 数据面集群 |
 | kubectl | >= 1.28 | 与集群交互 |
@@ -15,7 +15,7 @@
 
 ```bash
 git clone https://github.com/RLinf/RLark
-cd rlark
+cd RLark
 make build
 ```
 

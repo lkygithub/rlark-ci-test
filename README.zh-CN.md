@@ -14,7 +14,7 @@
   <sub>跨集群具身智能平台</sub>
 </h1>
 
-以 Kubernetes 原生方式管理跨集群具身智能工作负载，从云端 GPU 训练到端侧设备部署。通过统一的任务调度、跨集群 Pod 网络互通和多运行时支持（k8s/Docker/Raw），实现 GPU 集群、机械臂、传感器等异构设备间的无缝协同。
+以 Kubernetes 原生方式管理跨集群具身智能工作负载，从云端 GPU 训练到端侧设备部署。通过统一的任务调度、跨集群 Pod 网络互通和多运行时支持（k8s 生产就绪，Docker/Raw 实验性），实现 GPU 集群、机械臂、传感器等异构设备间的无缝协同。
 
 ## 最新动态
 
@@ -23,7 +23,7 @@
 ## 核心能力
 
 - **具身智能工作负载编排**：从云端 GPU 训练（RL/LLM）到端侧部署（机械臂、传感器、摄像头），统一的声明式 Job/Workflow/Task 抽象覆盖全链路
-- **多运行时数据面**：原生支持 Kubernetes、Docker、Raw 三种运行时 — GPU 集群运行 k8s 承载大规模训练，端侧设备运行 Docker 实现轻量级具身部署
+- **多运行时数据面**：原生支持 Kubernetes 运行时（生产就绪），Docker 和 Raw 运行时处于实验性/规划阶段 — GPU 集群运行 k8s 承载大规模训练，端侧设备运行 Docker 实现轻量级具身部署
 - **跨集群资源抽象**：通过 Domain（安全域）和 Node（计算节点）CRD 统一管理多地 GPU 集群和端侧设备，控制面运行在 kcp 之上
 - **声明式训练任务**：Job/Workflow/Task 多层抽象，支持 DAG 编排的训练流水线，声明式定义 Ray 集群
 - **跨集群 Pod 网络**：基于 TUN 设备 + gVisor 协议栈 + SSH 隧道的虚拟网络，Pod 跨集群通信无需 NAT 穿透 — 云端 GPU 与端侧机器人直接通信
@@ -39,7 +39,7 @@
 ```bash
 # 1. 安装 CLI
 git clone https://github.com/RLinf/RLark
-cd rlark && make build
+cd RLark && make build
 
 # 2. 部署控制面（Kubernetes 模式）
 ./bin/rlarkadm install -f apps/rlark/docs/examples/deploy-control-plane.yaml
