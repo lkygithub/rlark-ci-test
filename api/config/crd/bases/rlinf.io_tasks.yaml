@@ -8842,6 +8842,8 @@ spec:
               startTime:
                 format: date-time
                 type: string
+              tensorBoardProxy:
+                type: string
             type: object
         type: object
     served: true

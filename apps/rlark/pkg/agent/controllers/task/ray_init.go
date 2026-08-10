@@ -19,7 +19,7 @@ const (
 	rayInitVolumeName = "ray-init-scripts"
 
 	tensorBoardSidecarName = "tensorboard"
-	tensorBoardImage       = "harbor.infini-ai.com/share/tensorboard:2.15.1-rc1"
+	tensorBoardImage       = "rlinf/tensorboard:2.15.1-rc1"
 	tensorBoardVolumeName  = "rlark-tensorboard"
 	tensorBoardPort        = 6006
 )

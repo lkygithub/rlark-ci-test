@@ -12,28 +12,28 @@ parameters:
     displayName: RClone 驱动镜像
     description: CSI RClone 驱动容器镜像地址
     type: string
-    default: harbor.infini-ai.com/storage/csi-rclone/csi-driver-rclone:v0.2.0
+    default: rlinf/csi-rclone/csi-driver-rclone:v0.2.0
     required: true
 
   - name: csiProvisionerImage
     displayName: CSI Provisioner 镜像
     description: csi-provisioner 容器镜像地址
     type: string
-    default: harbor.infini-ai.com/storage/csi-rclone/csi-provisioner:v6.2.0
+    default: rlinf/csi-rclone/csi-provisioner:v6.2.0
     required: true
 
   - name: livenessProbeImage
     displayName: Liveness Probe 镜像
     description: livenessprobe 容器镜像地址
     type: string
-    default: harbor.infini-ai.com/storage/csi-rclone/livenessprobe:v2.18.0
+    default: rlinf/csi-rclone/livenessprobe:v2.18.0
     required: true
 
   - name: nodeDriverRegistrarImage
     displayName: Node Driver Registrar 镜像
     description: csi-node-driver-registrar 容器镜像地址
     type: string
-    default: harbor.infini-ai.com/storage/csi-rclone/csi-node-driver-registrar:v2.16.0
+    default: rlinf/csi-rclone/csi-node-driver-registrar:v2.16.0
     required: true
 
   - name: driverName

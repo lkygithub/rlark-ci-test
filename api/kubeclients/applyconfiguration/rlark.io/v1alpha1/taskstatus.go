@@ -26,13 +26,14 @@ import (
 // TaskStatusApplyConfiguration represents a declarative configuration of the TaskStatus type for use
 // with apply.
 type TaskStatusApplyConfiguration struct {
-	Phase          *rlarkiov1alpha1.TaskPhase       `json:"phase,omitempty"`
-	ObservedNodes  []string                         `json:"observedNodes,omitempty"`
-	Conditions     []v1.ConditionApplyConfiguration `json:"conditions,omitempty"`
-	StartTime      *metav1.Time                     `json:"startTime,omitempty"`
-	CompletionTime *metav1.Time                     `json:"completionTime,omitempty"`
-	Message        *string                          `json:"message,omitempty"`
-	RetryCount     *int32                           `json:"retryCount,omitempty"`
+	Phase            *rlarkiov1alpha1.TaskPhase       `json:"phase,omitempty"`
+	ObservedNodes    []string                         `json:"observedNodes,omitempty"`
+	Conditions       []v1.ConditionApplyConfiguration `json:"conditions,omitempty"`
+	StartTime        *metav1.Time                     `json:"startTime,omitempty"`
+	CompletionTime   *metav1.Time                     `json:"completionTime,omitempty"`
+	Message          *string                          `json:"message,omitempty"`
+	RetryCount       *int32                           `json:"retryCount,omitempty"`
+	TensorBoardProxy *string                          `json:"tensorBoardProxy,omitempty"`
 }
 
 // TaskStatusApplyConfiguration constructs a declarative configuration of the TaskStatus type for use with
@@ -101,5 +102,13 @@ func (b *TaskStatusApplyConfiguration) WithMessage(value string) *TaskStatusAppl
 // If called multiple times, the RetryCount field is set to the value of the last call.
 func (b *TaskStatusApplyConfiguration) WithRetryCount(value int32) *TaskStatusApplyConfiguration {
 	b.RetryCount = &value
+	return b
+}
+
+// WithTensorBoardProxy sets the TensorBoardProxy field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the TensorBoardProxy field is set to the value of the last call.
+func (b *TaskStatusApplyConfiguration) WithTensorBoardProxy(value string) *TaskStatusApplyConfiguration {
+	b.TensorBoardProxy = &value
 	return b
 }
