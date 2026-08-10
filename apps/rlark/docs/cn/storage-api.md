@@ -153,9 +153,9 @@ Gateway ──▶ Server ──▶ Agent (cluster A) ──▶ K8s API (list Sto
 4. Gateway 聚合结果：过滤默认 StorageClass，按名称分组，汇总各集群信息
 
 ### 文件结构
-- **`pkg/gateway/storage_handler.go`** - 存储 API 处理函数
-- **`pkg/gateway/clusters_handler.go`** - 集群列表聚合
-- **`pkg/gateway/router.go`** - 路由注册
+- **`../pkg/gateway/storage_handler.go`** - 存储 API 处理函数
+- **`../pkg/gateway/clusters_handler.go`** - 集群列表聚合
+- **`../pkg/gateway/router.go`** - 路由注册
 
 ### 数据结构
 ```go

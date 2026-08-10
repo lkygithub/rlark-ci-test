@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="docs/images/logo.png" alt="RLark Logo" width="400" />
+  <img src="apps/rlark/docs/images/logo.png" alt="RLark Logo" width="400" />
 </div>
 
 <div align="center">
@@ -32,7 +32,7 @@
 
 ## 架构概览
 
-![系统架构](docs/images/architecture.svg)
+![系统架构](apps/rlark/docs/images/architecture.svg)
 
 ## 快速开始
 
@@ -42,29 +42,34 @@ git clone https://github.com/RLinf/RLark
 cd rlark && make build
 
 # 2. 部署控制面（Kubernetes 模式）
-./bin/rlarkadm install -f docs/examples/deploy-control-plane.yaml
+./bin/rlarkadm install -f apps/rlark/docs/examples/deploy-control-plane.yaml
 
 # 3. 部署数据面 Agent
-./bin/rlarkadm install -f docs/examples/deploy-data-plane.yaml
+./bin/rlarkadm install -f apps/rlark/docs/examples/deploy-data-plane.yaml
 
 # 4. 创建训练任务
 curl -X POST http://localhost:8080/api/v1/rlinf.io/v1alpha1/jobs \
   -H "Content-Type: application/json" \
-  -d @docs/examples/job-example.json
+  -d '{"apiVersion":"rlinf.io/v1alpha1","kind":"Job","metadata":{"name":"hello-world"},"spec":{"domain":"my-first-domain","tasks":[{"name":"trainer","head":true,"role":"Actor","agentType":"Kubernetes","kubernetes":{"workload":{"kind":"Deployment","replicas":1,"template":{"spec":{"containers":[{"name":"trainer","image":"busybox:latest","command":["sh","-c","echo Hello from rlark! && sleep 3600"]}]}}}}}}]}}'
 ```
 
 ## 文档索引
 
 | 文档 | 说明 |
 |------|------|
-| [架构设计](docs/cn/architecture.md) | 完整技术架构、组件交互、数据流 |
-| [核心概念](docs/cn/concepts.md) | Domain、Job、Task、Workflow 等概念解释 |
-| [快速开始](docs/cn/quickstart.md) | 本地开发环境搭建与第一个训练任务 |
-| [部署指南](docs/cn/deployment.md) | 生产环境部署、配置说明 |
-| [API 参考](docs/api/reference.md) | 完整的 REST API 参考 |
-| [API 示例](docs/api/examples.md) | 端到端 API 调用示例 |
+| [架构设计](apps/rlark/docs/cn/architecture.md) | RLark 核心：完整技术架构、组件交互、数据流 |
+| [核心概念](apps/rlark/docs/cn/concepts.md) | Domain、Job、Task、Workflow 等概念解释 |
+| [快速开始](apps/rlark/docs/cn/quickstart.md) | 本地开发环境搭建与第一个训练任务 |
+| [部署指南](apps/rlark/docs/cn/deployment.md) | 生产环境部署、配置说明 |
+| [API 参考](apps/rlark/docs/api/reference.md) | 完整的 REST API 参考 |
+| [API 示例](apps/rlark/docs/api/examples.md) | 端到端 API 调用示例 |
+| [Embodied Runtime](apps/embodied-runtime/README.md) | 端侧机器人/摄像头运行时管理 |
+| [Web UI](apps/rlark-ui/README.md) | 前端管理界面说明 |
+| [Python SDK](sdks/embodied-runtime-python/README.md) | 机器人/摄像头 gRPC 客户端 |
+| [Go SDK](sdks/embodied-runtime-go/README.md) | Go 语言 gRPC 客户端 |
+| [Proto 定义](proto/embodied-runtime/README.md) | gRPC 服务接口定义 |
 
-> [English Documentation](docs/README.md)
+> [English Documentation](apps/rlark/docs/README.md)
 
 ## 技术栈
 

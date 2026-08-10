@@ -1,49 +1,30 @@
-# rlark-ui — Makefile
-#
-# Quick start:
-#   make                          # build everything
-#   make docker-build             # build rlark-ui image and load into local docker
-
-# ---------------------------------------------------------------------------
 # Variables
-# ---------------------------------------------------------------------------
 
-# Registry and version.
 REGISTRY        ?= rlinf
 VERSION         ?= latest
 IMAGE_TAG       ?= $(VERSION)
-
-# Docker buildx.
 BUILDX_PLATFORMS ?= linux/amd64
-
-# Nginx base image.
 BASE_IMAGE ?= nginx:1.29.1
 
-# ---------------------------------------------------------------------------
-# Build targets
-# ---------------------------------------------------------------------------
+##@ Build
 
 .PHONY: install build lint fmt
-
-install:
+install: ## Install npm dependencies
 	npm install
 
-build: install
+build: install ## Build frontend static files
 	npm run build
 
-lint: install
+lint: install ## Lint TypeScript/React (eslint)
 	npx eslint src/
 
-fmt:
+fmt: ## Format code (prettier)
 	npx prettier@3.9.6 --write 'src/' 'index.html' 'package.json' 'vite.config.ts' 'tsconfig*.json'
 
-# ---------------------------------------------------------------------------
-# Docker targets (buildx)
-# ---------------------------------------------------------------------------
+##@ Docker
 
 .PHONY: docker-build docker-push
-
-docker-build: build
+docker-build: build ## Build rlark-ui image and load into local docker
 	docker buildx build \
 		--platform $(BUILDX_PLATFORMS) \
 		--load \
@@ -52,7 +33,7 @@ docker-build: build
 		-f Dockerfile \
 		../..
 
-docker-push: build
+docker-push: build ## Build rlark-ui image and push to registry
 	docker buildx build \
 		--platform $(BUILDX_PLATFORMS) \
 		--push \
@@ -61,26 +42,16 @@ docker-push: build
 		-f Dockerfile \
 		../..
 
-# ---------------------------------------------------------------------------
-# Help
-# ---------------------------------------------------------------------------
+##@ Help
 
 .PHONY: help
-help:
-	@echo "Usage: make <target>"
+help: ## Show this help
+	@awk 'BEGIN {FS = ":.*##"; printf "Usage: make \033[36m<target>\033[0m\n\n"} \
+		/^[a-zA-Z_-]+:.*##/ { printf "  \033[36m%-30s\033[0m %s\n", $$1, $$2 } \
+		/^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) }' $(MAKEFILE_LIST)
 	@echo ""
-	@echo "Build targets:"
-	@echo "  install                      Install npm dependencies"
-	@echo "  build                        Build frontend static files"
-	@echo "  lint                         Lint TypeScript/React (eslint)"
-	@echo "  fmt                          Format code (prettier)"
-	@echo ""
-	@echo "Docker targets (buildx):"
-	@echo "  docker-build                 Build rlark-ui image (load into local docker)"
-	@echo "  docker-push                  Build rlark-ui image and push to registry"
-	@echo ""
-	@echo "Variables:"
-	@echo "  REGISTRY=ghcr.io/org         Container registry (default: rlinf)"
-	@echo "  IMAGE_TAG=v0.1.0            Image tag (default: latest; also: VERSION)"
-	@echo "  BUILDX_PLATFORMS             Multi-arch targets (default: linux/amd64)"
-	@echo "  BASE_IMAGE=nginx:1.29       Nginx base image (default: nginx:1.29.1)"
+	@echo "  \033[1mVariables:\033[0m"
+	@echo "  REGISTRY             Container registry (default: rlinf)"
+	@echo "  IMAGE_TAG            Image tag (default: latest; also: VERSION)"
+	@echo "  BUILDX_PLATFORMS     Multi-arch targets (default: linux/amd64)"
+	@echo "  BASE_IMAGE           Nginx base image (default: nginx:1.29.1)"

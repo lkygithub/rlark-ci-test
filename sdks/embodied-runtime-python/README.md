@@ -130,10 +130,16 @@ The device plugin injects `RLINF_EMBODIED_ROS_SOCKET_PATH` and `RLINF_EMBODIED_C
 
 ## Regenerate stubs
 
+Stubs are generated from [proto/embodied-runtime](../../proto/embodied-runtime):
+
 ```bash
-make proto-python          # from repo root, uses grpcio-tools
+# From repo root — generates all SDK stubs (Go + Python)
+make proto
+
+# Or from the proto directory — generate only Python stubs
+make -C proto/embodied-runtime proto-python
 # or directly:
-python sdk/python/scripts/gen_proto.py
+python3 sdks/embodied-runtime-python/scripts/gen_proto.py
 ```
 
 The generated `*_pb2.py` / `*_pb2_grpc.py` files are checked in; regenerate only when the `.proto` definitions change.

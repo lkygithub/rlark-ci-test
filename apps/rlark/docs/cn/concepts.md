@@ -264,8 +264,8 @@ status:
 | 形态 | 说明 | 适用场景 |
 |------|------|----------|
 | `Kubernetes` | 创建 K8s 原生工作负载（Deployment/DaemonSet/StatefulSet） | GPU 集群大规模训练 |
-| `Docker` | 通过 Docker API 管理容器 | 端侧设备（机械臂、传感器、摄像头） |
-| `Raw` | 下载 artifact 后直接执行二进制 | 裸金属服务器、嵌入式设备 |
+| `Docker` | 通过 Docker API 管理容器（TODO） | 端侧设备（机械臂、传感器、摄像头） |
+| `Raw` | 下载 artifact 后直接执行二进制（TODO） | 裸金属服务器、嵌入式设备 |
 
 **具身智能场景映射**：
 
@@ -492,7 +492,7 @@ Addon 通过三个层次进行管理：
 
 1. **Addon 目录**（`/api/v1/addons`）— 精选的可用 Addon 列表（如 `embodied-runtime-device-plugin`）。每个 Addon 包含 Kubernetes 清单（DaemonSet、ConfigMap、RBAC）和可配置的值。
 2. **Addon CRD**（`rlinf.io/v1alpha1/Addon`）— 代表在特定数据面集群中安装的 Addon 实例的 Kubernetes 风格 CR。Spec 指定 Addon 名称、版本和配置值。
-3. **Addon 控制器**（`pkg/agent/controllers/addon/pull.go`）— Agent 的 Pull 控制器监听 Addon CR，使用配置的值渲染 Addon 清单，并应用到本地 Kubernetes 集群。
+3. **Addon 控制器**（`../pkg/agent/controllers/addon/pull.go`）— Agent 的 Pull 控制器监听 Addon CR，使用配置的值渲染 Addon 清单，并应用到本地 Kubernetes 集群。
 
 ### Addon 生命周期
 

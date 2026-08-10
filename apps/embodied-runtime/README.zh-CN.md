@@ -258,7 +258,7 @@ cmd/                       # 每个二进制一个包
 pkg/
   deviceplugin/            # kubelet 插件、配置、硬件探测、pod/local 管理器
   roscontroller/           # roscore、roslaunch 进程、模式、MACVLAN、Web 代理、gRPC server
-  cameracontroller/        # 驱动（ffmpeg/remote/ros）、转码器、gRPC server
+  cameracontroller/        # 驱动（ffmpeg/remote/ros(todo)）、转码器、gRPC server
   cli/                     # 共享输出格式化（text/json/yaml）
 examples/                  # 示例 ConfigMap + Pod 清单
 runtimes/                  # camera-base.dockerfile（ffmpeg 运行时依赖）

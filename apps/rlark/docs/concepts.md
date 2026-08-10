@@ -228,8 +228,8 @@ Each Task represents a concrete "training role instance". Agent's Pull controlle
 | Type | Description | Use Case |
 |------|-------------|----------|
 | `Kubernetes` | Create K8s native workloads (Deployment/DaemonSet/StatefulSet) | GPU clusters for large-scale training |
-| `Docker` | Manage containers via Docker API | Edge devices (robot arm, sensor, camera) |
-| `Raw` | Download artifact and execute binary directly | Bare metal servers, embedded devices |
+| `Docker` | Manage containers via Docker API (TODO) | Edge devices (robot arm, sensor, camera) |
+| `Raw` | Download artifact and execute binary directly (TODO) | Bare metal servers, embedded devices |
 
 **Embodied AI Mapping**:
 
@@ -452,7 +452,7 @@ Addons are managed through three layers:
 
 1. **Addon Catalog** (`/api/v1/addons`) — A curated list of available addons (e.g., `embodied-runtime-device-plugin`). Each addon includes Kubernetes manifests (DaemonSet, ConfigMap, RBAC) and configurable values.
 2. **Addon CRD** (`rlinf.io/v1alpha1/Addon`) — A Kubernetes-style CR representing an installed addon instance in a specific data plane cluster. The Spec specifies the addon name, version, and configuration values.
-3. **Addon Controller** (`pkg/agent/controllers/addon/pull.go`) — The Agent's Pull controller watches Addon CRs, renders the addon manifests with the configured values, and applies them to the local Kubernetes cluster.
+3. **Addon Controller** (`../pkg/agent/controllers/addon/pull.go`) — The Agent's Pull controller watches Addon CRs, renders the addon manifests with the configured values, and applies them to the local Kubernetes cluster.
 
 ### Addon Lifecycle
 

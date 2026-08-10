@@ -130,10 +130,16 @@ device plugin 会向 task pod 注入 `RLINF_EMBODIED_ROS_SOCKET_PATH` 与 `RLINF
 
 ## 重新生成 stub
 
+Stub 从 [proto/embodied-runtime](../../proto/embodied-runtime) 生成：
+
 ```bash
-make proto-python          # 在仓库根目录执行，使用 grpcio-tools
+# 在仓库根目录执行 — 生成所有 SDK stub（Go + Python）
+make proto
+
+# 或在 proto 目录下执行 — 仅生成 Python stub
+make -C proto/embodied-runtime proto-python
 # 或直接运行：
-python sdk/python/scripts/gen_proto.py
+python3 sdks/embodied-runtime-python/scripts/gen_proto.py
 ```
 
 生成的 `*_pb2.py` / `*_pb2_grpc.py` 已入库；仅在 `.proto` 定义变更时重新生成。

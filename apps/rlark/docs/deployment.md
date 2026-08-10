@@ -77,7 +77,7 @@ kubernetes:
 
 ```bash
 # 1. Prepare configuration file
-cp docs/examples/deploy-control-plane.yaml my-deploy.yaml
+cp apps/rlark/docs/examples/deploy-control-plane.yaml my-deploy.yaml
 
 # 2. Modify image addresses and kubeconfig
 # 3. Execute installation
@@ -104,7 +104,7 @@ Control plane components:
 ```bash
 # 1. Obtain certificates from control plane (via Gateway API or manual signing)
 # 2. Fill in configuration file
-cp docs/examples/deploy-data-plane.yaml my-data.yaml
+cp apps/rlark/docs/examples/deploy-data-plane.yaml my-data.yaml
 
 # 3. Execute installation
 rlarkadm install -f my-data.yaml
@@ -208,8 +208,8 @@ rlark supports three deployment environment modes, configured in the DeployConfi
 | Mode | Description | Use Case |
 |------|-------------|----------|
 | `kubernetes` | Deploy to K8s cluster | Production, GPU cluster |
-| `docker` | Manage via Docker API | Edge devices, single-node |
-| `raw` | Download artifact and execute | Bare metal, embedded |
+| `docker` | Manage via Docker API (TODO) | Edge devices, single-node |
+| `raw` | Download artifact and execute (TODO) | Bare metal, embedded |
 
 In the config file, specify exactly one of `kubernetes`, `docker`, or `raw` env blocks.
 
@@ -227,7 +227,7 @@ When `--mode=node`, the agent runs as a DaemonSet on each node, handling SSH tun
 
 ## 6. Addon Configuration
 
-rlark supports declarative Addon management across data plane clusters. Addons are defined in the addon catalog (`pkg/addons/catalog/`) and installed via the Addon API.
+rlark supports declarative Addon management across data plane clusters. Addons are defined in the addon catalog (`../pkg/addons/catalog/`) and installed via the Addon API.
 
 ### 6.1 Addon Catalog Structure
 

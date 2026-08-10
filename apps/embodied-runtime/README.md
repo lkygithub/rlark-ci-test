@@ -259,7 +259,7 @@ cmd/                       # one package per binary
 pkg/
   deviceplugin/            # kubelet plugin, config, hardware detect, pod/local managers
   roscontroller/           # roscore, roslaunch process, modes, MACVLAN, web proxy, gRPC server
-  cameracontroller/        # drivers (ffmpeg/remote/ros), transcoder, gRPC server
+  cameracontroller/        # drivers (ffmpeg/remote/ros(todo)), transcoder, gRPC server
   cli/                     # shared output formatting (text/json/yaml)
 examples/                  # sample ConfigMaps + Pod manifests
 runtimes/                  # camera-base.dockerfile (ffmpeg runtime deps)
