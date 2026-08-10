@@ -15,15 +15,19 @@ export function NodeResourceBrowser({
   copy: c,
   onSelectNode,
   onRefresh,
+  initialCategory = "all",
+  initialQuery = "",
 }: {
   nodes: CRDNode[];
   copy: Copy;
   onSelectNode: (name: string) => void;
   onRefresh?: () => void;
+  initialCategory?: CategoryFilter;
+  initialQuery?: string;
 }) {
   const zh = c.nav.overview === "总览";
-  const [category, setCategory] = useState<CategoryFilter>("all");
-  const [query, setQuery] = useState("");
+  const [category, setCategory] = useState<CategoryFilter>(initialCategory);
+  const [query, setQuery] = useState(initialQuery);
   const [phaseFilter, setPhaseFilter] = useState<"All" | Phase>("All");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
@@ -53,7 +57,8 @@ export function NodeResourceBrowser({
         labels["rlark.io/embodied-task-name"] ??
         labels["rlark.io/task-name"] ??
         "";
-      const searchable = `${node.metadata.name} ${node.metadata.namespace ?? ""} ${node.spec.agentType ?? ""} ${address} ${taskName}`.toLowerCase();
+      const city = labels["rlark.io/city"] ?? "";
+      const searchable = `${node.metadata.name} ${node.metadata.namespace ?? ""} ${node.spec.agentType ?? ""} ${address} ${taskName} ${city}`.toLowerCase();
       const phase = (node.status?.phase ?? "Offline") as Phase;
       return (
         (category === "all" || getNodeCategory(node) === category) &&
@@ -74,6 +79,8 @@ export function NodeResourceBrowser({
   ).length;
 
   useEffect(() => setPage(1), [category, pageSize, phaseFilter, query]);
+  useEffect(() => setCategory(initialCategory), [initialCategory]);
+  useEffect(() => setQuery(initialQuery), [initialQuery]);
 
   const tabs: Array<{
     value: CategoryFilter;

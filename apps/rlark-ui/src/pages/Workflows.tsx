@@ -27,6 +27,7 @@ import {
 import { toYaml } from "../utils/yaml";
 import { useNodeLabels } from "../utils/nodes";
 import { NodeSelectorPicker, RoleNameInput } from "../components/create";
+import { CodeEditorField } from "../components/CodeEditor";
 import { PageToolbar, Pagination, StatusBadge } from "../components/shared";
 
 export function WorkflowDetailPage({
@@ -561,6 +562,14 @@ export function CreateWorkflowModal({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [workflowName, setWorkflowName] = useState("rl-training-pipeline");
+
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !submitting) onClose();
+    };
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [onClose, submitting]);
   const [domains, setDomains] = useState<{ name: string; cidr: string }[]>([]);
   const {
     clusterDisplayNames,
@@ -1201,7 +1210,7 @@ export function CreateWorkflowModal({
   return (
     <div
       className="modal-backdrop"
-      onMouseDown={(e) => e.target === e.currentTarget && onClose()}
+      onMouseDown={(e) => e.target === e.currentTarget && !submitting && onClose()}
     >
       <div className="modal create-job-modal" role="dialog" aria-modal="true">
         <div className="modal-head">
@@ -1209,7 +1218,7 @@ export function CreateWorkflowModal({
             <span className="eyebrow">{c.workflows.eyebrow}</span>
             <h2>{c.workflows.createTitle}</h2>
           </div>
-          <button className="icon-button" onClick={onClose}>
+          <button className="icon-button" onClick={onClose} aria-label={zh ? "关闭创建工作流" : "Close workflow creator"} disabled={submitting}>
             ×
           </button>
         </div>
@@ -1220,6 +1229,8 @@ export function CreateWorkflowModal({
                 key={label}
                 className={step >= index + 1 ? "active" : ""}
                 onClick={() => setStep(index + 1)}
+                disabled={index + 1 > step}
+                aria-current={step === index + 1 ? "step" : undefined}
               >
                 <span>{index + 1}</span>
                 {label}
@@ -1669,13 +1680,13 @@ export function CreateWorkflowModal({
                                 : "Prepare Script (before Ray)"}
                             </small>
                           </div>
-                          <textarea
-                            className="code-textarea"
-                            style={{ minHeight: 60 }}
+                          <CodeEditorField
                             value={rr.prepareScript}
                             onChange={(e) =>
                               updateRR(role, "prepareScript", e.target.value)
                             }
+                            minHeight={92}
+                            label={`${role}/prepare.sh`}
                           />
                         </div>
                         <div className="form-section" style={{ marginTop: 12 }}>
@@ -1879,12 +1890,13 @@ export function CreateWorkflowModal({
                 <div className="form-section-head">
                   <small>{zh ? "运行脚本" : "Run Script"}</small>
                 </div>
-                <textarea
-                  className="code-textarea"
+                <CodeEditorField
                   value={activeJob.runScript}
                   onChange={(e) =>
                     updateJob(activeJob.id, { runScript: e.target.value })
                   }
+                  minHeight={112}
+                  label="run.sh"
                 />
               </div>
             </>

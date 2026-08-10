@@ -51,6 +51,9 @@ export function Header({
   onCreate,
   onLogout,
   createLabel,
+  showMockEnvironment = false,
+  notificationSummary,
+  userName,
 }: {
   title: string;
   lang: Lang;
@@ -61,8 +64,16 @@ export function Header({
   onCreate: () => void;
   onLogout?: () => void;
   createLabel?: string;
+  showMockEnvironment?: boolean;
+  notificationSummary?: { runningJobs: number; attentionNodes: number };
+  userName?: string;
 }) {
   const zh = lang === "zh";
+  const displayUserName = userName?.trim() || (zh ? "用户" : "User");
+  const avatarText = Array.from(displayUserName.replace(/\s+/g, ""))
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const notificationMenuRef = useRef<HTMLDivElement>(null);
@@ -102,13 +113,15 @@ export function Header({
         <h1>{title}</h1>
       </div>
       <div className="topbar-actions">
-        <div
-          className="cluster-picker environment-status"
-          title={zh ? "当前环境" : "Current environment"}
-        >
-          <span className="online-pulse" />
-          {c.common.production}
-        </div>
+        {showMockEnvironment && (
+          <div
+            className="cluster-picker environment-status"
+            title={zh ? "当前使用 Mock 数据" : "Using mock data"}
+          >
+            <span className="online-pulse" />
+            {zh ? "Mock 环境" : "Mock"}
+          </div>
+        )}
         <div className="segmented-control">
           <button
             className={lang === "zh" ? "active" : ""}
@@ -150,13 +163,22 @@ export function Header({
             }}
           >
             <Bell size={18} />
-            <em>3</em>
+            {notificationSummary &&
+              notificationSummary.runningJobs + notificationSummary.attentionNodes > 0 && (
+                <em>{notificationSummary.runningJobs + notificationSummary.attentionNodes}</em>
+              )}
           </button>
           {notificationsOpen && (
             <div className="topbar-popover notification-popover">
               <strong>{zh ? "运行通知" : "Notifications"}</strong>
-              <span>{zh ? "2 个任务正在运行" : "2 jobs are running"}</span>
-              <span>{zh ? "1 个节点需要关注" : "1 node needs attention"}</span>
+              {notificationSummary ? (
+                <>
+                  <span>{zh ? `${notificationSummary.runningJobs} 个任务正在运行` : `${notificationSummary.runningJobs} jobs are running`}</span>
+                  <span>{zh ? `${notificationSummary.attentionNodes} 个节点需要关注` : `${notificationSummary.attentionNodes} nodes need attention`}</span>
+                </>
+              ) : (
+                <span>{zh ? "暂无新的运行通知" : "No new runtime notifications"}</span>
+              )}
             </div>
           )}
         </div>
@@ -175,11 +197,11 @@ export function Header({
               setNotificationsOpen(false);
             }}
           >
-            BW
+            {avatarText}
           </button>
           {accountOpen && (
             <div className="topbar-popover account-popover">
-              <strong>BW</strong>
+              <strong>{displayUserName}</strong>
               <span>{zh ? "平台用户" : "Platform user"}</span>
               {onLogout && (
                 <button

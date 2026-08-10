@@ -30,7 +30,15 @@ export function buildMockCRDNodes(): CRDNode[] {
     Robot: "robot",
   };
 
-  return mockNodes.map((node) => ({
+  return mockNodes.map((node) => {
+    const city = node.cluster.includes("上海")
+      ? "上海市"
+      : node.cluster.includes("杭州")
+        ? "杭州市"
+        : node.cluster.includes("North")
+          ? "北京市"
+          : "深圳市";
+    return ({
     apiVersion: "rlinf.io/v1alpha1",
     kind: "Node",
     metadata: {
@@ -39,6 +47,7 @@ export function buildMockCRDNodes(): CRDNode[] {
       labels: {
         [NODE_CATEGORY_LABEL]: categoryByKind[node.kind],
         "rlark.io/model": node.model,
+        "rlark.io/city": city,
         ...(node.kind !== "CloudCompute" && node.tasks > 0
           ? {
               "rlark.io/embodied-task": "true",
@@ -86,7 +95,8 @@ export function buildMockCRDNodes(): CRDNode[] {
         "nvidia.com/gpu": node.gpu.split(" / ")[0] ?? "0",
       },
     },
-  }));
+    });
+  });
 }
 
 export function useNodeLabels() {

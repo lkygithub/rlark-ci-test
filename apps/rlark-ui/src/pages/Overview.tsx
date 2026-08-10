@@ -14,15 +14,18 @@ import type { Copy } from "../i18n";
 import type { CRDJob, CRDNode, Page, ResourceRow } from "../types";
 import { useAutoRefresh } from "../hooks";
 import { crdToJob } from "../utils/crd";
-import { getNodeCategory } from "../utils/nodes";
+import { buildMockCRDNodes, getNodeCategory } from "../utils/nodes";
 import { MetricCard, ResourceDistribution, StatusBadge } from "../components/shared";
+import { OverviewChinaMap } from "../components/OverviewChinaMap";
 
 export function Overview({
   navigate,
   copy: c,
+  isMockMode,
 }: {
-  navigate: (page: Page, name?: string) => void;
+  navigate: (page: Page, name?: string, options?: { query?: Record<string, string | undefined> }) => void;
   copy: Copy;
+  isMockMode: boolean;
 }) {
   const [realClusters, setRealClusters] = useState<Cluster[]>([]);
   const [realNodes, setRealNodes] = useState<CRDNode[]>([]);
@@ -47,33 +50,76 @@ export function Overview({
     setRealJobs(jobItems.map(crdToJob));
   }, 15000);
 
+  const displayNodes = useMemo(
+    () => (isMockMode ? buildMockCRDNodes() : realNodes),
+    [isMockMode, realNodes],
+  );
   const cloudClusters = realClusters.filter((x) => x.type === "Cloud");
   const embodiedClusters = realClusters.filter((x) => x.type === "Embodied");
-  const cloudNodeCount = realClusters.reduce((sum, x) => sum + x.cloudNodes, 0);
-  const robotCount = realClusters.reduce((sum, x) => sum + x.robots, 0);
   const runningJobs = realJobs.filter((x) => x.phase === "Running").length;
   const gpuModelList = Array.from(
-    new Set(realClusters.flatMap((x) => x.gpuModels)),
+    new Set(
+      isMockMode
+        ? displayNodes
+            .filter((node) => getNodeCategory(node) === "cloud")
+            .map((node) => node.metadata.labels?.["rlark.io/model"] ?? "")
+            .filter(Boolean)
+        : realClusters.flatMap((x) => x.gpuModels),
+    ),
   );
   const robotModelList = Array.from(
-    new Set(realClusters.flatMap((x) => x.robotModels)),
+    new Set(
+      isMockMode
+        ? displayNodes
+            .filter((node) => getNodeCategory(node) === "robot")
+            .map((node) => node.metadata.labels?.["rlark.io/model"] ?? "")
+            .filter(Boolean)
+        : realClusters.flatMap((x) => x.robotModels),
+    ),
   );
   const gpuModels = gpuModelList.slice(0, 4).join(" / ") || (isZh ? "—" : "—");
   const robotModels =
     robotModelList.slice(0, 4).join(" / ") || (isZh ? "—" : "—");
-  const regionCount = new Set(cloudClusters.map((x) => x.region)).size;
+  const regionCount = isMockMode
+    ? new Set(
+        displayNodes
+          .filter((node) => getNodeCategory(node) === "cloud")
+          .map((node) => node.metadata.namespace),
+      ).size
+    : new Set(cloudClusters.map((x) => x.region)).size;
   const runningWorkerCount = realJobs.reduce((s, x) => s + x.runningWorkers, 0);
 
   const categoryCounts = useMemo(() => {
     const counts = { cloud: 0, edge: 0, robot: 0 };
-    for (const n of realNodes) {
+    for (const n of displayNodes) {
       const cat = getNodeCategory(n);
       if (cat === "cloud") counts.cloud++;
       else if (cat === "edge") counts.edge++;
       else if (cat === "robot") counts.robot++;
     }
     return counts;
-  }, [realNodes]);
+  }, [displayNodes]);
+
+  const cloudNodeCount = isMockMode
+    ? categoryCounts.cloud
+    : realClusters.reduce((sum, cluster) => sum + cluster.cloudNodes, 0);
+  const robotCount = isMockMode
+    ? categoryCounts.robot
+    : realClusters.reduce((sum, cluster) => sum + cluster.robots, 0);
+  const cloudClusterCount = isMockMode
+    ? new Set(
+        displayNodes
+          .filter((node) => getNodeCategory(node) === "cloud")
+          .map((node) => node.metadata.namespace),
+      ).size
+    : cloudClusters.length;
+  const embodiedClusterCount = isMockMode
+    ? new Set(
+        displayNodes
+          .filter((node) => getNodeCategory(node) !== "cloud")
+          .map((node) => node.metadata.namespace),
+      ).size
+    : embodiedClusters.length;
 
   const resourceRows: ResourceRow[] = [
     {
@@ -96,7 +142,12 @@ export function Overview({
     },
   ];
 
-  const robotNodes = realNodes.filter((n) => getNodeCategory(n) === "robot");
+  const robotNodes = displayNodes.filter((n) => getNodeCategory(n) === "robot");
+  const today = new Intl.DateTimeFormat(isZh ? "zh-CN" : "en", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  }).format(new Date());
 
   return (
     <div className="page-content overview-page">
@@ -104,18 +155,18 @@ export function Overview({
         <div>
           <span className="eyebrow">
             <Sparkles size={13} />
-            {c.overview.date}
+            {today}
           </span>
           <h2>{c.overview.title}</h2>
           <p>{c.overview.desc}</p>
         </div>
         <div className="hero-health">
-          <span>{c.overview.health}</span>
+          <span>{isMockMode ? (isZh ? "数据模式" : "Data mode") : c.overview.health}</span>
           <strong>
             <i />
-            {c.overview.operational}
+            {isMockMode ? (isZh ? "Mock 演示" : "Mock demo") : c.overview.operational}
           </strong>
-          <small>{c.overview.checked}</small>
+          <small>{isMockMode ? (isZh ? "未连接后端服务" : "Backend unavailable") : (isZh ? "实时数据" : "Live data")}</small>
         </div>
       </section>
       <section className="metric-grid platform-metrics">
@@ -123,7 +174,7 @@ export function Overview({
           icon={CloudCog}
           tone="blue"
           label={c.overview.cloudClusters}
-          value={`${cloudClusters.length}`}
+          value={`${cloudClusterCount}`}
           note={isZh ? `${regionCount} 个地域` : `${regionCount} regions`}
           onClick={() => navigate("clusters-management")}
         />
@@ -146,8 +197,8 @@ export function Overview({
           value={`${robotCount}`}
           note={
             isZh
-              ? `${embodiedClusters.length} 个具身集群 · ${robotModelList.length} 种真机`
-              : `${embodiedClusters.length} embodied clusters · ${robotModelList.length} robot models`
+              ? `${embodiedClusterCount} 个具身集群 · ${robotModelList.length} 种真机`
+              : `${embodiedClusterCount} embodied clusters · ${robotModelList.length} robot models`
           }
           onClick={() => navigate("clusters-nodes")}
         />
@@ -164,6 +215,7 @@ export function Overview({
           onClick={() => navigate("jobs")}
         />
       </section>
+      <OverviewChinaMap navigate={navigate} copy={c} />
       <section className="dashboard-grid">
         <div className="panel chart-panel">
           <div className="panel-title">

@@ -27,6 +27,7 @@ import { useAutoRefresh } from "../hooks";
 import { crdToJob } from "../utils/crd";
 import { PageToolbar, Pagination, StatusBadge } from "../components/shared";
 import { TerminalModal } from "../components/terminal";
+import { CodeBlock } from "../components/CodeEditor";
 
 export function JobsPage({
   copy: c,
@@ -665,7 +666,7 @@ export function JobConfigSummary({
       </div>
       <div>
         <span>Run Script</span>
-        <pre>{job.command}</pre>
+        <CodeBlock code={job.command} label="run.sh" />
       </div>
       {tensorBoardProxy && (
         <div>
@@ -688,7 +689,9 @@ export function JobConfigSummary({
             {item.gpu} GPU · {item.nodeSelector}
           </span>
           <strong>{item.image}</strong>
-          {item.prepareScript && <code>{item.prepareScript}</code>}
+          {item.prepareScript && (
+            <CodeBlock code={item.prepareScript} label={`${item.role}/prepare.sh`} />
+          )}
           {item.env.length > 0 &&
             item.env.map((e) => (
               <code key={e.key}>
