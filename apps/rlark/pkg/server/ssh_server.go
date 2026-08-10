@@ -49,11 +49,17 @@ func (s *Server) sshMiddleware() wish.Middleware {
 			if len(sess.Command()) > 0 {
 				_, _ = fmt.Fprintln(sess, "Disallowed command")
 			} else {
-				_, _, isPty := sess.Pty()
+				pty, sizeCh, isPty := sess.Pty()
 				if !isPty {
 					_, _ = fmt.Fprintf(sess, "Welcome to RLark, @%v!\n", sess.User())
 				} else {
-					_, _ = fmt.Fprintln(sess, "PTY allocation request failed")
+					meta, _ := cert.GetSSHCertMeta(&gossh.Certificate{Permissions: *sess.Permissions().Permissions})
+					js := NewJumperStub(s, sess, sess.User(), meta)
+					if js.JumperAvailable() {
+						js.Serve(sess.Context(), pty, sizeCh)
+					} else {
+						_, _ = fmt.Fprintln(sess, "PTY allocation request failed")
+					}
 				}
 			}
 		}

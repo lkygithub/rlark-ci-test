@@ -1,3 +1,5 @@
+// Package server provides the RLark control plane server, including SSH bastion host,
+// REST API gateway, and terminal proxy functionality.
 package server
 
 import (
