@@ -49,18 +49,17 @@ LDFLAGS := -s -w
 # Code style targets
 # ---------------------------------------------------------------------------
 
-.PHONY: lint lint-go fmt-go
+.PHONY: lint fmt
 
-lint: lint-go
-
-lint-go:
-	@echo "Running golangci-lint..."
+lint:
+	@echo "Running golangci-lint (apps/embodied-runtime)..."
+	@go mod download
 	@golangci-lint run
 
-fmt-go:
-	@echo "Running gofmt..."
-	@go fmt ./cmd
-	@go fmt ./pkg
+fmt:
+	@echo "Running gofmt (apps/embodied-runtime)..."
+	@go mod download
+	@gofmt -l -w ./
 
 # ---------------------------------------------------------------------------
 # Go targets
@@ -158,8 +157,8 @@ help:
 	@echo "Usage: make <target>"
 	@echo ""
 	@echo "Lint & format:"
-	@echo "  lint-go                     Lint Go (golangci-lint)"
-	@echo "  fmt-go                      Format Go (go fmt)"
+	@echo "  lint                         Lint Go (golangci-lint)"
+	@echo "  fmt                          Format Go (gofmt)"
 	@echo ""
 	@echo "Go targets:"
 	@echo "  build                        Build all binaries into bin/"

@@ -1,10 +1,5 @@
 export type Phase =
-  | "Running"
-  | "Pending"
-  | "Succeeded"
-  | "Failed"
-  | "Online"
-  | "Offline";
+  "Running" | "Pending" | "Succeeded" | "Failed" | "Online" | "Offline";
 
 export type ClusterType = "Cloud" | "Embodied";
 export type NodeKind = "CloudCompute" | "EmbodiedCompute" | "Robot";

@@ -9,11 +9,13 @@ IMAGE_PLATFORMS ?= linux/amd64
 
 lint:
 	@echo "Running golangci-lint (apps/rlark)..."
+	@go mod download
 	@golangci-lint run
 
 fmt:
-	go fmt ./cmd/...
-	go fmt ./pkg/...
+	@echo "Running gofmt (apps/rlark)..."
+	@go mod download
+	@gofmt -l -w ./cmd ./pkg
 
 build: build-server build-controller-manager build-gateway build-agent build-network-sidecar build-rlarkadm build-ui
 

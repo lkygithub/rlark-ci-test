@@ -1,7 +1,8 @@
 include:
   - project: 'mizar/ci-templates'
     ref: main
-    file: 'base.yml'
+    file:
+    - 'base.yml'
 
 variables:
   PROJECT: rlark
@@ -12,6 +13,63 @@ variables:
   IMAGE_REGISTRY: harbor.infini-ai.com/share
   BASE_IMAGE: harbor.infini-ai.com/share/ubuntu:22.04
   BASE_IMAGE_UI: harbor.infini-ai.com/share/nginx:1.29.1
+
+# Lint & Format
+
+.lint:
+  image: ${CI_IMAGE}
+  stage: lint
+  needs: []
+  tags:
+    - mizar-cpu-runner
+  script:
+    - make $LINT_ACTION
+
+.fmt:
+  image: ${CI_IMAGE}
+  stage: lint
+  needs: []
+  tags:
+    - mizar-cpu-runner
+  script:
+    - make ${FMT_ACTION}
+    - git diff --exit-code
+
+lint-go:
+  extends:
+    - .lint
+    - .only-default
+  before_script:
+    - !reference [.golang, prepare_script]
+  variables:
+    LINT_ACTION: "lint-go"
+
+fmt-go:
+  extends:
+    - .fmt
+    - .only-default
+  before_script:
+    - !reference [.golang, prepare_script]
+  variables:
+    FMT_ACTION: "fmt-go"
+
+lint-web:
+  extends:
+    - .lint
+    - .only-default
+  variables:
+    CI_IMAGE: ${CI_IMAGE_NODE}
+    LINT_ACTION: "lint-web"
+
+fmt-web:
+  extends:
+    - .fmt
+    - .only-default
+  variables:
+    CI_IMAGE: ${CI_IMAGE_NODE}
+    FMT_ACTION: "fmt-web"
+
+# Build
 
 .build-go-image:
   image: ${CI_IMAGE}
@@ -48,14 +106,14 @@ variables:
   after_script:
     - docker image prune -f
 
-build-images-dev:
+build-go-images-dev:
   extends:
     - .build-go-image
     - .only-default-manual
   variables:
     IMAGE_VERSION: $DEV_VERSION
 
-build-images-rel:
+build-go-images-rel:
   extends: .build-go-image
   only:
     - tags

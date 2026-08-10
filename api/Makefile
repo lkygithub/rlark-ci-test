@@ -6,7 +6,13 @@ SAMPLES_DIR ?= config/samples
 
 lint:
 	@echo "Running golangci-lint (api)..."
+	@go mod download
 	@golangci-lint run
+
+fmt:
+	@echo "Running gofmt (api)..."
+	@go mod download
+	@gofmt -l -w ./
 
 generate-manifests: $(CONTROLLER_GEN)
 	mkdir -p $(CRD_DIR)
