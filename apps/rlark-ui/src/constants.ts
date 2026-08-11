@@ -10,6 +10,7 @@ import {
   CirclePlus,
   ListChecks,
   LayoutDashboard,
+  Terminal,
 } from "lucide-react";
 import type { NavParent, AdminNavItem } from "./types";
 
@@ -20,6 +21,7 @@ export const navItems: NavParent[] = [
   { id: "jobs", icon: ListChecks },
   { id: "workflows", icon: GitBranch },
   { id: "storageClass", icon: HardDrive },
+  { id: "ssh-keys", icon: Terminal },
 ];
 
 export const adminNavItems: AdminNavItem[] = [

@@ -32,7 +32,7 @@ func NewPodCache(podInformer cache.SharedIndexInformer) *PodCache {
 func (c *PodCache) setIfNewer(pod *v1alpha1.Pod) {
 	// set pod by podName
 	if existPod, exists := c.pods[pod.Spec.PodName]; exists {
-		if pod.CreationTimestamp.After(existPod.CreationTimestamp.Time) {
+		if pod.ResourceVersion > existPod.ResourceVersion { // update 不会修改 CreationTimestamp
 			c.pods[pod.Spec.PodName] = pod
 		}
 	} else {
@@ -40,7 +40,7 @@ func (c *PodCache) setIfNewer(pod *v1alpha1.Pod) {
 	}
 	// set pod by taskName
 	if existPod, exists := c.taskPods[pod.Spec.TaskName]; exists {
-		if pod.CreationTimestamp.After(existPod.CreationTimestamp.Time) {
+		if pod.ResourceVersion > existPod.ResourceVersion {
 			c.taskPods[pod.Spec.TaskName] = pod
 		}
 	} else {

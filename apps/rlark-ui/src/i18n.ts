@@ -20,6 +20,8 @@ export const copy = {
       admin: "运维管理",
       workspace: "工作台",
       developers: "开发者",
+      "ssh-keys": "SSH 公钥",
+      "access-control": "访问控制",
     },
     common: {
       search: "搜索集群、节点、任务...",
@@ -208,6 +210,8 @@ export const copy = {
       admin: "Admin",
       workspace: "Workspace",
       developers: "Developers",
+      "ssh-keys": "SSH Keys",
+      "access-control": "Access Control",
     },
     common: {
       search: "Search clusters, nodes, jobs...",

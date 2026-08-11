@@ -31,6 +31,7 @@ export function parseRoute() {
     "domains",
     "storageClass",
     "files",
+    "ssh-keys",
   ];
   const top = (parts[0] as Page) ?? "overview";
   if ((top as string) === "nodes") {
