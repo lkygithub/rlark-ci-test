@@ -4,7 +4,6 @@ package server
 
 import (
 	"context"
-	"crypto/tls"
 	"fmt"
 	"net"
 	"net/http"
@@ -81,9 +80,6 @@ func NewServer(config Config) *Server {
 				return nil, fmt.Errorf("get dial for address %s: %w", addr, err)
 			}
 			return dial(ctx, network, address)
-		},
-		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: true,
 		},
 	}
 	return s

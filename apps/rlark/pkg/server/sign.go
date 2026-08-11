@@ -68,6 +68,9 @@ func (s *Server) parseSignRequest(req *SignRequest) (string, map[string]string, 
 		}, nil
 
 	case "agent":
+		if req.ClientID == "" {
+			return "", nil, fmt.Errorf("client_id is required for agent role")
+		}
 		namespace := apis.RLarkAgentNamespacePrefix + req.ClientID
 		impersonation := "system:serviceaccount:" + namespace + ":" + apis.RLarkAgentServiceAccountName
 		return "x509", map[string]string{
@@ -79,6 +82,9 @@ func (s *Server) parseSignRequest(req *SignRequest) (string, map[string]string, 
 		}, nil
 
 	case "domain":
+		if req.ClientID == "" || req.DomainID == "" {
+			return "", nil, fmt.Errorf("client_id and domain_id are required for domain role")
+		}
 		return "ssh", map[string]string{
 			apis.MetaCertRole: "domain",
 			apis.MetaAgentID:  req.ClientID,
@@ -86,6 +92,9 @@ func (s *Server) parseSignRequest(req *SignRequest) (string, map[string]string, 
 		}, nil
 
 	case "ssh-guest":
+		if req.ClientID == "" || req.KeyID == "" {
+			return "", nil, fmt.Errorf("client_id and key_id are required for ssh-guest role")
+		}
 		return "ssh", map[string]string{
 			apis.MetaCertRole:  "ssh-guest",
 			apis.MetaUserID:    req.ClientID,
