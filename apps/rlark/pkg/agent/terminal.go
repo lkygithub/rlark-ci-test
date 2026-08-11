@@ -70,7 +70,7 @@ func (a *Agent) handleTerminal(c *gin.Context) {
 	namespace := c.Param("namespace")
 	podName := c.Param("pod")
 	container := c.DefaultQuery("container", "main")
-	cmd := c.DefaultQuery("command", "/bin/sh")
+	cmd := c.DefaultQuery("command", "/bin/bash")
 
 	if namespace == "" || podName == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "namespace and pod are required"})
