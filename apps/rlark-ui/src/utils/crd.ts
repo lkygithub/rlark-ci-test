@@ -131,6 +131,7 @@ export function crdToJob(crd: CRDJob): Job {
     headerRole: headerTask?.name ?? "",
     headerWorker: headerTask?.name ?? "",
     sshAddress: "",
+    stopped: crd.spec.stopped ?? false,
     domain: crd.spec.domain ?? "",
     resources,
     taskStatuses: allTaskStatuses,

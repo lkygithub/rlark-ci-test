@@ -8,12 +8,15 @@ FROM ${GO_BASE_IMAGE} AS builder
 WORKDIR /src
 COPY api/go.mod api/go.sum ./api/
 COPY apps/rlark/go.mod apps/rlark/go.sum ./apps/rlark/
-RUN cd apps/rlark && go mod download
+RUN --mount=type=cache,target=/go/pkg/mod \
+    GOMODCACHE=/go/pkg/mod go mod download -C apps/rlark
 
 COPY api/ ./api/
 COPY apps/rlark/ ./apps/rlark/
 
-RUN cd apps/rlark && \
+RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache/go-build \
+    GOMODCACHE=/go/pkg/mod GOCACHE=/root/.cache/go-build \
+    cd apps/rlark && \
     CGO_ENABLED=0 GOOS=linux go build -o /server             ./cmd/server/... && \
     CGO_ENABLED=0 GOOS=linux go build -o /controller-manager ./cmd/controller-manager/... && \
     CGO_ENABLED=0 GOOS=linux go build -o /gateway            ./cmd/gateway/... && \

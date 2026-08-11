@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+	"time"
 
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -43,8 +44,8 @@ func ReconcileWith(
 
 	if changed {
 		if err := r.Status().Update(ctx, obj); err != nil {
-			logger.Error(err, "status update failed")
-			return ctrl.Result{}, err
+			logger.V(1).Info("status update conflict, requeuing", "error", err.Error())
+			return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
 		}
 	}
 

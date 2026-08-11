@@ -70,12 +70,11 @@ func (r *pushStatefulSetReconciler) Reconcile(ctx context.Context, req reconcile
 
 func statefulSetPhase(sts *appsv1.StatefulSet) (rlarkv1alpha1.TaskPhase, string) {
 	desired := computeDesiredReplicas(sts.Spec.Replicas)
-	if sts.Status.ReadyReplicas >= desired && desired > 0 {
-		return rlarkv1alpha1.TaskPhaseRunning, ""
+	if desired == 0 {
+		return rlarkv1alpha1.TaskPhaseStopped, ""
 	}
-	if sts.Status.ReadyReplicas < desired {
-		return rlarkv1alpha1.TaskPhaseFailed,
-			fmt.Sprintf("statefulset ready replicas(%d) < desired(%d)", sts.Status.ReadyReplicas, desired)
+	if sts.Status.ReadyReplicas >= desired {
+		return rlarkv1alpha1.TaskPhaseRunning, ""
 	}
 	return rlarkv1alpha1.TaskPhasePending, ""
 }
