@@ -1,13 +1,16 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Check,
   ChevronDown,
   Copy,
   ExternalLink,
   KeyRound,
+  MoreVertical,
   Network,
   Pencil,
+  Play,
   Plus,
+  Square,
   TerminalSquare,
   Trash2,
   Video,
@@ -90,6 +93,23 @@ export function JobsPage({
     }
   };
 
+  const handleToggleStop = async (job: Job) => {
+    const stopped = !job.stopped;
+    try {
+      const resp = await fetch(`/api/v1/rlinf.io/v1alpha1/jobs/${job.name}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/merge-patch+json" },
+        body: JSON.stringify({ spec: { stopped } }),
+      });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      setRealJobs((prev) =>
+        prev.map((j) => (j.id === job.id ? { ...j, stopped } : j)),
+      );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  };
+
   const allJobs = realJobs;
   const filtered = allJobs.filter((j) => {
     const queryHit = `${j.name} ${j.type} ${j.target}`
@@ -153,6 +173,7 @@ export function JobsPage({
           { value: "Pending", label: c.status.Pending },
           { value: "Succeeded", label: c.status.Succeeded },
           { value: "Failed", label: c.status.Failed },
+          { value: "Stopped", label: c.status.Stopped },
         ]}
       />
       {error && (
@@ -234,29 +255,14 @@ export function JobsPage({
                 </td>
                 <td>{job.duration}</td>
                 <td>
-                  <div className="row-actions">
-                    <button
-                      className="icon-button"
-                      onClick={() => onEdit(job)}
-                      title={zh ? "编辑" : "Edit"}
-                    >
-                      <Pencil size={15} />
-                    </button>
-                    <button
-                      className="icon-button"
-                      onClick={() => onClone(job)}
-                      title={zh ? "复制" : "Clone"}
-                    >
-                      <Copy size={15} />
-                    </button>
-                    <button
-                      className="icon-button danger"
-                      onClick={() => handleDelete(job)}
-                      title={zh ? "删除" : "Delete"}
-                    >
-                      <Trash2 size={15} />
-                    </button>
-                  </div>
+                  <JobActionMenu
+                    job={job}
+                    zh={zh}
+                    onEdit={() => onEdit(job)}
+                    onClone={() => onClone(job)}
+                    onDelete={() => handleDelete(job)}
+                    onToggleStop={() => handleToggleStop(job)}
+                  />
                 </td>
               </tr>
             ))}
@@ -271,6 +277,119 @@ export function JobsPage({
         onPageSizeChange={setPageSize}
         zh={zh}
       />
+    </div>
+  );
+}
+
+function JobActionMenu({
+  job,
+  zh,
+  onEdit,
+  onClone,
+  onDelete,
+  onToggleStop,
+}: {
+  job: Job;
+  zh: boolean;
+  onEdit: () => void;
+  onClone: () => void;
+  onDelete: () => void;
+  onToggleStop: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handlePointer = (e: PointerEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("pointerdown", handlePointer);
+    document.addEventListener("keydown", handleKey);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointer);
+      document.removeEventListener("keydown", handleKey);
+    };
+  }, [open]);
+
+  const isStopped = job.stopped || job.phase === "Stopped";
+  const isTerminal = job.phase === "Succeeded" || job.phase === "Failed";
+
+  return (
+    <div className="row-actions" ref={ref} style={{ position: "relative" }}>
+      <button
+        className="icon-button"
+        onClick={() => setOpen((v) => !v)}
+        title={zh ? "操作" : "Actions"}
+        aria-expanded={open}
+      >
+        <MoreVertical size={16} />
+      </button>
+      {open && (
+        <div className="action-dropdown">
+          <button
+            className="action-dropdown-item"
+            onClick={() => {
+              setOpen(false);
+              onEdit();
+            }}
+          >
+            <Pencil size={14} />
+            {zh ? "编辑" : "Edit"}
+          </button>
+          <button
+            className="action-dropdown-item"
+            onClick={() => {
+              setOpen(false);
+              onClone();
+            }}
+          >
+            <Copy size={14} />
+            {zh ? "复制" : "Clone"}
+          </button>
+          <button
+            className="action-dropdown-item"
+            disabled={isTerminal}
+            onClick={() => {
+              if (isTerminal) return;
+              setOpen(false);
+              onToggleStop();
+            }}
+            title={
+              isTerminal
+                ? zh
+                  ? "终态任务无法操作"
+                  : "Terminal job cannot be toggled"
+                : ""
+            }
+          >
+            {isStopped ? (
+              <>
+                <Play size={14} />
+                {zh ? "启动" : "Start"}
+              </>
+            ) : (
+              <>
+                <Square size={14} />
+                {zh ? "停止" : "Stop"}
+              </>
+            )}
+          </button>
+          <button
+            className="action-dropdown-item danger"
+            onClick={() => {
+              setOpen(false);
+              onDelete();
+            }}
+          >
+            <Trash2 size={14} />
+            {zh ? "删除" : "Delete"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

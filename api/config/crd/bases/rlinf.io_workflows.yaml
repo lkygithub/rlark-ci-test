@@ -59,6 +59,8 @@ spec:
                       properties:
                         domain:
                           type: string
+                        stopped:
+                          type: boolean
                         tasks:
                           items:
                             properties:

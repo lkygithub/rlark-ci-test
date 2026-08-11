@@ -758,6 +758,7 @@ Responses:
 - `metadata`: `object`, optional
 - `spec`: `object`, optional
   - `domain`: `string`, optional
+  - `stopped`: `boolean`, optional
   - `tasks`: `array`, optional
     - `items`: `object`, optional
       - `agentType`: `string`, optional

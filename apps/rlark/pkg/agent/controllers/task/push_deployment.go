@@ -75,6 +75,9 @@ func (r *pushDeploymentReconciler) Reconcile(ctx context.Context, req reconcile.
 
 func deploymentPhase(deploy *appsv1.Deployment) (rlarkv1alpha1.TaskPhase, string) {
 	desired := computeDesiredReplicas(deploy.Spec.Replicas)
+	if desired == 0 {
+		return rlarkv1alpha1.TaskPhaseStopped, ""
+	}
 	for _, cond := range deploy.Status.Conditions {
 		if cond.Type == appsv1.DeploymentReplicaFailure && cond.Status == corev1.ConditionTrue {
 			return rlarkv1alpha1.TaskPhaseFailed, cond.Message

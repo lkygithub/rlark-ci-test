@@ -9,6 +9,7 @@ const (
 	JobPhaseRunning   JobPhase = "Running"
 	JobPhaseSucceeded JobPhase = "Succeeded"
 	JobPhaseFailed    JobPhase = "Failed"
+	JobPhaseStopped   JobPhase = "Stopped"
 )
 
 type JobTaskTemplate struct {
@@ -18,8 +19,9 @@ type JobTaskTemplate struct {
 }
 
 type JobSpec struct {
-	Domain string            `json:"domain,omitempty"`
-	Tasks  []JobTaskTemplate `json:"tasks,omitempty"`
+	Domain  string            `json:"domain,omitempty"`
+	Stopped bool              `json:"stopped,omitempty"`
+	Tasks   []JobTaskTemplate `json:"tasks,omitempty"`
 }
 
 type JobTaskStatus struct {
