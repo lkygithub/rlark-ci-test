@@ -94,10 +94,17 @@ func (r *pushPodReconciler) updateManagementPod(ctx context.Context, logger logr
 	}
 
 	if err != nil {
-		// Create
+		// Create — status subresource is dropped by API server on Create,
+		// so we must call Status().Update afterwards.
 		logger.Info("creating Pod on management cluster")
 		if err := r.c.ManagementClient.Create(ctx, desiredPod); err != nil {
 			logger.Error(err, "failed to create management Pod")
+			return reconcile.Result{}, err
+		}
+		mgmtPod := desiredPod.DeepCopy()
+		mgmtPod.Status = desiredPod.Status
+		if err := r.c.ManagementClient.Status().Update(ctx, mgmtPod); err != nil {
+			logger.Error(err, "failed to set management Pod status after create")
 			return reconcile.Result{}, err
 		}
 		return reconcile.Result{}, nil

@@ -5,15 +5,18 @@ import (
 	"crypto/subtle"
 	"fmt"
 	"net"
+	"strings"
 	"time"
 
 	"github.com/charmbracelet/ssh"
 	"github.com/charmbracelet/wish"
+	"github.com/rlinf/rlark/apps/rlark/pkg/common"
 	gossh "golang.org/x/crypto/ssh"
+	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/rlinf/rlark/apps/rlark/pkg/apis"
 	"github.com/rlinf/rlark/apps/rlark/pkg/auth/cert"
-	"github.com/rlinf/rlark/apps/rlark/pkg/db"
 	"github.com/rlinf/rlark/apps/rlark/pkg/log"
 	"github.com/rlinf/rlark/apps/rlark/pkg/server/reverseproxy"
 )
@@ -122,35 +125,17 @@ func (s *Server) sshPublicKeyAuth() ssh.PublicKeyHandler {
 		},
 		UserKeyFallback: func(conn gossh.ConnMetadata, key gossh.PublicKey) (*gossh.Permissions, error) {
 			logger.V(1).Info("UserKeyFallback: checking user key store for public key", "user", conn.User())
-			// 如果证书验证失败，尝试使用普通公钥进行验证
-			var authedKey *db.SSHUserKeyModel
-			if s.userKeyStore != nil {
-				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-				defer cancel()
-				keys, err := s.userKeyStore.GetSSHUserKeysByUser(ctx, conn.User())
-				if err != nil {
-					return nil, fmt.Errorf("failed to get user keys: %w", err)
-				}
-				for _, k := range keys {
-					pubKey, _, _, _, err := ssh.ParseAuthorizedKey([]byte(k.PublicKey))
-					if err == nil && ssh.KeysEqual(key, pubKey) {
-						authedKey = k
-						break
-					}
-				}
-			} else {
-				// 该功能要求数据库支持 SSHUserKeyStore，如果没有启用数据库，则无法使用该功能
-				// TODO: 可以提供静态配置的公钥列表来支持该功能，例如提供一个 SSHKeys 文件等
-				return nil, fmt.Errorf("UserKey not supported")
+			keyID, err := s.authenticateUserKey(conn.User(), key)
+			if err != nil {
+				return nil, fmt.Errorf("public key authentication failed for user %s: %w", conn.User(), err)
 			}
-			if authedKey == nil {
-				return nil, fmt.Errorf("public key authentication failed for user %s", conn.User())
+			if keyID == "" {
+				return nil, fmt.Errorf("public key not found for user %s", conn.User())
 			}
-			// 如果验证成功，临时签一个 ssh-guest 证书 Meta，并返回 Permissions
 			_, meta, _ := s.parseSignRequest(&SignRequest{
 				Role:     "ssh-guest",
 				ClientID: conn.User(),
-				KeyID:    fmt.Sprint(authedKey.ID),
+				KeyID:    keyID,
 			})
 			sshCert := &gossh.Certificate{}
 			cert.SetSSHCertMeta(sshCert, meta)
@@ -236,4 +221,59 @@ func (s *Server) handleSSHChannel(srv *ssh.Server, conn *gossh.ServerConn, newCh
 		return
 	}
 	reverseproxy.PipeConnections(ch, c)
+}
+
+func (s *Server) authenticateUserKey(username string, key gossh.PublicKey) (string, error) {
+	if s.userKeyStore != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		keys, err := s.userKeyStore.GetSSHUserKeysByUser(ctx, username)
+		if err != nil {
+			return "", err
+		}
+		for _, k := range keys {
+			pubKey, _, _, _, err := ssh.ParseAuthorizedKey([]byte(k.PublicKey))
+			if err == nil && ssh.KeysEqual(key, pubKey) {
+				return fmt.Sprint(k.ID), nil
+			}
+		}
+		return "", nil
+	}
+
+	return s.authenticateUserKeyFromSecret(username, key)
+}
+
+func (s *Server) authenticateUserKeyFromSecret(username string, key gossh.PublicKey) (string, error) {
+	if s.kubeClient == nil {
+		return "", fmt.Errorf("kubernetes client not available")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	secret, err := s.kubeClient.CoreV1().Secrets(common.SecretNamespace).Get(ctx, common.SSHUserKeySecretName, metav1.GetOptions{})
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return "", nil
+		}
+		return "", err
+	}
+
+	raw, ok := secret.Data[username]
+	if !ok {
+		return "", nil
+	}
+
+	for i, line := range strings.Split(string(raw), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+
+		pubKey, _, _, _, err := ssh.ParseAuthorizedKey([]byte(line))
+		if err == nil && ssh.KeysEqual(key, pubKey) {
+			return fmt.Sprintf("%s-%d", username, i), nil
+		}
+	}
+
+	return "", nil
 }

@@ -382,6 +382,9 @@ var components = []types.Component{
 			return imageByMode(cfg, func(k *types.KubernetesEnv) string { return k.GatewayImage }, func(d *types.DockerEnv) string { return d.GatewayImage })
 		},
 		ArtifactFn: func(cfg *types.DeployConfig) string { return cfg.Raw.GatewayArtifact },
+		CommandFn: func(cfg *types.DeployConfig) []string {
+			return []string{"/usr/local/bin/gateway"}
+		},
 		ArgsFn: func(cfg *types.DeployConfig) []string {
 			args := []string{"--addr=:8090"}
 			if cfg.DB != nil {
@@ -408,6 +411,9 @@ var components = []types.Component{
 			return imageByMode(cfg, func(k *types.KubernetesEnv) string { return k.ControllerManagerImage }, func(d *types.DockerEnv) string { return d.ControllerManagerImage })
 		},
 		ArtifactFn: func(cfg *types.DeployConfig) string { return cfg.Raw.ControllerManagerArtifact },
+		CommandFn: func(cfg *types.DeployConfig) []string {
+			return []string{"/usr/local/bin/controller-manager"}
+		},
 		ArgsFn: func(cfg *types.DeployConfig) []string {
 			args := []string{
 				"--metrics-bind-address=:8080",
@@ -438,6 +444,9 @@ var components = []types.Component{
 			return imageByMode(cfg, func(k *types.KubernetesEnv) string { return k.ServerImage }, func(d *types.DockerEnv) string { return d.ServerImage })
 		},
 		ArtifactFn: func(cfg *types.DeployConfig) string { return cfg.Raw.ServerArtifact },
+		CommandFn: func(cfg *types.DeployConfig) []string {
+			return []string{"/usr/local/bin/server"}
+		},
 		ArgsFn: func(cfg *types.DeployConfig) []string {
 			args := []string{
 				"--https-port=8443",
@@ -482,6 +491,9 @@ var components = []types.Component{
 			return imageByMode(cfg, func(k *types.KubernetesEnv) string { return k.AgentImage }, func(d *types.DockerEnv) string { return d.AgentImage })
 		},
 		ArtifactFn: func(cfg *types.DeployConfig) string { return cfg.Raw.AgentArtifact },
+		CommandFn: func(cfg *types.DeployConfig) []string {
+			return []string{"/usr/local/bin/agent"}
+		},
 		ArgsFn: func(cfg *types.DeployConfig) []string {
 			args := []string{
 				"--server-address=" + cfg.ControlPlaneAddress,
@@ -519,6 +531,9 @@ var components = []types.Component{
 			return imageByMode(cfg, func(k *types.KubernetesEnv) string { return k.AgentImage }, func(d *types.DockerEnv) string { return d.AgentImage })
 		},
 		ArtifactFn: func(cfg *types.DeployConfig) string { return cfg.Raw.AgentArtifact },
+		CommandFn: func(cfg *types.DeployConfig) []string {
+			return []string{"/usr/local/bin/agent"}
+		},
 		ArgsFn: func(cfg *types.DeployConfig) []string {
 			args := []string{
 				"--server-address=" + cfg.ControlPlaneAddress,

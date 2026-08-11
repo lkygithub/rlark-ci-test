@@ -1580,7 +1580,7 @@ export function CreateWorkflowModal({
                           style={{ gridTemplateColumns: "1fr 1fr" }}
                         >
                           <label>
-                            {zh ? "副本（自动匹配节点数）" : "Replicas (auto)"}
+                            {zh ? "已选节点数" : "Number of selected nodes"}
                             <input
                               type="number"
                               value={rr.replicas}

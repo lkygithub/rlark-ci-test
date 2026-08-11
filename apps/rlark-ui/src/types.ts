@@ -10,7 +10,8 @@ export type Page =
   | "domains"
   | "storageClass"
   | "files"
-  | "api";
+  | "api"
+  | "ssh-keys";
 
 export type NavParent = {
   id: Page;

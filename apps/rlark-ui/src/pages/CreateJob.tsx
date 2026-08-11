@@ -778,36 +778,17 @@ export function CreateJobModal({
                           onMatchedCount={(n) => updateRR(role, "replicas", n)}
                         />
                       </div>
-                      <div className="resource-input-row">
+                      <div
+                        className="resource-input-row"
+                        style={{ gridTemplateColumns: "1fr 1fr" }}
+                      >
                         <label>
-                          {zh
-                            ? "副本（自动匹配节点数）"
-                            : "Replicas (auto from nodes)"}
+                          {zh ? "已选节点数" : "Number of selected nodes"}
                           <input
                             type="number"
                             value={rr.replicas}
                             readOnly
                             style={{ opacity: 0.6 }}
-                          />
-                        </label>
-                        <label>
-                          CPU
-                          <input
-                            value={rr.cpu}
-                            onChange={(e) =>
-                              updateRR(role, "cpu", e.target.value)
-                            }
-                            placeholder="4"
-                          />
-                        </label>
-                        <label>
-                          {zh ? "内存" : "Memory"}
-                          <input
-                            value={rr.memory}
-                            onChange={(e) =>
-                              updateRR(role, "memory", e.target.value)
-                            }
-                            placeholder="16Gi"
                           />
                         </label>
                         <label>

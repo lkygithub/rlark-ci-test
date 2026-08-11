@@ -18,6 +18,7 @@ import {
 } from "./pages/Storage";
 import { CreateJobModal } from "./pages/CreateJob";
 import { UserLogin } from "./pages/Login";
+import { SSHKeysPage } from "./pages/SSHKeys";
 import { AdminApp } from "./admin/AdminApp";
 import { useBackendMode, usePersistentState } from "./hooks";
 
@@ -300,6 +301,7 @@ export default function App() {
             onJobClick={(name) => navigate("jobs", name)}
           />
         )}
+        {page === "ssh-keys" && <SSHKeysPage copy={c} />}
       </main>
       {createOpen && (
         <CreateJobModal
