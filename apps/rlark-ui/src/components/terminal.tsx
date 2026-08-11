@@ -43,12 +43,25 @@ export function TerminalModal({
     wsRef.current = ws;
     ws.binaryType = "arraybuffer";
 
+    const sendResize = () => {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(
+          JSON.stringify({
+            type: "resize",
+            rows: term.rows,
+            cols: term.cols,
+          }),
+        );
+      }
+    };
+
     let downloading = false;
     let downloadChunks: Uint8Array[] = [];
     let downloadName = "";
 
     ws.onopen = () => {
       term.writeln("\r\nConnected. Starting shell ...\r\n");
+      sendResize();
     };
     ws.onmessage = (e) => {
       if (typeof e.data === "string") {
@@ -59,6 +72,7 @@ export function TerminalModal({
             size?: number;
             success?: boolean;
             error?: string;
+            message?: string;
           };
           try {
             msg = JSON.parse(e.data);
@@ -104,6 +118,12 @@ export function TerminalModal({
             }
             return;
           }
+          if (msg.type === "error") {
+            term.writeln(
+              `\r\n\x1b[31m${msg.message || msg.error || "unknown error"}\x1b[0m`,
+            );
+            return;
+          }
         }
         term.write(e.data);
       } else if (e.data instanceof ArrayBuffer) {
@@ -120,11 +140,13 @@ export function TerminalModal({
     ws.onclose = () => {
       term.writeln("\r\n\x1b[33mConnection closed.\x1b[0m");
     };
+    const encoder = new TextEncoder();
     term.onData((data) => {
       if (ws.readyState === WebSocket.OPEN) {
-        ws.send(data);
+        ws.send(encoder.encode(data));
       }
     });
+    term.onResize(() => sendResize());
 
     const onResize = () => fitAddon.fit();
     window.addEventListener("resize", onResize);

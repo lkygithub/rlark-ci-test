@@ -55,6 +55,69 @@ type fileTransferDone struct {
 	Error   string `json:"error,omitempty"`
 }
 
+// wsResizeMsg is the resize control message sent by the client.
+type wsResizeMsg struct {
+	Type string `json:"type"`
+	Rows uint16 `json:"rows"`
+	Cols uint16 `json:"cols"`
+}
+
+// wsErrorMsg is a structured error message sent to the client so it can be
+// displayed on the terminal instead of being silently dropped.
+type wsErrorMsg struct {
+	Type    string `json:"type"`
+	Message string `json:"message"`
+}
+
+// wsSizeQueue implements remotecommand.TerminalSizeQueue. It receives resize
+// events from the WebSocket readLoop and blocks Next() until a new size is
+// available or the queue is closed.
+type wsSizeQueue struct {
+	mu   sync.Mutex
+	cond *sync.Cond
+	size remotecommand.TerminalSize
+	has  bool
+	done bool
+}
+
+func newWSSizeQueue() *wsSizeQueue {
+	q := &wsSizeQueue{}
+	q.cond = sync.NewCond(&q.mu)
+	return q
+}
+
+func (q *wsSizeQueue) resize(rows, cols uint16) {
+	q.mu.Lock()
+	q.size = remotecommand.TerminalSize{Width: cols, Height: rows}
+	q.has = true
+	q.cond.Broadcast()
+	q.mu.Unlock()
+}
+
+func (q *wsSizeQueue) close() {
+	q.mu.Lock()
+	q.done = true
+	q.cond.Broadcast()
+	q.mu.Unlock()
+}
+
+// Next blocks until a new terminal size is available or the queue is closed.
+// It returns nil when monitoring has been stopped.
+func (q *wsSizeQueue) Next() *remotecommand.TerminalSize {
+	q.mu.Lock()
+	for !q.has && !q.done {
+		q.cond.Wait()
+	}
+	if q.done {
+		q.mu.Unlock()
+		return nil
+	}
+	size := q.size
+	q.has = false
+	q.mu.Unlock()
+	return &size
+}
+
 var terminalUpgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool { return true },
 }
@@ -96,34 +159,39 @@ func (a *Agent) handleTerminal(c *gin.Context) {
 		Param("stderr", "true").
 		Param("tty", "true")
 
+	pipe := newWSPipe(ws, a.localKubeConfig, a.localKubeClient, namespace, podName, container, logger)
+	defer func() {
+		pipe.sizeQueue.close()
+		_ = pipe.Close()
+	}()
+
 	executor, err := remotecommand.NewSPDYExecutor(a.localKubeConfig, "POST", execReq.URL())
 	if err != nil {
 		logger.Error(err, "failed to create SPDY executor")
-		_ = ws.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("failed to create executor: %v\r\n", err)))
+		pipe.sendError(fmt.Sprintf("failed to create executor: %v", err))
 		return
 	}
 
-	pipe := newWSPipe(ws, a.localKubeConfig, a.localKubeClient, namespace, podName, container, logger)
-
 	err = executor.StreamWithContext(c.Request.Context(), remotecommand.StreamOptions{
-		Stdin:  pipe,
-		Stdout: pipe,
-		Stderr: pipe,
-		Tty:    true,
+		Stdin:             pipe,
+		Stdout:            pipe,
+		Stderr:            pipe,
+		Tty:               true,
+		TerminalSizeQueue: pipe.sizeQueue,
 	})
 	if err != nil {
 		logger.Error(err, "exec stream error")
-		_ = ws.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("exec error: %v\r\n", err)))
+		pipe.sendError(fmt.Sprintf("exec error: %v", err))
 	}
-	_ = pipe.Close()
 }
 
 type wsPipe struct {
-	ws     *websocket.Conn
-	wmu    sync.Mutex
-	buf    []byte
-	rcond  *sync.Cond
-	closed bool
+	ws        *websocket.Conn
+	wmu       sync.Mutex
+	buf       []byte
+	rcond     *sync.Cond
+	closed    bool
+	sizeQueue *wsSizeQueue
 
 	kubeConfig *rest.Config
 	kubeClient kubernetes.Interface
@@ -137,6 +205,7 @@ func newWSPipe(ws *websocket.Conn, kubeConfig *rest.Config, kubeClient kubernete
 	p := &wsPipe{
 		ws:         ws,
 		rcond:      sync.NewCond(&sync.Mutex{}),
+		sizeQueue:  newWSSizeQueue(),
 		kubeConfig: kubeConfig,
 		kubeClient: kubeClient,
 		namespace:  namespace,
@@ -159,16 +228,32 @@ func (p *wsPipe) readLoop() {
 			return
 		}
 
-		if msgType == websocket.TextMessage && len(data) > 0 && data[0] == '{' {
-			var probe struct {
-				Type string `json:"type"`
+		// Dispatch Text JSON control messages by type. Unknown Text
+		// messages are dropped — never injected into the stdin buffer.
+		if msgType == websocket.TextMessage {
+			if len(data) > 0 && data[0] == '{' {
+				var probe struct {
+					Type string `json:"type"`
+				}
+				if json.Unmarshal(data, &probe) == nil {
+					switch probe.Type {
+					case "resize":
+						var msg wsResizeMsg
+						if json.Unmarshal(data, &msg) == nil {
+							p.sizeQueue.resize(msg.Rows, msg.Cols)
+						}
+						continue
+					case "file-upload", "file-download":
+						p.handleFileTransfer(data, probe.Type)
+						continue
+					}
+				}
 			}
-			if json.Unmarshal(data, &probe) == nil && (probe.Type == "file-upload" || probe.Type == "file-download") {
-				p.handleFileTransfer(data, probe.Type)
-				continue
-			}
+			// Unknown or malformed Text message: drop.
+			continue
 		}
 
+		// Binary messages carry terminal I/O.
 		p.rcond.L.Lock()
 		p.buf = append(p.buf, data...)
 		p.rcond.Broadcast()
@@ -288,6 +373,14 @@ func (p *wsPipe) sendFileDone(success bool, errMsg string) {
 		Error:   errMsg,
 	}
 	data, _ := json.Marshal(done)
+	_ = p.ws.WriteMessage(websocket.TextMessage, data)
+}
+
+// sendError sends a structured error message to the client as a Text JSON
+// message. The client injects it into the terminal Read buffer so the user
+// can see it instead of the error being silently dropped.
+func (p *wsPipe) sendError(msg string) {
+	data, _ := json.Marshal(wsErrorMsg{Type: "error", Message: msg})
 	_ = p.ws.WriteMessage(websocket.TextMessage, data)
 }
 

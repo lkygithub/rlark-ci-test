@@ -15,8 +15,9 @@ import (
 //
 // It follows the protocol defined in agent/terminal.go:
 //   - Binary messages carry terminal I/O (stdin → server, server → stdout)
-//   - Text JSON messages starting with '{' are control messages
-//   - Resize is sent as: {"type":"resize","rows":N,"cols":N}
+//   - Text JSON messages are control messages dispatched by "type":
+//   - {"type":"resize","rows":N,"cols":N}  — resize the remote terminal
+//   - {"type":"error","message":"..."}    — server error, injected into Read
 //   - File-transfer control messages from the server are silently dropped
 //     (this adapter is for terminal I/O only).
 type WSTerminal struct {
@@ -56,8 +57,24 @@ func (t *WSTerminal) readLoop() {
 			t.rcond.L.Unlock()
 			return
 		}
-		// Drop Text JSON messages (file-transfer responses, resize ack, etc.)
 		if msgType == websocket.TextMessage {
+			// Parse control messages; inject error messages into the Read
+			// buffer so they appear on the terminal. Drop everything else.
+			if len(data) > 0 && data[0] == '{' {
+				var probe struct {
+					Type string `json:"type"`
+				}
+				if json.Unmarshal(data, &probe) == nil && probe.Type == "error" {
+					var msg wsErrorMsg
+					if json.Unmarshal(data, &msg) == nil {
+						text := "\r\n" + msg.Message + "\r\n"
+						t.rcond.L.Lock()
+						t.buf = append(t.buf, text...)
+						t.rcond.Broadcast()
+						t.rcond.L.Unlock()
+					}
+				}
+			}
 			continue
 		}
 		// Buffer Binary messages for Read().
@@ -121,4 +138,9 @@ type resizeMsg struct {
 	Type string `json:"type"`
 	Rows uint16 `json:"rows"`
 	Cols uint16 `json:"cols"`
+}
+
+type wsErrorMsg struct {
+	Type    string `json:"type"`
+	Message string `json:"message"`
 }
