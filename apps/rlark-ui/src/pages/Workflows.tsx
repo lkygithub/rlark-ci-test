@@ -1780,9 +1780,7 @@ export function CreateWorkflowModal({
                         </div>
                         <div className="form-section" style={{ marginTop: 12 }}>
                           <div className="form-section-head">
-                            <small>
-                              {zh ? "对象存储挂载" : "Volume Mounts"}
-                            </small>
+                            <small>{zh ? "存储挂载" : "Volume Mounts"}</small>
                             <button
                               className="secondary-button"
                               onClick={() => addRRMount(role)}

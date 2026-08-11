@@ -4713,10 +4713,46 @@ tbody tr:hover {
 
 .mount-row {
   display: grid;
-  grid-template-columns: 80px 1fr 1fr 32px;
+  grid-template-columns: auto 1fr 1fr 32px;
   gap: 8px;
   margin-top: 8px;
   align-items: center;
+}
+
+.mount-type-toggle {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.mount-type-toggle button {
+  border: none;
+  background: transparent;
+  padding: 8px 10px;
+  font-size: 12px;
+  color: var(--muted, #8a94a6);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.mount-type-toggle button.active {
+  background: var(--blue, #6366f1);
+  color: #fff;
+}
+
+.theme-dark .mount-type-toggle {
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.theme-dark .mount-type-toggle button {
+  color: #8a94a6;
+}
+
+.theme-dark .mount-type-toggle button.active {
+  background: var(--blue, #6366f1);
+  color: #fff;
 }
 
 .mount-row select,
@@ -6962,7 +6998,7 @@ input[type="radio"]:disabled {
   }
 
   .mount-row {
-    grid-template-columns: minmax(120px, 0.8fr) minmax(180px, 1fr) 32px;
+    grid-template-columns: minmax(80px, auto) minmax(180px, 1fr) 32px;
   }
 
   .mount-row > input:nth-last-child(2),
@@ -7330,6 +7366,13 @@ tr.clickable:hover {
 .selector-placeholder {
   color: var(--muted, #8b95a7);
   font-size: 13px;
+}
+
+.selector-hint {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--muted, #8b95a7);
+  line-height: 1.5;
 }
 
 .selector-chip {

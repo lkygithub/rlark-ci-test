@@ -7,6 +7,7 @@ import {
   ROLE_TEMPLATES,
   computePvcStorageMap,
   generateJobCRD,
+  parseNodeSelectorStr,
 } from "../utils/job";
 import { toYaml } from "../utils/yaml";
 import { useNodeLabels } from "../utils/nodes";
@@ -31,6 +32,16 @@ export function CreateJobModal({
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const errorBannerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (error && errorBannerRef.current) {
+      errorBannerRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    }
+  }, [error]);
 
   useEffect(() => {
     const handleEscape = (event: KeyboardEvent) => {
@@ -79,6 +90,7 @@ export function CreateJobModal({
   const [storageClassFetched, setStorageClassFetched] = useState(false);
   const [clustersLoaded, setClustersLoaded] = useState(false);
   const lastFetchedStorageClusterRef = useRef<string>("");
+  const inferenceDoneRef = useRef(false);
 
   useEffect(() => {
     fetch("/api/v1/rlinf.io/v1alpha1/domains")
@@ -219,15 +231,8 @@ export function CreateJobModal({
         devices: [],
         image: "",
         prepareScript: "",
-        envs: [{ key: "RLARK_TASK_ROLE", value: role }],
-        mounts: [
-          {
-            type: "host" as const,
-            objectStorage: "",
-            mountPath: "/mnt/dataset",
-            hostPath: "/host/dataset",
-          },
-        ],
+        envs: [],
+        mounts: [],
       };
     });
   }
@@ -274,6 +279,47 @@ export function CreateJobModal({
   }, [clusterDisplayNames]);
 
   useEffect(() => {
+    if (inferenceDoneRef.current || allNodes.length === 0 || !clustersLoaded)
+      return;
+    inferenceDoneRef.current = true;
+
+    setRoleResources((prev) => {
+      let changed = false;
+      const next = Object.fromEntries(
+        Object.entries(prev).map(([role, resource]) => {
+          const selectorMap = parseNodeSelectorStr(resource.nodeSelector);
+          if (Object.keys(selectorMap).length === 0) return [role, resource];
+
+          const matched = allNodes.filter((n) => {
+            const labels = n.metadata.labels ?? {};
+            return Object.entries(selectorMap).every(([k, v]) => {
+              const values = v.split(",");
+              return labels[k] !== undefined && values.includes(labels[k]);
+            });
+          });
+
+          const nsList = Array.from(
+            new Set(
+              matched
+                .map((n) => n.metadata.namespace)
+                .filter((v): v is string => !!v),
+            ),
+          );
+          if (nsList.length === 0) return [role, resource];
+
+          const inferred = nsList[0];
+          if (inferred !== resource.cluster) {
+            changed = true;
+            return [role, { ...resource, cluster: inferred }];
+          }
+          return [role, resource];
+        }),
+      );
+      return changed ? next : prev;
+    });
+  }, [allNodes, clustersLoaded]);
+
+  useEffect(() => {
     if (!activeRoleTab) return;
     const rr = roleResources[activeRoleTab];
     if (!rr) return;
@@ -302,15 +348,8 @@ export function CreateJobModal({
         devices: [],
         image: "",
         prepareScript: "",
-        envs: [{ key: "RLARK_TASK_ROLE", value: role }],
-        mounts: [
-          {
-            type: "host" as const,
-            objectStorage: "",
-            mountPath: "/mnt/dataset",
-            hostPath: "/host/dataset",
-          },
-        ],
+        envs: [],
+        mounts: [],
       };
     });
     setRoleResources(newRR);
@@ -393,7 +432,7 @@ export function CreateJobModal({
       ...prev,
       [role]: {
         ...prev[role],
-        envs: [...prev[role].envs, { key: "NEW_ENV", value: "value" }],
+        envs: [...prev[role].envs, { key: "", value: "" }],
       },
     }));
   };
@@ -426,7 +465,7 @@ export function CreateJobModal({
       const newMounts = [
         ...rr.mounts,
         {
-          type: "storage" as const,
+          type: "host" as const,
           objectStorage: "",
           mountPath: "",
           hostPath: "",
@@ -611,7 +650,11 @@ export function CreateJobModal({
         </div>
         <div className="modal-body create-job-body">
           {error && (
-            <div className="form-error-banner" role="alert">
+            <div
+              className="form-error-banner"
+              ref={errorBannerRef}
+              role="alert"
+            >
               {error}
             </div>
           )}
@@ -912,7 +955,11 @@ export function CreateJobModal({
                           onChange={(e) =>
                             updateRR(role, "image", e.target.value)
                           }
-                          placeholder=""
+                          placeholder={
+                            zh
+                              ? "请填写集群可访问的镜像地址"
+                              : "Enter an image address accessible from the cluster"
+                          }
                         />
                       </div>
                       <div className="form-section" style={{ marginTop: 12 }}>
@@ -957,6 +1004,7 @@ export function CreateJobModal({
                               onChange={(e) =>
                                 updateRREnv(role, index, "key", e.target.value)
                               }
+                              placeholder="KEY"
                             />
                             <input
                               value={env.value}
@@ -968,6 +1016,7 @@ export function CreateJobModal({
                                   e.target.value,
                                 )
                               }
+                              placeholder="value"
                             />
                             <button
                               className="icon-button danger"
@@ -980,7 +1029,7 @@ export function CreateJobModal({
                       </div>
                       <div className="form-section" style={{ marginTop: 12 }}>
                         <div className="form-section-head">
-                          <small>{zh ? "对象存储挂载" : "Volume Mounts"}</small>
+                          <small>{zh ? "存储挂载" : "Volume Mounts"}</small>
                           <button
                             className="secondary-button"
                             onClick={() => addRRMount(role)}
@@ -991,27 +1040,43 @@ export function CreateJobModal({
                         </div>
                         {rr.mounts.map((mount, index) => (
                           <div className="mount-row" key={index}>
-                            <select
-                              value={mount.type}
-                              onChange={(e) => {
-                                updateRRMount(
-                                  role,
-                                  index,
-                                  "type",
-                                  e.target.value,
-                                );
-                                if (e.target.value === "storage") {
+                            <div
+                              className="mount-type-toggle"
+                              onClick={(e) => {
+                                const next =
+                                  mount.type === "storage" ? "host" : "storage";
+                                updateRRMount(role, index, "type", next);
+                                if (next === "storage") {
                                   fetchStorageClasses(rr.cluster);
                                 }
                               }}
                             >
-                              <option value="storage">
-                                {zh ? "对象存储" : "Object Storage"}
-                              </option>
-                              <option value="host">
-                                {zh ? "主机路径" : "Host Path"}
-                              </option>
-                            </select>
+                              <button
+                                type="button"
+                                className={
+                                  mount.type === "host" ? "active" : ""
+                                }
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  updateRRMount(role, index, "type", "host");
+                                }}
+                              >
+                                {zh ? "主机" : "Host"}
+                              </button>
+                              <button
+                                type="button"
+                                className={
+                                  mount.type === "storage" ? "active" : ""
+                                }
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  updateRRMount(role, index, "type", "storage");
+                                  fetchStorageClasses(rr.cluster);
+                                }}
+                              >
+                                {zh ? "存储" : "Storage"}
+                              </button>
+                            </div>
                             {mount.type === "storage" ? (
                               <select
                                 value={mount.objectStorage}
@@ -1051,7 +1116,7 @@ export function CreateJobModal({
                                     e.target.value,
                                   )
                                 }
-                                placeholder="/host/path"
+                                placeholder="/path"
                               />
                             )}
                             <input
@@ -1064,7 +1129,7 @@ export function CreateJobModal({
                                   e.target.value,
                                 )
                               }
-                              placeholder="/mnt/data"
+                              placeholder="/path"
                             />
                             <button
                               className="icon-button danger"
