@@ -8,6 +8,14 @@ if [ -n "$WAIT_NETWORK_SCRIPT" ]; then
     bash "$WAIT_NETWORK_SCRIPT" "network"
 fi
 
+# Phase 0: Inject SSH public key into authorized_keys
+if [ -n "$RLARK_SSH_PUBLIC_KEY" ]; then
+    mkdir -p ~/.ssh && chmod 700 ~/.ssh
+    echo "$RLARK_SSH_PUBLIC_KEY" >> ~/.ssh/authorized_keys
+    chmod 600 ~/.ssh/authorized_keys
+    echo "SSH public key injected into authorized_keys"
+fi
+
 # Phase 1: Prepare script (executed before Ray starts)
 if [ -n "$RLARK_PREPARE_SCRIPT" ]; then
     echo "Executing prepare script..."

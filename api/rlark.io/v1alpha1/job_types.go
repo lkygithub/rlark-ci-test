@@ -19,9 +19,10 @@ type JobTaskTemplate struct {
 }
 
 type JobSpec struct {
-	Domain  string            `json:"domain,omitempty"`
-	Stopped bool              `json:"stopped,omitempty"`
-	Tasks   []JobTaskTemplate `json:"tasks,omitempty"`
+	Domain       string            `json:"domain,omitempty"`
+	Stopped      bool              `json:"stopped,omitempty"`
+	Tasks        []JobTaskTemplate `json:"tasks,omitempty"`
+	SSHPublicKey string            `json:"sshPublicKey,omitempty"`
 }
 
 type JobTaskStatus struct {

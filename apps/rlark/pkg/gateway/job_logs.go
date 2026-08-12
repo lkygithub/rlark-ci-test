@@ -45,16 +45,15 @@ func (g *Gateway) rlinfv1alpha1JobLogs(c *gin.Context) {
 			continue
 		}
 
-		podList, err := g.kubeClient.RlinfV1alpha1().Pods(taskNS).List(ctx, metav1.ListOptions{})
+		podList, err := g.kubeClient.RlinfV1alpha1().Pods(taskNS).List(ctx, metav1.ListOptions{
+			LabelSelector: fmt.Sprintf("%s=%s", rlarkv1alpha1.PodLabelTaskName, task.Name),
+		})
 		if err != nil {
 			logger.Error(err, "failed to list pods for task", "task", task.Name, "namespace", taskNS)
 			continue
 		}
 
 		for _, pod := range podList.Items {
-			if pod.Spec.TaskName != task.Name {
-				continue
-			}
 			info := podLogInfo{
 				TaskName: task.Name,
 				PodName:  pod.Spec.PodName,

@@ -6247,6 +6247,13 @@ input[type="radio"]:disabled {
   max-width: 100%;
   padding: 5px 7px;
   background: var(--canvas);
+  white-space: nowrap;
+}
+
+.node-label-section .label-chip code {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .theme-dark .node-insight-hero {
@@ -7373,6 +7380,24 @@ tr.clickable:hover {
   font-size: 12px;
   color: var(--muted, #8b95a7);
   line-height: 1.5;
+}
+
+.field-hint {
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--muted, #8b95a7);
+}
+
+.label-row {
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+}
+
+.label-hint {
+  font-size: 11px;
+  color: var(--muted, #8b95a7);
 }
 
 .selector-chip {

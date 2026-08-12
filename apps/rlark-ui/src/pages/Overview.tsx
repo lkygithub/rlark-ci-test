@@ -237,7 +237,13 @@ export function Overview({
           onClick={() => navigate("jobs")}
         />
       </section>
-      <OverviewChinaMap navigate={navigate} copy={c} />
+      <OverviewChinaMap
+        navigate={navigate}
+        copy={c}
+        nodes={displayNodes}
+        jobs={realJobs}
+        clusters={realClusters}
+      />
       <section className="dashboard-grid">
         <div className="panel chart-panel">
           <div className="panel-title">

@@ -84,6 +84,7 @@ type TaskSpec struct {
 	TensorBoardDir *string             `json:"tensorBoardDir,omitempty"`
 	PrepareScript  string              `json:"prepareScript,omitempty"` // Ray 集群启动前执行的脚本
 	RunScript      string              `json:"runScript,omitempty"`     // Ray 集群就绪后执行的脚本（仅 head 节点）
+	SSHPublicKey   string              `json:"sshPublicKey,omitempty"`  // 注入到 Pod authorized_keys 的 SSH 公钥
 }
 
 type TaskStatus struct {
