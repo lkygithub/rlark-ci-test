@@ -661,6 +661,7 @@ Each user can upload one or more SSH public keys. These keys are stored in a Kub
 ### Key Features
 
 - **Web UI management**: A dedicated SSH Keys page in the Web UI for viewing and managing keys
+- **Per-task key injection**: Individual Jobs and Tasks can specify an `sshPublicKey` field, which takes precedence over centrally managed keys for that specific workload
 - **Conflict detection**: Duplicate keys are detected and rejected with a 409 response
 - **Retry on conflict**: The API automatically retries on write conflicts (up to 5 attempts)
 - **Key validation**: Public keys are validated using `golang.org/x/crypto/ssh` before storage
