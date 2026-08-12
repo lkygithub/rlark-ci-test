@@ -91,7 +91,7 @@
 
   <!-- ==================== Data Plane: GPU Cluster ==================== -->
   <g transform="translate(70, 293)">
-    <rect width="400" height="320" rx="16" fill="#FFFFFF" stroke="#A7F3D0" stroke-width="1.5" filter="url(#shadow-lg)"/>
+    <rect width="400" height="275" rx="16" fill="#FFFFFF" stroke="#A7F3D0" stroke-width="1.5" filter="url(#shadow-lg)"/>
     <rect x="0" y="0" width="400" height="36" rx="16" fill="#ECFDF5"/>
     <rect x="0" y="16" width="400" height="20" fill="#ECFDF5"/>
     <text x="24" y="24" class="font section-title">GPU Cluster (Kubernetes)</text>
@@ -127,16 +127,16 @@
     </g>
 
     <!-- Blue (Cluster Agent, leftmost) → left-of-center -->
-    <path d="M62 138 L62 156 L95 156 L95 173" stroke="#3B82F6" stroke-width="1" fill="none" stroke-dasharray="5 4"/>
-    <path d="M62 138 L62 156 L285 156 L285 173" stroke="#3B82F6" stroke-width="1" fill="none" stroke-dasharray="5 4"/>
+    <path d="M62 138 L62 148 L95 148 L95 173" stroke="#3B82F6" stroke-width="1" fill="none" stroke-dasharray="5 4"/>
+    <path d="M62 138 L62 148 L285 148 L285 173" stroke="#3B82F6" stroke-width="1" fill="none" stroke-dasharray="5 4"/>
 
     <!-- Red (Node Agent, middle) → center -->
-    <path d="M152 138 L152 164 L105 164 L105 173" stroke="#EF4444" stroke-width="1" fill="none" stroke-dasharray="5 4"/>
-    <path d="M152 138 L152 164 L295 164 L295 173" stroke="#EF4444" stroke-width="1" fill="none" stroke-dasharray="5 4"/>
+    <path d="M152 138 L152 156 L105 156 L105 173" stroke="#EF4444" stroke-width="1" fill="none" stroke-dasharray="5 4"/>
+    <path d="M152 138 L152 156 L295 156 L295 173" stroke="#EF4444" stroke-width="1" fill="none" stroke-dasharray="5 4"/>
 
     <!-- Green (Controller, rightmost) → right-of-center -->
-    <path d="M332 138 L332 148 L115 148 L115 173" stroke="#22C55E" stroke-width="1" fill="none" stroke-dasharray="4 4"/>
-    <path d="M332 138 L332 148 L305 148 L305 173" stroke="#22C55E" stroke-width="1" fill="none" stroke-dasharray="4 4"/>
+    <path d="M332 138 L332 164 L115 164 L115 173" stroke="#22C55E" stroke-width="1" fill="none" stroke-dasharray="4 4"/>
+    <path d="M332 138 L332 164 L305 164 L305 173" stroke="#22C55E" stroke-width="1" fill="none" stroke-dasharray="4 4"/>
 
     <g transform="translate(20, 173)">
       <rect width="170" height="90" rx="10" fill="#F8FAFC" stroke="#E2E8F0" filter="url(#shadow)"/>
@@ -145,6 +145,8 @@
       <text x="38" y="39" text-anchor="middle" class="font card-sub">main</text>
       <rect x="78" y="24" width="55" height="22" rx="6" fill="#ECFDF5" stroke="#6EE7B7"/>
       <text x="105" y="39" text-anchor="middle" class="font card-sub">sidecar</text>
+      <rect x="8" y="54" width="154" height="16" rx="4" fill="#FEF3C7" stroke="#FDE68A"/>
+      <text x="85" y="65" text-anchor="middle" class="font badge-xs" fill="#B45309">GPU</text>
     </g>
     <g transform="translate(210, 173)">
       <rect width="170" height="90" rx="10" fill="#F8FAFC" stroke="#E2E8F0" filter="url(#shadow)"/>
@@ -153,12 +155,14 @@
       <text x="38" y="39" text-anchor="middle" class="font card-sub">main</text>
       <rect x="78" y="24" width="55" height="22" rx="6" fill="#ECFDF5" stroke="#6EE7B7"/>
       <text x="105" y="39" text-anchor="middle" class="font card-sub">sidecar</text>
+      <rect x="8" y="54" width="154" height="16" rx="4" fill="#FEF3C7" stroke="#FDE68A"/>
+      <text x="85" y="65" text-anchor="middle" class="font badge-xs" fill="#B45309">GPU</text>
     </g>
   </g>
 
   <!-- ==================== Data Plane: Edge Device ==================== -->
   <g transform="translate(490, 293)">
-    <rect width="400" height="320" rx="16" fill="#FFFFFF" stroke="#FED7AA" stroke-width="1.5" filter="url(#shadow-lg)"/>
+    <rect width="400" height="275" rx="16" fill="#FFFFFF" stroke="#FED7AA" stroke-width="1.5" filter="url(#shadow-lg)"/>
     <rect x="0" y="0" width="400" height="36" rx="16" fill="#FFF7ED"/>
     <rect x="0" y="16" width="400" height="20" fill="#FFF7ED"/>
     <text x="24" y="24" class="font section-title">Edge Device (Docker / Raw)</text>
@@ -193,14 +197,14 @@
       <text x="46" y="70" text-anchor="middle" class="font card-sub-sm">camera</text>
     </g>
 
-    <path d="M62 138 L62 156 L95 156 L95 173" stroke="#3B82F6" stroke-width="1" fill="none" stroke-dasharray="5 4"/>
-    <path d="M62 138 L62 156 L285 156 L285 173" stroke="#3B82F6" stroke-width="1" fill="none" stroke-dasharray="5 4"/>
+    <path d="M62 138 L62 148 L95 148 L95 173" stroke="#3B82F6" stroke-width="1" fill="none" stroke-dasharray="5 4"/>
+    <path d="M62 138 L62 148 L285 148 L285 173" stroke="#3B82F6" stroke-width="1" fill="none" stroke-dasharray="5 4"/>
 
-    <path d="M152 138 L152 164 L105 164 L105 173" stroke="#EF4444" stroke-width="1" fill="none" stroke-dasharray="5 4"/>
-    <path d="M152 138 L152 164 L295 164 L295 173" stroke="#EF4444" stroke-width="1" fill="none" stroke-dasharray="5 4"/>
+    <path d="M152 138 L152 156 L105 156 L105 173" stroke="#EF4444" stroke-width="1" fill="none" stroke-dasharray="5 4"/>
+    <path d="M152 138 L152 156 L295 156 L295 173" stroke="#EF4444" stroke-width="1" fill="none" stroke-dasharray="5 4"/>
 
-    <path d="M332 138 L332 148 L115 148 L115 173" stroke="#22C55E" stroke-width="1" fill="none" stroke-dasharray="4 4"/>
-    <path d="M332 138 L332 148 L305 148 L305 173" stroke="#22C55E" stroke-width="1" fill="none" stroke-dasharray="4 4"/>
+    <path d="M332 138 L332 164 L115 164 L115 173" stroke="#22C55E" stroke-width="1" fill="none" stroke-dasharray="4 4"/>
+    <path d="M332 138 L332 164 L305 164 L305 173" stroke="#22C55E" stroke-width="1" fill="none" stroke-dasharray="4 4"/>
 
     <g transform="translate(20, 173)">
       <rect width="170" height="90" rx="10" fill="#F8FAFC" stroke="#E2E8F0" filter="url(#shadow)"/>
@@ -240,7 +244,7 @@
     <line x1="20" y1="16" x2="54" y2="16" stroke="#3B82F6" stroke-width="1.2" stroke-dasharray="6 5"/>
     <text x="64" y="20" class="font legend">WebSocket — Resource Sync</text>
     <line x1="20" y1="36" x2="54" y2="36" stroke="#EF4444" stroke-width="1.2" stroke-dasharray="6 5"/>
-    <text x="64" y="40" class="font legend">SSH Tunnel via Unix Socket</text>
+    <text x="64" y="40" class="font legend">SSH Tunnel via Unix Socket — Network Routing</text>
     <line x1="20" y1="56" x2="54" y2="56" stroke="#22C55E" stroke-width="1.2" stroke-dasharray="4 4"/>
     <text x="64" y="60" class="font legend">gRPC via Unix Socket — Device Control</text>
     <rect x="320" y="14" width="72" height="20" rx="10" fill="#D1FAE5" stroke="#6EE7B7"/>
