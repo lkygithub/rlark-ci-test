@@ -21,3 +21,4 @@ coverage.out
 # Dependencies
 **/node_modules/
 .glab/
+.gitlab-ci.yml
