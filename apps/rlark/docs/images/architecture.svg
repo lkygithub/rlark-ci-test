@@ -184,7 +184,7 @@
 
     <g transform="translate(20, 173)">
       <rect width="170" height="90" rx="10" fill="#F8FAFC" stroke="#E2E8F0" filter="url(#shadow)"/>
-      <text x="8" y="16" class="font card-sub">Docker Container</text>
+      <text x="8" y="16" class="font card-sub">Pod</text>
       <rect x="8" y="24" width="60" height="22" rx="6" fill="#FFFFFF" stroke="#CBD5E1"/>
       <text x="38" y="39" text-anchor="middle" class="font card-sub">main</text>
       <rect x="78" y="24" width="55" height="22" rx="6" fill="#FFF7ED" stroke="#FDBA74"/>
@@ -196,7 +196,7 @@
     </g>
     <g transform="translate(210, 173)">
       <rect width="170" height="90" rx="10" fill="#F8FAFC" stroke="#E2E8F0" filter="url(#shadow)"/>
-      <text x="8" y="16" class="font card-sub">Docker Container</text>
+      <text x="8" y="16" class="font card-sub">Pod</text>
       <rect x="8" y="24" width="60" height="22" rx="6" fill="#FFFFFF" stroke="#CBD5E1"/>
       <text x="38" y="39" text-anchor="middle" class="font card-sub">main</text>
       <rect x="78" y="24" width="55" height="22" rx="6" fill="#FFF7ED" stroke="#FDBA74"/>
