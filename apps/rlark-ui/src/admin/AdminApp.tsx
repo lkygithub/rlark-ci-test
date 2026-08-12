@@ -20,6 +20,7 @@ import { AddonsPage } from "./Addons";
 import { AdminPage } from "./AdminPage";
 import { Header, Logo } from "../components/shared";
 import { useBackendMode, usePersistentState } from "../hooks";
+import { SSHKeysPage } from "../pages/SSHKeys";
 
 export function AdminLogin({
   copy: c,
@@ -268,6 +269,8 @@ export function AdminApp() {
         "api",
         "config",
         "storageClass",
+        "access-control",
+        "ssh-keys",
       ];
       setAdminPage(
         valid.includes(parts[0])

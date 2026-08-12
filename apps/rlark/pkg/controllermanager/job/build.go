@@ -7,6 +7,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	rlarkv1alpha1 "github.com/rlinf/rlark/api/rlark.io/v1alpha1"
@@ -52,6 +53,10 @@ func buildTask(
 ) *rlarkv1alpha1.Task {
 	taskSpec := t.TaskSpec
 	taskSpec.Domain = job.Spec.Domain
+
+	if job.Spec.Stopped && taskSpec.Kubernetes != nil && taskSpec.Kubernetes.Workload != nil {
+		taskSpec.Kubernetes.Workload.Replicas = ptr.To(int32(0))
+	}
 
 	return &rlarkv1alpha1.Task{
 		ObjectMeta: metav1.ObjectMeta{

@@ -1,5 +1,11 @@
 export type Phase =
-  "Running" | "Pending" | "Succeeded" | "Failed" | "Online" | "Offline";
+  | "Running"
+  | "Pending"
+  | "Succeeded"
+  | "Failed"
+  | "Stopped"
+  | "Online"
+  | "Offline";
 
 export type ClusterType = "Cloud" | "Embodied";
 export type NodeKind = "CloudCompute" | "EmbodiedCompute" | "Robot";
@@ -85,6 +91,7 @@ export interface Job {
   headerRole: string;
   headerWorker: string;
   sshAddress: string;
+  stopped?: boolean;
   domain?: string;
   tensorBoardDir?: string;
   resources: Array<{

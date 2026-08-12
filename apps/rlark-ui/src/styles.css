@@ -1137,6 +1137,15 @@ button {
   background: var(--orange);
 }
 
+.status-stopped {
+  background: #f0f0f5;
+  color: #6b6b80;
+}
+
+.status-stopped i {
+  background: #9a9ab0;
+}
+
 .progress-cell {
   display: grid;
   grid-template-columns: 1fr 32px;
@@ -4704,10 +4713,46 @@ tbody tr:hover {
 
 .mount-row {
   display: grid;
-  grid-template-columns: 80px 1fr 1fr 32px;
+  grid-template-columns: auto 1fr 1fr 32px;
   gap: 8px;
   margin-top: 8px;
   align-items: center;
+}
+
+.mount-type-toggle {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.mount-type-toggle button {
+  border: none;
+  background: transparent;
+  padding: 8px 10px;
+  font-size: 12px;
+  color: var(--muted, #8a94a6);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.mount-type-toggle button.active {
+  background: var(--blue, #6366f1);
+  color: #fff;
+}
+
+.theme-dark .mount-type-toggle {
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.theme-dark .mount-type-toggle button {
+  color: #8a94a6;
+}
+
+.theme-dark .mount-type-toggle button.active {
+  background: var(--blue, #6366f1);
+  color: #fff;
 }
 
 .mount-row select,
@@ -5463,6 +5508,49 @@ tbody tr:hover {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.action-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 50;
+  min-width: 140px;
+  padding: 4px;
+  border-radius: 10px;
+  background: var(--surface, #fff);
+  border: 1px solid var(--border, #e5e5ec);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.action-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--text, #1a1a2e);
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.action-dropdown-item:hover:not(:disabled) {
+  background: var(--hover, #f5f5fa);
+}
+
+.action-dropdown-item:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.action-dropdown-item.danger {
+  color: var(--red, #cf3f61);
 }
 
 .clickable-row {
@@ -6910,7 +6998,7 @@ input[type="radio"]:disabled {
   }
 
   .mount-row {
-    grid-template-columns: minmax(120px, 0.8fr) minmax(180px, 1fr) 32px;
+    grid-template-columns: minmax(80px, auto) minmax(180px, 1fr) 32px;
   }
 
   .mount-row > input:nth-last-child(2),
@@ -7278,6 +7366,13 @@ tr.clickable:hover {
 .selector-placeholder {
   color: var(--muted, #8b95a7);
   font-size: 13px;
+}
+
+.selector-hint {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--muted, #8b95a7);
+  line-height: 1.5;
 }
 
 .selector-chip {

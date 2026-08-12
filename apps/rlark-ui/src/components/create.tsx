@@ -192,6 +192,15 @@ export function NodeSelectorPicker({
         }
       />
       {!loading &&
+        Object.keys(selectorMap).length === 0 &&
+        labelKeys.length > 0 && (
+          <div className="selector-hint">
+            {zh
+              ? "选择标签可筛选出一批满足条件的节点；非必选，不选则匹配集群内所有节点；选择多个标签取交集"
+              : "Select labels to filter nodes meeting all conditions. Optional — no selection matches all nodes. Multiple labels are intersected."}
+          </div>
+        )}
+      {!loading &&
         Object.keys(selectorMap).length > 0 &&
         (matchedNodes.length > 0 ? (
           <div className="selector-matched selector-matched-inline">

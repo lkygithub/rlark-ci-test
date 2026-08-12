@@ -117,6 +117,7 @@ func (r *JobReconciler) reconcileWithStateMachine(
 	ctx context.Context,
 	job *rlarkv1alpha1.Job,
 ) (bool, error) {
+	logger := log.FromContext(ctx).WithValues("job", job.Name)
 	f := newJobStateMachine()
 	f.SetState(string(job.Status.Phase))
 
@@ -137,7 +138,7 @@ func (r *JobReconciler) reconcileWithStateMachine(
 		changed = true
 	}
 
-	dispatchChanged, err := r.dispatchTasks(ctx, job, log.FromContext(ctx))
+	dispatchChanged, err := r.dispatchTasks(ctx, job, logger)
 	if err != nil {
 		return false, err
 	}
@@ -157,6 +158,14 @@ func (r *JobReconciler) reconcileWithStateMachine(
 }
 
 func (r *JobReconciler) evaluateJobEvent(job *rlarkv1alpha1.Job) string {
+	if job.Spec.Stopped {
+		return EventJobStopped
+	}
+
+	if job.Status.Phase == rlarkv1alpha1.JobPhaseStopped {
+		return EventJobResumed
+	}
+
 	phases := make([]string, len(job.Status.Tasks))
 	for i, ts := range job.Status.Tasks {
 		phases[i] = string(ts.Phase)
@@ -165,15 +174,20 @@ func (r *JobReconciler) evaluateJobEvent(job *rlarkv1alpha1.Job) string {
 		string(rlarkv1alpha1.TaskPhaseSucceeded),
 		string(rlarkv1alpha1.TaskPhaseFailed),
 		string(rlarkv1alpha1.TaskPhaseRunning),
+		string(rlarkv1alpha1.TaskPhaseStopped),
 	)
+
 	if s.AnyFailed {
 		return EventAnyTaskFailed
 	}
+
 	if s.AllSucceeded && s.HasItems {
 		return EventAllTasksDone
 	}
+
 	if s.AnyRunning {
 		return EventTasksRunning
 	}
+
 	return ""
 }

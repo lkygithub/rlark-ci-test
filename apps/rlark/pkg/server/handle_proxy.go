@@ -66,6 +66,8 @@ func (s *Server) GetDial(ctx context.Context, dialType, address string, certMeta
 				if !hasPermission {
 					return nil, "", fmt.Errorf("client certificate does not have proxy permission for %s on %s", targetHost, targetID)
 				}
+			} else {
+				return nil, "", fmt.Errorf("client certificate does not have domain proxy permission for %s on %s", targetHost, targetID)
 			}
 			dialer := s.getAgentDialer(ctx, targetID)
 

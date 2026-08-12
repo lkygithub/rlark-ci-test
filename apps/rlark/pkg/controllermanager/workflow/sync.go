@@ -167,6 +167,7 @@ func (r *WorkflowReconciler) evaluateWorkflowEvent(wf *rlarkv1alpha1.Workflow) s
 		string(rlarkv1alpha1.JobPhaseSucceeded),
 		string(rlarkv1alpha1.JobPhaseFailed),
 		string(rlarkv1alpha1.JobPhaseRunning),
+		string(rlarkv1alpha1.JobPhaseStopped),
 	)
 	if s.AnyFailed {
 		return EventAnyJobFailed

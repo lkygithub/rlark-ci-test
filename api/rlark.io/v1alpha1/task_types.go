@@ -12,6 +12,7 @@ const (
 	TaskPhaseRunning   TaskPhase = "Running"
 	TaskPhaseSucceeded TaskPhase = "Succeeded"
 	TaskPhaseFailed    TaskPhase = "Failed"
+	TaskPhaseStopped   TaskPhase = "Stopped"
 )
 
 type KubernetesTaskSpec struct {

@@ -1580,7 +1580,7 @@ export function CreateWorkflowModal({
                           style={{ gridTemplateColumns: "1fr 1fr" }}
                         >
                           <label>
-                            {zh ? "副本（自动匹配节点数）" : "Replicas (auto)"}
+                            {zh ? "已选节点数" : "Number of selected nodes"}
                             <input
                               type="number"
                               value={rr.replicas}
@@ -1780,9 +1780,7 @@ export function CreateWorkflowModal({
                         </div>
                         <div className="form-section" style={{ marginTop: 12 }}>
                           <div className="form-section-head">
-                            <small>
-                              {zh ? "对象存储挂载" : "Volume Mounts"}
-                            </small>
+                            <small>{zh ? "存储挂载" : "Volume Mounts"}</small>
                             <button
                               className="secondary-button"
                               onClick={() => addRRMount(role)}

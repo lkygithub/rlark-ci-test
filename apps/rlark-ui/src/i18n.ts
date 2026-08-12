@@ -20,6 +20,8 @@ export const copy = {
       admin: "运维管理",
       workspace: "工作台",
       developers: "开发者",
+      "ssh-keys": "SSH 公钥",
+      "access-control": "访问控制",
     },
     common: {
       search: "搜索集群、节点、任务...",
@@ -45,6 +47,7 @@ export const copy = {
       Pending: "等待中",
       Succeeded: "成功",
       Failed: "失败",
+      Stopped: "已停止",
       Online: "在线",
       Offline: "离线",
     },
@@ -208,6 +211,8 @@ export const copy = {
       admin: "Admin",
       workspace: "Workspace",
       developers: "Developers",
+      "ssh-keys": "SSH Keys",
+      "access-control": "Access Control",
     },
     common: {
       search: "Search clusters, nodes, jobs...",
@@ -233,6 +238,7 @@ export const copy = {
       Pending: "Pending",
       Succeeded: "Succeeded",
       Failed: "Failed",
+      Stopped: "Stopped",
       Online: "Online",
       Offline: "Offline",
     },

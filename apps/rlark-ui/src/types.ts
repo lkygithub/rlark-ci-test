@@ -10,7 +10,8 @@ export type Page =
   | "domains"
   | "storageClass"
   | "files"
-  | "api";
+  | "api"
+  | "ssh-keys";
 
 export type NavParent = {
   id: Page;
@@ -87,7 +88,7 @@ export interface CRDJob {
   apiVersion: string;
   kind: string;
   metadata: { name: string; creationTimestamp?: string };
-  spec: { domain?: string; tasks: CRDJobTask[] };
+  spec: { domain?: string; stopped?: boolean; tasks: CRDJobTask[] };
   status?: {
     phase: string;
     tasks?: Array<{

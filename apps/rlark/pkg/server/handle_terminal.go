@@ -27,7 +27,7 @@ func (s *Server) handleTerminalProxy(c *gin.Context) {
 	namespace := c.Param("namespace")
 	podName := c.Param("pod")
 	container := c.DefaultQuery("container", "main")
-	command := c.DefaultQuery("command", "/bin/sh")
+	command := c.DefaultQuery("command", "/bin/bash")
 
 	if namespace == "" || podName == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "namespace and pod are required"})
