@@ -20,3 +20,4 @@ coverage.out
 
 # Dependencies
 **/node_modules/
+.glab/
