@@ -121,11 +121,12 @@ RobotClient(address="10.0.0.5:50051")
 
 ## 环境变量
 
-device plugin 会向 task pod 注入 `RLINF_EMBODIED_ROS_SOCKET_PATH` 与 `RLINF_EMBODIED_CAMERA_SOCKET_PATH`；两个客户端会自动读取（显式传入的 `socket_path` / `address` 参数始终优先）：
+device plugin 会向 task pod 注入 `RLINF_EMBODIED_ROS_SOCKET_PATH`（ROS 1）、`RLINF_EMBODIED_ROS2_SOCKET_PATH`（ROS 2）与 `RLINF_EMBODIED_CAMERA_SOCKET_PATH`；两个客户端会自动读取（显式传入的 `socket_path` / `address` 参数始终优先）：
 
 | 环境变量 | 使用者 | 默认值 |
 |---------|---------|---------|
 | `RLINF_EMBODIED_ROS_SOCKET_PATH` | `RobotClient` | `/var/run/rlinf/ros-ctrl.sock` |
+| `RLINF_EMBODIED_ROS2_SOCKET_PATH` | `RobotClient` | `/var/run/rlinf/ros2-ctrl.sock` |
 | `RLINF_EMBODIED_CAMERA_SOCKET_PATH` | `CameraClient` | `/var/run/rlinf/camera-ctrl.sock` |
 
 ## 重新生成 stub

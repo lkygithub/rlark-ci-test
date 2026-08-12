@@ -121,11 +121,12 @@ RobotClient(address="10.0.0.5:50051")
 
 ## Environment variables
 
-The device plugin injects `RLINF_EMBODIED_ROS_SOCKET_PATH` and `RLINF_EMBODIED_CAMERA_SOCKET_PATH` into task pods; both clients read them automatically (an explicit `socket_path` / `address` argument always wins):
+The device plugin injects `RLINF_EMBODIED_ROS_SOCKET_PATH` (ROS 1), `RLINF_EMBODIED_ROS2_SOCKET_PATH` (ROS 2), and `RLINF_EMBODIED_CAMERA_SOCKET_PATH` into task pods; both clients read them automatically (an explicit `socket_path` / `address` argument always wins):
 
 | Env var | Used by | Default |
 |---------|---------|---------|
 | `RLINF_EMBODIED_ROS_SOCKET_PATH` | `RobotClient` | `/var/run/rlinf/ros-ctrl.sock` |
+| `RLINF_EMBODIED_ROS2_SOCKET_PATH` | `RobotClient` | `/var/run/rlinf/ros2-ctrl.sock` |
 | `RLINF_EMBODIED_CAMERA_SOCKET_PATH` | `CameraClient` | `/var/run/rlinf/camera-ctrl.sock` |
 
 ## Regenerate stubs

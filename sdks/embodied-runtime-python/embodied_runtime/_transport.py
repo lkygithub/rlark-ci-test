@@ -17,6 +17,9 @@ import grpc
 DEFAULT_ROS_SOCKET = os.environ.get(
     "RLINF_EMBODIED_ROS_SOCKET_PATH", "/var/run/rlinf/ros-ctrl.sock"
 )
+DEFAULT_ROS2_SOCKET = os.environ.get(
+    "RLINF_EMBODIED_ROS2_SOCKET_PATH", "/var/run/rlinf/ros2-ctrl.sock"
+)
 DEFAULT_CAMERA_SOCKET = os.environ.get(
     "RLINF_EMBODIED_CAMERA_SOCKET_PATH", "/var/run/rlinf/camera-ctrl.sock"
 )

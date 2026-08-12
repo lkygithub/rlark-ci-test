@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/rlinf/rlark/apps/embodied-runtime/pkg/cameracontroller"
+	"github.com/rlinf/rlark/apps/embodied-runtime/pkg/ros2controller"
 	"github.com/rlinf/rlark/apps/embodied-runtime/pkg/roscontroller"
 	"gopkg.in/yaml.v3"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -129,6 +130,23 @@ type ROSConfig struct {
 	roscontroller.ControllerConfig `yaml:",inline"`
 }
 
+// ROS2Config holds all ros2-controller configuration, both local and pod
+// mode. Mirrors ROSConfig but for the ROS 2 controller.
+type ROS2Config struct {
+	ManagerMode ManagerMode `yaml:"manager_mode"`
+
+	// Local-mode fields (used when manager_mode == "local").
+	CtrlConfigPath string `yaml:"ctrl_config_path"`
+	CtrlBin        string `yaml:"ctrl_bin"`
+	CtrCLI         string `yaml:"ctr_cli"`
+
+	// Pod-mode fields (used when manager_mode == "pod").
+	Pod PodConfig `yaml:"pod"`
+
+	// Device config — ros2-controller config inlined.
+	ros2controller.ControllerConfig `yaml:",inline"`
+}
+
 // ---------------------------------------------------------------------------
 // Host device passthrough config
 // ---------------------------------------------------------------------------
@@ -190,6 +208,10 @@ type PluginConfig struct {
 	// paths, pod-mode settings).
 	ROS ROSConfig `yaml:"ros"`
 
+	// ROS2 holds all ros2-controller configuration (manager_mode,
+	// local-mode paths, pod-mode settings).
+	ROS2 ROS2Config `yaml:"ros2"`
+
 	// HostDevices lists host /dev/* nodes to mount directly into pods
 	// during Allocate. Unlike Camera and ROS, no controller manager is
 	// launched — the device paths defined here are simply passed through.
@@ -217,6 +239,12 @@ func DefaultPluginConfig() PluginConfig {
 			CtrlConfigPath: ROSCtrlConfigPath,
 			CtrlBin:        envOrDefault("ROS_CTRL_BIN", "/usr/local/bin/ros-controller"),
 			CtrCLI:         envOrDefault("ROS_CTR_BIN", "/opt/rlinf/bin/rosctr"),
+		},
+		ROS2: ROS2Config{
+			ManagerMode:    ManagerModeDisabled,
+			CtrlConfigPath: ROS2CtrlConfigPath,
+			CtrlBin:        envOrDefault("ROS2_CTRL_BIN", "/usr/local/bin/ros2-controller"),
+			CtrCLI:         envOrDefault("ROS2_CTR_BIN", "/opt/rlinf/bin/rosctr"),
 		},
 	}
 }

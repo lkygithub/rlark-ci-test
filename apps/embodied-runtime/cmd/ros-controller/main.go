@@ -4,6 +4,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/rlinf/rlark/apps/embodied-runtime/pkg/netmac"
 	"github.com/rlinf/rlark/apps/embodied-runtime/pkg/roscontroller"
 	"github.com/spf13/cobra"
 )
@@ -51,8 +52,8 @@ Networking:
 			// "172.16.0.0/24"). Best-effort, mirroring the camera V4L2
 			// enrichment.
 			for i := range fileCfg.MACVLANs {
-				roscontroller.EnrichMACVLANConfig(&fileCfg.MACVLANs[i])
-				if err := roscontroller.ValidateMACVLANConfig(fileCfg.MACVLANs[i]); err != nil {
+				netmac.EnrichMACVLANConfig(&fileCfg.MACVLANs[i], "[ros-controller]")
+				if err := netmac.ValidateMACVLANConfig(fileCfg.MACVLANs[i]); err != nil {
 					return err
 				}
 			}

@@ -52,7 +52,7 @@ type RobotControllerClient interface {
 	// "impedance" and "joint", while other robots may add "position",
 	// "velocity", "torque", etc.).
 	ListModes(ctx context.Context, in *ListModesRequest, opts ...grpc.CallOption) (*ListModesResponse, error)
-	// GetRobotLogs returns recent log output from a robot's roslaunch process.
+	// GetRobotLogs returns recent log output from a robot's launch process.
 	// Logs are buffered in memory with a fixed capacity; tail=N returns the
 	// last N lines, tail=0 returns all buffered lines.
 	GetRobotLogs(ctx context.Context, in *GetRobotLogsRequest, opts ...grpc.CallOption) (*GetRobotLogsResponse, error)
@@ -65,8 +65,10 @@ type RobotControllerClient interface {
 	GetPackageLaunchFiles(ctx context.Context, in *GetPackageLaunchFilesRequest, opts ...grpc.CallOption) (*GetPackageLaunchFilesResponse, error)
 	// GetLaunchFileArgs returns the arguments supported by a launch file.
 	GetLaunchFileArgs(ctx context.Context, in *GetLaunchFileArgsRequest, opts ...grpc.CallOption) (*GetLaunchFileArgsResponse, error)
-	// ResetRobot stops the robot process, restarts roscore, and resets the
-	// robot state back to STOPPED. Useful for recovering from error states.
+	// ResetRobot stops the robot process, restarts the ROS middleware (roscore
+	// for ROS 1; the launch process for ROS 2 — there is no master to restart),
+	// and resets the robot state back to STOPPED. Useful for recovering from
+	// error states.
 	ResetRobot(ctx context.Context, in *ResetRobotRequest, opts ...grpc.CallOption) (*ResetRobotResponse, error)
 }
 
@@ -205,7 +207,7 @@ type RobotControllerServer interface {
 	// "impedance" and "joint", while other robots may add "position",
 	// "velocity", "torque", etc.).
 	ListModes(context.Context, *ListModesRequest) (*ListModesResponse, error)
-	// GetRobotLogs returns recent log output from a robot's roslaunch process.
+	// GetRobotLogs returns recent log output from a robot's launch process.
 	// Logs are buffered in memory with a fixed capacity; tail=N returns the
 	// last N lines, tail=0 returns all buffered lines.
 	GetRobotLogs(context.Context, *GetRobotLogsRequest) (*GetRobotLogsResponse, error)
@@ -218,8 +220,10 @@ type RobotControllerServer interface {
 	GetPackageLaunchFiles(context.Context, *GetPackageLaunchFilesRequest) (*GetPackageLaunchFilesResponse, error)
 	// GetLaunchFileArgs returns the arguments supported by a launch file.
 	GetLaunchFileArgs(context.Context, *GetLaunchFileArgsRequest) (*GetLaunchFileArgsResponse, error)
-	// ResetRobot stops the robot process, restarts roscore, and resets the
-	// robot state back to STOPPED. Useful for recovering from error states.
+	// ResetRobot stops the robot process, restarts the ROS middleware (roscore
+	// for ROS 1; the launch process for ROS 2 — there is no master to restart),
+	// and resets the robot state back to STOPPED. Useful for recovering from
+	// error states.
 	ResetRobot(context.Context, *ResetRobotRequest) (*ResetRobotResponse, error)
 	mustEmbedUnimplementedRobotControllerServer()
 }

@@ -19,7 +19,7 @@ Both are defined in Protocol Buffers v3 under [`proto/embodied-runtime/`](../../
 ### Transport
 
 - Both services listen on a Unix domain socket under the node-local `/var/run/rlinf` directory, which the device plugin mounts (read-only) into task pods.
-- The device plugin injects `RLINF_EMBODIED_ROS_SOCKET_PATH` and `RLINF_EMBODIED_CAMERA_SOCKET_PATH`; the `rosctr` / `camctr` CLIs read them automatically (an explicit `--socket-path` argument always wins).
+- The device plugin injects `RLINF_EMBODIED_ROS_SOCKET_PATH` (ROS 1), `RLINF_EMBODIED_ROS2_SOCKET_PATH` (ROS 2), and `RLINF_EMBODIED_CAMERA_SOCKET_PATH`; the `rosctr` / `camctr` CLIs read them automatically (an explicit `--socket-path` argument always wins). For `rosctr`, the ROS 1 socket path takes priority; when it is unset the ROS 2 socket path is used.
 
 ### HTTP gateway
 
@@ -69,6 +69,13 @@ For `StartRobot` / `SwitchMode`, the request body is the proto message minus the
 
 `ros.controller.v1.RobotController` manages robot nodes on the host: lifecycle (start / stop / reset), control-mode switching, status, logs, and ROS package introspection. The device plugin calls it to drive robot nodes (e.g. Franka) that run on the host network.
 
+The service is implemented by two independent controllers that register on separate Unix sockets and honour the same RPC contract:
+
+- **ROS 1** (`ros-controller` on `ros-ctrl.sock`): starts a per-robot `roscore`; fills `ros_master_uri` in responses.
+- **ROS 2** (`ros2-controller` on `ros2-ctrl.sock`): no master; assigns a per-robot `ROS_DOMAIN_ID` for DDS isolation; fills `ros_domain_id` in responses.
+
+> **Multicast requirement (ROS 2 only).** ROS 2 DDS uses IP multicast for node discovery by default. The cluster's network layer (CNI plugin, node / underlay switches) **must support multicast routing** for ROS 2 nodes in different pods / nodes to discover each other. If multicast is blocked, configure unicast discovery via `CYCLONEDDS_URI` in each robot's mode-level `env`, or deploy a DDS Discovery Server.
+
 ### RPCs
 
 | RPC | Request | Response | Description |
@@ -79,12 +86,12 @@ For `StartRobot` / `SwitchMode`, the request body is the proto message minus the
 | `SwitchMode` | `SwitchModeRequest` | `SwitchModeResponse` | Change the control mode of a running robot. |
 | `ListRobots` | `ListRobotsRequest` | `ListRobotsResponse` | All managed robots and their status. |
 | `ListModes` | `ListModesRequest` | `ListModesResponse` | Supported control modes for a robot. |
-| `GetRobotLogs` | `GetRobotLogsRequest` | `GetRobotLogsResponse` | Recent roslaunch log lines. |
+| `GetRobotLogs` | `GetRobotLogsRequest` | `GetRobotLogsResponse` | Recent launch process log lines. |
 | `ListPackages` | `ListPackagesRequest` | `ListPackagesResponse` | Whitelisted ROS packages. |
 | `GetPackageInfo` | `GetPackageInfoRequest` | `GetPackageInfoResponse` | Metadata for a ROS package. |
 | `GetPackageLaunchFiles` | `GetPackageLaunchFilesRequest` | `GetPackageLaunchFilesResponse` | Launch files in a ROS package. |
 | `GetLaunchFileArgs` | `GetLaunchFileArgsRequest` | `GetLaunchFileArgsResponse` | Arguments supported by a launch file. |
-| `ResetRobot` | `ResetRobotRequest` | `ResetRobotResponse` | Stop, restart roscore, reset state to STOPPED. |
+| `ResetRobot` | `ResetRobotRequest` | `ResetRobotResponse` | Stop, restart ROS middleware (roscore for ROS 1; launch process for ROS 2), reset state to STOPPED. |
 
 ### Enums
 
@@ -118,8 +125,9 @@ Lifecycle state of a robot node.
 | `robot_id` | `string` | Robot id. |
 | `state` | `RobotState` | Resulting state. |
 | `current_mode` | `ModeInfo` | Resolved mode info. |
-| `ros_master_uri` | `string` | ROS master URI the robot listens on. |
+| `ros_master_uri` | `string` | ROS master URI the robot listens on (ROS 1 only). |
 | `params` | `map<string,string>` | Robot-level params referenceable via `arg_from`. |
+| `ros_domain_id` | `int32` | `ROS_DOMAIN_ID` for DDS isolation (ROS 2 only; 0 for ROS 1). |
 
 #### `StopRobotRequest` / `StopRobotResponse`
 
@@ -141,8 +149,9 @@ Lifecycle state of a robot node.
 | `mode` | `string` | Current mode name. |
 | `state` | `RobotState` | Lifecycle state. |
 | `current_mode` | `ModeInfo` | Resolved mode info. |
-| `ros_master_uri` | `string` | ROS master URI. |
+| `ros_master_uri` | `string` | ROS master URI (ROS 1 only). |
 | `params` | `map<string,string>` | Robot-level params. |
+| `ros_domain_id` | `int32` | `ROS_DOMAIN_ID` for DDS isolation (ROS 2 only; 0 for ROS 1). |
 
 #### `SwitchModeRequest`
 
@@ -160,8 +169,9 @@ Lifecycle state of a robot node.
 | `mode` | `string` | Active mode. |
 | `state` | `RobotState` | Lifecycle state. |
 | `current_mode` | `ModeInfo` | Resolved mode info. |
-| `ros_master_uri` | `string` | ROS master URI. |
+| `ros_master_uri` | `string` | ROS master URI (ROS 1 only). |
 | `params` | `map<string,string>` | Robot-level params. |
+| `ros_domain_id` | `int32` | `ROS_DOMAIN_ID` for DDS isolation (ROS 2 only; 0 for ROS 1). |
 
 #### `ResetRobotRequest`
 
@@ -175,7 +185,8 @@ Lifecycle state of a robot node.
 |-------|------|-------------|
 | `robot_id` | `string` | Robot id. |
 | `state` | `RobotState` | State after reset (STOPPED). |
-| `ros_master_uri` | `string` | ROS master URI (may change after roscore restart). |
+| `ros_master_uri` | `string` | ROS master URI (ROS 1; may change after roscore restart). |
+| `ros_domain_id` | `int32` | `ROS_DOMAIN_ID` (ROS 2; preserved across reset). |
 
 ### Messages — inventory & modes
 
@@ -197,8 +208,9 @@ Empty.
 | `mode` | `string` | Current mode name. |
 | `state` | `RobotState` | Lifecycle state. |
 | `current_mode` | `ModeInfo` | Resolved mode info. |
-| `ros_master_uri` | `string` | ROS master URI. |
+| `ros_master_uri` | `string` | ROS master URI (ROS 1 only). |
 | `params` | `map<string,string>` | Robot-level params. |
+| `ros_domain_id` | `int32` | `ROS_DOMAIN_ID` for DDS isolation (ROS 2 only; 0 for ROS 1). |
 
 #### `ListModesRequest`
 

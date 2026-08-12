@@ -177,6 +177,7 @@ device plugin 会向 task pod 注入以下环境变量，`embodiedruntime` 包�
 | 环境变量 | 使用者 | 默认值 |
 |---------|--------|--------|
 | `RLINF_EMBODIED_ROS_SOCKET_PATH` | `DialRobot()` | `/var/run/rlinf/ros-ctrl.sock` |
+| `RLINF_EMBODIED_ROS2_SOCKET_PATH` | `DialRobot2()` | `/var/run/rlinf/ros2-ctrl.sock` |
 | `RLINF_EMBODIED_CAMERA_SOCKET_PATH` | `DialCamera()` | `/var/run/rlinf/camera-ctrl.sock` |
 
 ## 重新生成 stub

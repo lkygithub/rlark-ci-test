@@ -13,12 +13,13 @@ embodied-runtime 面向机器人学习 / 遥操作集群：每个节点挂载一
 ## 核心特性
 
 - **Kubernetes Device Plugin** —— 申报 `rlinf.io/device`（或 `rlinf.io/device-<model>`）资源，在分配时把 socket 目录与 CLI 目录挂载到 Pod。
-- **ROS Controller** —— 每个机器人独占一个 `roscore`（端口从 11311 起递增），基于 `roslaunch` 管理节点生命周期，支持控制模式切换（impedance / joint / 自定义）、MACVLAN 组网，以及可选的机器人 Web 服务反向代理。
+- **ROS 1 Controller** —— 每个机器人独占一个 `roscore`（端口从 11311 起递增），基于 `roslaunch` 管理节点生命周期，支持控制模式切换（impedance / joint / 自定义）、MACVLAN 组网，以及可选的机器人 Web 服务反向代理。
+- **ROS 2 Controller** —— 每个机器人独占一个 `ROS_DOMAIN_ID`（无 master），基于 `ros2 launch` 管理生命周期，使用 `ros2 pkg` / `ros2 launch --show-args` 做包内省，MACVLAN 组网与反向代理与 ROS 1 共享。基于 Humble 发行版。
 - **Camera Controller** —— 通过 `ffmpeg` 采集 V4L2 / RTSP / RealSense 摄像头，支持 JPEG / PNG / BMP / TIFF 无损静图与 H.264 / H.265 编码及实时转码，提供基于 gRPC 的视频帧流。
 - **宿主设备透传** —— 在 Allocate 时把宿主 `/dev/*` 节点（串口、声卡、裸字符设备等）直接挂载进 Pod，无需控制器，仅需在 `host_devices` 下列出即可。
 - **灵活的控制器部署** —— 每个控制器可独立配置为**本地子进程**或 **Kubernetes Pod**。
-- **两个 CLI** —— `rosctr` 与 `camctr`，供运维或在 Pod 内调用控制器，支持 `text` / `json` / `yaml` 输出。
-- **静态链接的 Go 二进制** —— 全部五个二进制以单一多架构 `embodied-runtime` 镜像交付，部署时由 initContainer 注入到对应运行时镜像：`camera-controller` 运行于 `camera-base` 镜像（Alpine + `ffmpeg`），`ros-controller` 运行于提供 ROS 与机器人控制包（如 libfranka + franka_ros）的 ROS workspace 镜像。
+- **CLI** —— `rosctr`（ROS 1 与 ROS 2 共用）与 `camctr`，供运维或在 Pod 内调用控制器，支持 `text` / `json` / `yaml` 输出。
+- **静态链接的 Go 二进制** —— 全部六个二进制以单一多架构 `embodied-runtime` 镜像交付，部署时由 initContainer 注入到对应运行时镜像：`camera-controller` 运行于 `camera-base` 镜像（Alpine + `ffmpeg`），`ros-controller` 运行于 ROS 1 workspace 镜像，`ros2-controller` 运行于 ROS 2 Humble workspace 镜像。
 
 ---
 
@@ -29,9 +30,9 @@ embodied-runtime 面向机器人学习 / 遥操作集群：每个节点挂载一
 device-plugin 是入口。启动时它依次：
 
 1. 向 kubelet 注册并申报 `rlinf.io/device[-<model>]` 资源。
-2. 探测硬件，生成 ros-controller 与 camera-controller 的 YAML 配置。
+2. 探测硬件，生成 ros-controller / ros2-controller / camera-controller 的 YAML 配置。
 3. 启动控制器 —— 每个可独立选择本地子进程或 Pod 模式（`manager_mode: local | pod | disabled`）。
-4. 收到 `Allocate` 请求时，把 socket 目录（`/var/run/rlinf`）与 CLI 目录（`/opt/rlinf/bin`）注入业务 Pod，并通过 `RLINF_EMBODIED_*` 环境变量告知哪些运行时可用，同时暴露其 socket 路径（`RLINF_EMBODIED_{ROS,CAMERA}_SOCKET_PATH`），使 CLI 无需硬编码即可连接。配置 `host_devices` 下列出的宿主 `/dev/*` 节点会作为 `DeviceSpec` 直接透传挂载（不经过控制器）。
+4. 收到 `Allocate` 请求时，把 socket 目录（`/var/run/rlinf`）与 CLI 目录（`/opt/rlinf/bin`）注入业务 Pod，并通过 `RLINF_EMBODIED_*` 环境变量告知哪些运行时可用，同时暴露其 socket 路径（`RLINF_EMBODIED_{ROS,ROS2,CAMERA}_SOCKET_PATH`），使 CLI 无需硬编码即可连接。配置 `host_devices` 下列出的宿主 `/dev/*` 节点会作为 `DeviceSpec` 直接透传挂载（不经过控制器）。
 
 业务 Pod 随后用挂载进来的 CLI（或直接走 gRPC）驱动硬件。
 
@@ -41,10 +42,11 @@ device-plugin 是入口。启动时它依次：
 
 | 二进制              | 包                                   | 职责                                                |
 |---------------------|--------------------------------------|-----------------------------------------------------|
-| `device-plugin`     | `cmd/device-plugin`                  | kubelet 设备插件，托管两个控制器。                  |
-| `ros-controller`    | `cmd/ros-controller`                 | 机器人生命周期：roscore、roslaunch、模式切换、Web 代理。|
+| `device-plugin`     | `cmd/device-plugin`                  | kubelet 设备插件，托管所有控制器。                  |
+| `ros-controller`    | `cmd/ros-controller`                 | ROS 1 机器人生命周期：roscore、roslaunch、模式切换、Web 代理。|
+| `ros2-controller`   | `cmd/ros2-controller`                | ROS 2 机器人生命周期：ros2 launch、DOMAIN_ID、模式切换、代理。|
 | `camera-controller` | `cmd/camera-controller`              | 摄像头生命周期：打开/关闭、采集、流化、转码。        |
-| `rosctr`            | `cmd/rosctr`                         | ros-controller 的 gRPC CLI。                         |
+| `rosctr`            | `cmd/rosctr`                         | RobotController gRPC CLI（ROS 1 **与** ROS 2 共用）。|
 | `camctr`            | `cmd/camctr`                         | camera-controller 的 gRPC CLI。                      |
 
 ### gRPC 服务
@@ -54,7 +56,7 @@ device-plugin 是入口。启动时它依次：
 - `ros.controller.v1.RobotController` —— [`proto/embodied-runtime/roscontroller/v1/robot.proto`](../../proto/embodied-runtime/roscontroller/v1/robot.proto)
 - `camera.controller.v1.CameraController` —— [`proto/embodied-runtime/cameracontroller/v1/camera.proto`](../../proto/embodied-runtime/cameracontroller/v1/camera.proto)
 
-两个服务均通过 **Unix socket** 提供（`/var/run/rlinf/*.sock`）。
+两个服务均通过 **Unix socket** 提供（`/var/run/rlinf/*.sock`）。`RobotController` 服务由两个独立控制器实现，注册在不同 socket 上：`ros-controller` 在 `ros-ctrl.sock`（ROS 1），`ros2-controller` 在 `ros2-ctrl.sock`（ROS 2）。两者遵循同一套 RPC 契约和 proto，因此单个 `rosctr` CLI 和 SDK 客户端只需指向对应 socket 即可操作任一控制器。
 
 完整 API 参考（RPC、消息、枚举）：[`proto-api.zh-CN.md`](./proto-api.zh-CN.md)。
 
@@ -75,12 +77,18 @@ make vet          # go vet
 ### Docker 镜像
 
 ```bash
-# embodied-runtime 镜像 —— 包含全部 5 个二进制（静态，多架构）
+# embodied-runtime 镜像 —— 包含全部 6 个二进制（静态，多架构）
 make docker REGISTRY=ghcr.io/your-org IMAGE_TAG=v0.1.0
 
 # camera-base 镜像 —— Alpine + ffmpeg 运行时依赖（不含二进制；
 # 部署时由 initContainer 注入）
 make docker-camera REGISTRY=ghcr.io/your-org IMAGE_TAG=v0.1.0
+
+# ros-base 镜像 —— ROS Noetic + 控制包（用于 ROS 1 控制器）
+make docker-ros REGISTRY=ghcr.io/your-org IMAGE_TAG=v0.1.0
+
+# ros2-base 镜像 —— ROS 2 Humble + 控制包（用于 ROS 2 控制器）
+make docker-ros2 REGISTRY=ghcr.io/your-org IMAGE_TAG=v0.1.0
 ```
 
 可覆盖变量：`REGISTRY`、`IMAGE_TAG` / `VERSION`、`BUILDX_PLATFORMS`、`GO_BASE_IMAGE`、`RUNTIME_BASE_IMAGE`、`APK_MIRROR`。
@@ -144,9 +152,34 @@ ros:
       web_service: https://172.16.0.2/
   allowed_launch_packages:
     - serl_franka_controllers
+
+ros2:
+  manager_mode: local     # disabled | local | pod
+  ctrl_config_path: /etc/rlinf/ros2-controller.yaml
+  ctrl_bin: /usr/local/bin/ros2-controller
+  ctr_cli: /opt/rlinf/bin/rosctr    # 与 ROS 1 共用
+  macvlans:
+    - host_nic: eno1
+      name: macvlan0
+      ip: 172.16.0.101/24
+  types:
+    - type: franka
+      modes:
+        impedance:
+          package: moveit_servo
+          launch_file: servo.launch.py
+          passthrough_robot_args: true
+  robots:
+    - id: franka-robot-1
+      type: franka
+      params:
+        robot_ip: 172.16.0.2
+      domain_id: 5            # 显式 ROS_DOMAIN_ID 覆盖（为 0 时自动分配）
+  allowed_launch_packages:
+    - moveit_servo
 ```
 
-**Manager 模式**（`camera.manager_mode` / `ros.manager_mode`）：
+**Manager 模式**（`camera.manager_mode` / `ros.manager_mode` / `ros2.manager_mode`）：
 
 | 模式       | 行为                                                     |
 |------------|----------------------------------------------------------|
@@ -159,6 +192,12 @@ ros:
 ### ROS controller 组网
 
 每个机器人拥有独立的 `roscore`（端口从 `11311` 起递增），多机器人可在同一容器内共存而不冲突 topic / 节点名。`ROS_MASTER_URI` 与 `ROS_IP` 会被注入每个 `roslaunch` 进程。启动时按配置创建 MACVLAN 接口以接入机器人网络；`roslaunch` 直接在容器内运行（不使用 `nsenter`）。
+
+### ROS 2 controller 组网
+
+与 ROS 1 不同，ROS 2 没有中央 master。每个机器人拥有独立的 `ROS_DOMAIN_ID`（自动从 0 递增分配，或通过 robot 配置中的 `domain_id` 显式指定），实现 DDS 级隔离，使同一容器内的多机器人互不发现对方的 topic / service。`ROS_DOMAIN_ID`（及可选的 `RMW_IMPLEMENTATION`、`CYCLONEDDS_URI`）会注入每个 `ros2 launch` 进程。MACVLAN 接口与 ROS 1 控制器共享以接入机器人物理网。基础镜像默认使用 Cyclone DDS（`rmw_cyclonedds_cpp`），更适合多机器人与跨子网发现场景。
+
+> **组播要求。** ROS 2 DDS 默认使用 IP 组播进行节点发现。集群的网络层（CNI 插件、节点 / 底层交换机）**必须支持组播路由**，跨 Pod / 跨节点的 ROS 2 节点才能互相发现。如果集群不支持组播（许多云厂商 CNI 默认会屏蔽），需改为单播发现 —— 在每个 robot 的 mode 级 `env` 中设置 `CYCLONEDDS_URI`（或 Fast DDS 等价配置）为 peer-list XML profile，或部署 DDS Discovery Server。MACVLAN 的 L2 接口可直接接入机器人物理子网（该子网内组播通常可用），但 Pod 间 / 节点间的发现仍取决于集群网络。
 
 ### Camera controller
 
@@ -185,6 +224,7 @@ host_devices:
 
 - [`device-plugin-config.yaml`](./examples/device-plugin-config.yaml) —— device-plugin 配置 ConfigMap。
 - [`ros-controller-pod.yaml`](./examples/ros-controller-pod.yaml) —— ros-controller Pod（hostPID、privileged，使用 ROS workspace 镜像，initContainer 从 embodied-runtime 镜像拷贝二进制）。
+- [`ros2-controller-pod.yaml`](./examples/ros2-controller-pod.yaml) —— ros2-controller Pod（hostPID、privileged，使用 ROS 2 Humble workspace 镜像）。
 - [`camera-controller-pod.yaml`](./examples/camera-controller-pod.yaml) —— 基于 `camera-base` 镜像的 camera-controller Pod。
 
 典型模式：`initContainer` 把 `ros-controller` / `rosctr`（或 `camera-controller` / `camctr`）从 `embodied-runtime` 镜像拷贝到共享的 `emptyDir`；主容器从该目录运行控制器二进制。存活 / 就绪探针通过 CLI（`rosctr list`、`camctr list`）访问 Unix socket 来实现。
@@ -205,7 +245,9 @@ spec:
 
 ## CLI 用法
 
-### `rosctr` —— 机器人控制
+### `rosctr` —— 机器人控制（ROS 1 与 ROS 2 共用）
+
+同一个 `rosctr` 二进制可同时操作 ROS 1 控制器（`ros-ctrl.sock`）和 ROS 2 控制器（`ros2-ctrl.sock`）。通过 `--socket-path` 或环境变量 `RLINF_EMBODIED_ROS_SOCKET_PATH` / `RLINF_EMBODIED_ROS2_SOCKET_PATH` 指向对应 socket。`env`、`status`、`list` 命令会根据响应字段自动判断 ROS 版本。
 
 ```bash
 rosctr list                                      # 机器人列表 + 状态
@@ -224,7 +266,7 @@ rosctr pkg launch-args <package> <launch-file>
 rosctr env <robot-id>                            # 注入的 ROS 环境变量
 ```
 
-全局参数：`--socket-path`（默认 `/var/run/rlinf/ros-ctrl.sock`，或读取环境变量 `RLINF_EMBODIED_ROS_SOCKET_PATH`）。输出格式：`-o text|json|yaml`。
+全局参数：`--socket-path`（默认 `/var/run/rlinf/ros-ctrl.sock`，或读取环境变量 `RLINF_EMBODIED_ROS_SOCKET_PATH`，回退至 `RLINF_EMBODIED_ROS2_SOCKET_PATH`）。同一个 `rosctr` 二进制可同时操作 ROS 1 或 ROS 2 controller——只需指向对应的 socket。输出格式：`-o text|json|yaml`。
 
 ### `camctr` —— 摄像头控制
 
@@ -252,16 +294,20 @@ camctr watch <camera-id> | ffplay -i -           # 管道喂给 ffplay
 cmd/                       # 每个二进制一个包
   device-plugin/
   ros-controller/
+  ros2-controller/
   camera-controller/
-  rosctr/                  # CLI（cobra）
+  rosctr/                  # CLI（cobra）—— ROS 1 + ROS 2 共用
   camctr/                  # CLI（cobra）
 pkg/
   deviceplugin/            # kubelet 插件、配置、硬件探测、pod/local 管理器
   roscontroller/           # roscore、roslaunch 进程、模式、MACVLAN、Web 代理、gRPC server
+  ros2controller/          # ros2 launch、DOMAIN_ID、模式、gRPC server（ROS 2）
   cameracontroller/        # 驱动（ffmpeg/remote/ros(todo)）、转码器、gRPC server
+  netmac/                  # 共享 MACVLAN 接口管理
+  httputil/                # 共享 HTTP/JSON 网关辅助（protojson、gRPC→HTTP）
   cli/                     # 共享输出格式化（text/json/yaml）
 examples/                  # 示例 ConfigMap + Pod 清单
-runtimes/                  # camera-base.dockerfile（ffmpeg 运行时依赖）
+runtimes/                  # camera-base、ros-base、ros2-base dockerfile
 Dockerfile                 # 多阶段构建 → 全部二进制
 Makefile                   # 构建 / proto / docker / lint / test
 ```

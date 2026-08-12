@@ -77,3 +77,30 @@ data:
       allowed_launch_packages:
 {{ toYaml .Values.config.ros.allowed_launch_packages | indent 8 }}
 {{- end }}
+
+    ros2:
+      manager_mode: {{ .Values.config.ros2.enabled | ternary "pod" "disabled" }}
+{{- if .Values.config.ros2.enabled }}
+      # HTTP/JSON gateway (controller-level): REST API at /v1/ plus the
+      # per-robot web proxy at /v1/robots/{robot_id}/proxy/*. Reachable via
+      # the headless Service at
+      # http://{{ .Values.config.ros2.pod.pod_generate_name }}-<node>.{{ .Values.config.ros2.pod.subdomain }}.{{ $namespace }}.svc:{{ .Values.config.ros2.httpPort }}/v1/robots
+      http_addr: :{{ .Values.config.ros2.httpPort }}
+      pod:
+        namespace: {{ $namespace }}
+        image: {{ .Values.config.ros2.pod.image }}
+        # init_image: auto-filled from the device-plugin pod
+        pod_generate_name: {{ .Values.config.ros2.pod.pod_generate_name }}
+        subdomain: {{ .Values.config.ros2.pod.subdomain }}
+        labels:
+{{ toYaml .Values.config.ros2.pod.labels | indent 10 }}
+
+      macvlans:
+{{ toYaml .Values.config.ros2.macvlans | indent 8 }}
+      types:
+{{ toYaml .Values.config.ros2.types | indent 8 }}
+      robots:
+{{ toYaml .Values.config.ros2.robots | indent 8 }}
+      allowed_launch_packages:
+{{ toYaml .Values.config.ros2.allowed_launch_packages | indent 8 }}
+{{- end }}
