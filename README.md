@@ -11,7 +11,7 @@
 </div>
 
 <h1 align="center">
-  <sub>Cross-Cluster Embodied Intelligence Platform</sub>
+  <sub>RLark — Cross-Cluster Embodied Intelligence Cloud-Native Platform</sub>
 </h1>
 
 ## What's NEW!
