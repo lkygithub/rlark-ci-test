@@ -144,3 +144,11 @@ func (b *JobTaskTemplateApplyConfiguration) WithRunScript(value string) *JobTask
 	b.TaskSpecApplyConfiguration.RunScript = &value
 	return b
 }
+
+// WithSSHPublicKey sets the SSHPublicKey field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the SSHPublicKey field is set to the value of the last call.
+func (b *JobTaskTemplateApplyConfiguration) WithSSHPublicKey(value string) *JobTaskTemplateApplyConfiguration {
+	b.TaskSpecApplyConfiguration.SSHPublicKey = &value
+	return b
+}

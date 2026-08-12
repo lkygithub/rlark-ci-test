@@ -372,7 +372,9 @@ export function NodeDetailReal({
   const zh = c.nav.overview === "总览";
   const phase = (node.status?.phase ?? "Offline") as Phase;
   const labels = node.metadata.labels ?? {};
-  const labelEntries = Object.entries(labels);
+  const labelEntries = Object.entries(labels).filter(
+    ([k]) => k.startsWith("kubernetes.io/") || k.startsWith("rlark.io/"),
+  );
   const addresses = node.status?.addresses ?? [];
   const internalAddress =
     addresses.find((address) => address.type === "InternalIP")?.address ??

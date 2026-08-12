@@ -2,6 +2,7 @@ package node
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -50,11 +51,19 @@ func (r *pushNodeReconciler) buildRLarkNodeFromK8sNode(k8sNode *corev1.Node) *rl
 	labels[rlarkv1alpha1.LabelClusterID] = r.c.ManagementNamespace
 	labels[rlarkv1alpha1.LabelAgentType] = r.c.AgentType
 
+	annotations := make(map[string]string)
+	for k, v := range k8sNode.Annotations {
+		if strings.HasPrefix(k, "rlark.io/") {
+			annotations[k] = v
+		}
+	}
+
 	return &rlarkv1alpha1.Node{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      k8sNode.Name,
-			Namespace: r.c.ManagementNamespace,
-			Labels:    labels,
+			Name:        k8sNode.Name,
+			Namespace:   r.c.ManagementNamespace,
+			Labels:      labels,
+			Annotations: annotations,
 		},
 		Spec: rlarkv1alpha1.NodeSpec{
 			AgentType:     rlarkv1alpha1.AgentType(r.c.AgentType),
@@ -115,6 +124,21 @@ func (r *pushNodeReconciler) updateManagementNode(ctx context.Context, logger lo
 
 	mgmtNode.Spec = desiredNode.Spec
 	mgmtNode.Labels = desiredNode.Labels
+	if mgmtNode.Annotations == nil {
+		mgmtNode.Annotations = make(map[string]string)
+	}
+	for k, v := range desiredNode.Annotations {
+		if mgmtNode.Annotations[k] != v {
+			mgmtNode.Annotations[k] = v
+		}
+	}
+	for k := range mgmtNode.Annotations {
+		if strings.HasPrefix(k, "rlark.io/") {
+			if _, ok := desiredNode.Annotations[k]; !ok {
+				delete(mgmtNode.Annotations, k)
+			}
+		}
+	}
 	if err := r.c.ManagementClient.Update(ctx, &mgmtNode); err != nil {
 		logger.Error(err, "failed to update management Node spec")
 		return reconcile.Result{RequeueAfter: HeartbeatInterval}, err
