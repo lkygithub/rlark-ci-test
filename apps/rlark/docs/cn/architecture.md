@@ -12,7 +12,7 @@ rlark 是一个面向跨集群具身智能场景的云原生纳管平台，核�
 
 ## 2. 总体架构
 
-rlark 采用**控制面—数据面**分离架构，控制面基于 kcp（Kubernetes Control Plane）运行，数据面 Agent 部署在每个 GPU 集群中。
+rlark 采用**控制面—数据面**分离架构，控制面基于 kcp（Kubernetes Control Plane）运行，数据面 Agent 部署在每个 GPU 集群或端侧设备中，支持 k8s、Docker 和 Raw 三种运行时。**embodied-runtime**（Device Plugin + Controllers）以 DaemonSet 形式运行在每个数据面节点上，管理机械臂（ROS 1/2）和摄像头硬件，将其作为 Kubernetes 设备资源暴露。
 
 ![系统架构](../images/architecture.svg)
 
@@ -201,6 +201,30 @@ func (a *containerNetworkAdapter) GetContainerNetworkDial(...) (utils.Dial, erro
 - 重连失败指数退避（1s → 2s → 4s → ... → 30s）
 - 后台 GC 关闭空闲超时连接（默认 10 分钟）
 - 线程安全，正常路径读锁无阻塞
+
+### 4.6 Embodied Runtime
+
+**embodied-runtime** 是部署在每个数据面节点上的 DaemonSet 组件，管理机械臂（ROS 1/2）和摄像头硬件。它与 Agent 集成，将物理设备作为 Kubernetes 设备资源（`rlinf.io/device`）暴露，使训练 Task 可以像申请 GPU 一样申请机械臂和摄像头。
+
+**关键文件**：[apps/embodied-runtime/](../../../embodied-runtime/)
+
+**组件概览**：
+
+| 组件 | 职责 | 关键文件 |
+|-----------|---------------|----------|
+| Device Plugin | 向 kubelet 注册 `rlinf.io/device`；检测节点本地硬件；向 Task Pod 注入 socket 和 CLI 二进制 | [plugin.go](../../../../embodied-runtime/pkg/deviceplugin/plugin.go) |
+| ros-controller | 管理 ROS 1（`roscore` + `roslaunch`）机器人生命周期；通过 Unix socket 暴露 gRPC API | [roscontroller/](../../../../embodied-runtime/pkg/roscontroller/) |
+| ros2-controller | 管理 ROS 2 机器人生命周期；通过 Unix socket 暴露 gRPC API | [ros2controller/](../../../../embodied-runtime/pkg/ros2controller/) |
+| camera-controller | 管理摄像头（V4L2 / RTSP / RealSense）生命周期；ffmpeg 转码；通过 Unix socket 暴露 gRPC API | [cameracontroller/](../../../../embodied-runtime/pkg/cameracontroller/) |
+| CLI（rosctr / camctr） | 挂载到 Task Pod 中的命令行工具，用于直接控制机器人/摄像头 | [cmd/rosctr/](../../../../embodied-runtime/cmd/rosctr/) |
+
+**设备生命周期**：
+
+1. Device Plugin 检测硬件（V4L2 摄像头、机器人控制器）并向 kubelet 注册
+2. Task Pod 在 spec 中申请 `rlinf.io/device` 资源
+3. Allocate 时，Device Plugin 将 Unix socket 和 CLI 二进制注入 Pod
+4. 任务容器通过 gRPC over Unix socket 与 ros-controller / camera-controller 通信
+5. Pod 终止时，Device Plugin 清理并归还设备到资源池
 
 ## 5. 跨集群 Pod 网络数据流
 

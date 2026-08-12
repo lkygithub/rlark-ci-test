@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="900" height="583" viewBox="0 0 900 583">
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="740" viewBox="0 0 960 740">
   <defs>
     <filter id="shadow" x="-8%" y="-8%" width="116%" height="116%">
       <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#0f172a" flood-opacity="0.08"/>
@@ -15,45 +15,48 @@
       .section-title { font-size: 13px; font-weight: 700; fill: #334155; }
       .card-title { font-size: 13px; font-weight: 700; fill: #1E293B; }
       .card-title-sm { font-size: 12px; font-weight: 700; fill: #1E293B; }
-      .card-sub { font-size: 10.5px; font-weight: 500; fill: #64748B; }
+      .card-title-xs { font-size: 11px; font-weight: 700; fill: #1E293B; }
+      .card-sub { font-size: 10.5px; font-weight: 600; fill: #475569; }
+      .card-sub-sm { font-size: 10px; font-weight: 500; fill: #64748B; }
       .badge { font-size: 10px; font-weight: 600; }
-      .legend { font-size: 10.5px; font-weight: 500; fill: #475569; }
+      .badge-xs { font-size: 9px; font-weight: 600; }
+      .legend { font-size: 10px; font-weight: 500; fill: #475569; }
     </style>
   </defs>
 
-  <rect width="900" height="583" fill="#FAFBFC"/>
+  <rect width="960" height="740" fill="#FAFBFC"/>
 
   <!-- ==================== Client Layer ==================== -->
   <g transform="translate(70, 18)">
-    <rect width="760" height="90" rx="16" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.5" filter="url(#shadow-lg)"/>
-    <rect x="0" y="0" width="760" height="36" rx="16" fill="#EEF2FF"/>
-    <rect x="0" y="16" width="760" height="20" fill="#EEF2FF"/>
+    <rect width="820" height="95" rx="16" fill="#FFFFFF" stroke="#FED7AA" stroke-width="1.5" filter="url(#shadow-lg)"/>
+    <rect x="0" y="0" width="820" height="36" rx="16" fill="#FFF7ED"/>
+    <rect x="0" y="16" width="820" height="20" fill="#FFF7ED"/>
     <text x="24" y="24" class="font section-title">Client Layer</text>
-
-    <g transform="translate(200, 44)">
-      <rect width="160" height="36" rx="8" fill="#FFFFFF" stroke="#E2E8F0" filter="url(#shadow)"/>
-      <rect x="0" y="0" width="4" height="36" rx="2" fill="#6366F1"/>
-      <text x="82" y="23" text-anchor="middle" class="font card-title-sm">Web UI</text>
+    <g transform="translate(200, 48)">
+      <rect width="180" height="36" rx="8" fill="#FFFFFF" stroke="#E2E8F0" filter="url(#shadow)"/>
+      <rect x="0" y="0" width="4" height="36" rx="2" fill="#F97316"/>
+      <text x="94" y="23" text-anchor="middle" class="font card-title-sm">Web UI</text>
     </g>
-    <g transform="translate(400, 44)">
-      <rect width="160" height="36" rx="8" fill="#FFFFFF" stroke="#E2E8F0" filter="url(#shadow)"/>
-      <rect x="0" y="0" width="4" height="36" rx="2" fill="#F59E0B"/>
-      <text x="82" y="23" text-anchor="middle" class="font card-title-sm">API Clients</text>
+    <g transform="translate(440, 48)">
+      <rect width="180" height="36" rx="8" fill="#FFFFFF" stroke="#E2E8F0" filter="url(#shadow)"/>
+      <rect x="0" y="0" width="4" height="36" rx="2" fill="#FB923C"/>
+      <text x="94" y="23" text-anchor="middle" class="font card-title-sm">API Clients</text>
     </g>
   </g>
 
-  <!-- HTTP -->
-  <path d="M350 108 L350 140 L260 140 L260 180" stroke="#94A3B8" stroke-width="1.5" fill="none" marker-end="url(#arrow-gray)"/>
-  <rect x="288" y="135" width="34" height="18" rx="9" fill="#FFFFFF" stroke="#E2E8F0"/>
-  <text x="305" y="148" text-anchor="middle" class="font" style="font-size:10px;fill:#64748B;">HTTP</text>
+  <path d="M340 113 L340 133 L230 133 L230 173" stroke="#94A3B8" stroke-width="1.5" fill="none" marker-end="url(#arrow-gray)"/>
+  <rect x="256" y="128" width="34" height="18" rx="9" fill="#FFFFFF" stroke="#E2E8F0"/>
+  <text x="273" y="141" text-anchor="middle" class="font" style="font-size:10px;fill:#64748B;">HTTP</text>
+  <path d="M580 113 L580 133 L680 133 L680 173" stroke="#94A3B8" stroke-width="1.5" fill="none" marker-end="url(#arrow-gray)"/>
+  <rect x="643" y="128" width="40" height="18" rx="9" fill="#FFFFFF" stroke="#E2E8F0"/>
+  <text x="663" y="141" text-anchor="middle" class="font" style="font-size:10px;fill:#64748B;">gRPC</text>
 
   <!-- ==================== Control Plane ==================== -->
-  <g transform="translate(70, 128)">
-    <rect width="760" height="130" rx="16" fill="#FFFFFF" stroke="#DBEAFE" stroke-width="1.5" filter="url(#shadow-lg)"/>
-    <rect x="0" y="0" width="760" height="36" rx="16" fill="#EFF6FF"/>
-    <rect x="0" y="16" width="760" height="20" fill="#EFF6FF"/>
+  <g transform="translate(70, 133)">
+    <rect width="820" height="140" rx="16" fill="#FFFFFF" stroke="#BFDBFE" stroke-width="1.5" filter="url(#shadow-lg)"/>
+    <rect x="0" y="0" width="820" height="36" rx="16" fill="#EFF6FF"/>
+    <rect x="0" y="16" width="820" height="20" fill="#EFF6FF"/>
     <text x="24" y="24" class="font section-title">Control Plane</text>
-
     <g transform="translate(15, 52)">
       <rect width="100" height="62" rx="10" fill="#FFFFFF" stroke="#E2E8F0" filter="url(#shadow)"/>
       <rect x="0" y="0" width="4" height="62" rx="2" fill="#F97316"/>
@@ -79,110 +82,175 @@
       <text x="60" y="44" text-anchor="middle" class="font card-sub">Workload · Domain</text>
     </g>
     <g transform="translate(535, 52)">
-      <rect width="210" height="62" rx="10" fill="#FFFFFF" stroke="#E2E8F0" filter="url(#shadow)"/>
+      <rect width="270" height="62" rx="10" fill="#FFFFFF" stroke="#E2E8F0" filter="url(#shadow)"/>
       <rect x="0" y="0" width="4" height="62" rx="2" fill="#64748B"/>
-      <text x="109" y="26" text-anchor="middle" class="font card-title">kcp API Server &amp; DB Syncer</text>
-      <text x="109" y="44" text-anchor="middle" class="font card-sub">CRD Storage</text>
+      <text x="139" y="24" text-anchor="middle" class="font card-title">KCP + ETCD* + PostgreSQL*</text>
+      <text x="139" y="42" text-anchor="middle" class="font card-sub-sm">CRD Storage</text>
     </g>
   </g>
 
-  <!-- ==================== Data Planes ==================== -->
+  <!-- ==================== Data Plane: GPU Cluster ==================== -->
   <g transform="translate(70, 293)">
-    <rect width="365" height="225" rx="16" fill="#FFFFFF" stroke="#A7F3D0" stroke-width="1.5" filter="url(#shadow-lg)"/>
-    <rect x="0" y="0" width="365" height="36" rx="16" fill="#ECFDF5"/>
-    <rect x="0" y="16" width="365" height="20" fill="#ECFDF5"/>
-    <text x="24" y="24" class="font section-title">GPU Cluster</text>
-    <rect x="280" y="12" width="62" height="16" rx="8" fill="#D1FAE5" stroke="#6EE7B7"/>
-    <text x="311" y="24" text-anchor="middle" class="font badge" fill="#059669">Kubernetes</text>
+    <rect width="400" height="320" rx="16" fill="#FFFFFF" stroke="#A7F3D0" stroke-width="1.5" filter="url(#shadow-lg)"/>
+    <rect x="0" y="0" width="400" height="36" rx="16" fill="#ECFDF5"/>
+    <rect x="0" y="16" width="400" height="20" fill="#ECFDF5"/>
+    <text x="24" y="24" class="font section-title">GPU Cluster (Kubernetes)</text>
 
-    <g transform="translate(30, 48)">
-      <rect width="155" height="40" rx="8" fill="#FFFFFF" stroke="#E2E8F0" filter="url(#shadow)"/>
-      <rect x="0" y="0" width="4" height="40" rx="2" fill="#14B8A6"/>
-      <text x="81" y="25" text-anchor="middle" class="font card-title">Cluster Agent</text>
+    <g transform="translate(20, 48)">
+      <rect width="85" height="90" rx="8" fill="#FFFFFF" stroke="#E2E8F0" filter="url(#shadow)"/>
+      <rect x="0" y="0" width="4" height="90" rx="2" fill="#14B8A6"/>
+      <text x="46" y="42" text-anchor="middle" class="font card-title-sm">Cluster</text>
+      <text x="46" y="58" text-anchor="middle" class="font card-title-sm">Agent</text>
     </g>
-    <g transform="translate(190, 48)">
-      <rect width="155" height="40" rx="8" fill="#FFFFFF" stroke="#E2E8F0" filter="url(#shadow)"/>
-      <rect x="0" y="0" width="4" height="40" rx="2" fill="#0EA5E9"/>
-      <text x="81" y="25" text-anchor="middle" class="font card-title">Node Agent</text>
+    <g transform="translate(110, 48)">
+      <rect width="85" height="90" rx="8" fill="#FFFFFF" stroke="#E2E8F0" filter="url(#shadow)"/>
+      <rect x="0" y="0" width="4" height="90" rx="2" fill="#0EA5E9"/>
+      <text x="46" y="42" text-anchor="middle" class="font card-title-sm">Node</text>
+      <text x="46" y="58" text-anchor="middle" class="font card-title-sm">Agent</text>
     </g>
-
-    <g transform="translate(30, 148)">
-      <rect width="305" height="52" rx="10" fill="#F8FAFC" stroke="#E2E8F0" filter="url(#shadow)"/>
-      <text x="14" y="18" class="font card-sub">Pod</text>
-      <rect x="30" y="22" width="110" height="22" rx="6" fill="#FFFFFF" stroke="#CBD5E1"/>
-      <text x="85" y="37" text-anchor="middle" class="font card-sub">main</text>
-      <rect x="165" y="22" width="110" height="22" rx="6" fill="#ECFDF5" stroke="#6EE7B7"/>
-      <text x="220" y="37" text-anchor="middle" class="font card-sub">networking-sidecar</text>
+    <g transform="translate(200, 48)">
+      <rect width="85" height="90" rx="8" fill="#FFFFFF" stroke="#E2E8F0" filter="url(#shadow)"/>
+      <rect x="0" y="0" width="4" height="90" rx="2" fill="#22C55E"/>
+      <text x="46" y="42" text-anchor="middle" class="font card-title-sm">Device</text>
+      <text x="46" y="58" text-anchor="middle" class="font card-title-sm">Plugin</text>
     </g>
 
-    <path d="M107 88 L107 148" stroke="#3B82F6" stroke-width="1.2" fill="none" stroke-dasharray="6 5"/>
+    <rect x="195" y="44" width="190" height="98" rx="8" fill="none" stroke="#A5B4FC" stroke-width="1.2" stroke-dasharray="6 3"/>
+    <text x="290" y="38" text-anchor="middle" class="font card-title-xs" fill="#4F46E5">Embodied Runtime</text>
+
+    <g transform="translate(290, 48)">
+      <rect width="85" height="90" rx="8" fill="#FFFFFF" stroke="#E2E8F0" filter="url(#shadow)"/>
+      <rect x="0" y="0" width="4" height="90" rx="2" fill="#10B981"/>
+      <text x="46" y="38" text-anchor="middle" class="font card-title-sm">Controller</text>
+      <text x="46" y="56" text-anchor="middle" class="font card-sub-sm">ros / ros2</text>
+      <text x="46" y="70" text-anchor="middle" class="font card-sub-sm">camera</text>
+    </g>
+
+    <!-- Blue (Cluster Agent, leftmost) → left-of-center -->
+    <path d="M62 138 L62 156 L95 156 L95 173" stroke="#3B82F6" stroke-width="1" fill="none" stroke-dasharray="5 4"/>
+    <path d="M62 138 L62 156 L285 156 L285 173" stroke="#3B82F6" stroke-width="1" fill="none" stroke-dasharray="5 4"/>
+
+    <!-- Red (Node Agent, middle) → center -->
+    <path d="M152 138 L152 164 L105 164 L105 173" stroke="#EF4444" stroke-width="1" fill="none" stroke-dasharray="5 4"/>
+    <path d="M152 138 L152 164 L295 164 L295 173" stroke="#EF4444" stroke-width="1" fill="none" stroke-dasharray="5 4"/>
+
+    <!-- Green (Controller, rightmost) → right-of-center -->
+    <path d="M332 138 L332 148 L115 148 L115 173" stroke="#22C55E" stroke-width="1" fill="none" stroke-dasharray="4 4"/>
+    <path d="M332 138 L332 148 L305 148 L305 173" stroke="#22C55E" stroke-width="1" fill="none" stroke-dasharray="4 4"/>
+
+    <g transform="translate(20, 173)">
+      <rect width="170" height="90" rx="10" fill="#F8FAFC" stroke="#E2E8F0" filter="url(#shadow)"/>
+      <text x="8" y="16" class="font card-sub">Pod</text>
+      <rect x="8" y="24" width="60" height="22" rx="6" fill="#FFFFFF" stroke="#CBD5E1"/>
+      <text x="38" y="39" text-anchor="middle" class="font card-sub">main</text>
+      <rect x="78" y="24" width="55" height="22" rx="6" fill="#ECFDF5" stroke="#6EE7B7"/>
+      <text x="105" y="39" text-anchor="middle" class="font card-sub">sidecar</text>
+    </g>
+    <g transform="translate(210, 173)">
+      <rect width="170" height="90" rx="10" fill="#F8FAFC" stroke="#E2E8F0" filter="url(#shadow)"/>
+      <text x="8" y="16" class="font card-sub">Pod</text>
+      <rect x="8" y="24" width="60" height="22" rx="6" fill="#FFFFFF" stroke="#CBD5E1"/>
+      <text x="38" y="39" text-anchor="middle" class="font card-sub">main</text>
+      <rect x="78" y="24" width="55" height="22" rx="6" fill="#ECFDF5" stroke="#6EE7B7"/>
+      <text x="105" y="39" text-anchor="middle" class="font card-sub">sidecar</text>
+    </g>
   </g>
 
-  <g transform="translate(465, 293)">
-    <rect width="365" height="225" rx="16" fill="#FFFFFF" stroke="#FED7AA" stroke-width="1.5" filter="url(#shadow-lg)"/>
-    <rect x="0" y="0" width="365" height="36" rx="16" fill="#FFF7ED"/>
-    <rect x="0" y="16" width="365" height="20" fill="#FFF7ED"/>
-    <text x="24" y="24" class="font section-title">Edge Device</text>
-    <rect x="280" y="12" width="48" height="16" rx="8" fill="#FED7AA" stroke="#FDBA74"/>
-    <text x="304" y="24" text-anchor="middle" class="font badge" fill="#C2410C">Docker</text>
+  <!-- ==================== Data Plane: Edge Device ==================== -->
+  <g transform="translate(490, 293)">
+    <rect width="400" height="320" rx="16" fill="#FFFFFF" stroke="#FED7AA" stroke-width="1.5" filter="url(#shadow-lg)"/>
+    <rect x="0" y="0" width="400" height="36" rx="16" fill="#FFF7ED"/>
+    <rect x="0" y="16" width="400" height="20" fill="#FFF7ED"/>
+    <text x="24" y="24" class="font section-title">Edge Device (Docker / Raw)</text>
 
-    <g transform="translate(30, 48)">
-      <rect width="155" height="40" rx="8" fill="#FFFFFF" stroke="#E2E8F0" filter="url(#shadow)"/>
-      <rect x="0" y="0" width="4" height="40" rx="2" fill="#0D9488"/>
-      <text x="81" y="25" text-anchor="middle" class="font card-title">Cluster Agent</text>
+    <g transform="translate(20, 48)">
+      <rect width="85" height="90" rx="8" fill="#FFFFFF" stroke="#E2E8F0" filter="url(#shadow)"/>
+      <rect x="0" y="0" width="4" height="90" rx="2" fill="#14B8A6"/>
+      <text x="46" y="42" text-anchor="middle" class="font card-title-sm">Cluster</text>
+      <text x="46" y="58" text-anchor="middle" class="font card-title-sm">Agent</text>
     </g>
-    <g transform="translate(190, 48)">
-      <rect width="145" height="40" rx="8" fill="#FFFFFF" stroke="#E2E8F0" filter="url(#shadow)"/>
-      <rect x="0" y="0" width="4" height="40" rx="2" fill="#0891B2"/>
-      <text x="72" y="25" text-anchor="middle" class="font card-title">Node Agent</text>
+    <g transform="translate(110, 48)">
+      <rect width="85" height="90" rx="8" fill="#FFFFFF" stroke="#E2E8F0" filter="url(#shadow)"/>
+      <rect x="0" y="0" width="4" height="90" rx="2" fill="#0EA5E9"/>
+      <text x="46" y="42" text-anchor="middle" class="font card-title-sm">Node</text>
+      <text x="46" y="58" text-anchor="middle" class="font card-title-sm">Agent</text>
     </g>
-
-    <g transform="translate(30, 148)">
-      <rect width="305" height="52" rx="10" fill="#F8FAFC" stroke="#E2E8F0" filter="url(#shadow)"/>
-      <text x="14" y="18" class="font card-sub">Docker Containers</text>
-      <rect x="30" y="22" width="110" height="22" rx="6" fill="#FFFFFF" stroke="#CBD5E1"/>
-      <text x="85" y="37" text-anchor="middle" class="font card-sub">main</text>
-      <rect x="165" y="22" width="110" height="22" rx="6" fill="#FFF7ED" stroke="#FDBA74"/>
-      <text x="220" y="37" text-anchor="middle" class="font card-sub">networking-sidecar</text>
+    <g transform="translate(200, 48)">
+      <rect width="85" height="90" rx="8" fill="#FFFFFF" stroke="#E2E8F0" filter="url(#shadow)"/>
+      <rect x="0" y="0" width="4" height="90" rx="2" fill="#22C55E"/>
+      <text x="46" y="42" text-anchor="middle" class="font card-title-sm">Device</text>
+      <text x="46" y="58" text-anchor="middle" class="font card-title-sm">Plugin</text>
     </g>
 
-    <path d="M107 88 L107 148" stroke="#3B82F6" stroke-width="1.2" fill="none" stroke-dasharray="6 5"/>
+    <rect x="195" y="44" width="190" height="98" rx="8" fill="none" stroke="#A5B4FC" stroke-width="1.2" stroke-dasharray="6 3"/>
+    <text x="290" y="38" text-anchor="middle" class="font card-title-xs" fill="#4F46E5">Embodied Runtime</text>
+
+    <g transform="translate(290, 48)">
+      <rect width="85" height="90" rx="8" fill="#FFFFFF" stroke="#E2E8F0" filter="url(#shadow)"/>
+      <rect x="0" y="0" width="4" height="90" rx="2" fill="#10B981"/>
+      <text x="46" y="38" text-anchor="middle" class="font card-title-sm">Controller</text>
+      <text x="46" y="56" text-anchor="middle" class="font card-sub-sm">ros / ros2</text>
+      <text x="46" y="70" text-anchor="middle" class="font card-sub-sm">camera</text>
+    </g>
+
+    <path d="M62 138 L62 156 L95 156 L95 173" stroke="#3B82F6" stroke-width="1" fill="none" stroke-dasharray="5 4"/>
+    <path d="M62 138 L62 156 L285 156 L285 173" stroke="#3B82F6" stroke-width="1" fill="none" stroke-dasharray="5 4"/>
+
+    <path d="M152 138 L152 164 L105 164 L105 173" stroke="#EF4444" stroke-width="1" fill="none" stroke-dasharray="5 4"/>
+    <path d="M152 138 L152 164 L295 164 L295 173" stroke="#EF4444" stroke-width="1" fill="none" stroke-dasharray="5 4"/>
+
+    <path d="M332 138 L332 148 L115 148 L115 173" stroke="#22C55E" stroke-width="1" fill="none" stroke-dasharray="4 4"/>
+    <path d="M332 138 L332 148 L305 148 L305 173" stroke="#22C55E" stroke-width="1" fill="none" stroke-dasharray="4 4"/>
+
+    <g transform="translate(20, 173)">
+      <rect width="170" height="90" rx="10" fill="#F8FAFC" stroke="#E2E8F0" filter="url(#shadow)"/>
+      <text x="8" y="16" class="font card-sub">Docker Container</text>
+      <rect x="8" y="24" width="60" height="22" rx="6" fill="#FFFFFF" stroke="#CBD5E1"/>
+      <text x="38" y="39" text-anchor="middle" class="font card-sub">main</text>
+      <rect x="78" y="24" width="55" height="22" rx="6" fill="#FFF7ED" stroke="#FDBA74"/>
+      <text x="105" y="39" text-anchor="middle" class="font card-sub">sidecar</text>
+      <rect x="8" y="54" width="154" height="16" rx="4" fill="#FEF3C7" stroke="#FDE68A"/>
+      <text x="85" y="65" text-anchor="middle" class="font badge-xs" fill="#B45309">Robot · Camera</text>
+      <rect x="8" y="74" width="154" height="12" rx="3" fill="#F8FAFC" stroke="#E2E8F0"/>
+      <text x="85" y="83" text-anchor="middle" class="font badge-xs" fill="#64748B">/var/run/rlark/...sock</text>
+    </g>
+    <g transform="translate(210, 173)">
+      <rect width="170" height="90" rx="10" fill="#F8FAFC" stroke="#E2E8F0" filter="url(#shadow)"/>
+      <text x="8" y="16" class="font card-sub">Docker Container</text>
+      <rect x="8" y="24" width="60" height="22" rx="6" fill="#FFFFFF" stroke="#CBD5E1"/>
+      <text x="38" y="39" text-anchor="middle" class="font card-sub">main</text>
+      <rect x="78" y="24" width="55" height="22" rx="6" fill="#FFF7ED" stroke="#FDBA74"/>
+      <text x="105" y="39" text-anchor="middle" class="font card-sub">sidecar</text>
+      <rect x="8" y="54" width="154" height="16" rx="4" fill="#FEF3C7" stroke="#FDE68A"/>
+      <text x="85" y="65" text-anchor="middle" class="font badge-xs" fill="#B45309">Robot · Camera</text>
+      <rect x="8" y="74" width="154" height="12" rx="3" fill="#F8FAFC" stroke="#E2E8F0"/>
+      <text x="85" y="83" text-anchor="middle" class="font badge-xs" fill="#64748B">/var/run/rlark/...sock</text>
+    </g>
   </g>
 
-  <!-- ==================== Connection Lines ==================== -->
-  <!-- Blue: WebSocket — Server → Cluster Agents -->
-  <path d="M390 242 L390 266 L177 266 L177 341" stroke="#3B82F6" stroke-width="1.2" fill="none" stroke-dasharray="6 5"/>
-  <path d="M390 266 L572 266 L572 341" stroke="#3B82F6" stroke-width="1.2" fill="none" stroke-dasharray="6 5"/>
-
-  <!-- Red: SSH Tunnel — Server → Node Agents -->
-  <path d="M400 242 L400 279 L337 279 L337 341" stroke="#EF4444" stroke-width="1.2" fill="none" stroke-dasharray="6 5"/>
-  <path d="M400 279 L727 279 L727 341" stroke="#EF4444" stroke-width="1.2" fill="none" stroke-dasharray="6 5"/>
-
-  <!-- Node Agent → Sidecar: Agent bottom=381, Pod top=441 -->
-  <path d="M337 381 L337 441" stroke="#EF4444" stroke-width="1.2" fill="none" stroke-dasharray="6 5"/>
-  <path d="M727 381 L727 441" stroke="#EF4444" stroke-width="1.2" fill="none" stroke-dasharray="6 5"/>
-
-  <!-- Unix Socket: centered between Node Agent(381) and Pod(441) -->
-  <rect x="299" y="401" width="76" height="20" rx="10" fill="#FFFFFF" stroke="#FECACA"/>
-  <text x="337" y="415" text-anchor="middle" class="font legend" fill="#DC2626">Unix Socket</text>
-  <rect x="689" y="401" width="76" height="20" rx="10" fill="#FFFFFF" stroke="#FECACA"/>
-  <text x="727" y="415" text-anchor="middle" class="font legend" fill="#DC2626">Unix Socket</text>
+  <!-- Connection lines: Control Plane → Data Planes -->
+  <path d="M395 273 L395 282 L132 282 L132 341" stroke="#3B82F6" stroke-width="1.2" fill="none" stroke-dasharray="6 5"/>
+  <path d="M395 282 L550 282 L550 341" stroke="#3B82F6" stroke-width="1.2" fill="none" stroke-dasharray="6 5"/>
+  <path d="M405 273 L405 290 L222 290 L222 341" stroke="#EF4444" stroke-width="1.2" fill="none" stroke-dasharray="6 5"/>
+  <path d="M405 290 L640 290 L640 341" stroke="#EF4444" stroke-width="1.2" fill="none" stroke-dasharray="6 5"/>
 
   <!-- ==================== Legend ==================== -->
-  <g transform="translate(390, 525)">
-    <rect width="440" height="40" rx="10" fill="#FFFFFF" stroke="#E2E8F0" filter="url(#shadow)"/>
-
-    <line x1="20" y1="12" x2="54" y2="12" stroke="#3B82F6" stroke-width="1.2" stroke-dasharray="6 5"/>
-    <text x="64" y="16" class="font legend">WebSocket — Resource Sync</text>
-
-    <line x1="20" y1="28" x2="54" y2="28" stroke="#EF4444" stroke-width="1.2" stroke-dasharray="6 5"/>
-    <text x="64" y="32" class="font legend">SSH Tunnel — Network Routing</text>
-
-    <rect x="236" y="10" width="72" height="20" rx="10" fill="#D1FAE5" stroke="#6EE7B7"/>
-    <text x="272" y="24" text-anchor="middle" class="font badge" fill="#059669">Kubernetes</text>
-    <rect x="316" y="10" width="48" height="20" rx="10" fill="#FED7AA" stroke="#FDBA74"/>
-    <text x="340" y="24" text-anchor="middle" class="font badge" fill="#C2410C">Docker</text>
-    <rect x="372" y="10" width="48" height="20" rx="10" fill="#F5F3FF" stroke="#C4B5FD"/>
-    <text x="396" y="24" text-anchor="middle" class="font badge" fill="#7C3AED">Raw</text>
+  <g transform="translate(70, 628)">
+    <rect width="820" height="80" rx="10" fill="#FFFFFF" stroke="#E2E8F0" filter="url(#shadow)"/>
+    <line x1="20" y1="16" x2="54" y2="16" stroke="#3B82F6" stroke-width="1.2" stroke-dasharray="6 5"/>
+    <text x="64" y="20" class="font legend">WebSocket — Resource Sync</text>
+    <line x1="20" y1="36" x2="54" y2="36" stroke="#EF4444" stroke-width="1.2" stroke-dasharray="6 5"/>
+    <text x="64" y="40" class="font legend">SSH Tunnel via Unix Socket</text>
+    <line x1="20" y1="56" x2="54" y2="56" stroke="#22C55E" stroke-width="1.2" stroke-dasharray="4 4"/>
+    <text x="64" y="60" class="font legend">gRPC via Unix Socket — Device Control</text>
+    <rect x="320" y="14" width="72" height="20" rx="10" fill="#D1FAE5" stroke="#6EE7B7"/>
+    <text x="356" y="28" text-anchor="middle" class="font badge" fill="#059669">Kubernetes</text>
+    <rect x="400" y="14" width="48" height="20" rx="10" fill="#FED7AA" stroke="#FDBA74"/>
+    <text x="424" y="28" text-anchor="middle" class="font badge" fill="#C2410C">Docker</text>
+    <rect x="456" y="14" width="48" height="20" rx="10" fill="#F5F3FF" stroke="#C4B5FD"/>
+    <text x="480" y="28" text-anchor="middle" class="font badge" fill="#7C3AED">Raw</text>
+    <rect x="320" y="42" width="184" height="20" rx="10" fill="none" stroke="#A5B4FC" stroke-width="1" stroke-dasharray="4 2"/>
+    <text x="412" y="56" text-anchor="middle" class="font badge" fill="#4F46E5">Embodied Runtime</text>
+    <text x="560" y="50" class="font legend" fill="#64748B">* Marked components are optional</text>
   </g>
 </svg>
