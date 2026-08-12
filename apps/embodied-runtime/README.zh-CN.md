@@ -257,9 +257,67 @@ host_macvlans:
 
 列表非空时，插件会注入 `RLINF_EMBODIED_DEVINIT_ENABLED=1` 与 `RLINF_EMBODIED_DEVINIT_SOCKET_PATH`，供 init 容器 / CLI 发现该服务。配置过程幂等 —— 同一 pause 网络命名空间中上一个容器实例遗留的接口会被复用。
 
+#### 准入 webhook（自动注入 devinit）
+
+上面的 init 容器可以由 device plugin 自带的 **mutating webhook 自动注入**，运维无需在每个业务 Pod 里手写。当启用 `--webhook` 且配置了 `host_macvlans` 时，device plugin 会启动一个 HTTPS webhook，拦截 Pod 的 CREATE/UPDATE：对任何申请 `rlinf.io/device[-<model>]` 的 Pod，追加一个名为 `rlark-devinit`、执行 `devinit setup` 的 init 容器。被注入的容器只**声明同一设备资源** —— device plugin 的 `Allocate` 会为它注入 RunDir socket 挂载和 `RLINF_EMBODIED_DEVINIT_SOCKET_PATH` 环境变量，webhook 无需添加任何额外卷或挂载。未申请资源的 Pod（以及使用 `hostNetwork` 的 Pod，由 `devinit` 处理）不受影响。
+
+该 webhook 具备**自动 CA 管理**：
+
+1. 从 Secret 读取 CA 证书+私钥（设置了 `--webhook-ca-secret-name` 时），否则在内存中生成自签名 CA。
+2. 读取 `MutatingWebhookConfiguration`（由 `--webhook-mutating-config` 指定）；当某 webhook 的 `caBundle` 为空时，把 CA 证书 patch 进去。
+3. 用该 CA 签发服务证书并启动 HTTPS 服务。
+
+`caBundle` 非空时 webhook 不动它（视为已托管）；不匹配时打印告警。init 镜像默认取自动发现的 device plugin 镜像（downward API），其中已包含 `devinit`，通常无需配置。
+
+device-plugin CLI 参数：
+
+| 参数 | 用途 |
+|------|------|
+| `--webhook` | 启用 webhook（要求配置中存在 `host_macvlans`）。 |
+| `--webhook-addr` | HTTPS 监听地址（默认 `:9443`）。 |
+| `--webhook-path` | 准入端点路径（默认 `/mutate`）。 |
+| `--webhook-mutating-config` | 待自动管理 `caBundle` 的 `MutatingWebhookConfiguration` 名称。 |
+| `--webhook-service-name` / `--webhook-service-namespace` | 前置 webhook 的 Service（构成服务证书 DNS SAN）。 |
+| `--webhook-ca-secret-name` / `--webhook-ca-secret-namespace` | 持久化 CA 的 Secret（留空 = 内存中生成）。 |
+| `--webhook-devinit-image` | 注入的 init 容器镜像（默认：自动发现的 device plugin 镜像）。 |
+
+参见 [Helm chart](./charts/embodied-runtime) 的 `webhook:` 值，提供一键式部署：渲染 webhook Service、`MutatingWebhookConfiguration`（`caBundle` 留空）、所需 RBAC（集群级 `mutatingwebhookconfigurations` 的 get/patch + 命名空间级 `secrets`），并把上述参数全部接进 device-plugin DaemonSet。启用方式：
+
+```yaml
+webhook:
+  enabled: true
+  port: 9443
+  failurePolicy: Ignore   # Ignore = webhook 不可用时也放行 Pod（无 macvlan）；Fail = 拒绝
+  caSecret:               # 持久化 CA，跨重启复用（推荐）
+    name: devinit-ca
+    namespace: rlark-system   # 默认取发布命名空间
+  # devinitImage: ""      # 默认取 .Values.devicePlugin.image
+```
+
+webhook 仅在 `webhook.enabled` 与 `config.hostMacvlans` **同时**设置时渲染；未配置 macvlan 时启用它无效（handler 不注入任何内容）。
+
 ---
 
 ## 部署
+
+### Helm chart
+
+推荐使用 [Helm chart](./charts/embodied-runtime)，它渲染 DaemonSet、ConfigMap、RBAC、可选的 headless Service，以及 —— 当 `webhook.enabled` 与 `config.hostMacvlans` 同时设置时 —— 准入 webhook 的 Service、`MutatingWebhookConfiguration` 与集群级 RBAC。所有可调项见 [`charts/embodied-runtime/values.yaml`](./charts/embodied-runtime/values.yaml)。
+
+```bash
+# 最小部署（无控制器、无 webhook）
+helm install embodied-runtime ./charts/embodied-runtime
+
+# 配置宿主 macvlan + 自动注入 webhook
+helm install embodied-runtime ./charts/embodied-runtime \
+  --set config.hostMacvlans[0].host_nic=eno1 \
+  --set config.hostMacvlans[0].name=macvlan0 \
+  --set config.hostMacvlans[0].ip=172.16.0.0/24 \
+  --set webhook.enabled=true \
+  --set webhook.caSecret.name=devinit-ca
+```
+
+### 示例清单
 
 示例清单见 [`examples/`](./examples)：
 

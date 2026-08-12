@@ -160,6 +160,7 @@ build-embodied-runtime-image-dev:
       REGISTRY=harbor.infini-ai.com/share
       GO_BASE_IMAGE=harbor.infini-ai.com/share/mizar-ci:1.26.5-bookworm
       RUNTIME_BASE_IMAGE=harbor.infini-ai.com/share/alpine:3.20
+      APK_MIRROR=https://mirrors.tuna.tsinghua.edu.cn
 
 build-embodied-runtime-image-rel:
   extends: .build-go-image
@@ -172,3 +173,4 @@ build-embodied-runtime-image-rel:
       REGISTRY=harbor.infini-ai.com/share
       GO_BASE_IMAGE=harbor.infini-ai.com/share/mizar-ci:1.26.5-bookworm
       RUNTIME_BASE_IMAGE=harbor.infini-ai.com/share/alpine:3.20
+      APK_MIRROR=https://mirrors.tuna.tsinghua.edu.cn

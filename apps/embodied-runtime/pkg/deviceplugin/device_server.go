@@ -52,24 +52,22 @@ type DeviceServer struct {
 }
 
 // NewDeviceServer builds a DeviceServer for the given macvlan configs and
-// socket path. Each config is enriched and validated (Linux) at this point
-// so an invalid config is logged and dropped rather than failing a later
-// pod request; on non-Linux EnrichMACVLANConfig is a no-op so configs must
-// be fully specified. An empty cfgs slice yields a nil-meaning server (the
-// caller checks HasMacvlans instead of constructing one).
+// socket path. Configs are stored AS-IS: EnrichMACVLANConfig (auto-detect
+// HostNIC, auto-pick an unused IP from a network-address placeholder) and
+// ValidateMACVLANConfig run PER Setup call instead. Enrichment picks an IP
+// from the host's live ARP/neighbour table, so it must run per container —
+// enriching once at startup would hand the same auto-picked IP to every pod
+// and cause conflicts on the robot subnet. On non-Linux EnrichMACVLANConfig
+// is a no-op, so configs must be fully specified there.
+//
+// An empty cfgs slice yields a nil-meaning server (the caller checks
+// HasMacvlans instead of constructing one).
 func NewDeviceServer(cfgs []netmac.MACVLANConfig, socketPath string) *DeviceServer {
-	prepared := make([]netmac.MACVLANConfig, 0, len(cfgs))
-	for i := range cfgs {
-		c := cfgs[i]
-		netmac.EnrichMACVLANConfig(&c, "[device-plugin/macvlan]")
-		if err := netmac.ValidateMACVLANConfig(c); err != nil {
-			log.Printf("[device-plugin/macvlan] WARNING: skipping macvlan %q: %v", c.Name, err)
-			continue
-		}
-		prepared = append(prepared, c)
-	}
+	// Copy so a later mutation of the caller's slice can't affect the stored
+	// configs; they are re-enriched per Setup from these pristine originals.
+	stored := append([]netmac.MACVLANConfig(nil), cfgs...)
 	return &DeviceServer{
-		cfgs:   prepared,
+		cfgs:   stored,
 		socket: socketPath,
 	}
 }
@@ -160,23 +158,49 @@ func (s *DeviceServer) Setup(ctx context.Context, _ *devicepb.SetupRequest) (*de
 	created := make([]string, 0, len(s.cfgs))
 	mvs := make([]*netmac.MACVLAN, 0, len(s.cfgs))
 	for _, c := range s.cfgs {
-		mv := netmac.NewMACVLAN(c, netmac.WithPID(pid))
+		// Enrich a per-container copy (auto-detect HostNIC, auto-pick an
+		// unused IP) and validate. Done per Setup call — not once at startup
+		// — so each pod gets its own freshly-enriched config; sharing a
+		// startup-time enrichment would give every pod the same IP. A config
+		// that cannot be completed is logged and skipped.
+		cfg, ok := enrichForSetup(c)
+		if !ok {
+			continue
+		}
+		mv := netmac.NewMACVLAN(cfg, netmac.WithPID(pid))
 		if err := mv.Create(); err != nil {
 			// Roll back the macvlans already created in this call so a
 			// partial setup does not leak interfaces in the pod netns.
 			log.Printf("[device-plugin/macvlan] create %s for pid=%d failed: %v — rolling back",
-				c.Name, pid, err)
+				cfg.Name, pid, err)
 			for _, done := range mvs {
 				done.Destroy()
 			}
-			return nil, fmt.Errorf("create macvlan %s for pid %d: %w", c.Name, pid, err)
+			return nil, fmt.Errorf("create macvlan %s for pid %d: %w", cfg.Name, pid, err)
 		}
 		mvs = append(mvs, mv)
-		created = append(created, c.Name)
+		created = append(created, cfg.Name)
 	}
 	log.Printf("[device-plugin/macvlan] set up %d macvlan(s) for pid=%d: %v",
 		len(created), pid, created)
 	return &devicepb.SetupResponse{Created: created}, nil
+}
+
+// enrichForSetup returns a per-container enriched and validated copy of cfg,
+// ready to create a macvlan from. EnrichMACVLANConfig (auto-detect HostNIC,
+// auto-pick an unused IP when IP is a network-address placeholder) runs on
+// the copy, then ValidateMACVLANConfig. A config that cannot be completed is
+// logged and dropped (ok=false). The caller's cfg is not mutated, so the
+// pristine stored config can be re-enriched for the next pod — with a
+// possibly different auto-picked IP, since enrichment re-reads the host's
+// live ARP/neighbour table each call.
+func enrichForSetup(cfg netmac.MACVLANConfig) (netmac.MACVLANConfig, bool) {
+	netmac.EnrichMACVLANConfig(&cfg, "[device-plugin/macvlan]")
+	if err := netmac.ValidateMACVLANConfig(cfg); err != nil {
+		log.Printf("[device-plugin/macvlan] WARNING: skipping macvlan %q: %v", cfg.Name, err)
+		return netmac.MACVLANConfig{}, false
+	}
+	return cfg, true
 }
 
 // macvlanNames returns the Name field of each config, for the skipped list.
