@@ -42,9 +42,9 @@ type Config struct {
 
 	// --- Paths ---
 	// SocketPath is the Unix socket path used by the CLI for health probes
-	// (e.g. "/var/run/rlinf/camera-ctrl.sock").
+	// (e.g. "/var/run/rlark/camera-ctrl.sock").
 	SocketPath string
-	// SocketDir is the hostPath directory for sockets (default "/var/run/rlinf").
+	// SocketDir is the hostPath directory for sockets (default "/var/run/rlark").
 	SocketDir string
 	// BinDir is the in-container shared directory for binaries, mounted from
 	// an emptyDir that the initContainer populates (default "/opt/rlinf/bin").
@@ -207,7 +207,7 @@ func (c *Config) applyDefaults() {
 		c.ConfigMountPath = "/etc/rlinf"
 	}
 	if c.SocketDir == "" {
-		c.SocketDir = "/var/run/rlinf"
+		c.SocketDir = "/var/run/rlark"
 	}
 	if c.BinDir == "" {
 		c.BinDir = "/opt/rlinf/bin"

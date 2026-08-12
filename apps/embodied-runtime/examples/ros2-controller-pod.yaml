@@ -118,17 +118,17 @@ spec:
           mountPath: /opt/rlinf/bin
 
         - name: socket-dir
-          mountPath: /var/run/rlinf
+          mountPath: /var/run/rlark
 
       livenessProbe:
         exec:
-          command: ["/opt/rlinf/bin/rosctr", "--socket-path=/var/run/rlinf/ros2-ctrl.sock", "list"]
+          command: ["/opt/rlinf/bin/rosctr", "--socket-path=/var/run/rlark/ros2-ctrl.sock", "list"]
         initialDelaySeconds: 10
         periodSeconds: 15
 
       readinessProbe:
         exec:
-          command: ["/opt/rlinf/bin/rosctr", "--socket-path=/var/run/rlinf/ros2-ctrl.sock", "list"]
+          command: ["/opt/rlinf/bin/rosctr", "--socket-path=/var/run/rlark/ros2-ctrl.sock", "list"]
         initialDelaySeconds: 5
         periodSeconds: 10
 
@@ -147,7 +147,7 @@ spec:
 
     - name: socket-dir
       hostPath:
-        path: /var/run/rlinf
+        path: /var/run/rlark
         type: DirectoryOrCreate
 
   nodeSelector:

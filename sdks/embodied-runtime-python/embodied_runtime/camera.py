@@ -37,7 +37,7 @@ class CameraClient:
     """gRPC client for the camera-controller ``CameraController`` service.
 
     By default it connects to the node-local Unix socket
-    ``/var/run/rlinf/camera-ctrl.sock`` (matching ``camctr``). Pass ``address``
+    ``/var/run/rlark/camera-ctrl.sock`` (matching ``camctr``). Pass ``address``
     to reach a remote TCP server instead.
 
     Example::

@@ -18,6 +18,7 @@ ROS2_CTRL_BIN   := ros2-controller
 ROSCTR_BIN      := rosctr
 CAM_CTRL_BIN    := camera-controller
 CAMCTR_BIN      := camctr
+DEVINIT_BIN     := devinit
 
 RUNTIME_OUTPUT_IMAGE       := $(REGISTRY)/embodied-runtime
 CAMERA_BASE_OUTPUT_IMAGE   := $(REGISTRY)/camera-base
@@ -41,7 +42,7 @@ fmt: ## Format Go (gofmt)
 
 .PHONY: all build
 all: build vet ## Build and vet (default)
-build: $(DEVPLUGIN_BIN) $(ROS_CTRL_BIN) $(ROS2_CTRL_BIN) $(ROSCTR_BIN) $(CAM_CTRL_BIN) $(CAMCTR_BIN) ## Build all binaries
+build: $(DEVPLUGIN_BIN) $(ROS_CTRL_BIN) $(ROS2_CTRL_BIN) $(ROSCTR_BIN) $(CAM_CTRL_BIN) $(CAMCTR_BIN) $(DEVINIT_BIN) ## Build all binaries
 
 .PHONY: $(DEVPLUGIN_BIN)
 $(DEVPLUGIN_BIN): ## Build device-plugin binary
@@ -65,6 +66,10 @@ $(CAM_CTRL_BIN): ## Build camera-controller binary
 
 .PHONY: $(CAMCTR_BIN)
 $(CAMCTR_BIN): ## Build camctr binary
+	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build -ldflags="$(LDFLAGS)" -o bin/$@ ./cmd/$@
+
+.PHONY: $(DEVINIT_BIN)
+$(DEVINIT_BIN): ## Build devinit binary (init-container device setup tool)
 	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build -ldflags="$(LDFLAGS)" -o bin/$@ ./cmd/$@
 
 .PHONY: vet test clean

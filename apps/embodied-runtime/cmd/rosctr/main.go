@@ -16,7 +16,7 @@ import (
 var defaultSocketPath = cmp.Or(
 	os.Getenv("RLINF_EMBODIED_ROS_SOCKET_PATH"),
 	os.Getenv("RLINF_EMBODIED_ROS2_SOCKET_PATH"),
-	"/var/run/rlinf/ros-ctrl.sock",
+	"/var/run/rlark/ros-ctrl.sock",
 )
 
 func main() {

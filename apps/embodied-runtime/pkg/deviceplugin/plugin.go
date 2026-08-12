@@ -51,18 +51,25 @@ const (
 	DefaultDeviceCount = 1
 
 	// ROSCtrlSocketPath is the path to the ros-controller gRPC socket.
-	ROSCtrlSocketPath = "/var/run/rlinf/ros-ctrl.sock"
+	ROSCtrlSocketPath = "/var/run/rlark/ros-ctrl.sock"
 
 	// ROS2CtrlSocketPath is the path to the ros2-controller gRPC socket.
-	ROS2CtrlSocketPath = "/var/run/rlinf/ros2-ctrl.sock"
+	ROS2CtrlSocketPath = "/var/run/rlark/ros2-ctrl.sock"
 
 	// CameraCtrlSocketPath is the path to the camera-controller gRPC socket.
-	CameraCtrlSocketPath = "/var/run/rlinf/camera-ctrl.sock"
+	CameraCtrlSocketPath = "/var/run/rlark/camera-ctrl.sock"
 
 	// RunDir is the parent directory of the controller sockets (ros-ctrl.sock,
 	// camera-ctrl.sock). Mounted as a directory so that socket recreation is
 	// reflected immediately in the container.
-	RunDir = "/var/run/rlinf"
+	RunDir = "/var/run/rlark"
+
+	// DevinitSocketPath is the default Unix socket path for the device
+	// init gRPC service (consumed by the `devinit` init-container CLI).
+	// It lives inside RunDir so the existing RunDir read-only mount (added
+	// in Allocate) makes it reachable from a pod's init container without an
+	// extra mount. Override per-config with PluginConfig.DevinitSocketPath.
+	DevinitSocketPath = RunDir + "/devinit.sock"
 
 	// ROSCtrlConfigPath is the path to the ros-controller YAML config file.
 	ROSCtrlConfigPath = "/etc/rlinf/ros-controller.yaml"
@@ -501,6 +508,17 @@ func (p *Plugin) allocateContainer(req *pluginapi.ContainerAllocateRequest) *plu
 		envs["RLINF_EMBODIED_HOST_DEVICES_ENABLED"] = "1"
 	}
 
+	// Host macvlans are NOT device-mounted (a macvlan must be created
+	// inside the pod netns). Instead the device plugin runs an init
+	// gRPC service on a Unix socket; a pod's init container runs the
+	// `devinit` CLI to request setup. The RunDir mount above already
+	// makes the socket reachable, so only the env vars are injected here
+	// for the init container / CLI to discover it.
+	if len(p.cfg.HostMacvlans) > 0 {
+		envs["RLINF_EMBODIED_DEVINIT_ENABLED"] = "1"
+		envs["RLINF_EMBODIED_DEVINIT_SOCKET_PATH"] = p.cfg.EffectiveDevinitSocketPath()
+	}
+
 	mounts := []*pluginapi.Mount{
 		{
 			HostPath:      RunDir,
@@ -581,20 +599,30 @@ type Server struct {
 	srv    *grpc.Server
 	socket string
 
+	// deviceSrv serves the on-demand device gRPC service (currently the
+	// macvlan setup RPC). nil when the plugin config has no host_macvlans.
+	deviceSrv *DeviceServer
+
 	stopCh chan struct{}
 }
 
 // NewServer creates a gRPC server for the device plugin. If socketPath is
-// empty, PluginSocketPath() is used as the default.
+// empty, PluginSocketPath() is used as the default. When the plugin config
+// declares host_macvlans, a DeviceServer is also constructed and started
+// alongside the device-plugin gRPC server.
 func NewServer(plugin *Plugin, socketPath string) *Server {
 	if socketPath == "" {
 		socketPath = PluginSocketPath()
 	}
-	return &Server{
+	s := &Server{
 		plugin: plugin,
 		socket: socketPath,
 		stopCh: make(chan struct{}),
 	}
+	if deviceSrv := NewDeviceServer(plugin.cfg.HostMacvlans, plugin.cfg.EffectiveDevinitSocketPath()); deviceSrv.HasMacvlans() {
+		s.deviceSrv = deviceSrv
+	}
+	return s
 }
 
 // Start initialises the gRPC server and begins listening on the Unix socket.
@@ -620,6 +648,17 @@ func (s *Server) Start() error {
 		s.srv.GracefulStop()
 	}()
 
+	// Start the on-demand macvlan gRPC service alongside the device-plugin
+	// server. Runs in its own goroutine on a separate Unix socket; nil
+	// when no host_macvlans are configured.
+	if s.deviceSrv != nil {
+		go func() {
+			if err := s.deviceSrv.Start(); err != nil {
+				log.Printf("[device-plugin] macvlan service exited: %v", err)
+			}
+		}()
+	}
+
 	return s.srv.Serve(listener)
 }
 
@@ -634,6 +673,9 @@ func (s *Server) Stop() {
 	}
 	if s.plugin.cameraManager != nil {
 		s.plugin.cameraManager.Stop(context.Background())
+	}
+	if s.deviceSrv != nil {
+		s.deviceSrv.Stop()
 	}
 	close(s.stopCh)
 }

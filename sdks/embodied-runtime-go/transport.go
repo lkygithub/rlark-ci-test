@@ -9,9 +9,9 @@ import (
 )
 
 const (
-	DefaultROSSocket    = "/var/run/rlinf/ros-ctrl.sock"
-	DefaultROS2Socket   = "/var/run/rlinf/ros2-ctrl.sock"
-	DefaultCameraSocket = "/var/run/rlinf/camera-ctrl.sock"
+	DefaultROSSocket    = "/var/run/rlark/ros-ctrl.sock"
+	DefaultROS2Socket   = "/var/run/rlark/ros2-ctrl.sock"
+	DefaultCameraSocket = "/var/run/rlark/camera-ctrl.sock"
 	DefaultTimeout      = 10 * time.Second
 	LongTimeout         = 30 * time.Second
 )

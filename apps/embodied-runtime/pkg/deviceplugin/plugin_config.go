@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/rlinf/rlark/apps/embodied-runtime/pkg/cameracontroller"
+	"github.com/rlinf/rlark/apps/embodied-runtime/pkg/netmac"
 	"github.com/rlinf/rlark/apps/embodied-runtime/pkg/ros2controller"
 	"github.com/rlinf/rlark/apps/embodied-runtime/pkg/roscontroller"
 	"gopkg.in/yaml.v3"
@@ -218,6 +219,24 @@ type PluginConfig struct {
 	// Empty (default) means no host device passthrough.
 	HostDevices []HostDeviceConfig `yaml:"host_devices,omitempty"`
 
+	// HostMacvlans lists macvlan interfaces to attach to requesting pods'
+	// network namespaces at startup. Unlike HostDevices (mounted directly
+	// during Allocate), macvlans are NOT device-mounted — they are created
+	// on demand via the device init gRPC service: a pod's init container runs
+	// the `devinit` CLI, which connects to the init service Unix socket (see
+	// DevinitSocketPath). The service reads the caller's PID from the socket
+	// peer credentials and creates the macvlans in that PID's network
+	// namespace using pkg/netmac. Pods using hostNetwork are skipped (the
+	// macvlan would land in the host netns). Empty (default) means the init
+	// service is not started.
+	HostMacvlans []netmac.MACVLANConfig `yaml:"host_macvlans,omitempty"`
+
+	// DevinitSocketPath overrides the Unix socket path for the device init
+	// gRPC service consumed by the `devinit` init-container CLI. When empty,
+	// DevinitSocketPath (a socket inside RunDir, which is already mounted
+	// into requesting pods) is used.
+	DevinitSocketPath string `yaml:"devinit_socket_path,omitempty"`
+
 	// SkipRegister skips kubelet registration. Useful for testing.
 	SkipRegister bool `yaml:"skip_register"`
 }
@@ -277,6 +296,18 @@ func (cfg PluginConfig) EffectiveSocketPath() string {
 		return pluginSocketPathForModel(cfg.Model)
 	}
 	return PluginSocketPath()
+}
+
+// EffectiveDevinitSocketPath returns the Unix socket path the device init
+// gRPC service (consumed by the `devinit` init-container CLI) listens on.
+// An explicit DevinitSocketPath always wins; otherwise the service reuses
+// RunDir (already mounted read-only into requesting pods via Allocate) so
+// the init container can reach the socket without an extra mount.
+func (cfg PluginConfig) EffectiveDevinitSocketPath() string {
+	if cfg.DevinitSocketPath != "" {
+		return cfg.DevinitSocketPath
+	}
+	return DevinitSocketPath
 }
 
 // ---------------------------------------------------------------------------

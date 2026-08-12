@@ -23,7 +23,7 @@ error states without re-registering the robot.
 
 Example:
   rosctr reset franka-0
-  rosctr --socket-path /var/run/rlinf/ros2-ctrl.sock reset franka-0`,
+  rosctr --socket-path /var/run/rlark/ros2-ctrl.sock reset franka-0`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client, conn := newClient(socketPath)

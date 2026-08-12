@@ -106,7 +106,7 @@ spec:
           mountPath: /opt/rlinf/bin
 
         - name: socket-dir
-          mountPath: /var/run/rlinf
+          mountPath: /var/run/rlark
 
       # resources:
       #   requests:
@@ -118,13 +118,13 @@ spec:
 
       livenessProbe:
         exec:
-          command: ["/opt/rlinf/bin/camctr", "--socket-path=/var/run/rlinf/camera-ctrl.sock", "list"]
+          command: ["/opt/rlinf/bin/camctr", "--socket-path=/var/run/rlark/camera-ctrl.sock", "list"]
         initialDelaySeconds: 10
         periodSeconds: 15
 
       readinessProbe:
         exec:
-          command: ["/opt/rlinf/bin/camctr", "--socket-path=/var/run/rlinf/camera-ctrl.sock", "list"]
+          command: ["/opt/rlinf/bin/camctr", "--socket-path=/var/run/rlark/camera-ctrl.sock", "list"]
         initialDelaySeconds: 5
         periodSeconds: 10
 
@@ -143,7 +143,7 @@ spec:
 
     - name: socket-dir
       hostPath:
-        path: /var/run/rlinf
+        path: /var/run/rlark
         type: DirectoryOrCreate
 
   nodeSelector:

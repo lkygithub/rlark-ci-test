@@ -13,12 +13,12 @@
 
 | 服务 | 包 | Proto | 默认 socket |
 |---------|---------|-------|----------------|
-| `RobotController` | `ros.controller.v1` | `proto/roscontroller/v1/robot.proto` | `/var/run/rlinf/ros-ctrl.sock` |
-| `CameraController` | `camera.controller.v1` | `proto/cameracontroller/v1/camera.proto` | `/var/run/rlinf/camera-ctrl.sock` |
+| `RobotController` | `ros.controller.v1` | `proto/roscontroller/v1/robot.proto` | `/var/run/rlark/ros-ctrl.sock` |
+| `CameraController` | `camera.controller.v1` | `proto/cameracontroller/v1/camera.proto` | `/var/run/rlark/camera-ctrl.sock` |
 
 ### 传输
 
-- 两个服务均监听节点本地 `/var/run/rlinf` 目录下的 Unix domain socket；device plugin 会将该目录以只读方式挂载进 task pod。
+- 两个服务均监听节点本地 `/var/run/rlark` 目录下的 Unix domain socket；device plugin 会将该目录以只读方式挂载进 task pod。
 - device plugin 会注入 `RLINF_EMBODIED_ROS_SOCKET_PATH`（ROS 1）、`RLINF_EMBODIED_ROS2_SOCKET_PATH`（ROS 2）与 `RLINF_EMBODIED_CAMERA_SOCKET_PATH`；`rosctr` / `camctr` CLI 会自动读取（显式传入的 `--socket-path` 参数始终优先）。对 `rosctr` 而言，ROS 1 的 socket 路径优先；未设置时回退至 ROS 2 的 socket 路径。
 
 ### HTTP 网关

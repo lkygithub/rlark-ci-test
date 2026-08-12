@@ -27,7 +27,7 @@ type Server struct {
 // ServerConfig holds configuration for the ros-controller server.
 type ServerConfig struct {
 	// SocketPath is the Unix socket path the gRPC server listens on.
-	// Default: "/var/run/rlinf/ros-ctrl.sock"
+	// Default: "/var/run/rlark/ros-ctrl.sock"
 	SocketPath string
 
 	// PodIP is the IP address of this pod on the container network.
@@ -65,7 +65,7 @@ type ServerConfig struct {
 // DefaultServerConfig returns a ServerConfig with sensible defaults.
 func DefaultServerConfig() ServerConfig {
 	return ServerConfig{
-		SocketPath: "/var/run/rlinf/ros-ctrl.sock",
+		SocketPath: "/var/run/rlark/ros-ctrl.sock",
 	}
 }
 

@@ -57,7 +57,7 @@ func NewPodManager(clientset kubernetes.Interface, opts podmanager.PodOptions) *
 		ConfigMountPath: "/etc/rlinf",
 
 		// Paths
-		SocketPath: "/var/run/rlinf/ros-ctrl.sock",
+		SocketPath: "/var/run/rlark/ros-ctrl.sock",
 
 		// Scheduling
 		NodeName: opts.NodeName,

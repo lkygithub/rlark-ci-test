@@ -64,7 +64,7 @@ spec:
             - name: kubelet-device-plugins
               mountPath: /var/lib/kubelet/device-plugins
             - name: socket-dir
-              mountPath: /var/run/rlinf
+              mountPath: /var/run/rlark
 
           securityContext:
             privileged: true
@@ -79,5 +79,5 @@ spec:
             type: DirectoryOrCreate
         - name: socket-dir
           hostPath:
-            path: /var/run/rlinf
+            path: /var/run/rlark
             type: DirectoryOrCreate
