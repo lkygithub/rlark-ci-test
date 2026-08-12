@@ -581,3 +581,44 @@ Browser ──HTTP──▶ Gateway ──proxy to Server──▶ Server ──
 - **Automatic proxy injection**: Task listing/GET responses include the `tensorBoardProxy` URL
 - **HTML rewriting**: Proxied TensorBoard pages are rewritten so all relative and absolute paths work correctly
 - **Ray integration**: TensorBoard auto-starts for Ray tasks with the appropriate configuration
+
+## 19. SSH Key Management
+
+SSH Key Management allows users to upload their SSH public keys through the API or Web UI, enabling passwordless SSH login to Pods without sharing certificates.
+
+### Concept
+
+Each user can upload one or more SSH public keys. These keys are stored in a Kubernetes Secret (`rlark-ssh-user-keys`) in the control plane namespace. When a Pod is created, the Agent injects the user's public keys into the Pod's `authorized_keys` file, allowing SSH access without a password.
+
+### API
+
+- `GET /api/v1/ssh-user-keys` — list all SSH keys (optionally filtered by user)
+- `POST /api/v1/ssh-user-keys` — add a new SSH public key for a user
+- `DELETE /api/v1/ssh-user-keys/:id` — delete a key by index
+
+### Key Features
+
+- **Web UI management**: A dedicated SSH Keys page in the Web UI for viewing and managing keys
+- **Conflict detection**: Duplicate keys are detected and rejected with a 409 response
+- **Retry on conflict**: The API automatically retries on write conflicts (up to 5 attempts)
+- **Key validation**: Public keys are validated using `golang.org/x/crypto/ssh` before storage
+
+## 20. Job Stop/Start
+
+Jobs can be stopped and restarted via the `stopped` field in the Job spec, providing manual lifecycle control over running workloads.
+
+### Concept
+
+Setting `spec.stopped: true` on a Job causes the Job controller to stop all associated workloads (Pods, Deployments, StatefulSets) without deleting the Job resource. Setting it back to `false` (or removing the field) restarts the workloads.
+
+### How it works
+
+1. **Stop**: When `spec.stopped` is set to `true`, the Job controller detects the change and deletes the underlying Kubernetes workloads (Deployments/StatefulSets) while keeping the Job CR.
+2. **Restart**: When `spec.stopped` is removed or set to `false`, the Job controller recreates the workloads from the Task templates.
+3. **State preservation**: The Job's phase and status fields are preserved during stop/restart cycles.
+
+### Key Features
+
+- **Non-destructive**: Stopping a Job does not delete the Job CR or its Tasks
+- **Persistent state**: PVCs and other persistent resources are not affected by stopping
+- **Web UI integration**: The Web UI provides one-click Stop/Start buttons in the Job list

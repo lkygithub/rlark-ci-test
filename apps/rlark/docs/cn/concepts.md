@@ -621,3 +621,44 @@ TensorBoard Proxy 提供基于 Web 的训练指标可视化仪表板（损失曲
 - **自动代理注入**：Task 列表/详情响应自动包含 `tensorBoardProxy` URL
 - **HTML 重写**：代理的 TensorBoard 页面经过重写，确保所有相对和绝对路径正确工作
 - **Ray 集成**：TensorBoard 随 Ray 任务自动启动，无需额外配置
+
+## 19. SSH 密钥管理
+
+SSH 密钥管理允许用户通过 API 或 Web UI 上传 SSH 公钥，实现免密 SSH 登录 Pod，无需共享证书。
+
+### 概念
+
+每位用户可以上传一个或多个 SSH 公钥。这些密钥存储在控制平面命名空间的 Kubernetes Secret（`rlark-ssh-user-keys`）中。当 Pod 创建时，Agent 会将用户的公钥注入到 Pod 的 `authorized_keys` 文件中，实现免密 SSH 访问。
+
+### API
+
+- `GET /api/v1/ssh-user-keys` — 列出所有 SSH 密钥（可按用户过滤）
+- `POST /api/v1/ssh-user-keys` — 为用户添加新的 SSH 公钥
+- `DELETE /api/v1/ssh-user-keys/:id` — 按索引删除密钥
+
+### 关键特性
+
+- **Web UI 管理**：Web UI 中提供专用的 SSH 密钥管理页面
+- **冲突检测**：重复密钥会被检测并返回 409 响应
+- **写入重试**：API 在写入冲突时自动重试（最多 5 次）
+- **密钥验证**：使用 `golang.org/x/crypto/ssh` 在存储前验证公钥格式
+
+## 20. Job 停止/启动
+
+通过 Job spec 中的 `stopped` 字段，可以停止和重启 Job，提供对运行中工作负载的手动生命周期控制。
+
+### 概念
+
+将 `spec.stopped: true` 设置为 Job 会通知 Job 控制器停止所有关联的工作负载（Pod、Deployment、StatefulSet），但不删除 Job 资源。将其设置回 `false`（或移除该字段）会重新启动工作负载。
+
+### 工作原理
+
+1. **停止**：当 `spec.stopped` 设置为 `true` 时，Job 控制器检测到变化并删除底层 Kubernetes 工作负载（Deployment/StatefulSet），同时保留 Job CR
+2. **重启**：当 `spec.stopped` 被移除或设置为 `false` 时，Job 控制器根据 Task 模板重新创建工作负载
+3. **状态保留**：Job 的 phase 和 status 字段在停止/重启周期中保持不变
+
+### 关键特性
+
+- **非破坏性**：停止 Job 不会删除 Job CR 或其 Task
+- **持久化状态**：PVC 和其他持久化资源不受停止影响
+- **Web UI 集成**：Web UI 在 Job 列表中提供一键停止/启动按钮
