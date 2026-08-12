@@ -3,9 +3,6 @@ package roscontroller
 import (
 	"context"
 	"crypto/tls"
-	"encoding/json"
-	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"net/http/httputil"
@@ -15,11 +12,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/rlinf/rlark/apps/embodied-runtime/pkg/httpproto"
 	pb "github.com/rlinf/rlark/sdks/embodied-runtime-go/gen/roscontroller/v1"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/encoding/protojson"
-	"google.golang.org/protobuf/proto"
 )
 
 // ---------------------------------------------------------------------------
@@ -56,19 +50,6 @@ import (
 // shape matches the `rosctr -o json` CLI output. Controller errors (which are
 // gRPC status errors) map to the closest HTTP status code.
 // ---------------------------------------------------------------------------
-
-// rosMarshal is the canonical proto JSON marshaler used by the HTTP API.
-// It mirrors pkg/cli/output.go so HTTP JSON is identical to `rosctr -o json`.
-var rosMarshal = protojson.MarshalOptions{
-	EmitUnpopulated: true,
-}
-
-// rosUnmarshal is the canonical proto JSON unmarshaler for request bodies.
-// Unknown fields are discarded for forward-compatibility; both lowerCamelCase
-// (canonical) and snake_case (proto field names) are accepted.
-var rosUnmarshal = protojson.UnmarshalOptions{
-	DiscardUnknown: true,
-}
 
 // HTTPServer exposes the Controller (and the per-robot web proxy) over
 // HTTP/JSON. It shares the same *Controller as the gRPC server, so HTTP and
@@ -221,10 +202,10 @@ func (s *HTTPServer) registerRoutes(mux *http.ServeMux) {
 func (s *HTTPServer) handleListRobots(w http.ResponseWriter, r *http.Request) {
 	resp, err := s.ctrl.ListRobots(r.Context(), &pb.ListRobotsRequest{})
 	if err != nil {
-		writeROSError(w, err)
+		httpproto.WriteError(w, err)
 		return
 	}
-	writeROSProto(w, http.StatusOK, resp)
+	httpproto.WriteProto(w, http.StatusOK, resp)
 }
 
 // handleGetRobotStatus — GET /v1/robots/{robot_id} → GetRobotStatus RPC.
@@ -232,10 +213,10 @@ func (s *HTTPServer) handleGetRobotStatus(w http.ResponseWriter, r *http.Request
 	req := &pb.GetRobotStatusRequest{RobotId: r.PathValue("robot_id")}
 	resp, err := s.ctrl.GetRobotStatus(r.Context(), req)
 	if err != nil {
-		writeROSError(w, err)
+		httpproto.WriteError(w, err)
 		return
 	}
-	writeROSProto(w, http.StatusOK, resp)
+	httpproto.WriteProto(w, http.StatusOK, resp)
 }
 
 // handleStartRobot — POST /v1/robots/{robot_id}/start → StartRobot RPC.
@@ -245,18 +226,18 @@ func (s *HTTPServer) handleGetRobotStatus(w http.ResponseWriter, r *http.Request
 func (s *HTTPServer) handleStartRobot(w http.ResponseWriter, r *http.Request) {
 	robotID := r.PathValue("robot_id")
 	req := &pb.StartRobotRequest{}
-	if err := decodeROSBody(r, req); err != nil {
-		writeROSError(w, err)
+	if err := httpproto.DecodeBody(r, req); err != nil {
+		httpproto.WriteError(w, err)
 		return
 	}
 	// Path-derived robot_id always wins over any value in the JSON body.
 	req.RobotId = robotID
 	resp, err := s.ctrl.StartRobot(r.Context(), req)
 	if err != nil {
-		writeROSError(w, err)
+		httpproto.WriteError(w, err)
 		return
 	}
-	writeROSProto(w, http.StatusOK, resp)
+	httpproto.WriteProto(w, http.StatusOK, resp)
 }
 
 // handleStopRobot — POST /v1/robots/{robot_id}/stop → StopRobot RPC.
@@ -264,10 +245,10 @@ func (s *HTTPServer) handleStopRobot(w http.ResponseWriter, r *http.Request) {
 	req := &pb.StopRobotRequest{RobotId: r.PathValue("robot_id")}
 	resp, err := s.ctrl.StopRobot(r.Context(), req)
 	if err != nil {
-		writeROSError(w, err)
+		httpproto.WriteError(w, err)
 		return
 	}
-	writeROSProto(w, http.StatusOK, resp)
+	httpproto.WriteProto(w, http.StatusOK, resp)
 }
 
 // handleSwitchMode — POST /v1/robots/{robot_id}/mode → SwitchMode RPC.
@@ -275,18 +256,18 @@ func (s *HTTPServer) handleStopRobot(w http.ResponseWriter, r *http.Request) {
 func (s *HTTPServer) handleSwitchMode(w http.ResponseWriter, r *http.Request) {
 	robotID := r.PathValue("robot_id")
 	req := &pb.SwitchModeRequest{}
-	if err := decodeROSBody(r, req); err != nil {
-		writeROSError(w, err)
+	if err := httpproto.DecodeBody(r, req); err != nil {
+		httpproto.WriteError(w, err)
 		return
 	}
 	// Path-derived robot_id always wins over any value in the JSON body.
 	req.RobotId = robotID
 	resp, err := s.ctrl.SwitchMode(r.Context(), req)
 	if err != nil {
-		writeROSError(w, err)
+		httpproto.WriteError(w, err)
 		return
 	}
-	writeROSProto(w, http.StatusOK, resp)
+	httpproto.WriteProto(w, http.StatusOK, resp)
 }
 
 // handleResetRobot — POST /v1/robots/{robot_id}/reset → ResetRobot RPC.
@@ -294,10 +275,10 @@ func (s *HTTPServer) handleResetRobot(w http.ResponseWriter, r *http.Request) {
 	req := &pb.ResetRobotRequest{RobotId: r.PathValue("robot_id")}
 	resp, err := s.ctrl.ResetRobot(r.Context(), req)
 	if err != nil {
-		writeROSError(w, err)
+		httpproto.WriteError(w, err)
 		return
 	}
-	writeROSProto(w, http.StatusOK, resp)
+	httpproto.WriteProto(w, http.StatusOK, resp)
 }
 
 // handleListModes — GET /v1/robots/{robot_id}/modes → ListModes RPC.
@@ -305,10 +286,10 @@ func (s *HTTPServer) handleListModes(w http.ResponseWriter, r *http.Request) {
 	req := &pb.ListModesRequest{RobotId: r.PathValue("robot_id")}
 	resp, err := s.ctrl.ListModes(r.Context(), req)
 	if err != nil {
-		writeROSError(w, err)
+		httpproto.WriteError(w, err)
 		return
 	}
-	writeROSProto(w, http.StatusOK, resp)
+	httpproto.WriteProto(w, http.StatusOK, resp)
 }
 
 // handleGetRobotLogs — GET /v1/robots/{robot_id}/logs?tail=N → GetRobotLogs.
@@ -324,10 +305,10 @@ func (s *HTTPServer) handleGetRobotLogs(w http.ResponseWriter, r *http.Request) 
 	req := &pb.GetRobotLogsRequest{RobotId: r.PathValue("robot_id"), Tail: tail}
 	resp, err := s.ctrl.GetRobotLogs(r.Context(), req)
 	if err != nil {
-		writeROSError(w, err)
+		httpproto.WriteError(w, err)
 		return
 	}
-	writeROSProto(w, http.StatusOK, resp)
+	httpproto.WriteProto(w, http.StatusOK, resp)
 }
 
 // ---------------------------------------------------------------------------
@@ -338,10 +319,10 @@ func (s *HTTPServer) handleGetRobotLogs(w http.ResponseWriter, r *http.Request) 
 func (s *HTTPServer) handleListPackages(w http.ResponseWriter, r *http.Request) {
 	resp, err := s.ctrl.ListPackages(r.Context(), &pb.ListPackagesRequest{})
 	if err != nil {
-		writeROSError(w, err)
+		httpproto.WriteError(w, err)
 		return
 	}
-	writeROSProto(w, http.StatusOK, resp)
+	httpproto.WriteProto(w, http.StatusOK, resp)
 }
 
 // handleGetPackageInfo — GET /v1/packages/{name} → GetPackageInfo RPC.
@@ -349,10 +330,10 @@ func (s *HTTPServer) handleGetPackageInfo(w http.ResponseWriter, r *http.Request
 	req := &pb.GetPackageInfoRequest{Name: r.PathValue("name")}
 	resp, err := s.ctrl.GetPackageInfo(r.Context(), req)
 	if err != nil {
-		writeROSError(w, err)
+		httpproto.WriteError(w, err)
 		return
 	}
-	writeROSProto(w, http.StatusOK, resp)
+	httpproto.WriteProto(w, http.StatusOK, resp)
 }
 
 // handleGetPackageLaunchFiles — GET /v1/packages/{name}/launch-files →
@@ -361,10 +342,10 @@ func (s *HTTPServer) handleGetPackageLaunchFiles(w http.ResponseWriter, r *http.
 	req := &pb.GetPackageLaunchFilesRequest{Name: r.PathValue("name")}
 	resp, err := s.ctrl.GetPackageLaunchFiles(r.Context(), req)
 	if err != nil {
-		writeROSError(w, err)
+		httpproto.WriteError(w, err)
 		return
 	}
-	writeROSProto(w, http.StatusOK, resp)
+	httpproto.WriteProto(w, http.StatusOK, resp)
 }
 
 // handleGetLaunchFileArgs —
@@ -376,20 +357,15 @@ func (s *HTTPServer) handleGetLaunchFileArgs(w http.ResponseWriter, r *http.Requ
 	}
 	resp, err := s.ctrl.GetLaunchFileArgs(r.Context(), req)
 	if err != nil {
-		writeROSError(w, err)
+		httpproto.WriteError(w, err)
 		return
 	}
-	writeROSProto(w, http.StatusOK, resp)
+	httpproto.WriteProto(w, http.StatusOK, resp)
 }
 
 // ---------------------------------------------------------------------------
 // Handler — per-robot web proxy
 // ---------------------------------------------------------------------------
-
-// proxyMountPrefix is the path prefix the proxy is mounted under, with %s
-// marking where the robot id goes. The trailing "/proxy" (no slash) is the
-// strip boundary; whatever follows it is forwarded to the backend.
-const proxyMountPrefix = "/v1/robots/%s/proxy"
 
 // handleProxy reverse-proxies /v1/robots/{robot_id}/proxy/<path> to the
 // robot's registered web_service URL. The mount prefix
@@ -417,7 +393,7 @@ func (s *HTTPServer) handleProxy(w http.ResponseWriter, r *http.Request) {
 	// Sub-path to forward: everything after the mount prefix
 	// (/v1/robots/<robot_id>/proxy). For a bare /proxy request the sub-path
 	// is "" → the backend's root. For /proxy/a/b it's "/a/b".
-	mountPrefix := fmt.Sprintf(proxyMountPrefix, robotID)
+	mountPrefix := httpproto.ProxyMountPrefix("robots", robotID)
 	rewritePath := strings.TrimPrefix(r.URL.Path, mountPrefix)
 
 	proxy := &httputil.ReverseProxy{
@@ -438,7 +414,7 @@ func (s *HTTPServer) handleProxy(w http.ResponseWriter, r *http.Request) {
 			if loc == "" {
 				return nil
 			}
-			resp.Header.Set("Location", s.rewriteProxyLocation(loc, robotID, targetURL))
+			resp.Header.Set("Location", httpproto.RewriteProxyLocation(loc, mountPrefix, targetURL))
 			return nil
 		},
 		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
@@ -448,141 +424,4 @@ func (s *HTTPServer) handleProxy(w http.ResponseWriter, r *http.Request) {
 	}
 
 	proxy.ServeHTTP(w, r)
-}
-
-// rewriteProxyLocation rewrites a Location header from the proxied response
-// so the client follows the redirect back through the gateway under its
-// /v1/robots/<robot_id>/proxy mount prefix.
-//
-// Cases:
-//   - Absolute URL pointing to the target host → rewrite to
-//     /v1/robots/<robot_id>/proxy<path>
-//   - Absolute path (/...) → prefix with /v1/robots/<robot_id>/proxy
-//   - Relative path (no leading /) → leave as-is (browser resolves relative
-//     to the proxied URL, which is already correct)
-func (s *HTTPServer) rewriteProxyLocation(location, robotID string, targetURL *url.URL) string {
-	locURL, err := url.Parse(location)
-	if err != nil {
-		return location
-	}
-
-	prefix := fmt.Sprintf(proxyMountPrefix, robotID)
-
-	// Absolute URL: rewrite to a path under the proxy mount if it matches
-	// the target host.
-	if locURL.IsAbs() {
-		if locURL.Host == targetURL.Host {
-			return prefix + locURL.Path
-		}
-		return location
-	}
-
-	// Absolute path: prefix with the proxy mount.
-	if strings.HasPrefix(location, "/") {
-		return prefix + location
-	}
-
-	// Relative path — leave as-is (browser resolves relative to the proxied
-	// URL, which is already correct).
-	return location
-}
-
-// ---------------------------------------------------------------------------
-// Request / response helpers
-// ---------------------------------------------------------------------------
-
-// decodeROSBody reads the JSON request body into the given proto request.
-// Path-derived identifiers (robot_id etc.) are set by the caller AFTER this
-// call so a value in the JSON body can never override the path — see
-// handleStartRobot / handleSwitchMode.
-func decodeROSBody(r *http.Request, req proto.Message) error {
-	raw, err := io.ReadAll(r.Body)
-	if err != nil {
-		return status.Errorf(codes.InvalidArgument, "read body: %v", err)
-	}
-	defer func() { _ = r.Body.Close() }()
-	if len(raw) > 0 {
-		if err := rosUnmarshal.Unmarshal(raw, req); err != nil {
-			return status.Errorf(codes.InvalidArgument, "invalid request body: %v", err)
-		}
-	}
-	return nil
-}
-
-// writeROSProto serializes a proto.Message as canonical proto JSON with the
-// given HTTP status code.
-func writeROSProto(w http.ResponseWriter, code int, msg proto.Message) {
-	b, err := rosMarshal.Marshal(msg)
-	if err != nil {
-		http.Error(w, "marshal: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(code)
-	_, _ = w.Write(b)
-	_, _ = w.Write([]byte("\n"))
-}
-
-// writeROSError maps a Controller error (gRPC status) to the closest HTTP
-// status code and writes a JSON error object: {"code","message","status"}.
-func writeROSError(w http.ResponseWriter, err error) {
-	code := grpcToHTTPStatus(err)
-	st, ok := status.FromError(err)
-	if !ok {
-		// Non-status error: fall back to a plain text body.
-		http.Error(w, err.Error(), code)
-		return
-	}
-	body, _ := json.Marshal(map[string]any{
-		"code":    int(st.Code()),
-		"status":  http.StatusText(code),
-		"message": st.Message(),
-	})
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(code)
-	_, _ = w.Write(body)
-	_, _ = w.Write([]byte("\n"))
-}
-
-// grpcToHTTPStatus maps a gRPC status code to the closest HTTP status code.
-// Non-status errors default to 500.
-func grpcToHTTPStatus(err error) int {
-	st, ok := status.FromError(err)
-	if !ok {
-		return http.StatusInternalServerError
-	}
-	switch st.Code() {
-	case codes.OK:
-		return http.StatusOK
-	case codes.Canceled:
-		return 499 // nginx "Client Closed Request"
-	case codes.Unknown:
-		return http.StatusInternalServerError
-	case codes.InvalidArgument:
-		return http.StatusBadRequest
-	case codes.DeadlineExceeded:
-		return http.StatusGatewayTimeout
-	case codes.NotFound:
-		return http.StatusNotFound
-	case codes.AlreadyExists:
-		return http.StatusConflict
-	case codes.PermissionDenied:
-		return http.StatusForbidden
-	case codes.ResourceExhausted:
-		return http.StatusTooManyRequests
-	case codes.FailedPrecondition:
-		return http.StatusPreconditionFailed
-	case codes.Aborted:
-		return http.StatusConflict
-	case codes.OutOfRange:
-		return http.StatusBadRequest
-	case codes.Unimplemented:
-		return http.StatusNotImplemented
-	case codes.Internal:
-		return http.StatusInternalServerError
-	case codes.Unavailable:
-		return http.StatusServiceUnavailable
-	default: // Unauthenticated, etc.
-		return http.StatusUnauthorized
-	}
 }

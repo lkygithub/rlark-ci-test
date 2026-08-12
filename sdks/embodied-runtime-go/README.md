@@ -177,6 +177,7 @@ The device plugin injects these into task pods; the `embodiedruntime` package re
 | Env var | Used by | Default |
 |---------|---------|---------|
 | `RLINF_EMBODIED_ROS_SOCKET_PATH` | `DialRobot()` | `/var/run/rlinf/ros-ctrl.sock` |
+| `RLINF_EMBODIED_ROS2_SOCKET_PATH` | `DialRobot2()` | `/var/run/rlinf/ros2-ctrl.sock` |
 | `RLINF_EMBODIED_CAMERA_SOCKET_PATH` | `DialCamera()` | `/var/run/rlinf/camera-ctrl.sock` |
 
 ## Regenerate stubs

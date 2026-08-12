@@ -70,3 +70,19 @@ config:
     types: []
     robots: []
     allowed_launch_packages: []
+
+  # ROS 2 controller (Humble). Mirrors the ros section above. Each robot
+  # gets a unique ROS_DOMAIN_ID for DDS isolation instead of a roscore.
+  ros2:
+    enabled: false
+    httpPort: 8080
+    pod:
+      image: rlinf/ros2-base:v0.1.0
+      pod_generate_name: ros2-controller
+      subdomain: ros2-controller-headless
+      labels:
+        app.kubernetes.io/name: ros2-controller
+    macvlans: []
+    types: []
+    robots: []
+    allowed_launch_packages: []

@@ -24,8 +24,8 @@ and Camera Controller to provide secure, isolated access to task pods.
 Architecture:
   - Registers with kubelet as a device plugin
   - Detects robot hardware on the host (NICs, ROS installation)
-  - Generates ros-controller and camera-controller configuration
-  - Starts and manages the ros-controller and camera-controller
+  - Generates ros-controller, ros2-controller, and camera-controller configuration
+  - Starts and manages the ros-controller, ros2-controller, and camera-controller
     (as local subprocesses or Kubernetes Pods, per manager_mode)
   - Injects ROS environment variables and Unix socket mounts into pods
 
@@ -56,8 +56,8 @@ defaults are used. See examples/device-plugin-config.yaml for a template.`,
 
 func run(cfg deviceplugin.PluginConfig) error {
 	log.Println("[device-plugin] starting...")
-	log.Printf("[device-plugin] camera_manager_mode=%s ros_manager_mode=%s",
-		cfg.Camera.ManagerMode, cfg.ROS.ManagerMode)
+	log.Printf("[device-plugin] camera_manager_mode=%s ros_manager_mode=%s ros2_manager_mode=%s",
+		cfg.Camera.ManagerMode, cfg.ROS.ManagerMode, cfg.ROS2.ManagerMode)
 	log.Printf("[device-plugin] resource=%s socket=%s",
 		cfg.EffectiveResourceName(), cfg.EffectiveSocketPath())
 
@@ -67,8 +67,8 @@ func run(cfg deviceplugin.PluginConfig) error {
 	}
 
 	// Create the plugin. This also detects devices, generates the
-	// ros-controller and camera-controller configs, and starts the
-	// controllers (local subprocesses or pods, per *_manager_mode).
+	// ros-controller, ros2-controller, and camera-controller configs, and
+	// starts the controllers (local subprocesses or pods, per *_manager_mode).
 	plugin := deviceplugin.NewPlugin(cfg)
 
 	// Create the gRPC server.

@@ -4,6 +4,20 @@ Wraps the generated gRPC stub with a Pythonic, Unix-socket-aware API that
 mirrors the ``rosctr`` CLI. Robot lifecycle (start / stop / switch mode) and
 ROS package introspection are exposed as plain methods returning the protobuf
 response messages.
+
+The ``RobotController`` service is implemented by two independent controller
+binaries that register on separate Unix sockets:
+
+  - **ROS 1** (``ros-controller`` on ``ros-ctrl.sock``): starts a per-robot
+    ``roscore``, fills ``ros_master_uri`` in responses.
+  - **ROS 2** (``ros2-controller`` on ``ros2-ctrl.sock``): no master; assigns
+    a per-robot ``ROS_DOMAIN_ID`` for DDS isolation, fills ``ros_domain_id``
+    in responses.
+
+This client works with either controller — pass the appropriate
+``socket_path`` or let it auto-detect from the
+``RLINF_EMBODIED_ROS_SOCKET_PATH`` / ``RLINF_EMBODIED_ROS2_SOCKET_PATH`` env
+vars.
 """
 
 from __future__ import annotations
@@ -140,6 +154,14 @@ class RobotClient:
         address: str | None = None,
         timeout: float = DEFAULT_TIMEOUT,
     ) -> None:
+        """Create a RobotClient.
+
+        ``socket_path`` selects the controller socket (ROS 1 or ROS 2). When
+        ``None``, the default is resolved from the
+        ``RLINF_EMBODIED_ROS_SOCKET_PATH`` env var (ROS 1) or the hard-coded
+        default ``/var/run/rlinf/ros-ctrl.sock``. Pass the ROS 2 socket
+        (``/var/run/rlinf/ros2-ctrl.sock``) to target the ROS 2 controller.
+        """
         self._target = _transport.resolve_target(socket_path, DEFAULT_ROS_SOCKET, address)
         self._default_timeout = timeout
         self._channel: grpc.Channel | None = None
@@ -224,7 +246,12 @@ class RobotClient:
         return self.stub.SwitchMode(req, timeout=self._t(timeout))
 
     def reset_robot(self, robot_id: str, *, timeout: float | None = None) -> pb.ResetRobotResponse:
-        """Stop the robot, restart roscore, and reset state to STOPPED."""
+        """Stop the robot, restart the ROS middleware, and reset state.
+
+        For ROS 1: restarts ``roscore`` on the same port. For ROS 2: restarts
+        the ``ros2 launch`` process (there is no master to restart). The
+        ``ROS_DOMAIN_ID`` / ``ROS_MASTER_URI`` is preserved across reset.
+        """
         return self.stub.ResetRobot(
             pb.ResetRobotRequest(robot_id=robot_id), timeout=self._t(timeout)
         )
@@ -240,7 +267,7 @@ class RobotClient:
     def get_robot_logs(
         self, robot_id: str, tail: int = 0, *, timeout: float | None = None
     ) -> pb.GetRobotLogsResponse:
-        """Return recent roslaunch log lines. ``tail`` = last N lines; 0 = all."""
+        """Return recent launch process log lines. ``tail`` = last N lines; 0 = all."""
         return self.stub.GetRobotLogs(
             pb.GetRobotLogsRequest(robot_id=robot_id, tail=tail), timeout=self._t(timeout)
         )

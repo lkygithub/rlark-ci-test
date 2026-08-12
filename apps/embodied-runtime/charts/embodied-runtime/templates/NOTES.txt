@@ -21,9 +21,17 @@ ros-controller (pod mode) — reachable via headless Service DNS (substitute <no
   curl $ROS/v1/robots/<robot_id>/status
   curl $ROS/v1/robots/<robot_id>/proxy/   # → robot's web_service
 {{- end }}
-{{- if and (not .Values.config.camera.enabled) (not .Values.config.ros.enabled) }}
+{{- if .Values.config.ros2.enabled }}
 
-No controllers are launched (neither is enabled).
+ros2-controller (pod mode) — reachable via headless Service DNS (substitute <node>):
+  ROS2=http://{{ .Values.config.ros2.pod.pod_generate_name }}-<node>.{{ .Values.config.ros2.pod.subdomain }}.{{ .Values.namespace }}.svc:{{ .Values.config.ros2.httpPort }}/v1/robots
+  curl $ROS2/v1/robots
+  curl $ROS2/v1/robots/<robot_id>/status
+  curl $ROS2/v1/robots/<robot_id>/proxy/   # → robot's web_service
+{{- end }}
+{{- if and (not .Values.config.camera.enabled) (not .Values.config.ros.enabled) (not .Values.config.ros2.enabled) }}
+
+No controllers are launched (none are enabled).
 {{- end }}
 
 Verify:

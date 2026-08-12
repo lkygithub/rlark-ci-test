@@ -1,4 +1,4 @@
-package roscontroller
+package netmac
 
 import "testing"
 

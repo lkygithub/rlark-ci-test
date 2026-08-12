@@ -1,4 +1,4 @@
-package roscontroller
+package netmac
 
 import (
 	"fmt"
@@ -28,8 +28,8 @@ import (
 //	│ eth0: 10.1.0.5 (pod network)              │
 //	│ macvlan0: 172.16.0.100/24 (robot network) │
 //	│                                            │
-//	│ roslaunch (runs directly)                  │
-//	│   → pod network: ROS Core                  │
+//	│ launch process (runs directly)             │
+//	│   → pod network: ROS middleware            │
 //	│   → macvlan0:   physical robot             │
 //	└────────────────────────────────────────────┘
 type MACVLAN struct {
@@ -50,6 +50,16 @@ type MACVLAN struct {
 	created bool
 }
 
+// NewMACVLAN creates a MACVLAN from a MACVLANConfig.
+func NewMACVLAN(cfg MACVLANConfig) *MACVLAN {
+	return &MACVLAN{
+		Name:    cfg.Name,
+		HostNIC: cfg.HostNIC,
+		IP:      cfg.IP,
+		Gateway: cfg.Gateway,
+	}
+}
+
 // Create attaches a macvlan interface to the container's network namespace.
 //
 // A container restart within the same pod reuses the pause container's
@@ -67,13 +77,13 @@ func (m *MACVLAN) Create() error {
 	// within the same pod already created it. Reuse it and just (re)apply
 	// config — the host-side link was already moved here before.
 	if linkExists(m.Name) {
-		log.Printf("[ros-controller] macvlan %s already exists in netns; reusing", m.Name)
+		log.Printf("[netmac] %s already exists in netns; reusing", m.Name)
 		m.created = true
 		if err := m.configure(); err != nil {
 			m.Destroy()
 			return err
 		}
-		log.Printf("[ros-controller] reused macvlan %s in container: %s", m.Name, m.IP)
+		log.Printf("[netmac] reused %s in container: %s", m.Name, m.IP)
 		return nil
 	}
 
@@ -105,7 +115,7 @@ func (m *MACVLAN) Create() error {
 		m.Destroy()
 		return err
 	}
-	log.Printf("[ros-controller] created macvlan %s on host %s → container: %s",
+	log.Printf("[netmac] created %s on host %s → container: %s",
 		m.Name, m.HostNIC, m.IP)
 	return nil
 }
@@ -124,7 +134,7 @@ func (m *MACVLAN) configure() error {
 	// Drop any addresses already on the interface so the subsequent
 	// `ip addr add` always applies cleanly and never leaves a duplicate.
 	if out, err := exec.Command("ip", "-4", "addr", "flush", "dev", m.Name).CombinedOutput(); err != nil {
-		log.Printf("[ros-controller] WARNING: flush addrs on macvlan %s: %s",
+		log.Printf("[netmac] WARNING: flush addrs on %s: %s",
 			m.Name, strings.TrimSpace(string(out)))
 	}
 
@@ -168,5 +178,5 @@ func (m *MACVLAN) Destroy() {
 
 	_ = exec.Command("ip", "link", "delete", m.Name).Run()
 	m.created = false
-	log.Printf("[ros-controller] deleted macvlan %s", m.Name)
+	log.Printf("[netmac] deleted %s", m.Name)
 }

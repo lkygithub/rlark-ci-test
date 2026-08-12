@@ -10,27 +10,37 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// envVars is the structured output for --format json/yaml.
+// envVars is the structured output for --format json/yaml. Only the field
+// relevant to the detected ROS version is populated; the other is left
+// empty (zero value).
 type envVars struct {
-	ROSMASTERURI string `json:"ROS_MASTER_URI" yaml:"ROS_MASTER_URI"`
+	ROSMASTERURI string `json:"ROS_MASTER_URI,omitempty" yaml:"ROS_MASTER_URI,omitempty"`
+	ROSDOMAINID  int32  `json:"ROS_DOMAIN_ID,omitempty" yaml:"ROS_DOMAIN_ID,omitempty"`
 }
 
 func envCmd(socketPath string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "env <robot-id>",
-		Short: "Print ROS_MASTER_URI for a robot, for sourcing into the shell",
-		Long: `Print ROS_MASTER_URI for the specified robot, for sourcing into the shell.
+		Short: "Print ROS env vars for a robot, for sourcing into the shell",
+		Long: `Print ROS connection env vars for the specified robot, for sourcing.
+
+Auto-detects ROS version from the controller response:
+  - ROS 1 (ros_master_uri non-empty): prints  export ROS_MASTER_URI=<uri>
+  - ROS 2 (ros_domain_id non-zero):   prints  export ROS_DOMAIN_ID=<id>
 
 Usage:
+  . <(rosctr --socket-path /var/run/rlinf/ros-ctrl.sock env franka-0)     # ROS 1
+  . <(rosctr --socket-path /var/run/rlinf/ros2-ctrl.sock env franka-0)    # ROS 2
+
+For ROS 1, if you also need ROS_IP (for bidirectional communication), set
+it to your local machine's IP before sourcing:
+  export ROS_IP=$(hostname -I | awk '{print $1}')
   . <(rosctr env franka-0)
 
-This sets ROS_MASTER_URI so ROS tools (rostopic, rosrun, etc.)
-connect to the correct ROS master.
-
-If you also need ROS_IP (for bidirectional communication), set it to
-your local machine's IP before sourcing:
-  export ROS_IP=$(hostname -I | awk '{print $1}')
-  . <(rosctr env franka-0)`,
+For ROS 2, set the RMW implementation before sourcing if you need a
+non-default DDS:
+  export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+  . <(rosctr --socket-path /var/run/rlinf/ros2-ctrl.sock env franka-0)`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client, conn := newClient(socketPath)
@@ -47,9 +57,13 @@ your local machine's IP before sourcing:
 			format := cli.FormatFromCmd(cmd)
 			cli.Print(format, envVars{
 				ROSMASTERURI: resp.RosMasterUri,
+				ROSDOMAINID:  resp.RosDomainId,
 			}, func() {
 				if resp.RosMasterUri != "" {
 					fmt.Printf("export ROS_MASTER_URI=%s\n", resp.RosMasterUri)
+				}
+				if resp.RosDomainId != 0 {
+					fmt.Printf("export ROS_DOMAIN_ID=%d\n", resp.RosDomainId)
 				}
 			})
 			return nil
