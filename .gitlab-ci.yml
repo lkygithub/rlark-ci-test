@@ -1,0 +1,174 @@
+include:
+  - project: 'mizar/ci-templates'
+    ref: main
+    file:
+    - 'base.yml'
+
+variables:
+  PROJECT: rlark
+  VERSION: v0.1.0
+  CI_IMAGE: harbor.infini-ai.com/share/mizar-ci:1.26.5-bookworm
+  CI_IMAGE_NODE: harbor.infini-ai.com/share/mizar-ci-node:22-bookworm
+  DOCKER_CLIENT_TIMEOUT: "300"
+
+# Lint & Format
+
+.lint:
+  image: ${CI_IMAGE}
+  stage: lint
+  needs: []
+  tags:
+    - mizar-cpu-runner
+  script:
+    - make $LINT_ACTION
+
+.fmt:
+  image: ${CI_IMAGE}
+  stage: lint
+  needs: []
+  tags:
+    - mizar-cpu-runner
+  script:
+    - make ${FMT_ACTION}
+    - git diff --exit-code
+
+lint-go:
+  extends:
+    - .lint
+    - .only-default
+  before_script:
+    - !reference [.golang, prepare_script]
+  variables:
+    LINT_ACTION: "lint-go"
+
+fmt-go:
+  extends:
+    - .fmt
+    - .only-default
+  before_script:
+    - !reference [.golang, prepare_script]
+  variables:
+    FMT_ACTION: "fmt-go"
+
+lint-web:
+  extends:
+    - .lint
+    - .only-default
+  variables:
+    CI_IMAGE: ${CI_IMAGE_NODE}
+    LINT_ACTION: "lint-web"
+
+fmt-web:
+  extends:
+    - .fmt
+    - .only-default
+  variables:
+    CI_IMAGE: ${CI_IMAGE_NODE}
+    FMT_ACTION: "fmt-web"
+
+# Build
+
+.build-go-image:
+  image: ${CI_IMAGE}
+  services:
+    - !reference [.docker-buildx-hostdocker, services]
+  stage: build
+  needs: []
+  tags:
+    - mizar-cpu-runner
+  before_script:
+    - !reference [.golang, prepare_script]
+    - !reference [.docker-buildx-hostdocker, prepare_script]
+    - !reference [.makefile, prepare_script]
+  script:
+    - docker login harbor.infini-ai.com --username "$DOCKER_REGISTRY_USER" --password "$DOCKER_REGISTRY_PASS"
+    - make IMAGE_TAG=$IMAGE_VERSION $TARGET $MAKE_ARGS
+  after_script:
+    - docker image prune -f
+
+.build-ui-image:
+  image: ${CI_IMAGE_NODE}
+  services:
+    - !reference [.docker-buildx-hostdocker, services]
+  stage: build
+  needs: []
+  tags:
+    - mizar-cpu-runner
+  before_script:
+    - !reference [.docker-buildx-hostdocker, prepare_script]
+    - !reference [.makefile, prepare_script]
+  script:
+    - docker login harbor.infini-ai.com --username "$DOCKER_REGISTRY_USER" --password "$DOCKER_REGISTRY_PASS"
+    - make IMAGE_TAG=$IMAGE_VERSION $TARGET $MAKE_ARGS
+  after_script:
+    - docker image prune -f
+
+build-rlark-image-dev:
+  extends:
+    - .build-go-image
+    - .only-default-manual
+  variables:
+    IMAGE_VERSION: $DEV_VERSION
+    TARGET: docker-push-rlark
+    MAKE_ARGS: |-
+      REGISTRY=harbor.infini-ai.com/share
+      GO_BASE_IMAGE=harbor.infini-ai.com/share/mizar-ci:1.26.5-bookworm
+      RUNTIME_BASE_IMAGE=harbor.infini-ai.com/share/ubuntu:22.04
+
+build-rlark-image-rel:
+  extends: .build-go-image
+  only:
+    - tags
+  variables:
+    IMAGE_VERSION: $REL_VERSION
+    TARGET: docker-push-rlark
+    MAKE_ARGS: |-
+      REGISTRY=harbor.infini-ai.com/share
+      GO_BASE_IMAGE=harbor.infini-ai.com/share/mizar-ci:1.26.5-bookworm
+      RUNTIME_BASE_IMAGE=harbor.infini-ai.com/share/ubuntu:22.04
+
+build-rlark-ui-image-dev:
+  extends:
+    - .build-ui-image
+    - .only-default-manual
+  variables:
+    IMAGE_VERSION: $DEV_VERSION
+    TARGET: docker-push-rlark-ui
+    MAKE_ARGS: |-
+      REGISTRY=harbor.infini-ai.com/share
+      BASE_IMAGE=harbor.infini-ai.com/share/nginx:1.29.1
+
+build-rlark-ui-image-rel:
+  extends: .build-ui-image
+  only:
+    - tags
+  variables:
+    IMAGE_VERSION: $REL_VERSION
+    TARGET: docker-push-rlark-ui
+    MAKE_ARGS: |-
+      REGISTRY=harbor.infini-ai.com/share
+      BASE_IMAGE=harbor.infini-ai.com/share/nginx:1.29.1
+
+build-embodied-runtime-image-dev:
+  extends:
+    - .build-go-image
+    - .only-default-manual
+  variables:
+    IMAGE_VERSION: $DEV_VERSION
+    TARGET: docker-push-embodied-runtime
+    MAKE_ARGS: |-
+      REGISTRY=harbor.infini-ai.com/share
+      GO_BASE_IMAGE=harbor.infini-ai.com/share/mizar-ci:1.26.5-bookworm
+      RUNTIME_BASE_IMAGE=harbor.infini-ai.com/share/alpine:3.20
+
+build-embodied-runtime-image-rel:
+  extends: .build-go-image
+  only:
+    - tags
+  variables:
+    IMAGE_VERSION: $REL_VERSION
+    TARGET: docker-push-embodied-runtime
+    MAKE_ARGS: |-
+      REGISTRY=harbor.infini-ai.com/share
+      GO_BASE_IMAGE=harbor.infini-ai.com/share/mizar-ci:1.26.5-bookworm
+      RUNTIME_BASE_IMAGE=harbor.infini-ai.com/share/alpine:3.20
