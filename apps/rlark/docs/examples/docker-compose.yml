@@ -1,9 +1,7 @@
-version: '3.8'
-
 services:
   # kcp - Kubernetes-like control plane
   kcp:
-    image: ghcr.io/kcp-dev/kcp/kcp:v0.30.0
+    image: ghcr.io/kcp-dev/kcp:v0.30.0
     container_name: kcp
     ports:
       - "6443:6443"
