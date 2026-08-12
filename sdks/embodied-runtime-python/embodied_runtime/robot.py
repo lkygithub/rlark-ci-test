@@ -134,7 +134,7 @@ class RobotClient:
     """gRPC client for the ros-controller ``RobotController`` service.
 
     By default it connects to the node-local Unix socket
-    ``/var/run/rlinf/ros-ctrl.sock`` (matching ``rosctr``). Pass ``address`` to
+    ``/var/run/rlark/ros-ctrl.sock`` (matching ``rosctr``). Pass ``address`` to
     reach a remote TCP server instead.
 
     Example::
@@ -159,8 +159,8 @@ class RobotClient:
         ``socket_path`` selects the controller socket (ROS 1 or ROS 2). When
         ``None``, the default is resolved from the
         ``RLINF_EMBODIED_ROS_SOCKET_PATH`` env var (ROS 1) or the hard-coded
-        default ``/var/run/rlinf/ros-ctrl.sock``. Pass the ROS 2 socket
-        (``/var/run/rlinf/ros2-ctrl.sock``) to target the ROS 2 controller.
+        default ``/var/run/rlark/ros-ctrl.sock``. Pass the ROS 2 socket
+        (``/var/run/rlark/ros2-ctrl.sock``) to target the ROS 2 controller.
         """
         self._target = _transport.resolve_target(socket_path, DEFAULT_ROS_SOCKET, address)
         self._default_timeout = timeout

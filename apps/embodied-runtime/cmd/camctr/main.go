@@ -8,7 +8,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var defaultSocketPath = cmp.Or(os.Getenv("RLINF_EMBODIED_CAMERA_SOCKET_PATH"), "/var/run/rlinf/camera-ctrl.sock")
+var defaultSocketPath = cmp.Or(os.Getenv("RLINF_EMBODIED_CAMERA_SOCKET_PATH"), "/var/run/rlark/camera-ctrl.sock")
 
 func main() {
 	var socketPath string

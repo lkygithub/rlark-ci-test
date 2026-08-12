@@ -23,6 +23,10 @@ data:
     host_devices:
 {{ toYaml .Values.config.hostDevices | indent 6 }}
 {{- end }}
+{{- if .Values.config.hostMacvlans }}
+    host_macvlans:
+{{ toYaml .Values.config.hostMacvlans | indent 6 }}
+{{- end }}
 
     camera:
       manager_mode: {{ .Values.config.camera.enabled | ternary "pod" "disabled" }}

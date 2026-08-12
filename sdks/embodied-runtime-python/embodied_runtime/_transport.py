@@ -1,7 +1,7 @@
 """gRPC transport helpers for the embodied-runtime Python SDK.
 
 Both controllers (ros / camera) are served over Unix domain sockets inside the
-node-local socket directory ``/var/run/rlinf``. This module centralises channel
+node-local socket directory ``/var/run/rlark``. This module centralises channel
 construction so the client classes stay focused on their RPC surface.
 """
 
@@ -15,13 +15,13 @@ import grpc
 # RLINF_EMBODIED_*_SOCKET_PATH env vars injected by the device plugin. The env
 # var wins over the hard-coded default, mirroring the Go CLIs' cmp.Or behaviour.
 DEFAULT_ROS_SOCKET = os.environ.get(
-    "RLINF_EMBODIED_ROS_SOCKET_PATH", "/var/run/rlinf/ros-ctrl.sock"
+    "RLINF_EMBODIED_ROS_SOCKET_PATH", "/var/run/rlark/ros-ctrl.sock"
 )
 DEFAULT_ROS2_SOCKET = os.environ.get(
-    "RLINF_EMBODIED_ROS2_SOCKET_PATH", "/var/run/rlinf/ros2-ctrl.sock"
+    "RLINF_EMBODIED_ROS2_SOCKET_PATH", "/var/run/rlark/ros2-ctrl.sock"
 )
 DEFAULT_CAMERA_SOCKET = os.environ.get(
-    "RLINF_EMBODIED_CAMERA_SOCKET_PATH", "/var/run/rlinf/camera-ctrl.sock"
+    "RLINF_EMBODIED_CAMERA_SOCKET_PATH", "/var/run/rlark/camera-ctrl.sock"
 )
 
 # Per-RPC defaults mirroring the Go CLIs' context timeouts (seconds).

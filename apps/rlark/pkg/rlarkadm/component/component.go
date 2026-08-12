@@ -562,14 +562,14 @@ var components = []types.Component{
 				Name: "nodeserver-socket",
 				VolumeSource: corev1.VolumeSource{
 					HostPath: &corev1.HostPathVolumeSource{
-						Path: "/run/rlark",
+						Path: "/var/run/rlark",
 						Type: &[]corev1.HostPathType{corev1.HostPathDirectoryOrCreate}[0],
 					},
 				},
 			})
 			mounts = append(mounts, corev1.VolumeMount{
 				Name:      "nodeserver-socket",
-				MountPath: "/run/rlark",
+				MountPath: "/var/run/rlark",
 			})
 			return vols, mounts
 		},

@@ -13,12 +13,12 @@ Both are defined in Protocol Buffers v3 under [`proto/embodied-runtime/`](../../
 
 | Service | Package | Proto | Default socket |
 |---------|---------|-------|----------------|
-| `RobotController` | `ros.controller.v1` | `proto/roscontroller/v1/robot.proto` | `/var/run/rlinf/ros-ctrl.sock` |
-| `CameraController` | `camera.controller.v1` | `proto/cameracontroller/v1/camera.proto` | `/var/run/rlinf/camera-ctrl.sock` |
+| `RobotController` | `ros.controller.v1` | `proto/roscontroller/v1/robot.proto` | `/var/run/rlark/ros-ctrl.sock` |
+| `CameraController` | `camera.controller.v1` | `proto/cameracontroller/v1/camera.proto` | `/var/run/rlark/camera-ctrl.sock` |
 
 ### Transport
 
-- Both services listen on a Unix domain socket under the node-local `/var/run/rlinf` directory, which the device plugin mounts (read-only) into task pods.
+- Both services listen on a Unix domain socket under the node-local `/var/run/rlark` directory, which the device plugin mounts (read-only) into task pods.
 - The device plugin injects `RLINF_EMBODIED_ROS_SOCKET_PATH` (ROS 1), `RLINF_EMBODIED_ROS2_SOCKET_PATH` (ROS 2), and `RLINF_EMBODIED_CAMERA_SOCKET_PATH`; the `rosctr` / `camctr` CLIs read them automatically (an explicit `--socket-path` argument always wins). For `rosctr`, the ROS 1 socket path takes priority; when it is unset the ROS 2 socket path is used.
 
 ### HTTP gateway

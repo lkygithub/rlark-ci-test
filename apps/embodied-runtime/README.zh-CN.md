@@ -17,9 +17,10 @@ embodied-runtime 面向机器人学习 / 遥操作集群：每个节点挂载一
 - **ROS 2 Controller** —— 每个机器人独占一个 `ROS_DOMAIN_ID`（无 master），基于 `ros2 launch` 管理生命周期，使用 `ros2 pkg` / `ros2 launch --show-args` 做包内省，MACVLAN 组网与反向代理与 ROS 1 共享。基于 Humble 发行版。
 - **Camera Controller** —— 通过 `ffmpeg` 采集 V4L2 / RTSP / RealSense 摄像头，支持 JPEG / PNG / BMP / TIFF 无损静图与 H.264 / H.265 编码及实时转码，提供基于 gRPC 的视频帧流。
 - **宿主设备透传** —— 在 Allocate 时把宿主 `/dev/*` 节点（串口、声卡、裸字符设备等）直接挂载进 Pod，无需控制器，仅需在 `host_devices` 下列出即可。
+- **宿主 macvlan 配置** —— 通过 gRPC 服务与 `devinit` init 容器 CLI 按需把节点配置的 macvlan 接口注入到请求 Pod 的网络命名空间（不是设备挂载）；使用 `hostNetwork` 的 Pod 会被跳过。
 - **灵活的控制器部署** —— 每个控制器可独立配置为**本地子进程**或 **Kubernetes Pod**。
 - **CLI** —— `rosctr`（ROS 1 与 ROS 2 共用）与 `camctr`，供运维或在 Pod 内调用控制器，支持 `text` / `json` / `yaml` 输出。
-- **静态链接的 Go 二进制** —— 全部六个二进制以单一多架构 `embodied-runtime` 镜像交付，部署时由 initContainer 注入到对应运行时镜像：`camera-controller` 运行于 `camera-base` 镜像（Alpine + `ffmpeg`），`ros-controller` 运行于 ROS 1 workspace 镜像，`ros2-controller` 运行于 ROS 2 Humble workspace 镜像。
+- **静态链接的 Go 二进制** —— 全部七个二进制以单一多架构 `embodied-runtime` 镜像交付，部署时由 initContainer 注入到对应运行时镜像：`camera-controller` 运行于 `camera-base` 镜像（Alpine + `ffmpeg`），`ros-controller` 运行于 ROS 1 workspace 镜像，`ros2-controller` 运行于 ROS 2 Humble workspace 镜像。
 
 ---
 
@@ -32,7 +33,7 @@ device-plugin 是入口。启动时它依次：
 1. 向 kubelet 注册并申报 `rlinf.io/device[-<model>]` 资源。
 2. 探测硬件，生成 ros-controller / ros2-controller / camera-controller 的 YAML 配置。
 3. 启动控制器 —— 每个可独立选择本地子进程或 Pod 模式（`manager_mode: local | pod | disabled`）。
-4. 收到 `Allocate` 请求时，把 socket 目录（`/var/run/rlinf`）与 CLI 目录（`/opt/rlinf/bin`）注入业务 Pod，并通过 `RLINF_EMBODIED_*` 环境变量告知哪些运行时可用，同时暴露其 socket 路径（`RLINF_EMBODIED_{ROS,ROS2,CAMERA}_SOCKET_PATH`），使 CLI 无需硬编码即可连接。配置 `host_devices` 下列出的宿主 `/dev/*` 节点会作为 `DeviceSpec` 直接透传挂载（不经过控制器）。
+4. 收到 `Allocate` 请求时，把 socket 目录（`/var/run/rlark`）与 CLI 目录（`/opt/rlinf/bin`）注入业务 Pod，并通过 `RLINF_EMBODIED_*` 环境变量告知哪些运行时可用，同时暴露其 socket 路径（`RLINF_EMBODIED_{ROS,ROS2,CAMERA}_SOCKET_PATH`），使 CLI 无需硬编码即可连接。配置 `host_devices` 下列出的宿主 `/dev/*` 节点会作为 `DeviceSpec` 直接透传挂载（不经过控制器）。当配置了 `host_macvlans` 时，插件还会在 `/var/run/rlark/devinit.sock` 上启动一个按需设备 gRPC 服务；Pod 的 init 容器执行 `devinit setup` 即可把节点配置的 macvlan 注入到自身网络命名空间。
 
 业务 Pod 随后用挂载进来的 CLI（或直接走 gRPC）驱动硬件。
 
@@ -48,6 +49,7 @@ device-plugin 是入口。启动时它依次：
 | `camera-controller` | `cmd/camera-controller`              | 摄像头生命周期：打开/关闭、采集、流化、转码。        |
 | `rosctr`            | `cmd/rosctr`                         | RobotController gRPC CLI（ROS 1 **与** ROS 2 共用）。|
 | `camctr`            | `cmd/camctr`                         | camera-controller 的 gRPC CLI。                      |
+| `devinit`           | `cmd/devinit`                        | init 容器 CLI：向 device plugin 请求按需设备配置（注入 macvlan）。|
 
 ### gRPC 服务
 
@@ -55,8 +57,9 @@ device-plugin 是入口。启动时它依次：
 
 - `ros.controller.v1.RobotController` —— [`proto/embodied-runtime/roscontroller/v1/robot.proto`](../../proto/embodied-runtime/roscontroller/v1/robot.proto)
 - `camera.controller.v1.CameraController` —— [`proto/embodied-runtime/cameracontroller/v1/camera.proto`](../../proto/embodied-runtime/cameracontroller/v1/camera.proto)
+- `device.v1.DeviceService` —— [`proto/embodied-runtime/device/v1/device.proto`](../../proto/embodied-runtime/device/v1/device.proto)
 
-两个服务均通过 **Unix socket** 提供（`/var/run/rlinf/*.sock`）。`RobotController` 服务由两个独立控制器实现，注册在不同 socket 上：`ros-controller` 在 `ros-ctrl.sock`（ROS 1），`ros2-controller` 在 `ros2-ctrl.sock`（ROS 2）。两者遵循同一套 RPC 契约和 proto，因此单个 `rosctr` CLI 和 SDK 客户端只需指向对应 socket 即可操作任一控制器。
+两个服务均通过 **Unix socket** 提供（`/var/run/rlark/*.sock`）。`RobotController` 服务由两个独立控制器实现，注册在不同 socket 上：`ros-controller` 在 `ros-ctrl.sock`（ROS 1），`ros2-controller` 在 `ros2-ctrl.sock`（ROS 2）。两者遵循同一套 RPC 契约和 proto，因此单个 `rosctr` CLI 和 SDK 客户端只需指向对应 socket 即可操作任一控制器。`DeviceService` 由 device plugin 自身在 `devinit.sock` 上提供，用于按需注入 macvlan（见[宿主 macvlan 配置](#宿主-macvlan-配置)）。
 
 完整 API 参考（RPC、消息、枚举）：[`proto-api.zh-CN.md`](./proto-api.zh-CN.md)。
 
@@ -115,6 +118,18 @@ host_devices:
     # permissions: rwm             # r|w|m 任意组合；默认 rwm
   - host_path: /dev/ttyUSB0
     permissions: rw
+
+# 按需 macvlan 配置（不是设备挂载 —— macvlan 是创建在 Pod 网络命名
+# 空间内的网络接口）。插件在 /var/run/rlark/devinit.sock 上启动一个
+# 设备 gRPC 服务；Pod 的 init 容器执行 `devinit setup` 即可把这些
+# macvlan 注入到自身网络命名空间。使用 hostNetwork 的 Pod 会被跳过。
+# 每个条目是一个 pkg/netmac MACVLANConfig：host_nic 为空时按 IP 子网
+# 自动探测；ip 可填网络地址（如 172.16.0.0/24），会自动挑选未用主机 IP。
+host_macvlans:
+  - host_nic: eno1
+    name: macvlan0
+    ip: 172.16.0.0/24      # 网络地址 → 自动挑选未用主机 IP
+    # gateway: 172.16.0.1  # 可选，机器人子网的默认网关
 
 camera:
   manager_mode: local     # disabled | local | pod
@@ -216,6 +231,32 @@ host_devices:
 
 列表非空时，插件还会注入 `RLINF_EMBODIED_HOST_DEVICES_ENABLED=1` 环境变量，便于 Pod 检测宿主设备已挂载。
 
+### 宿主 macvlan 配置
+
+宿主设备透传挂载的是已有的 `/dev/*` 节点，而**宿主 macvlan**则是在 Pod 的网络命名空间内创建新的网络接口，使 Pod 能直接访问机器人的物理子网（例如 `172.16.0.0/24` 上的 Franka 机械臂）。macvlan 无法通过 Allocate 挂载 —— 它必须在目标网络命名空间内创建 —— 因此 device plugin 暴露了一个**按需设备 gRPC 服务**（`device.v1.DeviceService`），监听在 `/var/run/rlark/devinit.sock`（Allocate 时注入的 RunDir 挂载已可访问该 socket）。需要 macvlan 的 Pod 在 **init 容器**中执行 `devinit` CLI：
+
+```yaml
+initContainers:
+  - name: devinit
+    image: rlinf/embodied-runtime:v0.1.0
+    command: ["devinit", "setup"]   # 读取 RLINF_EMBODIED_DEVINIT_SOCKET_PATH
+    resources:
+      requests:
+        rlinf.io/device: 1          # 触发 Allocate → RunDir 挂载 + 环境变量
+```
+
+服务通过 Unix socket 对端凭证（SO_PEERCRED）读取调用方 PID，并用 `pkg/netmac` 在该 PID 的网络命名空间内创建每个已配置的 macvlan。使用 `hostNetwork: true` 的 Pod 会被检测到（其网络命名空间与宿主相同）并跳过 —— macvlan 绝不能落入宿主网络命名空间。接口在节点侧通过 `host_macvlans` 声明，每个条目是一个 `pkg/netmac` 的 `MACVLANConfig`：
+
+```yaml
+host_macvlans:
+  - host_nic: eno1            # 为空时按 IP 子网自动探测
+    name: macvlan0
+    ip: 172.16.0.0/24         # 网络地址 → 自动挑选未用主机 IP
+    gateway: 172.16.0.1       # 可选，机器人子网的默认网关
+```
+
+列表非空时，插件会注入 `RLINF_EMBODIED_DEVINIT_ENABLED=1` 与 `RLINF_EMBODIED_DEVINIT_SOCKET_PATH`，供 init 容器 / CLI 发现该服务。配置过程幂等 —— 同一 pause 网络命名空间中上一个容器实例遗留的接口会被复用。
+
 ---
 
 ## 部署
@@ -266,7 +307,7 @@ rosctr pkg launch-args <package> <launch-file>
 rosctr env <robot-id>                            # 注入的 ROS 环境变量
 ```
 
-全局参数：`--socket-path`（默认 `/var/run/rlinf/ros-ctrl.sock`，或读取环境变量 `RLINF_EMBODIED_ROS_SOCKET_PATH`，回退至 `RLINF_EMBODIED_ROS2_SOCKET_PATH`）。同一个 `rosctr` 二进制可同时操作 ROS 1 或 ROS 2 controller——只需指向对应的 socket。输出格式：`-o text|json|yaml`。
+全局参数：`--socket-path`（默认 `/var/run/rlark/ros-ctrl.sock`，或读取环境变量 `RLINF_EMBODIED_ROS_SOCKET_PATH`，回退至 `RLINF_EMBODIED_ROS2_SOCKET_PATH`）。同一个 `rosctr` 二进制可同时操作 ROS 1 或 ROS 2 controller——只需指向对应的 socket。输出格式：`-o text|json|yaml`。
 
 ### `camctr` —— 摄像头控制
 
@@ -282,7 +323,7 @@ camctr watch <camera-id> > stream.h264           # 原始码流写 stdout
 camctr watch <camera-id> | ffplay -i -           # 管道喂给 ffplay
 ```
 
-全局参数：`--socket-path`（默认 `/var/run/rlinf/camera-ctrl.sock`，或读取环境变量 `RLINF_EMBODIED_CAMERA_SOCKET_PATH`）。
+全局参数：`--socket-path`（默认 `/var/run/rlark/camera-ctrl.sock`，或读取环境变量 `RLINF_EMBODIED_CAMERA_SOCKET_PATH`）。
 
 `watch` 按 open 时的编码推送：`jpeg` / `png` / `bmp` / `tiff` = 每条消息一帧完整、可独立解码的静图；`h264` / `h265` = Annex B 基础码流分片，客户端按顺序拼接即得完整码流。
 

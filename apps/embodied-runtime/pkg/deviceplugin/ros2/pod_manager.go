@@ -51,7 +51,7 @@ func NewPodManager(clientset kubernetes.Interface, opts podmanager.PodOptions) *
 		ConfigFileName:  "ros2-controller.yaml",
 		ConfigMountPath: "/etc/rlinf",
 
-		SocketPath: "/var/run/rlinf/ros2-ctrl.sock",
+		SocketPath: "/var/run/rlark/ros2-ctrl.sock",
 
 		NodeName: opts.NodeName,
 

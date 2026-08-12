@@ -9,7 +9,7 @@ import (
 
 const (
 	sidecarContainerName  = "rlark-network-sidecar"
-	sidecarUnixSocketPath = "/run/rlark"
+	sidecarUnixSocketPath = "/var/run/rlark"
 	sidecarVolumeName     = "rlark-nodeserver-socket"
 )
 

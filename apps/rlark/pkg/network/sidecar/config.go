@@ -22,7 +22,7 @@ type Config struct {
 
 func DefaultConfig() Config {
 	return Config{
-		UnixSocketAddress:  "/run/rlark/nodeserver.sock",
+		UnixSocketAddress:  "/var/run/rlark/nodeserver.sock",
 		TunName:            "gnet0",
 		TunMTU:             1500,
 		ProxyListenAddress: ":5700",
