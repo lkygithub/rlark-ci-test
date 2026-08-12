@@ -53,6 +53,7 @@ func buildTask(
 ) *rlarkv1alpha1.Task {
 	taskSpec := t.TaskSpec
 	taskSpec.Domain = job.Spec.Domain
+	taskSpec.SSHPublicKey = job.Spec.SSHPublicKey
 
 	if job.Spec.Stopped && taskSpec.Kubernetes != nil && taskSpec.Kubernetes.Workload != nil {
 		taskSpec.Kubernetes.Workload.Replicas = ptr.To(int32(0))

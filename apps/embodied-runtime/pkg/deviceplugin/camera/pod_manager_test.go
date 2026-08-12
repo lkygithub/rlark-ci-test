@@ -36,7 +36,7 @@ func TestNewPodManager_Defaults(t *testing.T) {
 	if cfg.ConfigFileName != "camera-controller.yaml" {
 		t.Errorf("ConfigFileName = %q", cfg.ConfigFileName)
 	}
-	if cfg.SocketPath != "/var/run/rlinf/camera-ctrl.sock" {
+	if cfg.SocketPath != "/var/run/rlark/camera-ctrl.sock" {
 		t.Errorf("SocketPath = %q", cfg.SocketPath)
 	}
 	if cfg.Shell != "sh" {

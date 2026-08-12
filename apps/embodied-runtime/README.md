@@ -13,12 +13,14 @@ embodied-runtime is built for robotic learning / teleoperation clusters where mu
 ## Highlights
 
 - **Kubernetes Device Plugin** — advertises `rlinf.io/device` (or `rlinf.io/device-<model>`) resources and injects socket + CLI mounts into pods at allocation time.
-- **ROS Controller** — per-robot `roscore` on a unique port, `roslaunch`-based node lifecycle, control-mode switching (impedance / joint / custom), MACVLAN networking, and an optional reverse proxy for robot web services.
+- **ROS 1 Controller** — per-robot `roscore` on a unique port, `roslaunch`-based node lifecycle, control-mode switching (impedance / joint / custom), MACVLAN networking, and an optional reverse proxy for robot web services.
+- **ROS 2 Controller** — per-robot `ROS_DOMAIN_ID` for DDS isolation (no master), `ros2 launch`-based lifecycle, `ros2 pkg` / `ros2 launch --show-args` introspection, shared MACVLAN networking and reverse proxy. Runs on Humble.
 - **Camera Controller** — V4L2 / RTSP / RealSense capture via `ffmpeg`, with JPEG / PNG / BMP / TIFF lossless-still and H.264 / H.265 encoding and on-the-fly transcoding, plus gRPC frame streaming.
 - **Host device passthrough** — directly mounts host `/dev/*` nodes (serial ports, sound cards, raw character devices, …) into pods at Allocate time with no controller, configured from a simple `host_devices` list.
+- **Host macvlan setup** — attaches the node's configured macvlan interfaces into a requesting pod's network namespace on demand via a gRPC service and the `devinit` init-container CLI (not a device mount); pods using `hostNetwork` are skipped.
 - **Flexible controller deployment** — each controller runs as a **local subprocess** or a **Kubernetes Pod**, configured independently.
-- **Two CLIs** — `rosctr` and `camctr` for operator / in-pod access to the controllers, with `text`, `json`, and `yaml` output.
-- **Statically linked Go binaries** — all five binaries ship in a single multi-arch `embodied-runtime` image and are injected into the right runtime image at deploy time via initContainer: `camera-controller` runs in the `camera-base` image (Alpine + `ffmpeg`), while `ros-controller` runs in a ROS workspace image providing ROS and the robot's control packages (e.g. libfranka + franka_ros).
+- **CLIs** — `rosctr` (shared ROS 1 + ROS 2) and `camctr` for operator / in-pod access to the controllers, with `text`, `json`, and `yaml` output.
+- **Statically linked Go binaries** — all seven binaries ship in a single multi-arch `embodied-runtime` image and are injected into the right runtime image at deploy time via initContainer: `camera-controller` runs in the `camera-base` image (Alpine + `ffmpeg`), `ros-controller` runs in a ROS 1 workspace image, and `ros2-controller` runs in a ROS 2 Humble workspace image.
 
 ---
 
@@ -29,9 +31,9 @@ embodied-runtime is built for robotic learning / teleoperation clusters where mu
 The device plugin is the entry point. On startup it:
 
 1. Registers with kubelet and advertises `rlinf.io/device[-<model>]` resources.
-2. Detects hardware and generates the ros-controller / camera-controller YAML configs.
+2. Detects hardware and generates the ros-controller / ros2-controller / camera-controller YAML configs.
 3. Starts the controllers — each either as a local subprocess or as a Kubernetes Pod (`manager_mode: local | pod | disabled`).
-4. On `Allocate`, injects the socket directory (`/var/run/rlinf`) and CLI binary directory (`/opt/rlinf/bin`) into the requesting pod, plus `RLINF_EMBODIED_*` env vars flagging which runtimes are available and exposing their socket paths (`RLINF_EMBODIED_{ROS,CAMERA}_SOCKET_PATH`) so CLIs connect without a hard-coded path. Host `/dev/*` nodes declared under `host_devices` are passed through directly as `DeviceSpec` mounts (no controller involved).
+4. On `Allocate`, injects the socket directory (`/var/run/rlark`) and CLI binary directory (`/opt/rlinf/bin`) into the requesting pod, plus `RLINF_EMBODIED_*` env vars flagging which runtimes are available and exposing their socket paths (`RLINF_EMBODIED_{ROS,ROS2,CAMERA}_SOCKET_PATH`) so CLIs connect without a hard-coded path. Host `/dev/*` nodes declared under `host_devices` are passed through directly as `DeviceSpec` mounts (no controller involved). When `host_macvlans` is configured the plugin also starts an on-demand device gRPC service on `/var/run/rlark/devinit.sock`; a pod's init container runs `devinit setup` to have the node's macvlans attached into its network namespace.
 
 User pods then use the mounted CLIs (or gRPC directly) to control hardware.
 
@@ -42,10 +44,12 @@ User pods then use the mounted CLIs (or gRPC directly) to control hardware.
 | Binary              | Package                              | Role                                                        |
 |---------------------|--------------------------------------|-------------------------------------------------------------|
 | `device-plugin`     | `cmd/device-plugin`                  | Kubelet device plugin; supervises the controllers.          |
-| `ros-controller`    | `cmd/ros-controller`                 | Robot lifecycle: roscore, roslaunch, modes, web proxy.      |
-| `camera-controller` | `cmd/camera-controller`              | Camera lifecycle: open/close, capture, stream, transcode.   |
-| `rosctr`            | `cmd/rosctr`                         | CLI for the ros-controller gRPC API.                        |
+| `ros-controller`    | `cmd/ros-controller`                 | ROS 1 robot lifecycle: roscore, roslaunch, modes, web proxy.|
+| `ros2-controller`   | `cmd/ros2-controller`                | ROS 2 robot lifecycle: ros2 launch, DOMAIN_ID, modes, proxy.|
+| `camera-controller` | `cmd/camera-controller`              | Camera lifecycle: open/close, capture, stream, transcode. |
+| `rosctr`            | `cmd/rosctr`                         | CLI for the RobotController gRPC API (ROS 1 **and** ROS 2).|
 | `camctr`            | `cmd/camctr`                         | CLI for the camera-controller gRPC API.                     |
+| `devinit`           | `cmd/devinit`                        | Init-container CLI: requests on-demand device setup (macvlan attach) from the device plugin. |
 
 ### gRPC services
 
@@ -53,8 +57,9 @@ Defined in [`proto/embodied-runtime/`](../../proto/embodied-runtime):
 
 - `ros.controller.v1.RobotController` — [`proto/embodied-runtime/roscontroller/v1/robot.proto`](../../proto/embodied-runtime/roscontroller/v1/robot.proto)
 - `camera.controller.v1.CameraController` — [`proto/embodied-runtime/cameracontroller/v1/camera.proto`](../../proto/embodied-runtime/cameracontroller/v1/camera.proto)
+- `device.v1.DeviceService` — [`proto/embodied-runtime/device/v1/device.proto`](../../proto/embodied-runtime/device/v1/device.proto)
 
-Both services are served over **Unix sockets** (`/var/run/rlinf/*.sock`).
+Both services are served over **Unix sockets** (`/var/run/rlark/*.sock`). The `RobotController` service is implemented by two independent controllers that register on separate sockets: `ros-controller` on `ros-ctrl.sock` (ROS 1) and `ros2-controller` on `ros2-ctrl.sock` (ROS 2). Both honour the same RPC contract and proto, so a single `rosctr` CLI and SDK client can target either by pointing at the right socket. The `DeviceService` is served by the device plugin itself on `devinit.sock` for on-demand macvlan setup (see [Host macvlan setup](#host-macvlan-setup)).
 
 Full API reference (RPCs, messages, enums): [`docs/proto-api.md`](./docs/proto-api.md).
 
@@ -75,12 +80,18 @@ Binaries are built with `CGO_ENABLED=0` (statically linked).
 ### Docker images
 
 ```bash
-# embodied-runtime image — all 5 binaries (static, multi-arch)
+# embodied-runtime image — all 6 binaries (static, multi-arch)
 make docker REGISTRY=ghcr.io/your-org IMAGE_TAG=v0.1.0
 
 # camera-base image — Alpine + ffmpeg runtime deps (no binaries; injected
 # at deploy time via initContainer)
 make docker-camera REGISTRY=ghcr.io/your-org IMAGE_TAG=v0.1.0
+
+# ros-base image — ROS Noetic + control packages (for ROS 1 controllers)
+make docker-ros REGISTRY=ghcr.io/your-org IMAGE_TAG=v0.1.0
+
+# ros2-base image — ROS 2 Humble + control packages (for ROS 2 controllers)
+make docker-ros2 REGISTRY=ghcr.io/your-org IMAGE_TAG=v0.1.0
 ```
 
 Overridable variables: `REGISTRY`, `IMAGE_TAG` / `VERSION`, `BUILDX_PLATFORMS`, `GO_BASE_IMAGE`, `RUNTIME_BASE_IMAGE`, `APK_MIRROR`.
@@ -108,6 +119,19 @@ host_devices:
     # permissions: rwm             # r|w|m; defaults to rwm
   - host_path: /dev/ttyUSB0
     permissions: rw
+
+# On-demand macvlan setup (NOT a device mount — a macvlan is a network
+# interface created inside the pod's netns). The plugin runs a device gRPC
+# service on /var/run/rlark/devinit.sock; a pod's init container runs
+# `devinit setup` to attach these macvlans into its netns. Pods using
+# hostNetwork are skipped. Each entry is a pkg/netmac MACVLANConfig:
+# host_nic is auto-detected from the IP subnet when empty; ip may be a
+# network address (e.g. 172.16.0.0/24) and an unused host IP is auto-picked.
+host_macvlans:
+  - host_nic: eno1
+    name: macvlan0
+    ip: 172.16.0.0/24      # network addr → auto-pick an unused host IP
+    # gateway: 172.16.0.1  # optional default gateway for the robot subnet
 
 camera:
   manager_mode: local     # disabled | local | pod
@@ -145,9 +169,34 @@ ros:
       web_service: https://172.16.0.2/
   allowed_launch_packages:
     - serl_franka_controllers
+
+ros2:
+  manager_mode: local     # disabled | local | pod
+  ctrl_config_path: /etc/rlinf/ros2-controller.yaml
+  ctrl_bin: /usr/local/bin/ros2-controller
+  ctr_cli: /opt/rlinf/bin/rosctr    # shared with ROS 1
+  macvlans:
+    - host_nic: eno1
+      name: macvlan0
+      ip: 172.16.0.101/24
+  types:
+    - type: franka
+      modes:
+        impedance:
+          package: moveit_servo
+          launch_file: servo.launch.py
+          passthrough_robot_args: true
+  robots:
+    - id: franka-robot-1
+      type: franka
+      params:
+        robot_ip: 172.16.0.2
+      domain_id: 5            # explicit ROS_DOMAIN_ID override (auto-assigned if 0)
+  allowed_launch_packages:
+    - moveit_servo
 ```
 
-**Manager modes** (`camera.manager_mode` / `ros.manager_mode`):
+**Manager modes** (`camera.manager_mode` / `ros.manager_mode` / `ros2.manager_mode`):
 
 | Mode       | Behavior                                                                 |
 |------------|--------------------------------------------------------------------------|
@@ -160,6 +209,12 @@ In `pod` mode the device-plugin auto-discovers its own pod (owner refs, tolerati
 ### ROS controller networking
 
 Each robot gets its own `roscore` on a unique port starting at `11311`, so multiple robots coexist in one container without topic/name conflicts. `ROS_MASTER_URI` and `ROS_IP` are injected into each `roslaunch` process. MACVLAN interfaces are created at startup for robot-network access, and `roslaunch` runs directly in the container (no `nsenter`).
+
+### ROS 2 controller networking
+
+Unlike ROS 1, there is no central master. Each robot gets its own `ROS_DOMAIN_ID` (auto-assigned starting at 0, or explicitly set via `domain_id` in the robot config) for DDS-level isolation, so multiple robots in the same container do not discover each other's topics/services. `ROS_DOMAIN_ID` (and optionally `RMW_IMPLEMENTATION`, `CYCLONEDDS_URI`) is injected into each `ros2 launch` process. MACVLAN interfaces are shared with the ROS 1 controller for robot-network access. The base image defaults to Cyclone DDS (`rmw_cyclonedds_cpp`) for better multi-robot and cross-subnet discovery behavior.
+
+> **Multicast requirement.** ROS 2 DDS uses IP multicast for node discovery by default. The cluster's network layer (CNI plugin, node / underlay switches) **must support multicast routing** for ROS 2 nodes across different pods / nodes to find each other. If the cluster does not support multicast (e.g. many cloud-provider CNIs block it), configure unicast discovery instead — set `CYCLONEDDS_URI` (or the Fast DDS equivalent) to a peer-list XML profile in each robot's mode-level `env`, or deploy a DDS Discovery Server. The MACVLAN L2 interface gives direct access to the robot's physical subnet, where multicast typically works, but inter-pod / inter-node discovery still depends on the cluster network.
 
 ### Camera controller
 
@@ -178,6 +233,32 @@ host_devices:
 
 When the list is non-empty the plugin also sets `RLINF_EMBODIED_HOST_DEVICES_ENABLED=1` so pods can detect that host devices were injected.
 
+### Host macvlan setup
+
+Where host device passthrough mounts existing `/dev/*` nodes, **host macvlan** creates new network interfaces inside a pod's network namespace so the pod can reach the robot's physical subnet (e.g. a Franka arm on `172.16.0.0/24`). A macvlan cannot be Allocate-mounted — it must be created inside the target netns — so the device plugin exposes an **on-demand device gRPC service** (`device.v1.DeviceService`) on `/var/run/rlark/devinit.sock`, already reachable via the RunDir mount injected at Allocate. A pod that needs a macvlan runs the `devinit` CLI in an **init container**:
+
+```yaml
+initContainers:
+  - name: devinit
+    image: rlinf/embodied-runtime:v0.1.0
+    command: ["devinit", "setup"]   # reads RLINF_EMBODIED_DEVINIT_SOCKET_PATH
+    resources:
+      requests:
+        rlinf.io/device: 1          # triggers Allocate → RunDir mount + env vars
+```
+
+The service reads the caller's PID from the Unix socket peer credentials (SO_PEERCRED) and creates each configured macvlan in that PID's network namespace via `pkg/netmac`. Pods using `hostNetwork: true` are detected (their netns equals the host's) and skipped — a macvlan must never be dropped into the host netns. The interfaces are declared node-side under `host_macvlans`, each a `pkg/netmac` `MACVLANConfig`:
+
+```yaml
+host_macvlans:
+  - host_nic: eno1            # auto-detected from the IP subnet when empty
+    name: macvlan0
+    ip: 172.16.0.0/24         # network address → auto-pick an unused host IP
+    gateway: 172.16.0.1       # optional default gateway for the robot subnet
+```
+
+When the list is non-empty the plugin sets `RLINF_EMBODIED_DEVINIT_ENABLED=1` and `RLINF_EMBODIED_DEVINIT_SOCKET_PATH` so the init container / CLI can discover the service. Setup is idempotent — a leftover interface from a previous container instance (same pause netns) is reused.
+
 ---
 
 ## Deploy
@@ -186,6 +267,7 @@ Example manifests live in [`examples/`](./examples):
 
 - [`device-plugin-config.yaml`](./examples/device-plugin-config.yaml) — plugin config ConfigMap.
 - [`ros-controller-pod.yaml`](./examples/ros-controller-pod.yaml) — ros-controller Pod (hostPID, privileged, ROS workspace image + initContainer that copies binaries from the embodied-runtime image).
+- [`ros2-controller-pod.yaml`](./examples/ros2-controller-pod.yaml) — ros2-controller Pod (hostPID, privileged, ROS 2 Humble workspace image).
 - [`camera-controller-pod.yaml`](./examples/camera-controller-pod.yaml) — camera-controller Pod on the `camera-base` image.
 
 The typical pattern: an `initContainer` copies `ros-controller` / `rosctr` (or `camera-controller` / `camctr`) out of the `embodied-runtime` image into a shared `emptyDir`; the main container runs the controller binary from there. Liveness / readiness probes use the CLIs (`rosctr list`, `camctr list`) against the Unix sockets.
@@ -206,7 +288,9 @@ spec:
 
 ## CLI usage
 
-### `rosctr` — robot control
+### `rosctr` — robot control (ROS 1 and ROS 2)
+
+The same `rosctr` binary works with both the ROS 1 controller (`ros-ctrl.sock`) and the ROS 2 controller (`ros2-ctrl.sock`). Point it at the appropriate socket via `--socket-path` or the `RLINF_EMBODIED_ROS_SOCKET_PATH` / `RLINF_EMBODIED_ROS2_SOCKET_PATH` env vars. The `env`, `status`, and `list` commands auto-detect the ROS version from the response fields.
 
 ```bash
 rosctr list                                      # robots + status
@@ -225,7 +309,7 @@ rosctr pkg launch-args <package> <launch-file>
 rosctr env <robot-id>                            # injected ROS env vars
 ```
 
-Global flag: `--socket-path` (default `/var/run/rlinf/ros-ctrl.sock`, or `RLINF_EMBODIED_ROS_SOCKET_PATH` if set). Output format: `-o text|json|yaml`.
+Global flag: `--socket-path` (default `/var/run/rlark/ros-ctrl.sock`, or `RLINF_EMBODIED_ROS_SOCKET_PATH` if set, falling back to `RLINF_EMBODIED_ROS2_SOCKET_PATH`). The same `rosctr` binary targets either the ROS 1 or ROS 2 controller — point it at the appropriate socket. Output format: `-o text|json|yaml`.
 
 ### `camctr` — camera control
 
@@ -241,7 +325,7 @@ camctr watch <camera-id> > stream.h264           # raw bitstream to stdout
 camctr watch <camera-id> | ffplay -i -           # pipe to ffplay
 ```
 
-Global flag: `--socket-path` (default `/var/run/rlinf/camera-ctrl.sock`, or `RLINF_EMBODIED_CAMERA_SOCKET_PATH` if set).
+Global flag: `--socket-path` (default `/var/run/rlark/camera-ctrl.sock`, or `RLINF_EMBODIED_CAMERA_SOCKET_PATH` if set).
 
 `watch` delivers frames in the encoding the camera was opened with: `jpeg` / `png` / `bmp` / `tiff` = one complete, independently decodable still-image frame per message; `h264` / `h265` = Annex B elementary-stream chunks that the client concatenates in order.
 
@@ -253,16 +337,20 @@ Global flag: `--socket-path` (default `/var/run/rlinf/camera-ctrl.sock`, or `RLI
 cmd/                       # one package per binary
   device-plugin/
   ros-controller/
+  ros2-controller/
   camera-controller/
-  rosctr/                  # CLI (cobra)
+  rosctr/                  # CLI (cobra) — shared ROS 1 + ROS 2
   camctr/                  # CLI (cobra)
 pkg/
   deviceplugin/            # kubelet plugin, config, hardware detect, pod/local managers
   roscontroller/           # roscore, roslaunch process, modes, MACVLAN, web proxy, gRPC server
+  ros2controller/          # ros2 launch, DOMAIN_ID, modes, gRPC server (ROS 2)
   cameracontroller/        # drivers (ffmpeg/remote/ros(todo)), transcoder, gRPC server
+  netmac/                  # shared MACVLAN interface management
+  httputil/                # shared HTTP/JSON gateway helpers (protojson, gRPC→HTTP)
   cli/                     # shared output formatting (text/json/yaml)
 examples/                  # sample ConfigMaps + Pod manifests
-runtimes/                  # camera-base.dockerfile (ffmpeg runtime deps)
+runtimes/                  # camera-base, ros-base, ros2-base dockerfiles
 Dockerfile                 # multi-stage build → all binaries
 Makefile                   # build / proto / docker / lint / test
 ```

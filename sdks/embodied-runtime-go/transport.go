@@ -9,8 +9,9 @@ import (
 )
 
 const (
-	DefaultROSSocket    = "/var/run/rlinf/ros-ctrl.sock"
-	DefaultCameraSocket = "/var/run/rlinf/camera-ctrl.sock"
+	DefaultROSSocket    = "/var/run/rlark/ros-ctrl.sock"
+	DefaultROS2Socket   = "/var/run/rlark/ros2-ctrl.sock"
+	DefaultCameraSocket = "/var/run/rlark/camera-ctrl.sock"
 	DefaultTimeout      = 10 * time.Second
 	LongTimeout         = 30 * time.Second
 )
@@ -41,6 +42,16 @@ func ROSSocketPath() string {
 	return DefaultROSSocket
 }
 
+// ROS2SocketPath returns the Unix socket path for the ROS 2 controller. It
+// reads RLINF_EMBODIED_ROS2_SOCKET_PATH (injected by the device plugin when
+// the ros2-controller is enabled); falls back to the default path.
+func ROS2SocketPath() string {
+	if v := os.Getenv("RLINF_EMBODIED_ROS2_SOCKET_PATH"); v != "" {
+		return v
+	}
+	return DefaultROS2Socket
+}
+
 func CameraSocketPath() string {
 	if v := os.Getenv("RLINF_EMBODIED_CAMERA_SOCKET_PATH"); v != "" {
 		return v
@@ -48,8 +59,19 @@ func CameraSocketPath() string {
 	return DefaultCameraSocket
 }
 
+// DialRobot dials the ROS 1 controller. The returned *grpc.ClientConn can be
+// used with pb.NewRobotControllerClient — the same proto service is shared
+// between ROS 1 and ROS 2 controllers.
 func DialRobot(address string) (*grpc.ClientConn, error) {
 	target := ResolveTarget(ROSSocketPath(), DefaultROSSocket, address)
+	return Dial(target)
+}
+
+// DialRobot2 dials the ROS 2 controller. The returned *grpc.ClientConn can be
+// used with pb.NewRobotControllerClient — the same proto service is shared
+// between ROS 1 and ROS 2 controllers.
+func DialRobot2(address string) (*grpc.ClientConn, error) {
+	target := ResolveTarget(ROS2SocketPath(), DefaultROS2Socket, address)
 	return Dial(target)
 }
 

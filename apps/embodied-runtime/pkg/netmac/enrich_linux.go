@@ -1,6 +1,6 @@
 //go:build linux
 
-package roscontroller
+package netmac
 
 import (
 	"fmt"
@@ -32,19 +32,23 @@ import (
 // Best-effort: any error is logged and the config is left with whatever was
 // resolved so far; the caller surfaces the failure when the macvlan is
 // created.
-func EnrichMACVLANConfig(cfg *MACVLANConfig) {
+func EnrichMACVLANConfig(cfg *MACVLANConfig, logPrefix string) {
 	if cfg == nil {
 		return
 	}
+	prefix := logPrefix
+	if prefix == "" {
+		prefix = "[netmac]"
+	}
 	ip, ipNet, err := parseIPNet(cfg.IP)
 	if err != nil {
-		log.Printf("[ros-controller] enrich macvlan %q: %v", cfg.Name, err)
+		log.Printf("%s enrich macvlan %q: %v", prefix, cfg.Name, err)
 		return
 	}
 
 	nics, err := queryHostNICs()
 	if err != nil {
-		log.Printf("[ros-controller] enrich macvlan %q: query host NICs: %v", cfg.Name, err)
+		log.Printf("%s enrich macvlan %q: query host NICs: %v", prefix, cfg.Name, err)
 		return
 	}
 
@@ -53,13 +57,13 @@ func EnrichMACVLANConfig(cfg *MACVLANConfig) {
 	if cfg.HostNIC == "" {
 		name, nicIP, ok := findNICForSubnet(nics, ip)
 		if !ok {
-			log.Printf("[ros-controller] enrich macvlan %q: no host NIC in subnet of %s", cfg.Name, ip)
+			log.Printf("%s enrich macvlan %q: no host NIC in subnet of %s", prefix, cfg.Name, ip)
 			return
 		}
 		cfg.HostNIC = name
 		hostIP = nicIP
-		log.Printf("[ros-controller] enrich macvlan %q: auto-detected host NIC %s (%s)",
-			cfg.Name, name, hostIP)
+		log.Printf("%s enrich macvlan %q: auto-detected host NIC %s (%s)",
+			prefix, cfg.Name, name, hostIP)
 	} else if nicIP, ok := ipv4OnNIC(nics, cfg.HostNIC); ok {
 		hostIP = nicIP
 	}
@@ -74,12 +78,12 @@ func EnrichMACVLANConfig(cfg *MACVLANConfig) {
 	}
 	newIP := pickUnusedIP(ipNet, used, 100)
 	if newIP == nil {
-		log.Printf("[ros-controller] enrich macvlan %q: no unused IP in %s", cfg.Name, ipNet)
+		log.Printf("%s enrich macvlan %q: no unused IP in %s", prefix, cfg.Name, ipNet)
 		return
 	}
 	ones, _ := ipNet.Mask.Size()
 	cfg.IP = fmt.Sprintf("%s/%d", newIP.String(), ones)
-	log.Printf("[ros-controller] enrich macvlan %q: auto-picked IP %s", cfg.Name, cfg.IP)
+	log.Printf("%s enrich macvlan %q: auto-picked IP %s", prefix, cfg.Name, cfg.IP)
 }
 
 // runHostNet runs a command in the host's network namespace (PID 1) via

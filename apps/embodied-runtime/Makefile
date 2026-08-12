@@ -14,13 +14,16 @@ LDFLAGS := -s -w
 
 DEVPLUGIN_BIN   := device-plugin
 ROS_CTRL_BIN    := ros-controller
+ROS2_CTRL_BIN   := ros2-controller
 ROSCTR_BIN      := rosctr
 CAM_CTRL_BIN    := camera-controller
 CAMCTR_BIN      := camctr
+DEVINIT_BIN     := devinit
 
 RUNTIME_OUTPUT_IMAGE       := $(REGISTRY)/embodied-runtime
 CAMERA_BASE_OUTPUT_IMAGE   := $(REGISTRY)/camera-base
 ROS_BASE_OUTPUT_IMAGE      := $(REGISTRY)/ros-base
+ROS2_BASE_OUTPUT_IMAGE     := $(REGISTRY)/ros2-base
 
 ##@ Lint & format
 
@@ -39,7 +42,7 @@ fmt: ## Format Go (gofmt)
 
 .PHONY: all build
 all: build vet ## Build and vet (default)
-build: $(DEVPLUGIN_BIN) $(ROS_CTRL_BIN) $(ROSCTR_BIN) $(CAM_CTRL_BIN) $(CAMCTR_BIN) ## Build all binaries
+build: $(DEVPLUGIN_BIN) $(ROS_CTRL_BIN) $(ROS2_CTRL_BIN) $(ROSCTR_BIN) $(CAM_CTRL_BIN) $(CAMCTR_BIN) $(DEVINIT_BIN) ## Build all binaries
 
 .PHONY: $(DEVPLUGIN_BIN)
 $(DEVPLUGIN_BIN): ## Build device-plugin binary
@@ -47,6 +50,10 @@ $(DEVPLUGIN_BIN): ## Build device-plugin binary
 
 .PHONY: $(ROS_CTRL_BIN)
 $(ROS_CTRL_BIN): ## Build ros-controller binary
+	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build -ldflags="$(LDFLAGS)" -o bin/$@ ./cmd/$@
+
+.PHONY: $(ROS2_CTRL_BIN)
+$(ROS2_CTRL_BIN): ## Build ros2-controller binary
 	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build -ldflags="$(LDFLAGS)" -o bin/$@ ./cmd/$@
 
 .PHONY: $(ROSCTR_BIN)
@@ -59,6 +66,10 @@ $(CAM_CTRL_BIN): ## Build camera-controller binary
 
 .PHONY: $(CAMCTR_BIN)
 $(CAMCTR_BIN): ## Build camctr binary
+	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build -ldflags="$(LDFLAGS)" -o bin/$@ ./cmd/$@
+
+.PHONY: $(DEVINIT_BIN)
+$(DEVINIT_BIN): ## Build devinit binary (init-container device setup tool)
 	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build -ldflags="$(LDFLAGS)" -o bin/$@ ./cmd/$@
 
 .PHONY: vet test clean
@@ -135,6 +146,27 @@ docker-ros-push: ## Build ros-runtime base image and push to registry
 		--build-arg APT_MIRROR=$(APT_MIRROR) \
 		-t $(ROS_BASE_OUTPUT_IMAGE):$(IMAGE_TAG) \
 		-f runtimes/ros-base.dockerfile \
+		.
+
+.PHONY: docker-ros2-build docker-ros2-push
+docker-ros2-build: ## Build ros2-runtime base image (load into local docker)
+	docker buildx build \
+		--platform $(BUILDX_PLATFORMS) \
+		--load \
+		--build-arg RUNTIME_BASE_IMAGE=$(RUNTIME_BASE_IMAGE) \
+		--build-arg APT_MIRROR=$(APT_MIRROR) \
+		-t $(ROS2_BASE_OUTPUT_IMAGE):$(IMAGE_TAG) \
+		-f runtimes/ros2-base.dockerfile \
+		.
+
+docker-ros2-push: ## Build ros2-runtime base image and push to registry
+	docker buildx build \
+		--platform $(BUILDX_PLATFORMS) \
+		--push \
+		--build-arg RUNTIME_BASE_IMAGE=$(RUNTIME_BASE_IMAGE) \
+		--build-arg APT_MIRROR=$(APT_MIRROR) \
+		-t $(ROS2_BASE_OUTPUT_IMAGE):$(IMAGE_TAG) \
+		-f runtimes/ros2-base.dockerfile \
 		.
 
 ##@ Help

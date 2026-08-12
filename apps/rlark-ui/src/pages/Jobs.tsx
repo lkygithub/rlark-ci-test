@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import type { CSSProperties } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   Check,
   ChevronDown,
@@ -192,7 +193,7 @@ export function JobsPage({
               <th>Header</th>
               <th>{zh ? "集群/目标" : "Target"}</th>
               <th>{zh ? "耗时" : "Duration"}</th>
-              <th />
+              <th>{zh ? "操作" : "Actions"}</th>
             </tr>
           </thead>
           <tbody>
@@ -297,7 +298,38 @@ function JobActionMenu({
   onToggleStop: () => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [menuStyle, setMenuStyle] = useState<CSSProperties>({});
   const ref = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    if (!open || !ref.current) return;
+    const btn = ref.current.querySelector("button");
+    if (!btn) return;
+    const rect = btn.getBoundingClientRect();
+    const dropdownEl = ref.current.querySelector(
+      ".action-dropdown",
+    ) as HTMLElement | null;
+    const ddHeight = dropdownEl?.offsetHeight ?? 200;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const dropUp = spaceBelow < ddHeight + 8;
+    setMenuStyle(
+      dropUp
+        ? {
+            position: "fixed",
+            left: rect.left,
+            bottom: window.innerHeight - rect.top + 4,
+            right: "auto",
+            top: "auto",
+          }
+        : {
+            position: "fixed",
+            left: rect.left,
+            top: rect.bottom + 4,
+            right: "auto",
+            bottom: "auto",
+          },
+    );
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -316,7 +348,7 @@ function JobActionMenu({
   }, [open]);
 
   const isStopped = job.stopped || job.phase === "Stopped";
-  const isTerminal = job.phase === "Succeeded" || job.phase === "Failed";
+  const isTerminal = job.phase === "Succeeded";
 
   return (
     <div className="row-actions" ref={ref} style={{ position: "relative" }}>
@@ -329,66 +361,68 @@ function JobActionMenu({
         <MoreVertical size={16} />
       </button>
       {open && (
-        <div className="action-dropdown">
-          <button
-            className="action-dropdown-item"
-            onClick={() => {
-              setOpen(false);
-              onEdit();
-            }}
-          >
-            <Pencil size={14} />
-            {zh ? "编辑" : "Edit"}
-          </button>
-          <button
-            className="action-dropdown-item"
-            onClick={() => {
-              setOpen(false);
-              onClone();
-            }}
-          >
-            <Copy size={14} />
-            {zh ? "复制" : "Clone"}
-          </button>
-          <button
-            className="action-dropdown-item"
-            disabled={isTerminal}
-            onClick={() => {
-              if (isTerminal) return;
-              setOpen(false);
-              onToggleStop();
-            }}
-            title={
-              isTerminal
-                ? zh
-                  ? "终态任务无法操作"
-                  : "Terminal job cannot be toggled"
-                : ""
-            }
-          >
-            {isStopped ? (
-              <>
-                <Play size={14} />
-                {zh ? "启动" : "Start"}
-              </>
-            ) : (
-              <>
-                <Square size={14} />
-                {zh ? "停止" : "Stop"}
-              </>
-            )}
-          </button>
-          <button
-            className="action-dropdown-item danger"
-            onClick={() => {
-              setOpen(false);
-              onDelete();
-            }}
-          >
-            <Trash2 size={14} />
-            {zh ? "删除" : "Delete"}
-          </button>
-        </div>
+        <>
+          <div className="action-dropdown" style={menuStyle}>
+            <button
+              className="action-dropdown-item"
+              onClick={() => {
+                setOpen(false);
+                onEdit();
+              }}
+            >
+              <Pencil size={14} />
+              {zh ? "编辑" : "Edit"}
+            </button>
+            <button
+              className="action-dropdown-item"
+              onClick={() => {
+                setOpen(false);
+                onClone();
+              }}
+            >
+              <Copy size={14} />
+              {zh ? "复制" : "Clone"}
+            </button>
+            <button
+              className="action-dropdown-item"
+              disabled={isTerminal}
+              onClick={() => {
+                if (isTerminal) return;
+                setOpen(false);
+                onToggleStop();
+              }}
+              title={
+                isTerminal
+                  ? zh
+                    ? "终态任务无法操作"
+                    : "Terminal job cannot be toggled"
+                  : ""
+              }
+            >
+              {isStopped ? (
+                <>
+                  <Play size={14} />
+                  {zh ? "启动" : "Start"}
+                </>
+              ) : (
+                <>
+                  <Square size={14} />
+                  {zh ? "停止" : "Stop"}
+                </>
+              )}
+            </button>
+            <button
+              className="action-dropdown-item danger"
+              onClick={() => {
+                setOpen(false);
+                onDelete();
+              }}
+            >
+              <Trash2 size={14} />
+              {zh ? "删除" : "Delete"}
+            </button>
+          </div>
+        </>
       )}
     </div>
   );

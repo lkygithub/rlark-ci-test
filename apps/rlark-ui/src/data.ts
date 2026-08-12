@@ -94,6 +94,7 @@ export interface Job {
   stopped?: boolean;
   domain?: string;
   tensorBoardDir?: string;
+  sshPublicKey?: string;
   resources: Array<{
     role: string;
     cluster: string;

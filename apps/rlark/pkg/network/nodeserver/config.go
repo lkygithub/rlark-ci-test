@@ -14,7 +14,7 @@ type Config struct {
 
 func DefaultConfig() Config {
 	return Config{
-		UnixSocketAddress: "/run/rlark/nodeserver.sock",
+		UnixSocketAddress: "/var/run/rlark/nodeserver.sock",
 	}
 }
 

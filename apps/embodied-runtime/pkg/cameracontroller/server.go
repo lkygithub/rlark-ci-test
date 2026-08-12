@@ -26,7 +26,7 @@ type Server struct {
 // format and carries no yaml tags. Mirrors roscontroller.ServerConfig.
 type ServerConfig struct {
 	// SocketPath is the Unix socket path the gRPC server listens on.
-	// Default: "/var/run/rlinf/camera-ctrl.sock" (set by the cmd from the
+	// Default: "/var/run/rlark/camera-ctrl.sock" (set by the cmd from the
 	// --socket-path flag; not a config-file field).
 	SocketPath string
 
@@ -43,7 +43,7 @@ type ServerConfig struct {
 // DefaultServerConfig returns a ServerConfig with sensible defaults.
 func DefaultServerConfig() ServerConfig {
 	return ServerConfig{
-		SocketPath: "/var/run/rlinf/camera-ctrl.sock",
+		SocketPath: "/var/run/rlark/camera-ctrl.sock",
 	}
 }
 

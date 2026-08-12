@@ -758,6 +758,7 @@ Responses:
 - `metadata`: `object`, optional
 - `spec`: `object`, optional
   - `domain`: `string`, optional
+  - `sshPublicKey`: `string`, optional
   - `stopped`: `boolean`, optional
   - `tasks`: `array`, optional
     - `items`: `object`, optional
@@ -773,6 +774,7 @@ Responses:
       - `raw`: `object`, optional
       - `role`: `string`, required
       - `runScript`: `string`, optional
+      - `sshPublicKey`: `string`, optional
       - `tensorBoardDir`: `string`, optional
 - `status`: `object`, optional
   - `conditions`: `array`, optional
@@ -1394,6 +1396,7 @@ Responses:
       - `items`: `object`, optional
   - `role`: `string`, required
   - `runScript`: `string`, optional
+  - `sshPublicKey`: `string`, optional
   - `tensorBoardDir`: `string`, optional
 - `status`: `object`, optional
   - `completionTime`: `string`, optional

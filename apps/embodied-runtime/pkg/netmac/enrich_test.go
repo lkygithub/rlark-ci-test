@@ -1,4 +1,4 @@
-package roscontroller
+package netmac
 
 import (
 	"net"
@@ -290,5 +290,20 @@ func TestParseIPNeighOutput(t *testing.T) {
 	}
 	if used["172.16.0.99"] {
 		t.Error("172.16.0.99 (FAILED, no lladdr) should not be marked used")
+	}
+}
+
+// TestNewMACVLAN verifies the constructor copies config fields.
+func TestNewMACVLAN(t *testing.T) {
+	cfg := MACVLANConfig{
+		Name:    "macvlan0",
+		HostNIC: "eno1",
+		IP:      "172.16.0.100/24",
+		Gateway: "172.16.0.1",
+	}
+	m := NewMACVLAN(cfg)
+	if m.Name != "macvlan0" || m.HostNIC != "eno1" ||
+		m.IP != "172.16.0.100/24" || m.Gateway != "172.16.0.1" {
+		t.Errorf("NewMACVLAN = %+v", m)
 	}
 }

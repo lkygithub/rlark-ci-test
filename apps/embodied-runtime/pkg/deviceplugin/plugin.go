@@ -17,12 +17,14 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"sync"
 	"time"
 
 	"github.com/rlinf/rlark/apps/embodied-runtime/pkg/deviceplugin/camera"
 	"github.com/rlinf/rlark/apps/embodied-runtime/pkg/deviceplugin/podmanager"
 	"github.com/rlinf/rlark/apps/embodied-runtime/pkg/deviceplugin/ros"
+	"github.com/rlinf/rlark/apps/embodied-runtime/pkg/deviceplugin/ros2"
 	camerapb "github.com/rlinf/rlark/sdks/embodied-runtime-go/gen/cameracontroller/v1"
 	rospb "github.com/rlinf/rlark/sdks/embodied-runtime-go/gen/roscontroller/v1"
 	"google.golang.org/grpc"
@@ -49,18 +51,31 @@ const (
 	DefaultDeviceCount = 1
 
 	// ROSCtrlSocketPath is the path to the ros-controller gRPC socket.
-	ROSCtrlSocketPath = "/var/run/rlinf/ros-ctrl.sock"
+	ROSCtrlSocketPath = "/var/run/rlark/ros-ctrl.sock"
+
+	// ROS2CtrlSocketPath is the path to the ros2-controller gRPC socket.
+	ROS2CtrlSocketPath = "/var/run/rlark/ros2-ctrl.sock"
 
 	// CameraCtrlSocketPath is the path to the camera-controller gRPC socket.
-	CameraCtrlSocketPath = "/var/run/rlinf/camera-ctrl.sock"
+	CameraCtrlSocketPath = "/var/run/rlark/camera-ctrl.sock"
 
 	// RunDir is the parent directory of the controller sockets (ros-ctrl.sock,
 	// camera-ctrl.sock). Mounted as a directory so that socket recreation is
 	// reflected immediately in the container.
-	RunDir = "/var/run/rlinf"
+	RunDir = "/var/run/rlark"
+
+	// DevinitSocketPath is the default Unix socket path for the device
+	// init gRPC service (consumed by the `devinit` init-container CLI).
+	// It lives inside RunDir so the existing RunDir read-only mount (added
+	// in Allocate) makes it reachable from a pod's init container without an
+	// extra mount. Override per-config with PluginConfig.DevinitSocketPath.
+	DevinitSocketPath = RunDir + "/devinit.sock"
 
 	// ROSCtrlConfigPath is the path to the ros-controller YAML config file.
 	ROSCtrlConfigPath = "/etc/rlinf/ros-controller.yaml"
+
+	// ROS2CtrlConfigPath is the path to the ros2-controller YAML config file.
+	ROS2CtrlConfigPath = "/etc/rlinf/ros2-controller.yaml"
 
 	// CameraCtrlConfigPath is the path to the camera-controller YAML config file.
 	CameraCtrlConfigPath = "/etc/rlinf/camera-controller.yaml"
@@ -102,11 +117,13 @@ type Plugin struct {
 
 	devices       []*pluginapi.Device
 	rosManager    ControllerManager
+	ros2Manager   ControllerManager
 	cameraManager ControllerManager
 
-	mu      sync.Mutex
-	robots  []*rospb.RobotInfo
-	cameras []*camerapb.CameraDescriptor
+	mu         sync.Mutex
+	robots     []*rospb.RobotInfo
+	ros2Robots []*rospb.RobotInfo
+	cameras    []*camerapb.CameraDescriptor
 }
 
 // ResourceName returns the resource name this plugin advertises to kubelet,
@@ -230,18 +247,52 @@ func newROSManager(cfg ROSConfig, clientset kubernetes.Interface, disc discovere
 	return ros.NewLocalManager(cfg.CtrlBin, cfg.CtrlConfigPath, cfg.CtrCLI)
 }
 
+// newROS2Manager creates the ros2-controller manager based on the configured
+// mode. Mirrors newROSManager but for ROS 2. Returns nil when manager_mode
+// is "disabled".
+func newROS2Manager(cfg ROS2Config, clientset kubernetes.Interface, disc discoveredPod) ControllerManager {
+	if cfg.ManagerMode == ManagerModeDisabled {
+		return nil
+	}
+	if cfg.ManagerMode == ManagerModePod && clientset != nil {
+		mgr := ros2.NewPodManager(clientset, podmanager.PodOptions{
+			Namespace:       cfg.Pod.Namespace,
+			NodeName:        envOrDiscovered(cfg.Pod.NodeName, disc.nodeName),
+			Image:           cfg.Pod.Image,
+			InitImage:       envOrDiscovered(cfg.Pod.InitImage, disc.initImage),
+			PodGenerateName: cfg.Pod.PodGenerateName,
+			PreCommand:      cfg.Pod.PreCommand,
+			ExtraEnv:        coreV1EnvVars(cfg.Pod.ExtraEnv),
+			Hostname:        cfg.Pod.Hostname,
+			Subdomain:       cfg.Pod.Subdomain,
+			Labels:          cfg.Pod.Labels,
+			Tolerations:     disc.tolerations,
+			OwnerReferences: disc.ownerRefs,
+		})
+		if initErr := mgr.Init(context.Background()); initErr != nil {
+			log.Printf("[device-plugin] WARNING: init ros2 pod manager: %v", initErr)
+		}
+		return mgr
+	}
+	if cfg.ManagerMode == ManagerModePod && clientset == nil {
+		log.Printf("[device-plugin] WARNING: ros2 pod mode requested but no clientset — falling back to local")
+	}
+	return ros2.NewLocalManager(cfg.CtrlBin, cfg.CtrlConfigPath, cfg.CtrCLI)
+}
+
 // ---------------------------------------------------------------------------
 // NewPlugin
 // ---------------------------------------------------------------------------
 
 // NewPlugin creates a new device plugin, detects devices, and starts the
-// ros-controller and camera-controller. Each controller can run as a local
-// subprocess or as a Kubernetes Pod, configured independently via
-// cfg.Camera.ManagerMode and cfg.ROS.ManagerMode.
+// ros-controller, ros2-controller, and camera-controller. Each controller
+// can run as a local subprocess or as a Kubernetes Pod, configured
+// independently via cfg.ROS.ManagerMode, cfg.ROS2.ManagerMode, and
+// cfg.Camera.ManagerMode.
 func NewPlugin(cfg PluginConfig) *Plugin {
-	// Create a Kubernetes clientset if either controller is in pod mode.
+	// Create a Kubernetes clientset if any controller is in pod mode.
 	var clientset kubernetes.Interface
-	if cfg.Camera.ManagerMode == ManagerModePod || cfg.ROS.ManagerMode == ManagerModePod {
+	if cfg.Camera.ManagerMode == ManagerModePod || cfg.ROS.ManagerMode == ManagerModePod || cfg.ROS2.ManagerMode == ManagerModePod {
 		cs, err := podmanager.NewClientset()
 		if err != nil {
 			log.Printf("[device-plugin] WARNING: create kubernetes clientset: %v — pod-mode controllers will fall back to local", err)
@@ -275,10 +326,12 @@ func NewPlugin(cfg PluginConfig) *Plugin {
 
 	cameraManager := newCameraManager(cfg.Camera, clientset, disc)
 	rosManager := newROSManager(cfg.ROS, clientset, disc)
+	ros2Manager := newROS2Manager(cfg.ROS2, clientset, disc)
 
 	p := &Plugin{
 		cfg:           cfg,
 		rosManager:    rosManager,
+		ros2Manager:   ros2Manager,
 		cameraManager: cameraManager,
 	}
 
@@ -296,6 +349,21 @@ func NewPlugin(cfg PluginConfig) *Plugin {
 		}
 	} else {
 		log.Println("[device-plugin] ros-controller disabled — skipping config and startup")
+	}
+
+	// Apply and start ros2-controller. Skipped when manager_mode is
+	// "disabled" (ros2Manager == nil).
+	if ros2Manager != nil {
+		if data := generateROS2Config(cfg.ROS2); data != nil {
+			if err := ros2Manager.ApplyConfig(context.Background(), data); err != nil {
+				log.Printf("[device-plugin] WARNING: apply ros2-controller config: %v", err)
+			}
+			if _, err := ros2Manager.Maintain(context.Background()); err != nil {
+				log.Printf("[device-plugin] WARNING: maintain ros2-controller: %v", err)
+			}
+		}
+	} else {
+		log.Println("[device-plugin] ros2-controller disabled — skipping config and startup")
 	}
 
 	// Apply and start camera-controller. Skipped when manager_mode is
@@ -382,13 +450,14 @@ func (p *Plugin) Allocate(req *pluginapi.AllocateRequest) (*pluginapi.AllocateRe
 //
 // The allocation injects:
 //   - Environment variables signaling which runtimes are available:
-//     RLINF_EMBODIED_RUNTIME_ENABLED is always set; RLINF_EMBODIED_ROS_ENABLED
-//     and RLINF_EMBODIED_CAMERA_ENABLED are set only when the corresponding
-//     controller manager is enabled (i.e. not in "disabled" mode).
-//     RLINF_EMBODIED_{ROS,CAMERA}_SOCKET_PATH carry the controller Unix socket
-//     paths so CLIs and SDKs can connect without a hard-coded --socket-path.
-//     RLINF_EMBODIED_HOST_DEVICES_ENABLED is set when cfg.HostDevices is
-//     non-empty, signaling that host /dev/* nodes were mounted.
+//     RLINF_EMBODIED_RUNTIME_ENABLED is always set; RLINF_EMBODIED_ROS_ENABLED,
+//     RLINF_EMBODIED_ROS2_ENABLED, and RLINF_EMBODIED_CAMERA_ENABLED are set
+//     only when the corresponding controller manager is enabled (i.e. not in
+//     "disabled" mode). RLINF_EMBODIED_{ROS,ROS2,CAMERA}_SOCKET_PATH carry the
+//     controller Unix socket paths so CLIs and SDKs can connect without a
+//     hard-coded --socket-path. RLINF_EMBODIED_HOST_DEVICES_ENABLED is set
+//     when cfg.HostDevices is non-empty, signaling that host /dev/* nodes
+//     were mounted.
 //   - Socket dir mount — controller sockets for robot/camera lifecycle
 //   - Binary dir mount — rosctr/camctr CLI for debugging/probes
 //   - Host device specs — /dev/* nodes declared in cfg.HostDevices are
@@ -415,6 +484,16 @@ func (p *Plugin) allocateContainer(req *pluginapi.ContainerAllocateRequest) *plu
 			envs["ROS_MASTER_URI"] = robots[0].GetRosMasterUri()
 		}
 	}
+	if p.ros2Manager != nil {
+		envs["RLINF_EMBODIED_ROS2_ENABLED"] = "1"
+		envs["RLINF_EMBODIED_ROS2_SOCKET_PATH"] = ROS2CtrlSocketPath
+		// When exactly one robot is cached with a non-zero ROS_DOMAIN_ID,
+		// inject it directly so ROS 2 tools inside the container talk to
+		// the correct DDS domain.
+		if robots := p.ROS2Robots(); len(robots) == 1 && robots[0].GetRosDomainId() != 0 {
+			envs["ROS_DOMAIN_ID"] = strconv.Itoa(int(robots[0].GetRosDomainId()))
+		}
+	}
 	if p.cameraManager != nil {
 		envs["RLINF_EMBODIED_CAMERA_ENABLED"] = "1"
 		envs["RLINF_EMBODIED_CAMERA_SOCKET_PATH"] = CameraCtrlSocketPath
@@ -427,6 +506,17 @@ func (p *Plugin) allocateContainer(req *pluginapi.ContainerAllocateRequest) *plu
 	hostDeviceSpecs := hostDeviceSpecs(p.cfg.HostDevices)
 	if len(hostDeviceSpecs) > 0 {
 		envs["RLINF_EMBODIED_HOST_DEVICES_ENABLED"] = "1"
+	}
+
+	// Host macvlans are NOT device-mounted (a macvlan must be created
+	// inside the pod netns). Instead the device plugin runs an init
+	// gRPC service on a Unix socket; a pod's init container runs the
+	// `devinit` CLI to request setup. The RunDir mount above already
+	// makes the socket reachable, so only the env vars are injected here
+	// for the init container / CLI to discover it.
+	if len(p.cfg.HostMacvlans) > 0 {
+		envs["RLINF_EMBODIED_DEVINIT_ENABLED"] = "1"
+		envs["RLINF_EMBODIED_DEVINIT_SOCKET_PATH"] = p.cfg.EffectiveDevinitSocketPath()
 	}
 
 	mounts := []*pluginapi.Mount{
@@ -509,20 +599,30 @@ type Server struct {
 	srv    *grpc.Server
 	socket string
 
+	// deviceSrv serves the on-demand device gRPC service (currently the
+	// macvlan setup RPC). nil when the plugin config has no host_macvlans.
+	deviceSrv *DeviceServer
+
 	stopCh chan struct{}
 }
 
 // NewServer creates a gRPC server for the device plugin. If socketPath is
-// empty, PluginSocketPath() is used as the default.
+// empty, PluginSocketPath() is used as the default. When the plugin config
+// declares host_macvlans, a DeviceServer is also constructed and started
+// alongside the device-plugin gRPC server.
 func NewServer(plugin *Plugin, socketPath string) *Server {
 	if socketPath == "" {
 		socketPath = PluginSocketPath()
 	}
-	return &Server{
+	s := &Server{
 		plugin: plugin,
 		socket: socketPath,
 		stopCh: make(chan struct{}),
 	}
+	if deviceSrv := NewDeviceServer(plugin.cfg.HostMacvlans, plugin.cfg.EffectiveDevinitSocketPath()); deviceSrv.HasMacvlans() {
+		s.deviceSrv = deviceSrv
+	}
+	return s
 }
 
 // Start initialises the gRPC server and begins listening on the Unix socket.
@@ -548,17 +648,34 @@ func (s *Server) Start() error {
 		s.srv.GracefulStop()
 	}()
 
+	// Start the on-demand macvlan gRPC service alongside the device-plugin
+	// server. Runs in its own goroutine on a separate Unix socket; nil
+	// when no host_macvlans are configured.
+	if s.deviceSrv != nil {
+		go func() {
+			if err := s.deviceSrv.Start(); err != nil {
+				log.Printf("[device-plugin] macvlan service exited: %v", err)
+			}
+		}()
+	}
+
 	return s.srv.Serve(listener)
 }
 
-// Stop gracefully shuts down the gRPC server, the ros-controller, and the
-// camera-controller.
+// Stop gracefully shuts down the gRPC server, the ros-controller,
+// ros2-controller, and camera-controller.
 func (s *Server) Stop() {
 	if s.plugin.rosManager != nil {
 		s.plugin.rosManager.Stop(context.Background())
 	}
+	if s.plugin.ros2Manager != nil {
+		s.plugin.ros2Manager.Stop(context.Background())
+	}
 	if s.plugin.cameraManager != nil {
 		s.plugin.cameraManager.Stop(context.Background())
+	}
+	if s.deviceSrv != nil {
+		s.deviceSrv.Stop()
 	}
 	close(s.stopCh)
 }

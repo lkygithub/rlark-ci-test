@@ -8762,6 +8762,8 @@ spec:
                 type: string
               runScript:
                 type: string
+              sshPublicKey:
+                type: string
               tensorBoardDir:
                 type: string
             required:

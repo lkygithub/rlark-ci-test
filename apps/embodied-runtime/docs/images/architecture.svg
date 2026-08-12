@@ -164,7 +164,7 @@
       <!-- Mounts -->
       <text x="26" y="80" class="font card-sub">Mounts</text>
       <rect x="130" y="68" width="280" height="20" rx="5" fill="#F8FAFC" stroke="#E2E8F0"/>
-      <text x="138" y="82" class="font code-sm" fill="#64748B">/var/run/rlinf → controller sockets (ro)</text>
+      <text x="138" y="82" class="font code-sm" fill="#64748B">/var/run/rlark → controller sockets (ro)</text>
       <rect x="420" y="68" width="260" height="20" rx="5" fill="#F8FAFC" stroke="#E2E8F0"/>
       <text x="428" y="82" class="font code-sm" fill="#64748B">/opt/rlinf/bin → rosctr / camctr CLIs (ro)</text>
 

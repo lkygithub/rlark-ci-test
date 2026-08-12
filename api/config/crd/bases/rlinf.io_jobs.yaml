@@ -48,6 +48,8 @@ spec:
             properties:
               domain:
                 type: string
+              sshPublicKey:
+                type: string
               stopped:
                 type: boolean
               tasks:
@@ -8906,6 +8908,8 @@ spec:
                     role:
                       type: string
                     runScript:
+                      type: string
+                    sshPublicKey:
                       type: string
                     tensorBoardDir:
                       type: string

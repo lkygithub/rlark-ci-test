@@ -42,9 +42,9 @@ type Config struct {
 
 	// --- Paths ---
 	// SocketPath is the Unix socket path used by the CLI for health probes
-	// (e.g. "/var/run/rlinf/camera-ctrl.sock").
+	// (e.g. "/var/run/rlark/camera-ctrl.sock").
 	SocketPath string
-	// SocketDir is the hostPath directory for sockets (default "/var/run/rlinf").
+	// SocketDir is the hostPath directory for sockets (default "/var/run/rlark").
 	SocketDir string
 	// BinDir is the in-container shared directory for binaries, mounted from
 	// an emptyDir that the initContainer populates (default "/opt/rlinf/bin").
@@ -62,8 +62,9 @@ type Config struct {
 
 	// --- Container command ---
 	// Shell is the shell used to run the main container's command
-	// ("sh" or "bash"). The ros-controller sets this to "bash" so it can
-	// source ROS workspace scripts before launching the binary.
+	// ("sh" or "bash"). The ros-controller and ros2-controller set this
+	// to "bash" so they can source ROS workspace scripts before launching
+	// the binary.
 	Shell string
 	// InitShell is the shell used to run the init container's command.
 	// Defaults to "sh" since the init image (embodied-runtime, Alpine)
@@ -72,7 +73,7 @@ type Config struct {
 	// the init container.
 	InitShell string
 	// PreCommand is a shell snippet executed before the controller binary
-	// (used by ros-controller to source ROS environment).
+	// (used by ros-controller / ros2-controller to source ROS environment).
 	PreCommand string
 	// ExtraArgs are additional command-line arguments passed to the
 	// controller binary (e.g. ["--http-addr=:8080"]).
@@ -150,9 +151,10 @@ type PodOptions struct {
 	InitImagePullPolicy corev1.PullPolicy
 	// PreCommand overrides the shell snippet run before the controller
 	// binary. Each controller constructor supplies its own default
-	// (ros-controller sources the ROS + catkin workspaces; camera-controller
-	// has none). Empty keeps that constructor default; a non-empty value
-	// fully replaces it, so for ros you must include the ROS workspace
+	// (ros-controller sources the ROS 1 + catkin workspaces; ros2-controller
+	// sources the ROS 2 + colcon workspaces; camera-controller has none).
+	// Empty keeps that constructor default; a non-empty value fully
+	// replaces it, so for ros/ros2 you must include the ROS workspace
 	// sourcing yourself if you still need it.
 	PreCommand string
 	// ExtraEnv are additional environment variables for the main container.
@@ -205,7 +207,7 @@ func (c *Config) applyDefaults() {
 		c.ConfigMountPath = "/etc/rlinf"
 	}
 	if c.SocketDir == "" {
-		c.SocketDir = "/var/run/rlinf"
+		c.SocketDir = "/var/run/rlark"
 	}
 	if c.BinDir == "" {
 		c.BinDir = "/opt/rlinf/bin"

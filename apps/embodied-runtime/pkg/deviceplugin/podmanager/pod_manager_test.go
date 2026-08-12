@@ -30,7 +30,7 @@ func TestBuildPod_CameraLike(t *testing.T) {
 		CLIBin:          "camctr",
 		ConfigFileName:  "camera-controller.yaml",
 		ConfigMountPath: "/etc/rlinf",
-		SocketPath:      "/var/run/rlinf/camera-ctrl.sock",
+		SocketPath:      "/var/run/rlark/camera-ctrl.sock",
 		NodeName:        "your-node-name",
 		Shell:           "sh",
 		HostPID:         true,
@@ -111,7 +111,7 @@ func TestBuildPod_CameraLike(t *testing.T) {
 		t.Error("readiness probe missing")
 	}
 	probeCmd := mainC.LivenessProbe.Exec.Command
-	wantProbe := []string{"/opt/rlinf/bin/camctr", "--socket-path=/var/run/rlinf/camera-ctrl.sock", "list"}
+	wantProbe := []string{"/opt/rlinf/bin/camctr", "--socket-path=/var/run/rlark/camera-ctrl.sock", "list"}
 	if len(probeCmd) != 3 || probeCmd[0] != wantProbe[0] || probeCmd[1] != wantProbe[1] || probeCmd[2] != wantProbe[2] {
 		t.Errorf("liveness probe cmd = %v, want %v", probeCmd, wantProbe)
 	}
@@ -158,7 +158,7 @@ func TestBuildPod_RosLike(t *testing.T) {
 		CLIBin:          "rosctr",
 		ConfigFileName:  "ros-controller.yaml",
 		ConfigMountPath: "/etc/rlinf",
-		SocketPath:      "/var/run/rlinf/ros-ctrl.sock",
+		SocketPath:      "/var/run/rlark/ros-ctrl.sock",
 		NodeName:        "your-node-name",
 		Shell:           "bash",
 		PreCommand:      "source /opt/ros/noetic/setup.bash\nsource /catkin_ws/devel_isolated/setup.bash",
@@ -218,7 +218,7 @@ func TestBuildPod_RosLike(t *testing.T) {
 
 	// Socket path in probe should be ros-specific.
 	probeCmd := mainC.LivenessProbe.Exec.Command
-	if probeCmd[1] != "--socket-path=/var/run/rlinf/ros-ctrl.sock" {
+	if probeCmd[1] != "--socket-path=/var/run/rlark/ros-ctrl.sock" {
 		t.Errorf("probe socket = %q, want ros-ctrl.sock", probeCmd[1])
 	}
 }

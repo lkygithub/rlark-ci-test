@@ -47,7 +47,7 @@ func NewPodManager(clientset kubernetes.Interface, opts podmanager.PodOptions) *
 		ConfigMountPath: "/etc/rlinf",
 
 		// Paths
-		SocketPath: "/var/run/rlinf/camera-ctrl.sock",
+		SocketPath: "/var/run/rlark/camera-ctrl.sock",
 
 		// Scheduling
 		NodeName: opts.NodeName,
