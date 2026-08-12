@@ -25,6 +25,7 @@ import (
 	"github.com/rlinf/rlark/apps/embodied-runtime/pkg/deviceplugin/podmanager"
 	"github.com/rlinf/rlark/apps/embodied-runtime/pkg/deviceplugin/ros"
 	"github.com/rlinf/rlark/apps/embodied-runtime/pkg/deviceplugin/ros2"
+	"github.com/rlinf/rlark/apps/embodied-runtime/pkg/mutatingwebhook"
 	camerapb "github.com/rlinf/rlark/sdks/embodied-runtime-go/gen/cameracontroller/v1"
 	rospb "github.com/rlinf/rlark/sdks/embodied-runtime-go/gen/roscontroller/v1"
 	"google.golang.org/grpc"
@@ -114,6 +115,18 @@ func pluginSocketPathForModel(model string) string {
 // kubelet, and processes allocation requests from the scheduler.
 type Plugin struct {
 	cfg PluginConfig
+
+	// clientset is the Kubernetes client used for pod-mode controllers and
+	// (optionally) the mutating webhook. nil when no pod-mode controller and
+	// no webhook is configured.
+	clientset kubernetes.Interface
+	// disc holds attributes of the device-plugin's own pod, auto-discovered
+	// via the downward API. Used to default the devinit init image and to own
+	// the controller pods / CA Secret.
+	disc discoveredPod
+	// webhookCfg holds the mutating webhook options (CLI-derived). Only used
+	// when Enabled is true and host_macvlans is configured.
+	webhookCfg WebhookConfig
 
 	devices       []*pluginapi.Device
 	rosManager    ControllerManager
@@ -289,13 +302,22 @@ func newROS2Manager(cfg ROS2Config, clientset kubernetes.Interface, disc discove
 // can run as a local subprocess or as a Kubernetes Pod, configured
 // independently via cfg.ROS.ManagerMode, cfg.ROS2.ManagerMode, and
 // cfg.Camera.ManagerMode.
-func NewPlugin(cfg PluginConfig) *Plugin {
-	// Create a Kubernetes clientset if any controller is in pod mode.
+//
+// whcfg carries the mutating webhook options (CLI-derived). When Enabled and
+// host_macvlans is configured, NewServer will start a webhook that injects
+// the devinit init container into pods requesting this plugin's resource.
+// It also causes a Kubernetes clientset to be created (even with no pod-mode
+// controller) so the webhook can manage its caBundle.
+func NewPlugin(cfg PluginConfig, whcfg WebhookConfig) *Plugin {
+	// Create a Kubernetes clientset if any controller is in pod mode, or if
+	// the mutating webhook is enabled (it needs API access for caBundle
+	// management and to read the device-plugin's own image via the downward
+	// API).
 	var clientset kubernetes.Interface
-	if cfg.Camera.ManagerMode == ManagerModePod || cfg.ROS.ManagerMode == ManagerModePod || cfg.ROS2.ManagerMode == ManagerModePod {
+	if cfg.Camera.ManagerMode == ManagerModePod || cfg.ROS.ManagerMode == ManagerModePod || cfg.ROS2.ManagerMode == ManagerModePod || whcfg.Enabled {
 		cs, err := podmanager.NewClientset()
 		if err != nil {
-			log.Printf("[device-plugin] WARNING: create kubernetes clientset: %v — pod-mode controllers will fall back to local", err)
+			log.Printf("[device-plugin] WARNING: create kubernetes clientset: %v — pod-mode controllers and webhook will be disabled", err)
 		} else {
 			clientset = cs
 		}
@@ -305,7 +327,9 @@ func NewPlugin(cfg PluginConfig) *Plugin {
 	// API call and reuse them to fill in any fields the caller left blank:
 	//   - ownerRefs   → garbage-collect controller pods with the device-plugin pod
 	//   - tolerations → schedule onto the same tainted nodes
-	//   - initImage   → reuse the device-plugin image as the init image
+	//   - initImage   → reuse the device-plugin image as the init image and
+	//                   as the default devinit image for the injected init
+	//                   container (the device-plugin image ships devinit)
 	//   - nodeName    → pin the controller to the same node
 	var disc discoveredPod
 	if clientset != nil {
@@ -330,6 +354,9 @@ func NewPlugin(cfg PluginConfig) *Plugin {
 
 	p := &Plugin{
 		cfg:           cfg,
+		clientset:     clientset,
+		disc:          disc,
+		webhookCfg:    whcfg,
 		rosManager:    rosManager,
 		ros2Manager:   ros2Manager,
 		cameraManager: cameraManager,
@@ -603,13 +630,20 @@ type Server struct {
 	// macvlan setup RPC). nil when the plugin config has no host_macvlans.
 	deviceSrv *DeviceServer
 
+	// webhookSrv serves the mutating admission webhook that auto-injects the
+	// devinit init container. nil when the webhook is disabled or not
+	// configured.
+	webhookSrv *mutatingwebhook.Server
+
 	stopCh chan struct{}
 }
 
 // NewServer creates a gRPC server for the device plugin. If socketPath is
 // empty, PluginSocketPath() is used as the default. When the plugin config
 // declares host_macvlans, a DeviceServer is also constructed and started
-// alongside the device-plugin gRPC server.
+// alongside the device-plugin gRPC server. When the webhook is enabled (and
+// host_macvlans is configured), a mutating webhook server is also constructed
+// so it can be started alongside the gRPC server.
 func NewServer(plugin *Plugin, socketPath string) *Server {
 	if socketPath == "" {
 		socketPath = PluginSocketPath()
@@ -621,6 +655,14 @@ func NewServer(plugin *Plugin, socketPath string) *Server {
 	}
 	if deviceSrv := NewDeviceServer(plugin.cfg.HostMacvlans, plugin.cfg.EffectiveDevinitSocketPath()); deviceSrv.HasMacvlans() {
 		s.deviceSrv = deviceSrv
+	}
+	// The webhook is best-effort: a misconfiguration (missing image, no API
+	// access) logs a warning and leaves the device plugin running without
+	// auto-injection rather than failing the whole process.
+	if ws, err := newWebhookServer(plugin); err != nil {
+		log.Printf("[device-plugin/webhook] WARNING: webhook disabled: %v", err)
+	} else if ws != nil {
+		s.webhookSrv = ws
 	}
 	return s
 }
@@ -659,6 +701,16 @@ func (s *Server) Start() error {
 		}()
 	}
 
+	// Start the mutating webhook (non-blocking). It serves admission reviews
+	// over HTTPS in its own goroutine; Stop shuts it down. nil when the
+	// webhook is disabled or not configured.
+	if s.webhookSrv != nil {
+		if err := s.webhookSrv.Start(); err != nil {
+			log.Printf("[device-plugin/webhook] WARNING: start: %v", err)
+			s.webhookSrv = nil
+		}
+	}
+
 	return s.srv.Serve(listener)
 }
 
@@ -676,6 +728,9 @@ func (s *Server) Stop() {
 	}
 	if s.deviceSrv != nil {
 		s.deviceSrv.Stop()
+	}
+	if s.webhookSrv != nil {
+		s.webhookSrv.Stop()
 	}
 	close(s.stopCh)
 }

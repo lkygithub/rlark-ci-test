@@ -73,12 +73,11 @@ func TestAllocateContainer_HostMacvlans(t *testing.T) {
 	}
 }
 
-// TestNewDeviceServer_SkipsInvalidConfigs verifies that configs failing
-// validation (e.g. a network-address placeholder IP) are dropped at server
-// construction, while fully-specified configs are kept. EnrichMACVLANConfig
-// is best-effort (no-ops when the host is unreachable, e.g. in CI), so the
-// test only relies on ValidateMACVLANConfig — which is pure.
-func TestNewDeviceServer_SkipsInvalidConfigs(t *testing.T) {
+// TestNewDeviceServer_StoresRawConfigs verifies NewDeviceServer stores the
+// configs AS-IS — enrichment and validation are deferred to each Setup call
+// (per-container) so every pod gets its own auto-picked IP. No config is
+// dropped at construction, and the stored values are not mutated.
+func TestNewDeviceServer_StoresRawConfigs(t *testing.T) {
 	cfgs := []netmac.MACVLANConfig{
 		{Name: "good", HostNIC: "eno1", IP: "172.16.0.100/24"},
 		{Name: "bad-net", HostNIC: "eno1", IP: "172.16.0.0/24"},     // network addr
@@ -87,29 +86,79 @@ func TestNewDeviceServer_SkipsInvalidConfigs(t *testing.T) {
 	}
 	srv := NewDeviceServer(cfgs, "/tmp/macvlan-test.sock")
 	if !srv.HasMacvlans() {
-		t.Fatal("HasMacvlans = false, want true (the 'good' entry should survive)")
+		t.Fatal("HasMacvlans = false, want true (all raw configs stored)")
 	}
-	if len(srv.cfgs) != 1 {
-		t.Fatalf("kept %d configs, want 1", len(srv.cfgs))
+	if len(srv.cfgs) != len(cfgs) {
+		t.Fatalf("stored %d configs, want %d (NewDeviceServer must not drop; enrich/validate is per-Setup)",
+			len(srv.cfgs), len(cfgs))
 	}
-	if srv.cfgs[0].Name != "good" {
-		t.Errorf("kept config = %q, want good", srv.cfgs[0].Name)
+	// The stored configs must equal the originals — no enrichment mutation.
+	for i, want := range cfgs {
+		if srv.cfgs[i] != want {
+			t.Errorf("cfg[%d] mutated: got %+v, want %+v", i, srv.cfgs[i], want)
+		}
 	}
 }
 
-// TestNewDeviceServer_EmptyHasNoMacvlans verifies a server with no usable
-// config reports HasMacvlans=false (so the device plugin skips starting it).
+// TestNewDeviceServer_EmptyHasNoMacvlans verifies a server with no configs
+// reports HasMacvlans=false (so the device plugin skips starting it). With
+// the per-Setup enrich/validate design, a non-empty slice reports
+// HasMacvlans=true even when every entry is invalid — validity is checked at
+// Setup time, not construction.
 func TestNewDeviceServer_EmptyHasNoMacvlans(t *testing.T) {
 	srv := NewDeviceServer(nil, "/tmp/macvlan-test.sock")
 	if srv.HasMacvlans() {
 		t.Error("HasMacvlans = true for nil configs, want false")
 	}
-	// All-invalid also yields HasMacvlans=false.
+	// A non-empty (even all-invalid) slice starts the server; Setup drops the
+	// invalid entries per call.
 	srv = NewDeviceServer([]netmac.MACVLANConfig{
 		{Name: "bad", HostNIC: "eno1", IP: "172.16.0.0/24"},
 	}, "/tmp/macvlan-test.sock")
-	if srv.HasMacvlans() {
-		t.Error("HasMacvlans = true for all-invalid configs, want false")
+	if !srv.HasMacvlans() {
+		t.Error("HasMacvlans = false for a non-empty (all-invalid) slice, want true (validity is per-Setup)")
+	}
+}
+
+// TestEnrichForSetup_DropsInvalid verifies the per-Setup enrich+validate path
+// drops configs that cannot be completed. EnrichMACVLANConfig is best-effort
+// (a hard no-op on non-Linux; a no-op when the host is unreachable on Linux),
+// so on the test host enrichment leaves the config unchanged and the result
+// is driven by the pure ValidateMACVLANConfig: a fully-specified config
+// passes; network/broadcast/empty IPs and missing name are rejected.
+func TestEnrichForSetup_DropsInvalid(t *testing.T) {
+	cases := []struct {
+		name string
+		cfg  netmac.MACVLANConfig
+		want bool
+	}{
+		{"good", netmac.MACVLANConfig{Name: "good", HostNIC: "eno1", IP: "172.16.0.100/24"}, true},
+		{"network-addr", netmac.MACVLANConfig{Name: "bad-net", HostNIC: "eno1", IP: "172.16.0.0/24"}, false},
+		{"broadcast", netmac.MACVLANConfig{Name: "bad-bcast", HostNIC: "eno1", IP: "172.16.0.255/24"}, false},
+		{"no-ip", netmac.MACVLANConfig{Name: "bad-noip", HostNIC: "eno1", IP: ""}, false},
+		{"no-name", netmac.MACVLANConfig{HostNIC: "eno1", IP: "172.16.0.100/24"}, false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, ok := enrichForSetup(tc.cfg)
+			if ok != tc.want {
+				t.Errorf("enrichForSetup(%s) ok = %v, want %v", tc.name, ok, tc.want)
+			}
+		})
+	}
+}
+
+// TestEnrichForSetup_DoesNotMutateInput verifies the helper enriches a COPY —
+// the caller's config is untouched, so the pristine stored config can be
+// re-enriched for the next pod (with a possibly different auto-picked IP).
+func TestEnrichForSetup_DoesNotMutateInput(t *testing.T) {
+	cfg := netmac.MACVLANConfig{Name: "m0", HostNIC: "eno1", IP: "172.16.0.100/24"}
+	orig := cfg
+	if _, ok := enrichForSetup(cfg); !ok {
+		t.Fatalf("enrichForSetup dropped a fully-specified config")
+	}
+	if cfg != orig {
+		t.Errorf("enrichForSetup mutated its input: got %+v, want %+v", cfg, orig)
 	}
 }
 

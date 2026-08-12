@@ -92,6 +92,7 @@ docker-build: ## Build embodied-runtime image and load into local docker
 		--load \
 		--build-arg GO_BASE_IMAGE=$(GO_BASE_IMAGE) \
 		--build-arg RUNTIME_BASE_IMAGE=$(RUNTIME_BASE_IMAGE) \
+		--build-arg APK_MIRROR=$(APK_MIRROR) \
 		-t $(RUNTIME_OUTPUT_IMAGE):$(IMAGE_TAG) \
 		-f Dockerfile \
 		../..
@@ -102,6 +103,7 @@ docker-push: ## Build embodied-runtime image and push to registry
 		--push \
 		--build-arg GO_BASE_IMAGE=$(GO_BASE_IMAGE) \
 		--build-arg RUNTIME_BASE_IMAGE=$(RUNTIME_BASE_IMAGE) \
+		--build-arg APK_MIRROR=$(APK_MIRROR) \
 		-t $(RUNTIME_OUTPUT_IMAGE):$(IMAGE_TAG) \
 		-f Dockerfile \
 		../..
@@ -183,3 +185,5 @@ help: ## Show this help
 	@echo "  BUILDX_PLATFORMS     Multi-arch targets (default: linux/amd64)"
 	@echo "  GO_BASE_IMAGE        Go builder image (default: golang:1.26-alpine)"
 	@echo "  RUNTIME_BASE_IMAGE   Runtime base image (default: alpine:3.21)"
+	@echo "  APK_MIRROR           Alpine apk mirror (embodied-runtime + camera-base)"
+	@echo "  APT_MIRROR           Debian apt mirror (ros-base + ros2-base)"

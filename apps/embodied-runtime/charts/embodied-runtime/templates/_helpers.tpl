@@ -46,6 +46,33 @@ ConfigMap name.
 {{- end -}}
 
 {{/*
+MutatingWebhookConfiguration name (cluster-scoped) created by this chart when
+the webhook is enabled. The device plugin's --webhook-mutating-config flag is
+set to this so its caBundle sync targets the object this chart owns.
+*/}}
+{{- define "embodied-runtime.webhookConfigName" -}}
+{{- printf "%s-webhook" (include "embodied-runtime.devicePluginName" .) | trunc 63 -}}
+{{- end -}}
+
+{{/*
+Webhook Service name. The device plugin's --webhook-service-name flag is set to
+this so the serving cert DNS SANs match the Service DNS the API server uses.
+*/}}
+{{- define "embodied-runtime.webhookServiceName" -}}
+{{- printf "%s-webhook" (include "embodied-runtime.devicePluginName" .) | trunc 63 -}}
+{{- end -}}
+
+{{/*
+Whether the webhook should be rendered at all: enabled AND host_macvlans is
+non-empty (the webhook only injects when macvlans are configured). Emits the
+non-empty string "true" only when both hold, so `{{ if include "..." . }}`
+behaves as a real boolean (an emitted "false" string would be truthy).
+*/}}
+{{- define "embodied-runtime.webhookEnabled" -}}
+{{- if and .Values.webhook.enabled (gt (len .Values.config.hostMacvlans) 0) -}}true{{- end -}}
+{{- end -}}
+
+{{/*
 Common labels.
 */}}
 {{- define "embodied-runtime.labels" -}}
