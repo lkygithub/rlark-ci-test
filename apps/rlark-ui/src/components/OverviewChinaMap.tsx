@@ -90,6 +90,7 @@ interface CityData {
   cloud: number;
   edge: number;
   robot: number;
+  dominant: "cloud" | "edge" | "robot";
 }
 
 function parseIPLocation(nodes: CRDNode[]): {
@@ -147,6 +148,13 @@ function parseIPLocation(nodes: CRDNode[]): {
   for (const [name, entry] of cityMap) {
     const coords = cityCoords[name];
     if (!coords) continue;
+    const dominant = (
+      [
+        ["cloud", entry.cloud],
+        ["edge", entry.edge],
+        ["robot", entry.robot],
+      ] as Array<["cloud" | "edge" | "robot", number]>
+    ).sort((a, b) => b[1] - a[1])[0][0];
     cities.push({
       name,
       lon: coords[0],
@@ -156,6 +164,7 @@ function parseIPLocation(nodes: CRDNode[]): {
       cloud: entry.cloud,
       edge: entry.edge,
       robot: entry.robot,
+      dominant,
     });
   }
 
@@ -482,7 +491,7 @@ export function OverviewChinaMap({
                   return (
                     <g
                       key={city.name}
-                      className={`china-city-pin pin-${index % 3}`}
+                      className={`china-city-pin pin-${city.dominant}`}
                       transform={`translate(${point.x} ${point.y})`}
                       role="button"
                       tabIndex={0}
@@ -524,13 +533,18 @@ export function OverviewChinaMap({
                         transform={`translate(${point.x > 660 ? -134 : point.x < 135 ? 12 : -62} ${point.y < 80 ? 24 : -72})`}
                         pointerEvents="none"
                       >
-                        <rect width="124" height="54" rx="9" />
+                        <rect width="150" height="70" rx="9" />
                         <text className="tooltip-city" x="10" y="18">
                           {city.name}
                         </text>
                         <text className="tooltip-detail" x="10" y="36">
                           {city.nodes} {zh ? "个节点" : "nodes"} ·{" "}
                           {city.clusters} {zh ? "个集群" : "clusters"}
+                        </text>
+                        <text className="tooltip-detail" x="10" y="54">
+                          {zh ? "云" : "Cloud"} {city.cloud} ·{" "}
+                          {zh ? "端" : "Edge"} {city.edge} ·{" "}
+                          {zh ? "真机" : "Robot"} {city.robot}
                         </text>
                       </g>
                     </g>

@@ -571,7 +571,7 @@ export function CreateJobModal({
               : `${role} has a mount without a target path.`;
           if (mount.type === "host" && !mount.hostPath.trim())
             return zh
-              ? `${role} 的主机路径不能为空。`
+              ? `${role} 的主机目录不能为空。`
               : `${role} has an empty host path.`;
           if (mount.type === "storage" && !mount.objectStorage.trim())
             return zh
@@ -1147,7 +1147,7 @@ export function CreateJobModal({
                                   updateRRMount(role, index, "type", "host");
                                 }}
                               >
-                                {zh ? "主机" : "Host"}
+                                {zh ? "主机目录" : "Host directory"}
                               </button>
                               <button
                                 type="button"
@@ -1160,63 +1160,79 @@ export function CreateJobModal({
                                   fetchStorageClasses(rr.cluster);
                                 }}
                               >
-                                {zh ? "存储" : "Storage"}
+                                {zh ? "对象存储" : "Object storage"}
                               </button>
                             </div>
-                            {mount.type === "storage" ? (
-                              <select
-                                value={mount.objectStorage}
-                                onChange={(e) =>
-                                  updateRRMount(
-                                    role,
-                                    index,
-                                    "objectStorage",
-                                    e.target.value,
-                                  )
-                                }
-                              >
-                                <option value="">
-                                  {storageClassFetched &&
-                                  storageClasses.length === 0
-                                    ? zh
-                                      ? "无可用存储类"
-                                      : "No storage classes"
-                                    : zh
-                                      ? "选择存储类"
-                                      : "Select storage class"}
-                                </option>
-                                {storageClasses.map((sc) => (
-                                  <option key={sc.name} value={sc.name}>
-                                    {sc.name}
+                            <label className="mount-field-box">
+                              <span>
+                                {mount.type === "storage"
+                                  ? zh
+                                    ? "对象存储"
+                                    : "Object storage"
+                                  : zh
+                                    ? "主机目录"
+                                    : "Host directory"}
+                              </span>
+                              {mount.type === "storage" ? (
+                                <select
+                                  value={mount.objectStorage}
+                                  onChange={(e) =>
+                                    updateRRMount(
+                                      role,
+                                      index,
+                                      "objectStorage",
+                                      e.target.value,
+                                    )
+                                  }
+                                >
+                                  <option value="">
+                                    {storageClassFetched &&
+                                    storageClasses.length === 0
+                                      ? zh
+                                        ? "无可用存储类"
+                                        : "No storage classes"
+                                      : zh
+                                        ? "选择存储类"
+                                        : "Select storage class"}
                                   </option>
-                                ))}
-                              </select>
-                            ) : (
+                                  {storageClasses.map((sc) => (
+                                    <option key={sc.name} value={sc.name}>
+                                      {sc.name}
+                                    </option>
+                                  ))}
+                                </select>
+                              ) : (
+                                <input
+                                  value={mount.hostPath}
+                                  onChange={(e) =>
+                                    updateRRMount(
+                                      role,
+                                      index,
+                                      "hostPath",
+                                      e.target.value,
+                                    )
+                                  }
+                                  placeholder="/host/path"
+                                />
+                              )}
+                            </label>
+                            <label className="mount-field-box">
+                              <span>
+                                {zh ? "挂载到 Worker" : "Mount in worker"}
+                              </span>
                               <input
-                                value={mount.hostPath}
+                                value={mount.mountPath}
                                 onChange={(e) =>
                                   updateRRMount(
                                     role,
                                     index,
-                                    "hostPath",
+                                    "mountPath",
                                     e.target.value,
                                   )
                                 }
-                                placeholder="/path"
+                                placeholder="/mnt/data"
                               />
-                            )}
-                            <input
-                              value={mount.mountPath}
-                              onChange={(e) =>
-                                updateRRMount(
-                                  role,
-                                  index,
-                                  "mountPath",
-                                  e.target.value,
-                                )
-                              }
-                              placeholder="/path"
-                            />
+                            </label>
                             <button
                               className="icon-button danger"
                               onClick={() => removeRRMount(role, index)}

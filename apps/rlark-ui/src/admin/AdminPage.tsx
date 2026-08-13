@@ -3,6 +3,7 @@ import {
   Activity,
   Ban,
   CloudCog,
+  MapPin,
   Network,
   Pencil,
   Plus,
@@ -15,11 +16,7 @@ import {
 import { type Phase } from "../data";
 import { type Copy } from "../i18n";
 import { type CRDNode, type NodeCategory } from "../types";
-import {
-  buildMockCRDNodes,
-  categoryLabels,
-  getNodeCategory,
-} from "../utils/nodes";
+import { categoryLabels, getNodeCategory } from "../utils/nodes";
 import { useAutoRefresh } from "../hooks";
 import { MetricCard, StatusBadge } from "../components/shared";
 import { NodeResourceBrowser } from "../components/NodeResourceBrowser";
@@ -43,12 +40,8 @@ export function ClustersOverviewAdminPage({ copy: c }: { copy: Copy }) {
       const data = await resp.json();
       setNodes(data.items ?? []);
     } catch (e) {
-      if (import.meta.env.DEV) {
-        setNodes(buildMockCRDNodes());
-        setError("");
-      } else {
-        setError(e instanceof Error ? e.message : String(e));
-      }
+      setNodes([]);
+      setError(e instanceof Error ? e.message : String(e));
     } finally {
       setLoading(false);
     }
@@ -452,25 +445,40 @@ export function NodeDetailPanel({
         </div>
         {isEditing ? (
           <div className="label-editor admin-label-editor">
-            {Object.entries(ctx.labelDraft).map(([key, value]) => (
-              <div className="label-edit-row" key={key}>
-                <code>{key}</code>
-                <input
-                  value={value}
-                  onChange={(event) =>
-                    ctx.onUpdateLabel(key, event.target.value)
-                  }
-                  placeholder="value"
-                />
-                <button
-                  className="icon-button danger"
-                  onClick={() => ctx.onRemoveLabel(key)}
-                  aria-label={`${zh ? "删除标签" : "Remove label"} ${key}`}
-                >
-                  <X size={14} />
-                </button>
-              </div>
-            ))}
+            <div className="label-edit-row city-label-row">
+              <code>rlark.io/city</code>
+              <input
+                value={ctx.labelDraft["rlark.io/city"] ?? ""}
+                onChange={(event) =>
+                  ctx.onUpdateLabel("rlark.io/city", event.target.value)
+                }
+                placeholder={
+                  zh ? "所在城市，例如：上海市" : "City, e.g. Shanghai"
+                }
+              />
+              <MapPin size={15} />
+            </div>
+            {Object.entries(ctx.labelDraft)
+              .filter(([key]) => key !== "rlark.io/city")
+              .map(([key, value]) => (
+                <div className="label-edit-row" key={key}>
+                  <code>{key}</code>
+                  <input
+                    value={value}
+                    onChange={(event) =>
+                      ctx.onUpdateLabel(key, event.target.value)
+                    }
+                    placeholder="value"
+                  />
+                  <button
+                    className="icon-button danger"
+                    onClick={() => ctx.onRemoveLabel(key)}
+                    aria-label={`${zh ? "删除标签" : "Remove label"} ${key}`}
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              ))}
             <div className="label-add-row">
               <input
                 value={ctx.newLabelKey}
@@ -814,12 +822,8 @@ export function AdminPage({
       const data = await resp.json();
       setNodes(data.items ?? []);
     } catch (e) {
-      if (import.meta.env.DEV) {
-        setNodes(buildMockCRDNodes());
-        setError("");
-      } else {
-        setError(e instanceof Error ? e.message : String(e));
-      }
+      setNodes([]);
+      setError(e instanceof Error ? e.message : String(e));
     } finally {
       setLoading(false);
     }
