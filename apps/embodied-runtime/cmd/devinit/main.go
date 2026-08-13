@@ -73,6 +73,20 @@ func main() {
 }
 
 func runSetup(socketPath string, timeout time.Duration) error {
+	info, statErr := os.Stat(socketPath)
+	if statErr != nil {
+		if os.IsNotExist(statErr) {
+			log.Printf("[devinit] socket %s does not exist — skipping setup", socketPath)
+			return nil
+		}
+		log.Printf("[devinit] socket %s unavailable (%v) — skipping setup", socketPath, statErr)
+		return nil
+	}
+	if info.Mode()&os.ModeSocket == 0 {
+		log.Printf("[devinit] %s exists but is not a Unix socket — skipping setup", socketPath)
+		return nil
+	}
+
 	log.Printf("[devinit] dialing %s", socketPath)
 
 	conn, err := grpc.NewClient(
