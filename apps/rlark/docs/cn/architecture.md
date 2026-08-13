@@ -213,6 +213,7 @@ func (a *containerNetworkAdapter) GetContainerNetworkDial(...) (utils.Dial, erro
 | 组件 | 职责 | 关键文件 |
 |-----------|---------------|----------|
 | Device Plugin | 向 kubelet 注册 `rlinf.io/device`；检测节点本地硬件；向 Task Pod 注入 socket 和 CLI 二进制 | [plugin.go](../../../../embodied-runtime/pkg/deviceplugin/plugin.go) |
+| Mutating Webhook | 自动向申请 `rlinf.io/device` 的 Pod 注入 `devinit` init 容器；管理 CA 证书和 serving 证书 | [webhook.go](../../../../embodied-runtime/pkg/deviceplugin/webhook.go) |
 | ros-controller | 管理 ROS 1（`roscore` + `roslaunch`）机器人生命周期；通过 Unix socket 暴露 gRPC API | [roscontroller/](../../../../embodied-runtime/pkg/roscontroller/) |
 | ros2-controller | 管理 ROS 2 机器人生命周期；通过 Unix socket 暴露 gRPC API | [ros2controller/](../../../../embodied-runtime/pkg/ros2controller/) |
 | camera-controller | 管理摄像头（V4L2 / RTSP / RealSense）生命周期；ffmpeg 转码；通过 Unix socket 暴露 gRPC API | [cameracontroller/](../../../../embodied-runtime/pkg/cameracontroller/) |
@@ -222,9 +223,10 @@ func (a *containerNetworkAdapter) GetContainerNetworkDial(...) (utils.Dial, erro
 
 1. Device Plugin 检测硬件（V4L2 摄像头、机器人控制器）并向 kubelet 注册
 2. Task Pod 在 spec 中申请 `rlinf.io/device` 资源
-3. Allocate 时，Device Plugin 将 Unix socket 和 CLI 二进制注入 Pod
-4. 任务容器通过 gRPC over Unix socket 与 ros-controller / camera-controller 通信
-5. Pod 终止时，Device Plugin 清理并归还设备到资源池
+3. **Mutating Webhook** 拦截 Pod 创建请求，自动注入 `devinit` init 容器（申请同一资源），执行 `devinit setup` 在 Pod 网络命名空间中创建 macvlan
+4. Allocate 时，Device Plugin 将 Unix socket 和 CLI 二进制注入 Pod
+5. 任务容器通过 gRPC over Unix socket 与 ros-controller / camera-controller 通信
+6. Pod 终止时，Device Plugin 清理并归还设备到资源池
 
 ## 5. 跨集群 Pod 网络数据流
 

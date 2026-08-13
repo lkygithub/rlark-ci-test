@@ -213,6 +213,7 @@ The **embodied-runtime** is a node-level component deployed as a DaemonSet on ea
 | Component | Responsibility | Key File |
 |-----------|---------------|----------|
 | Device Plugin | Registers `rlinf.io/device` with kubelet; detects node-local hardware; injects sockets and CLI binaries into Task Pods | [plugin.go](../../../../embodied-runtime/pkg/deviceplugin/plugin.go) |
+| Mutating Webhook | Auto-injects `devinit` init container into Pods requesting `rlinf.io/device`; manages CA certificate and serving certificate | [webhook.go](../../../../embodied-runtime/pkg/deviceplugin/webhook.go) |
 | ros-controller | Manages ROS 1 (`roscore` + `roslaunch`) robot lifecycle; exposes gRPC API via Unix socket | [roscontroller/](../../../../embodied-runtime/pkg/roscontroller/) |
 | ros2-controller | Manages ROS 2 robot lifecycle; exposes gRPC API via Unix socket | [ros2controller/](../../../../embodied-runtime/pkg/ros2controller/) |
 | camera-controller | Manages camera (V4L2 / RTSP / RealSense) lifecycle; ffmpeg transcoding; exposes gRPC API via Unix socket | [cameracontroller/](../../../../embodied-runtime/pkg/cameracontroller/) |
@@ -222,9 +223,10 @@ The **embodied-runtime** is a node-level component deployed as a DaemonSet on ea
 
 1. Device Plugin detects hardware (V4L2 cameras, robot controllers) and registers them with kubelet
 2. Task Pod requests `rlinf.io/device` resources in its spec
-3. On Allocate, Device Plugin injects Unix sockets and CLI binaries into the Pod
-4. The task container communicates with ros-controller / camera-controller via gRPC over Unix sockets
-5. On Pod termination, Device Plugin cleans up and returns the device to the pool
+3. **Mutating Webhook** intercepts the Pod creation and auto-injects a `devinit` init container (requesting the same resource) that runs `devinit setup` to create macvlans in the Pod's network namespace
+4. On Allocate, Device Plugin injects Unix sockets and CLI binaries into the Pod
+5. The task container communicates with ros-controller / camera-controller via gRPC over Unix sockets
+6. On Pod termination, Device Plugin cleans up and returns the device to the pool
 
 ## 5. Cross-Cluster Pod Network Data Flow
 

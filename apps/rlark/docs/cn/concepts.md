@@ -558,6 +558,7 @@ status:
 - **可配置**：Addon 的值可通过 `spec.values` 按集群自定义
 - **版本化**：Addon 支持通过 `spec.version` 进行版本升级
 - **自动应用**：Agent 的 Pull 控制器在 Addon CR 创建或更新时自动应用清单
+- **Mutating Webhook**：Device Plugin 内置 mutating admission webhook，自动向申请 `rlinf.io/device` 的 Pod 注入 `devinit` init 容器，在 Pod 网络命名空间中创建 macvlan，无需手动配置
 
 ## 17. Web Terminal（Web 终端）
 

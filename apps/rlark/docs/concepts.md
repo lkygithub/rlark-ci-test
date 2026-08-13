@@ -560,6 +560,7 @@ status:
 - **Configurable**: Addon values can be customized per cluster via `spec.values`
 - **Versioned**: Addons support version upgrades via `spec.version`
 - **Auto-apply**: Agent's Pull controller automatically applies manifests when Addon CR is created or updated
+- **Mutating Webhook**: The Device Plugin includes a mutating admission webhook that auto-injects a `devinit` init container into Pods requesting `rlinf.io/device`, creating macvlans in the Pod's network namespace without manual configuration
 
 ## 17. Web Terminal
 
