@@ -16,6 +16,7 @@ import (
 	rlarkv1alpha1 "github.com/rlinf/rlark/api/rlark.io/v1alpha1"
 )
 
+// Constants used by the package.
 const (
 	AgentVersion      = "0.1.0"
 	HeartbeatInterval = 30 * time.Second
@@ -23,9 +24,10 @@ const (
 
 // pushNodeReconciler watches local K8s Nodes and reports their info to management Node CRs.
 type pushNodeReconciler struct {
-	c *NodeController
+	c *Controller
 }
 
+// Reconcile reconciles the resource.
 func (r *pushNodeReconciler) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
 	logger := log.FromContext(ctx).WithValues("node", req.NamespacedName)
 

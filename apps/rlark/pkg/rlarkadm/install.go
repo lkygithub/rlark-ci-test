@@ -11,6 +11,7 @@ import (
 	"github.com/rlinf/rlark/apps/rlark/pkg/rlarkadm/types"
 )
 
+// Installer installs RLark components.
 type Installer interface {
 	Install(cfg *types.DeployConfig, certBundle *cert.Bundle) error
 	Summary() *types.InstallSummary
@@ -21,6 +22,7 @@ func LoadDeployConfig(path string) (*types.DeployConfig, error) {
 	return types.LoadDeployConfig(path)
 }
 
+// Install installs the components.
 func Install(cfg *types.DeployConfig) error {
 	logger := log.GetLogger()
 	logger.Info("installing plane", "plane", cfg.Plane, "mode", cfg.EnvMode())

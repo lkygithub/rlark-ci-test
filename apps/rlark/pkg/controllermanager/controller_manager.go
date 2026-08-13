@@ -24,6 +24,7 @@ import (
 	"github.com/rlinf/rlark/apps/rlark/pkg/log"
 )
 
+// Reconciler reconciles resources.
 type Reconciler interface {
 	SetupWithManager(ctrl.Manager) error
 }
@@ -37,6 +38,7 @@ func init() {
 	utilruntime.Must(rlarkv1alpha1.AddToScheme(scheme))
 }
 
+// New creates a new instance.
 func New(config Config) (manager.Manager, error) {
 	logger := log.GetLogger()
 	ctrl.SetLogger(logger)
@@ -57,23 +59,23 @@ func New(config Config) (manager.Manager, error) {
 	}
 
 	reconcilers := []Reconciler{
-		&job.JobReconciler{
+		&job.Reconciler{
 			Client: mgr.GetClient(),
 			Scheme: scheme,
 		},
-		&task.TaskReconciler{
+		&task.Reconciler{
 			Client: mgr.GetClient(),
 			Scheme: scheme,
 		},
-		&workflow.WorkflowReconciler{
+		&workflow.Reconciler{
 			Client: mgr.GetClient(),
 			Scheme: scheme,
 		},
-		&node.NodeReconciler{
+		&node.Reconciler{
 			Client: mgr.GetClient(),
 			Scheme: scheme,
 		},
-		&domain.DomainReconciler{
+		&domain.Reconciler{
 			Client: mgr.GetClient(),
 			Scheme: scheme,
 

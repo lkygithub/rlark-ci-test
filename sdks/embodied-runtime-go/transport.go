@@ -8,6 +8,8 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
+// Default Unix socket paths and dial timeouts used when connecting to the
+// ROS and camera controllers.
 const (
 	DefaultROSSocket    = "/var/run/rlark/ros-ctrl.sock"
 	DefaultROS2Socket   = "/var/run/rlark/ros2-ctrl.sock"
@@ -16,14 +18,20 @@ const (
 	LongTimeout         = 30 * time.Second
 )
 
+// UnixTarget returns the gRPC target string for a Unix domain socket path.
 func UnixTarget(socketPath string) string {
 	return "unix://" + socketPath
 }
 
+// Dial opens a gRPC client connection to target using insecure transport
+// credentials.
 func Dial(target string) (*grpc.ClientConn, error) {
 	return grpc.NewClient(target, grpc.WithTransportCredentials(insecure.NewCredentials()))
 }
 
+// ResolveTarget resolves the gRPC target for a controller. If address is set
+// it is used directly; otherwise socketPath is used, falling back to
+// defaultSocket when empty, and converted to a Unix target.
 func ResolveTarget(socketPath, defaultSocket, address string) string {
 	if address != "" {
 		return address
@@ -35,6 +43,9 @@ func ResolveTarget(socketPath, defaultSocket, address string) string {
 	return UnixTarget(path)
 }
 
+// ROSSocketPath returns the Unix socket path for the ROS 1 controller. It
+// reads RLINF_EMBODIED_ROS_SOCKET_PATH (injected by the device plugin when
+// the ros-controller is enabled); falls back to the default path.
 func ROSSocketPath() string {
 	if v := os.Getenv("RLINF_EMBODIED_ROS_SOCKET_PATH"); v != "" {
 		return v
@@ -52,6 +63,9 @@ func ROS2SocketPath() string {
 	return DefaultROS2Socket
 }
 
+// CameraSocketPath returns the Unix socket path for the camera controller.
+// It reads RLINF_EMBODIED_CAMERA_SOCKET_PATH (injected by the device plugin
+// when the camera-controller is enabled); falls back to the default path.
 func CameraSocketPath() string {
 	if v := os.Getenv("RLINF_EMBODIED_CAMERA_SOCKET_PATH"); v != "" {
 		return v
@@ -75,6 +89,8 @@ func DialRobot2(address string) (*grpc.ClientConn, error) {
 	return Dial(target)
 }
 
+// DialCamera dials the camera controller. The returned *grpc.ClientConn can
+// be used with pb.NewCameraControllerClient.
 func DialCamera(address string) (*grpc.ClientConn, error) {
 	target := ResolveTarget(CameraSocketPath(), DefaultCameraSocket, address)
 	return Dial(target)

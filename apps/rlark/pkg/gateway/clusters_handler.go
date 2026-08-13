@@ -33,6 +33,7 @@ type ClusterInfo struct {
 	Description   string   `json:"description"`
 }
 
+// ClusterDetail holds details.
 type ClusterDetail struct {
 	ClusterInfo
 	Nodes []rlarkv1alpha1.Node `json:"nodes"`

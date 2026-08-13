@@ -9,7 +9,7 @@ import (
 )
 
 // ---------------------------------------------------------------------------
-// PodManager — manages the ros2-controller as a Kubernetes Pod
+// PodManager — manages the ros2-controller as a Kubernetes Pod.
 // ---------------------------------------------------------------------------
 
 // Default images for the ros2-controller pod.

@@ -11,6 +11,7 @@ import (
 	"github.com/rlinf/rlark/apps/rlark/pkg/rlarkadm/types"
 )
 
+// Uninstall uninstalls the components.
 func (d *Installer) Uninstall(cfg *types.DeployConfig, purge bool) error {
 	logger := log.GetLogger()
 	for _, c := range component.ComponentsForPlane(cfg) {

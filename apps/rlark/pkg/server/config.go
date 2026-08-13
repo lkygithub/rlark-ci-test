@@ -71,6 +71,7 @@ func (c *Config) SetupFlags(fs *pflag.FlagSet) {
 	c.KubeClientConfig.SetupFlags(fs)
 }
 
+// ClientConfig holds configuration options.
 type ClientConfig struct {
 	ServerAddress         string
 	ServerHostname        string
@@ -82,6 +83,7 @@ type ClientConfig struct {
 	ServerNamespace string // auto load from client cert
 }
 
+// DefaultClientConfig returns the default clientConfig.
 func DefaultClientConfig() ClientConfig {
 	return ClientConfig{
 		ServerAddress:         "https://localhost:8443",
@@ -93,6 +95,7 @@ func DefaultClientConfig() ClientConfig {
 	}
 }
 
+// SetupFlags sets the upFlags.
 func (c *ClientConfig) SetupFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&c.ServerAddress, "server-address", c.ServerAddress, "Address of the server to connect to")
 	fs.StringVar(&c.ServerHostname, "server-hostname", c.ServerHostname, "Expected hostname of the server for TLS verification (optional)")
@@ -127,6 +130,7 @@ func (c *ClientConfig) loadNamespace() error {
 	return nil
 }
 
+// BuildKubeAPIConfig builds the kubeAPIConfig.
 func (c *ClientConfig) BuildKubeAPIConfig() (*api.Config, error) {
 	if err := c.loadNamespace(); err != nil {
 		return nil, err
@@ -157,6 +161,7 @@ func (c *ClientConfig) BuildKubeAPIConfig() (*api.Config, error) {
 	return config, nil
 }
 
+// BuildRestConfig builds the restConfig.
 func (c *ClientConfig) BuildRestConfig() (*rest.Config, error) {
 	return clientcmd.BuildConfigFromKubeconfigGetter("", c.BuildKubeAPIConfig)
 }

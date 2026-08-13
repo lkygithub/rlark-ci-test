@@ -34,6 +34,7 @@ const (
 	ImageRegistryAnnotationUsername = "rlark.io/username"
 )
 
+// Constants used by the package.
 const (
 	AgentCertLabelKey   = "rlark.io/agent-cert"
 	AgentCertLabelValue = "true"

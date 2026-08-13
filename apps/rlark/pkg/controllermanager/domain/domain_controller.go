@@ -18,13 +18,13 @@ import (
 	"github.com/rlinf/rlark/apps/rlark/pkg/configs"
 )
 
-// DomainReconciler watches Domain and Pod CRs, and generates DomainPeer
+// Reconciler watches Domain and Pod CRs, and generates DomainPeer
 // (one per cluster/namespace per domain) containing the pod list.
 //
 // DomainPeer is namespaced: each cluster (represented by a namespace) has its
 // own DomainPeer per domain, named after the domain. The DomainPeer.Spec.Pods
 // field records all pods belonging to that domain in that cluster.
-type DomainReconciler struct {
+type Reconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
 
@@ -40,7 +40,7 @@ type DomainReconciler struct {
 
 // Reconcile handles a Domain reconciliation request.
 // Triggered by Domain changes or Pod CR changes (mapped to the associated domain).
-func (r *DomainReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx).WithValues("domain", req.Name)
 
 	// 1. Get Domain
@@ -178,7 +178,7 @@ func (r *DomainReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 // SetupWithManager registers the controller with the manager.
 // It watches Domain as the primary resource and Pod as a secondary resource
 // (pod changes trigger reconciliation of the associated domain).
-func (r *DomainReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&rlarkv1alpha1.Domain{}).
 		Named("domain").
@@ -197,7 +197,7 @@ func (r *DomainReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func (r *DomainReconciler) createOrUpdateDomainPeer(
+func (r *Reconciler) createOrUpdateDomainPeer(
 	ctx context.Context, logger logr.Logger,
 	domainName, namespace string, pods []rlarkv1alpha1.DomainPodInfo,
 	signer *signer, prefixLen int,
@@ -254,7 +254,7 @@ func (r *DomainReconciler) createOrUpdateDomainPeer(
 	return nil
 }
 
-func (r *DomainReconciler) deleteDomainPeers(ctx context.Context, logger logr.Logger, domainName string) (ctrl.Result, error) {
+func (r *Reconciler) deleteDomainPeers(ctx context.Context, logger logr.Logger, domainName string) (ctrl.Result, error) {
 	var peerList rlarkv1alpha1.DomainPeerList
 	if err := r.List(ctx, &peerList); err != nil {
 		logger.Error(err, "failed to list DomainPeers")
@@ -273,7 +273,7 @@ func (r *DomainReconciler) deleteDomainPeers(ctx context.Context, logger logr.Lo
 	return ctrl.Result{}, nil
 }
 
-func (r *DomainReconciler) cleanupStaleDomainPeers(ctx context.Context, logger logr.Logger, domainName string, activeNamespaces map[string][]rlarkv1alpha1.DomainPodInfo) error {
+func (r *Reconciler) cleanupStaleDomainPeers(ctx context.Context, logger logr.Logger, domainName string, activeNamespaces map[string][]rlarkv1alpha1.DomainPodInfo) error {
 	var peerList rlarkv1alpha1.DomainPeerList
 	if err := r.List(ctx, &peerList); err != nil {
 		return err

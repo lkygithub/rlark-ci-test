@@ -20,11 +20,12 @@ import (
 	"github.com/rlinf/rlark/apps/rlark/pkg/log"
 )
 
-// clusterAgent manages cluster-level operations (controller manager)
+// clusterAgent manages cluster-level operations (controller manager).
 type clusterAgent struct {
 	a *Agent
 }
 
+// Run runs the component.
 func (c *clusterAgent) Run(ctx context.Context) error {
 	logger := log.FromContext(ctx).WithName("clusterAgent")
 	ctrl.SetLogger(logger)
@@ -53,7 +54,7 @@ func (c *clusterAgent) Run(ctx context.Context) error {
 		return fmt.Errorf("create management direct client: %w", err)
 	}
 
-	bc := base.BaseController{
+	bc := base.Controller{
 		ManagementClient:    mclient,
 		ManagementNamespace: clusterID,
 		AgentType:           agentType,

@@ -9,6 +9,7 @@ import (
 	gossh "golang.org/x/crypto/ssh"
 )
 
+// Data holds certificate data.
 type Data struct {
 	CertPEM []byte
 	Cert    *x509.Certificate
@@ -17,6 +18,7 @@ type Data struct {
 	Key     *rsa.PrivateKey
 }
 
+// IsValid reports whether valid.
 func (data *Data) IsValid() bool {
 	if data.Cert == nil && data.SSHCert == nil {
 		return false
@@ -43,6 +45,7 @@ func (data *Data) IsValid() bool {
 	return true
 }
 
+// LoadData loads the data.
 func LoadData(certPEM, keyPEM []byte) (*Data, error) {
 	data := &Data{
 		CertPEM: certPEM,

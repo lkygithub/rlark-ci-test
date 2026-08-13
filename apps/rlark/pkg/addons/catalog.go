@@ -17,13 +17,16 @@ var addonYAMLs embed.FS
 //go:embed catalog/*/manifests
 var manifestsFS embed.FS
 
+// Constants used by the package.
 const (
 	LabelAddonName = "rlark.io/addon-name"
 	LabelAddonUID  = "rlark.io/addon-uid"
 )
 
+// ParameterType represents a parameter type.
 type ParameterType string
 
+// Constants used by the package.
 const (
 	ParamTypeString ParameterType = "string"
 	ParamTypeText   ParameterType = "text"
@@ -32,6 +35,7 @@ const (
 	ParamTypeInt    ParameterType = "int"
 )
 
+// AddonParameter describes an addon parameter.
 type AddonParameter struct {
 	Name        string        `yaml:"name" json:"name"`
 	DisplayName string        `yaml:"displayName" json:"displayName"`
@@ -42,6 +46,7 @@ type AddonParameter struct {
 	Required    bool          `yaml:"required,omitempty" json:"required,omitempty"`
 }
 
+// AddonMeta holds metadata.
 type AddonMeta struct {
 	Name        string           `yaml:"name" json:"name"`
 	DisplayName string           `yaml:"displayName" json:"displayName"`
@@ -52,10 +57,12 @@ type AddonMeta struct {
 	Parameters  []AddonParameter `yaml:"parameters,omitempty" json:"parameters,omitempty"`
 }
 
+// Manifest describes an addon manifest.
 type Manifest struct {
 	Raw []byte
 }
 
+// Addon represents an addon.
 type Addon interface {
 	Meta() AddonMeta
 	Render(values map[string]string, namespace string, addonName string, addonUID string) ([]Manifest, error)
@@ -65,6 +72,7 @@ type registry struct {
 	addons map[string]Addon
 }
 
+// Registry is an exported variable.
 var Registry *registry
 
 func init() {
@@ -120,6 +128,7 @@ func (r *registry) load() error {
 	return nil
 }
 
+// List is an exported method.
 func (r *registry) List() []AddonMeta {
 	var result []AddonMeta
 	for _, a := range r.addons {
@@ -128,6 +137,7 @@ func (r *registry) List() []AddonMeta {
 	return result
 }
 
+// Get is an exported method.
 func (r *registry) Get(name string) (Addon, bool) {
 	a, ok := r.addons[name]
 	return a, ok
@@ -139,10 +149,12 @@ type embeddedAddon struct {
 	manifestFiles []string
 }
 
+// Meta is an exported method.
 func (a *embeddedAddon) Meta() AddonMeta {
 	return a.meta
 }
 
+// Render is an exported method.
 func (a *embeddedAddon) Render(values map[string]string, namespace string, addonName string, addonUID string) ([]Manifest, error) {
 	renderValues := make(map[string]interface{})
 	for _, p := range a.meta.Parameters {

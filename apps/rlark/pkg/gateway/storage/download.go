@@ -12,9 +12,10 @@ import (
 	"github.com/rlinf/rlark/apps/rlark/pkg/utils"
 )
 
-// Ensure v4 is used
+// Ensure v4 is used.
 var _ = v4.PresignedHTTPRequest{}
 
+// GetObject returns the object.
 func (c *Client) GetObject(objectKey string) (io.ReadCloser, error) {
 	ctx := context.Background()
 	output, err := c.s3Client.GetObject(ctx, &s3.GetObjectInput{
@@ -27,6 +28,7 @@ func (c *Client) GetObject(objectKey string) (io.ReadCloser, error) {
 	return output.Body, nil
 }
 
+// DownloadFile downloads the file.
 func (c *Client) DownloadFile(objectKey, localFilePath string) error {
 	body, err := c.GetObject(objectKey)
 	if err != nil {
@@ -44,6 +46,7 @@ func (c *Client) DownloadFile(objectKey, localFilePath string) error {
 	return err
 }
 
+// GetObjectBytes returns the objectBytes.
 func (c *Client) GetObjectBytes(objectKey string) ([]byte, error) {
 	body, err := c.GetObject(objectKey)
 	if err != nil {
@@ -54,6 +57,7 @@ func (c *Client) GetObjectBytes(objectKey string) ([]byte, error) {
 	return io.ReadAll(body)
 }
 
+// GetObjectURL returns the objectURL.
 func (c *Client) GetObjectURL(objectKey string, expireSeconds int64) (string, error) {
 	ctx := context.Background()
 	input := &s3.GetObjectInput{
@@ -71,10 +75,12 @@ func (c *Client) GetObjectURL(objectKey string, expireSeconds int64) (string, er
 	return presignedReq.URL, nil
 }
 
+// GetTempObjectURL returns the tempObjectURL.
 func (c *Client) GetTempObjectURL(objectKey string) (string, error) {
 	return c.GetObjectURL(objectKey, 3600)
 }
 
+// SaveObjectToLocal saves the objectToLocal.
 func (c *Client) SaveObjectToLocal(objectKey, localDir string) (string, error) {
 	localFilePath := localDir + "/" + objectKey
 

@@ -8,6 +8,7 @@ import (
 
 var metaX509OID = []int{1, 3, 6, 1, 4, 1, 99999, 32}
 
+// SetX509CertMeta sets the x509CertMeta.
 func SetX509CertMeta(template *x509.Certificate, meta map[string]string) {
 	if template == nil {
 		return
@@ -20,6 +21,7 @@ func SetX509CertMeta(template *x509.Certificate, meta map[string]string) {
 	})
 }
 
+// GetX509CertMeta returns the x509CertMeta.
 func GetX509CertMeta(cert *x509.Certificate) (map[string]string, bool) {
 	if cert == nil {
 		return nil, false

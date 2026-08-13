@@ -22,6 +22,7 @@ func DefaultConfig() Config {
 	}
 }
 
+// SetupFlags sets the upFlags.
 func (c *Config) SetupFlags(fs *pflag.FlagSet) {
 	fs.IntVar(&c.Workers, "sync-workers", c.Workers, "Number of concurrent workers for syncing")
 }
@@ -34,6 +35,7 @@ func (c Config) Validate() error {
 	return nil
 }
 
+// ToControllerOptions is an exported method.
 func (c Config) ToControllerOptions() controller.TypedOptions[reconcile.Request] {
 	return controller.TypedOptions[reconcile.Request]{
 		MaxConcurrentReconciles: c.Workers,

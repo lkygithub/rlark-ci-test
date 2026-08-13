@@ -60,6 +60,7 @@ func Open(cfg Config) (*DB, error) {
 	}, nil
 }
 
+// OpenFromFileConfig opens the fromFileConfig.
 func OpenFromFileConfig(path string) (*DB, error) {
 	dbConfig := DefaultConfig()
 	data, err := os.ReadFile(path)

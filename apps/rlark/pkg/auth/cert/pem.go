@@ -10,6 +10,7 @@ import (
 	gossh "golang.org/x/crypto/ssh"
 )
 
+// EncodePrivateKeyToPEM encodes the privateKeyToPEM.
 func EncodePrivateKeyToPEM(key *rsa.PrivateKey) ([]byte, error) {
 	var buf bytes.Buffer
 	if err := pem.Encode(&buf, &pem.Block{
@@ -21,6 +22,7 @@ func EncodePrivateKeyToPEM(key *rsa.PrivateKey) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+// DecodePrivateKeyFromPEM decodes the privateKeyFromPEM.
 func DecodePrivateKeyFromPEM(pemData []byte) (*rsa.PrivateKey, error) {
 	block, _ := pem.Decode(pemData)
 	if block == nil || block.Type != "RSA PRIVATE KEY" {
@@ -29,6 +31,7 @@ func DecodePrivateKeyFromPEM(pemData []byte) (*rsa.PrivateKey, error) {
 	return x509.ParsePKCS1PrivateKey(block.Bytes)
 }
 
+// EncodeCertificateToPEM encodes the certificateToPEM.
 func EncodeCertificateToPEM(cert []byte) ([]byte, error) {
 	var buf bytes.Buffer
 	if err := pem.Encode(&buf, &pem.Block{
@@ -40,6 +43,7 @@ func EncodeCertificateToPEM(cert []byte) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+// DecodeCertificateFromPEM decodes the certificateFromPEM.
 func DecodeCertificateFromPEM(pemData []byte) (*x509.Certificate, error) {
 	block, _ := pem.Decode(pemData)
 	if block == nil || block.Type != "CERTIFICATE" {
@@ -48,6 +52,7 @@ func DecodeCertificateFromPEM(pemData []byte) (*x509.Certificate, error) {
 	return x509.ParseCertificate(block.Bytes)
 }
 
+// EncodeSSHCertificateToPEM encodes the sSHCertificateToPEM.
 func EncodeSSHCertificateToPEM(cert []byte) ([]byte, error) {
 	var buf bytes.Buffer
 	if err := pem.Encode(&buf, &pem.Block{
@@ -59,6 +64,7 @@ func EncodeSSHCertificateToPEM(cert []byte) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+// DecodeSSHCertificateFromPEM decodes the sSHCertificateFromPEM.
 func DecodeSSHCertificateFromPEM(pemData []byte) (*gossh.Certificate, error) {
 	block, _ := pem.Decode(pemData)
 	if block == nil || block.Type != "SSH CERTIFICATE" {

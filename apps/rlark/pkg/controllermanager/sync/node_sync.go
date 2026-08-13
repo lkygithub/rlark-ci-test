@@ -34,6 +34,7 @@ type NodeReconciler struct {
 // +kubebuilder:rbac:groups=rlinf.io,resources=nodes/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=rlinf.io,resources=nodes/finalizers,verbs=update
 
+// NewNodeReconciler creates a new NodeReconciler.
 func NewNodeReconciler(config Config, client client.Client, db *bun.DB) *NodeReconciler {
 	return &NodeReconciler{
 		config: config,

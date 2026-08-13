@@ -11,8 +11,8 @@ import (
 	"github.com/rlinf/rlark/apps/rlark/pkg/controllermanager/controller"
 )
 
-// JobReconciler reconciles Job resources.
-type JobReconciler struct {
+// Reconciler reconciles Job resources.
+type Reconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
 }
@@ -24,22 +24,24 @@ type JobReconciler struct {
 // +kubebuilder:rbac:groups=rlinf.io,resources=tasks/status,verbs=get;update;patch
 
 // Reconcile handles a Job reconciliation request.
-func (r *JobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	return controller.ReconcileWith(ctx, req, &rlarkv1alpha1.Job{}, "job", r)
 }
 
-func (r *JobReconciler) IsTerminal(obj client.Object) bool {
+// IsTerminal reports whether terminal.
+func (r *Reconciler) IsTerminal(obj client.Object) bool {
 	job := obj.(*rlarkv1alpha1.Job)
 	return job.Status.Phase == rlarkv1alpha1.JobPhaseSucceeded ||
 		job.Status.Phase == rlarkv1alpha1.JobPhaseFailed
 }
 
-func (r *JobReconciler) ReconcileStateMachine(ctx context.Context, obj client.Object) (bool, error) {
+// ReconcileStateMachine reconciles the resource.
+func (r *Reconciler) ReconcileStateMachine(ctx context.Context, obj client.Object) (bool, error) {
 	return r.reconcileWithStateMachine(ctx, obj.(*rlarkv1alpha1.Job))
 }
 
 // SetupWithManager registers the controller with the manager.
-func (r *JobReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&rlarkv1alpha1.Job{}).
 		Owns(&rlarkv1alpha1.Task{}).

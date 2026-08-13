@@ -166,7 +166,7 @@ func (s *Server) handleProxyConnect(ctx *gin.Context) {
 }
 
 // 由于 remotedialer 默认的 Peer-to-Peer 连接无法进行任何证书配置，所以这里在 http server 实现了一个代理
-// 会将请求转发到目标 Peer 的 /api/connect 接口上，并且在请求中会携带专用于 Peer-to-Peer 连接的证书元数据
+// 会将请求转发到目标 Peer 的 /api/connect 接口上，并且在请求中会携带专用于 Peer-to-Peer 连接的证书元数据.
 func (s *Server) handlePeerConnectProxy(ctx *gin.Context) {
 	target := ctx.Param("target")
 	url := &url.URL{

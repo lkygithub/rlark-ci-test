@@ -14,6 +14,7 @@ import (
 	gossh "golang.org/x/crypto/ssh"
 )
 
+// GenerateTemplateCA generates the templateCA.
 func GenerateTemplateCA() *x509.Certificate {
 	serial, _ := rand.Int(rand.Reader, new(big.Int).Lsh(big.NewInt(1), 128))
 	return &x509.Certificate{
@@ -49,6 +50,7 @@ func GenerateCAKeyPair(template *x509.Certificate) (*x509.Certificate, *rsa.Priv
 	return caCert, caKey, nil
 }
 
+// GenerateCA generates the cA.
 func GenerateCA(template *x509.Certificate) (*Data, error) {
 	caCert, caKey, err := GenerateCAKeyPair(template)
 	if err != nil {
@@ -78,6 +80,7 @@ func GenerateCA(template *x509.Certificate) (*Data, error) {
 	}, nil
 }
 
+// SignX509Certificate signs the x509Certificate.
 func (ca Data) SignX509Certificate(template *x509.Certificate) ([]byte, error) {
 	if template == nil {
 		return nil, fmt.Errorf("certificate template is nil")
@@ -92,6 +95,7 @@ func (ca Data) SignX509Certificate(template *x509.Certificate) ([]byte, error) {
 	return EncodeCertificateToPEM(certDER)
 }
 
+// SignSSHCertificate signs the sSHCertificate.
 func (ca Data) SignSSHCertificate(template *gossh.Certificate) ([]byte, error) {
 	if template == nil {
 		return nil, fmt.Errorf("SSH certificate template is nil")

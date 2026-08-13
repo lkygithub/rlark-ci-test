@@ -7,7 +7,7 @@ import (
 )
 
 // ---------------------------------------------------------------------------
-// PodManager — manages the camera-controller as a Kubernetes Pod
+// PodManager — manages the camera-controller as a Kubernetes Pod.
 // ---------------------------------------------------------------------------
 
 // Default images and names for the camera-controller pod.

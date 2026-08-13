@@ -31,6 +31,8 @@ type PeerPIDListener struct {
 	net.Listener
 }
 
+// Accept waits for and returns the next connection, wrapping it in a
+// PeerPIDConn that carries the peer PID.
 func (l *PeerPIDListener) Accept() (net.Conn, error) {
 	c, err := l.Listener.Accept()
 	if err != nil {
@@ -55,6 +57,8 @@ type PeerPIDConn struct {
 	PID int
 }
 
+// RemoteAddr returns a PeerPIDAddr carrying the peer PID and the wrapped
+// connection's remote address.
 func (c *PeerPIDConn) RemoteAddr() net.Addr {
 	return PeerPIDAddr{PID: c.PID, Addr: c.Conn.RemoteAddr()}
 }

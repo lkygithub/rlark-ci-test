@@ -8,6 +8,7 @@ import (
 	"syscall"
 )
 
+// GetPeerProcess returns the peerProcess.
 func GetPeerProcess(conn net.Conn) (int32, error) {
 	// 0. 将 net.Conn 转换为 *net.UnixConn
 	unixConn, ok := conn.(*net.UnixConn)

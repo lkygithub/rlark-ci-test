@@ -34,6 +34,7 @@ type TaskReconciler struct {
 // +kubebuilder:rbac:groups=rlinf.io,resources=tasks/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=rlinf.io,resources=tasks/finalizers,verbs=update
 
+// NewTaskReconciler creates a new TaskReconciler.
 func NewTaskReconciler(config Config, client client.Client, db *bun.DB) *TaskReconciler {
 	return &TaskReconciler{
 		config: config,

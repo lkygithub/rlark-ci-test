@@ -15,7 +15,7 @@ import (
 	"github.com/rlinf/rlark/apps/rlark/pkg/utils"
 )
 
-func (r *JobReconciler) syncTaskStatuses(
+func (r *Reconciler) syncTaskStatuses(
 	ctx context.Context,
 	job *rlarkv1alpha1.Job,
 ) (bool, error) {
@@ -46,7 +46,7 @@ func (r *JobReconciler) syncTaskStatuses(
 	return changed, nil
 }
 
-func (r *JobReconciler) dispatchTasks(
+func (r *Reconciler) dispatchTasks(
 	ctx context.Context,
 	job *rlarkv1alpha1.Job,
 	logger logr.Logger,
@@ -69,7 +69,7 @@ func (r *JobReconciler) dispatchTasks(
 	return changed, nil
 }
 
-func (r *JobReconciler) reconcileTask(
+func (r *Reconciler) reconcileTask(
 	ctx context.Context,
 	job *rlarkv1alpha1.Job,
 	t rlarkv1alpha1.JobTaskTemplate,
@@ -113,7 +113,7 @@ func taskSpecEqual(existing *rlarkv1alpha1.Task, job *rlarkv1alpha1.Job, t rlark
 	return reflect.DeepEqual(existing.Spec, desired.Spec)
 }
 
-func (r *JobReconciler) reconcileWithStateMachine(
+func (r *Reconciler) reconcileWithStateMachine(
 	ctx context.Context,
 	job *rlarkv1alpha1.Job,
 ) (bool, error) {
@@ -157,7 +157,7 @@ func (r *JobReconciler) reconcileWithStateMachine(
 	return changed, nil
 }
 
-func (r *JobReconciler) evaluateJobEvent(job *rlarkv1alpha1.Job) string {
+func (r *Reconciler) evaluateJobEvent(job *rlarkv1alpha1.Job) string {
 	if job.Spec.Stopped {
 		return EventJobStopped
 	}

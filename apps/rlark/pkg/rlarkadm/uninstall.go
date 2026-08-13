@@ -13,10 +13,12 @@ import (
 	"github.com/rlinf/rlark/apps/rlark/pkg/rlarkadm/types"
 )
 
+// Uninstaller uninstalls RLark components.
 type Uninstaller interface {
 	Uninstall(cfg *types.DeployConfig, purge bool) error
 }
 
+// Uninstall uninstalls the components.
 func Uninstall(cfg *types.DeployConfig, purge bool, skipConfirm bool) error {
 	logger := log.GetLogger()
 

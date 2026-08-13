@@ -12,8 +12,8 @@ import (
 	rlarkv1alpha1 "github.com/rlinf/rlark/api/rlark.io/v1alpha1"
 )
 
-// NodeReconciler reconciles Node resources (cluster-scoped).
-type NodeReconciler struct {
+// Reconciler reconciles Node resources (cluster-scoped).
+type Reconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
 }
@@ -23,7 +23,7 @@ type NodeReconciler struct {
 // +kubebuilder:rbac:groups=rlinf.io,resources=nodes/finalizers,verbs=update
 
 // Reconcile handles a Node reconciliation request.
-func (r *NodeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx).WithValues("node", req.NamespacedName)
 	logger.Info("Reconciling Node")
 
@@ -45,7 +45,7 @@ func (r *NodeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 }
 
 // SetupWithManager registers the controller with the manager.
-func (r *NodeReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&rlarkv1alpha1.Node{}).
 		Named("node").

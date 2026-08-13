@@ -20,6 +20,7 @@ type Config struct {
 	ProxyListenAddress string
 }
 
+// DefaultConfig returns the default config.
 func DefaultConfig() Config {
 	return Config{
 		UnixSocketAddress:  "/var/run/rlark/nodeserver.sock",
@@ -29,6 +30,7 @@ func DefaultConfig() Config {
 	}
 }
 
+// SetupFlags sets the upFlags.
 func (c *Config) SetupFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&c.UnixSocketAddress, "sidecar-unix-socket", c.UnixSocketAddress, "NodeServer Unix socket path")
 	fs.StringVar(&c.TunName, "sidecar-tun-name", c.TunName, "TUN device name (empty=auto)")

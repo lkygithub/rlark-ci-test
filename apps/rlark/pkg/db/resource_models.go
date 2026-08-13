@@ -34,10 +34,12 @@ type BaseResourceModel struct {
 	Raw json.RawMessage `bun:"raw,type:jsonb,notnull"`
 }
 
+// GetBase returns the base.
 func (b *BaseResourceModel) GetBase() *BaseResourceModel {
 	return b
 }
 
+// FillFromRaw fills the fromRaw.
 func (b *BaseResourceModel) FillFromRaw(data map[string]any) {
 	fillBaseFromRaw(b, data)
 }
