@@ -93,6 +93,16 @@ func (g *Gateway) RegisterRoutes(r gin.IRouter) {
 		auth.POST("/login", g.handleLogin)
 	}
 
+	// Image Registry APIs
+	imageRegistries := r.Group("/api/v1/image-registries")
+	{
+		imageRegistries.GET("", g.handleListImageRegistries)
+		imageRegistries.POST("", g.handleCreateImageRegistry)
+		imageRegistries.GET("/:name", g.handleGetImageRegistry)
+		imageRegistries.PUT("/:name", g.handleUpdateImageRegistry)
+		imageRegistries.DELETE("/:name", g.handleDeleteImageRegistry)
+	}
+
 	// Storage APIs
 	storage := r.Group("/api/v1/storage")
 	{
@@ -102,7 +112,7 @@ func (g *Gateway) RegisterRoutes(r gin.IRouter) {
 		storage.DELETE("/storageclass/:name", g.deleteStorageClass)
 		storage.GET("/storageclass/provider", g.listProvider)
 
-		scFiles := storage.Group("/storageclass/:cluster/:name")
+		scFiles := storage.Group("/storageclass/:name/:cluster")
 		{
 			scFiles.GET("/list", g.listStorageClassFiles)
 			scFiles.POST("/upload", g.uploadStorageClassFile)

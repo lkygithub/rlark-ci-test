@@ -1048,7 +1048,7 @@ export function StorageClassFilesPage({
       params.set("prefix", prefix);
       params.set("maxKeys", "100");
       const resp = await fetch(
-        `/api/v1/storage/storageclass/${encodeURIComponent(cluster)}/${encodeURIComponent(name)}/list?${params}`,
+        `/api/v1/storage/storageclass/${encodeURIComponent(name)}/${encodeURIComponent(cluster)}/list?${params}`,
       );
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const data = await resp.json();
@@ -1081,7 +1081,7 @@ export function StorageClassFilesPage({
           `${zh ? "上传中" : "Uploading"}: ${file.name} (${i + 1}/${files.length})`,
         );
         const resp = await fetch(
-          `/api/v1/storage/storageclass/${encodeURIComponent(cluster)}/${encodeURIComponent(name)}/upload`,
+          `/api/v1/storage/storageclass/${encodeURIComponent(name)}/${encodeURIComponent(cluster)}/upload`,
           { method: "POST", body: formData },
         );
         if (!resp.ok) {
@@ -1101,7 +1101,7 @@ export function StorageClassFilesPage({
   const handleDownload = async (key: string) => {
     try {
       const resp = await fetch(
-        `/api/v1/storage/storageclass/${encodeURIComponent(cluster)}/${encodeURIComponent(name)}/object/${encodeURIComponent(key)}?expire=3600`,
+        `/api/v1/storage/storageclass/${encodeURIComponent(name)}/${encodeURIComponent(cluster)}/object/${encodeURIComponent(key)}?expire=3600`,
       );
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const data = await resp.json();
@@ -1120,7 +1120,7 @@ export function StorageClassFilesPage({
       return;
     try {
       const resp = await fetch(
-        `/api/v1/storage/storageclass/${encodeURIComponent(cluster)}/${encodeURIComponent(name)}/object/${encodeURIComponent(key)}`,
+        `/api/v1/storage/storageclass/${encodeURIComponent(name)}/${encodeURIComponent(cluster)}/object/${encodeURIComponent(key)}`,
         { method: "DELETE" },
       );
       if (!resp.ok) {

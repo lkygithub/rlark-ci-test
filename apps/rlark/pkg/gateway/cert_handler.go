@@ -11,20 +11,12 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/rlinf/rlark/apps/rlark/pkg/common"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/rlinf/rlark/apps/rlark/pkg/log"
-)
-
-const (
-	kcpAdminCertSecret = "rlark-admin-cert"
-	kcpTLSCASecret     = "rlark-tls-ca"
-	kcpSecretNamespace = "default"
-
-	agentCertLabelKey   = "rlark.io/agent-cert"
-	agentCertLabelValue = "true"
 )
 
 type signAgentCertRequest struct {
@@ -90,9 +82,9 @@ func (g *Gateway) storeAgentCertSecret(ctx context.Context, clusterID string, ca
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      secretName,
-			Namespace: kcpSecretNamespace,
+			Namespace: common.SecretNamespace,
 			Labels: map[string]string{
-				agentCertLabelKey: agentCertLabelValue,
+				common.AgentCertLabelKey: common.AgentCertLabelValue,
 			},
 			Annotations: map[string]string{
 				"rlark.io/cluster-id": clusterID,
@@ -104,9 +96,9 @@ func (g *Gateway) storeAgentCertSecret(ctx context.Context, clusterID string, ca
 			"tls.key": agentKey,
 		},
 	}
-	_, err := g.rawClient.CoreV1().Secrets(kcpSecretNamespace).Create(ctx, secret, metav1.CreateOptions{})
+	_, err := g.rawClient.CoreV1().Secrets(common.SecretNamespace).Create(ctx, secret, metav1.CreateOptions{})
 	if err != nil {
-		_, updateErr := g.rawClient.CoreV1().Secrets(kcpSecretNamespace).Update(ctx, secret, metav1.UpdateOptions{})
+		_, updateErr := g.rawClient.CoreV1().Secrets(common.SecretNamespace).Update(ctx, secret, metav1.UpdateOptions{})
 		if updateErr != nil {
 			return fmt.Errorf("create/update secret %s: %w", secretName, updateErr)
 		}
@@ -127,8 +119,8 @@ func (g *Gateway) handleListAgentCerts(c *gin.Context) {
 		return
 	}
 	ctx := c.Request.Context()
-	secretList, err := g.rawClient.CoreV1().Secrets(kcpSecretNamespace).List(ctx, metav1.ListOptions{
-		LabelSelector: labels.FormatLabels(map[string]string{agentCertLabelKey: agentCertLabelValue}),
+	secretList, err := g.rawClient.CoreV1().Secrets(common.SecretNamespace).List(ctx, metav1.ListOptions{
+		LabelSelector: labels.FormatLabels(map[string]string{common.AgentCertLabelKey: common.AgentCertLabelValue}),
 	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("list secrets: %v", err)})
@@ -161,7 +153,7 @@ func (g *Gateway) handleGetAgentCert(c *gin.Context) {
 	}
 	ctx := c.Request.Context()
 	secretName := "rlark-agent-cert-" + clusterID
-	secret, err := g.rawClient.CoreV1().Secrets(kcpSecretNamespace).Get(ctx, secretName, metav1.GetOptions{})
+	secret, err := g.rawClient.CoreV1().Secrets(common.SecretNamespace).Get(ctx, secretName, metav1.GetOptions{})
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprintf("secret not found: %v", err)})
 		return
@@ -182,14 +174,14 @@ func (g *Gateway) getKCPAdminCerts() (certPEM, keyPEM, caPEM []byte, err error) 
 
 	ctx := context.Background()
 
-	adminSecret, err := g.rawClient.CoreV1().Secrets(kcpSecretNamespace).Get(ctx, kcpAdminCertSecret, metav1.GetOptions{})
+	adminSecret, err := g.rawClient.CoreV1().Secrets(common.SecretNamespace).Get(ctx, common.AdminCertSecretName, metav1.GetOptions{})
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("get secret %s: %w", kcpAdminCertSecret, err)
+		return nil, nil, nil, fmt.Errorf("get secret %s: %w", common.AdminCertSecretName, err)
 	}
 
-	caSecret, err := g.rawClient.CoreV1().Secrets(kcpSecretNamespace).Get(ctx, kcpTLSCASecret, metav1.GetOptions{})
+	caSecret, err := g.rawClient.CoreV1().Secrets(common.SecretNamespace).Get(ctx, common.TLSCASecretName, metav1.GetOptions{})
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("get secret %s: %w", kcpTLSCASecret, err)
+		return nil, nil, nil, fmt.Errorf("get secret %s: %w", common.TLSCASecretName, err)
 	}
 
 	certPEM = adminSecret.Data["client.crt"]

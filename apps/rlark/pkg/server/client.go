@@ -20,6 +20,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/rancher/remotedialer"
 	"github.com/rlinf/rlark/apps/rlark/pkg/auth/cert"
+	"github.com/rlinf/rlark/apps/rlark/pkg/common"
 	"github.com/rlinf/rlark/apps/rlark/pkg/configs"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -158,9 +159,9 @@ func NewClientFromKubernetes(ctx context.Context, serverAddr string, kubeConfig 
 		serverUrl.Host = net.JoinHostPort(serverHost, serverUrl.Port())
 	}
 
-	clientSecret, err := kubeClient.CoreV1().Secrets(namespace).Get(ctx, defaultAdminCertSecretName, metav1.GetOptions{})
+	clientSecret, err := kubeClient.CoreV1().Secrets(namespace).Get(ctx, common.AdminCertSecretName, metav1.GetOptions{})
 	if err != nil {
-		return nil, fmt.Errorf("get secret %s/%s: %w", namespace, defaultAdminCertSecretName, err)
+		return nil, fmt.Errorf("get secret %s/%s: %w", namespace, common.AdminCertSecretName, err)
 	}
 	certData, err := cert.LoadData(clientSecret.Data["client.crt"], clientSecret.Data["client.key"])
 	if err != nil {
@@ -172,7 +173,7 @@ func NewClientFromKubernetes(ctx context.Context, serverAddr string, kubeConfig 
 	}
 
 	var caCertPool *x509.CertPool
-	caSecret, err := kubeClient.CoreV1().Secrets(namespace).Get(ctx, defaultTLSCASecretName, metav1.GetOptions{})
+	caSecret, err := kubeClient.CoreV1().Secrets(namespace).Get(ctx, common.AdminCertSecretName, metav1.GetOptions{})
 	if err == nil {
 		caCertPool = x509.NewCertPool()
 		caCertPool.AppendCertsFromPEM(caSecret.Data["ca.crt"])
