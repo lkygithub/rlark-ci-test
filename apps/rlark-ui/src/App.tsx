@@ -249,6 +249,7 @@ export default function App() {
         {page === "jobs" && (
           <JobsPage
             copy={c}
+            isMockMode={isMockMode}
             selectedName={sub}
             onSelect={(name?: string) =>
               navigate("jobs", name, { replace: !name })

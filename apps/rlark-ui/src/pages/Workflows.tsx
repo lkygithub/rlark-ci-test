@@ -1806,66 +1806,82 @@ export function CreateWorkflowModal({
                                 }}
                               >
                                 <option value="storage">
-                                  {zh ? "对象存储" : "Object Storage"}
+                                  {zh ? "对象存储" : "Object storage"}
                                 </option>
                                 <option value="host">
-                                  {zh ? "主机路径" : "Host Path"}
+                                  {zh ? "主机目录" : "Host directory"}
                                 </option>
                               </select>
-                              {mount.type === "storage" ? (
-                                <select
-                                  value={mount.objectStorage}
-                                  onChange={(e) =>
-                                    updateRRMount(
-                                      role,
-                                      index,
-                                      "objectStorage",
-                                      e.target.value,
-                                    )
-                                  }
-                                >
-                                  <option value="">
-                                    {storageClassFetched &&
-                                    storageClasses.length === 0
-                                      ? zh
-                                        ? "无可用存储类"
-                                        : "No storage classes"
-                                      : zh
-                                        ? "选择存储类"
-                                        : "Select storage class"}
-                                  </option>
-                                  {storageClasses.map((sc) => (
-                                    <option key={sc.name} value={sc.name}>
-                                      {sc.name}
+                              <label className="mount-field-box">
+                                <span>
+                                  {mount.type === "storage"
+                                    ? zh
+                                      ? "对象存储"
+                                      : "Object storage"
+                                    : zh
+                                      ? "主机目录"
+                                      : "Host directory"}
+                                </span>
+                                {mount.type === "storage" ? (
+                                  <select
+                                    value={mount.objectStorage}
+                                    onChange={(e) =>
+                                      updateRRMount(
+                                        role,
+                                        index,
+                                        "objectStorage",
+                                        e.target.value,
+                                      )
+                                    }
+                                  >
+                                    <option value="">
+                                      {storageClassFetched &&
+                                      storageClasses.length === 0
+                                        ? zh
+                                          ? "无可用存储类"
+                                          : "No storage classes"
+                                        : zh
+                                          ? "选择存储类"
+                                          : "Select storage class"}
                                     </option>
-                                  ))}
-                                </select>
-                              ) : (
+                                    {storageClasses.map((sc) => (
+                                      <option key={sc.name} value={sc.name}>
+                                        {sc.name}
+                                      </option>
+                                    ))}
+                                  </select>
+                                ) : (
+                                  <input
+                                    value={mount.hostPath}
+                                    onChange={(e) =>
+                                      updateRRMount(
+                                        role,
+                                        index,
+                                        "hostPath",
+                                        e.target.value,
+                                      )
+                                    }
+                                    placeholder="/host/path"
+                                  />
+                                )}
+                              </label>
+                              <label className="mount-field-box">
+                                <span>
+                                  {zh ? "挂载到 Worker" : "Mount in worker"}
+                                </span>
                                 <input
-                                  value={mount.hostPath}
+                                  value={mount.mountPath}
                                   onChange={(e) =>
                                     updateRRMount(
                                       role,
                                       index,
-                                      "hostPath",
+                                      "mountPath",
                                       e.target.value,
                                     )
                                   }
-                                  placeholder="/host/path"
+                                  placeholder="/mnt/data"
                                 />
-                              )}
-                              <input
-                                value={mount.mountPath}
-                                onChange={(e) =>
-                                  updateRRMount(
-                                    role,
-                                    index,
-                                    "mountPath",
-                                    e.target.value,
-                                  )
-                                }
-                                placeholder="/mnt/data"
-                              />
+                              </label>
                               <button
                                 className="icon-button danger"
                                 onClick={() => removeRRMount(role, index)}
@@ -1996,20 +2012,25 @@ export function CreateWorkflowModal({
                 }}
                 disabled={step === 1 && !workflowName.trim()}
               >
-                {step === 2 &&
-                  activeJob &&
-                  (() => {
-                    const roles = activeJob.roles;
-                    const currentRole = activeRoleTab || roles[0];
-                    const roleIdx = roles.indexOf(currentRole);
-                    const isLastRole =
-                      roleIdx < 0 || roleIdx === roles.length - 1;
-                    const jobIdx = jobs.findIndex((j) => j.id === activeJobId);
-                    const isLastJob = jobIdx < 0 || jobIdx === jobs.length - 1;
-                    if (!isLastRole) return zh ? "下一个角色" : "Next Role";
-                    if (!isLastJob) return zh ? "下一个任务" : "Next Job";
-                    return zh ? "下一步" : "Next";
-                  })()}
+                {step === 2 && activeJob
+                  ? (() => {
+                      const roles = activeJob.roles;
+                      const currentRole = activeRoleTab || roles[0];
+                      const roleIdx = roles.indexOf(currentRole);
+                      const isLastRole =
+                        roleIdx < 0 || roleIdx === roles.length - 1;
+                      const jobIdx = jobs.findIndex(
+                        (j) => j.id === activeJobId,
+                      );
+                      const isLastJob =
+                        jobIdx < 0 || jobIdx === jobs.length - 1;
+                      if (!isLastRole) return zh ? "下一个角色" : "Next Role";
+                      if (!isLastJob) return zh ? "下一个任务" : "Next Job";
+                      return zh ? "下一步" : "Next";
+                    })()
+                  : zh
+                    ? "下一步"
+                    : "Next"}
               </button>
             ) : (
               <button

@@ -12,7 +12,7 @@ import {
 import type { Copy } from "../i18n";
 import type { ClusterSummary, CRDNode, NodeCategory } from "../types";
 import { useAutoRefresh } from "../hooks";
-import { buildMockCRDNodes, getNodeCategory } from "../utils/nodes";
+import { getNodeCategory } from "../utils/nodes";
 import { MetricCard, PageToolbar, Pagination } from "../components/shared";
 import { NodeResourceBrowser } from "../components/NodeResourceBrowser";
 
@@ -188,7 +188,7 @@ export function ClusterManagementPage({
       const body = await response.json();
       resolvedNodes = body.items ?? [];
     } catch {
-      resolvedNodes = buildMockCRDNodes();
+      resolvedNodes = [];
     }
     setNodes(resolvedNodes);
 
