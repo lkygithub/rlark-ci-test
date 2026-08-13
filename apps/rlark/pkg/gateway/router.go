@@ -98,6 +98,8 @@ func (g *Gateway) RegisterRoutes(r gin.IRouter) {
 	{
 		storage.GET("/storageclass", g.listStorageClass)
 		storage.POST("/storageclass", g.createStorageClass)
+		storage.PUT("/storageclass/:name", g.updateStorageClass)
+		storage.DELETE("/storageclass/:name", g.deleteStorageClass)
 		storage.GET("/storageclass/provider", g.listProvider)
 
 		scFiles := storage.Group("/storageclass/:cluster/:name")

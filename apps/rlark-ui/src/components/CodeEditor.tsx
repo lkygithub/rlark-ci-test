@@ -1,5 +1,4 @@
 import { useMemo, useState, type ChangeEventHandler } from "react";
-import { Braces, TerminalSquare } from "lucide-react";
 
 function LineNumbers({
   count,
@@ -21,25 +20,58 @@ function LineNumbers({
   );
 }
 
-function EditorHeader({
-  label,
-  language,
-}: {
-  label: string;
-  language: string;
-}) {
+const highlightTokens = new Set([
+  "python",
+  "python3",
+  "bash",
+  "sh",
+  "node",
+  "npm",
+  "pnpm",
+  "yarn",
+  "torchrun",
+  "kubectl",
+  "rlark",
+  "pip",
+  "pip3",
+]);
+
+function HighlightedCode({ code }: { code: string }) {
+  const lines = code.split("\n");
   return (
-    <div className="code-editor-header">
-      <span>
-        <TerminalSquare size={13} />
-        {label}
-      </span>
-      <em>
-        <Braces size={12} />
-        {language}
-      </em>
-    </div>
+    <>
+      {lines.map((line, lineIndex) => (
+        <span
+          className="code-editor-highlight-line"
+          key={`${lineIndex}-${line}`}
+        >
+          {highlightCodeLine(line || " ")}
+          {lineIndex < lines.length - 1 ? "\n" : null}
+        </span>
+      ))}
+    </>
   );
+}
+
+function highlightCodeLine(line: string) {
+  return line.split(/(\s+|&&|\|\||[|;])/).map((part, index) => {
+    if (!part) return null;
+    const className =
+      highlightTokens.has(part) || part.startsWith("-m")
+        ? "code-token-keyword"
+        : part.startsWith("--") || part.startsWith("-")
+          ? "code-token-flag"
+          : part.startsWith("/") || part.includes("=")
+            ? "code-token-value"
+            : "";
+    return className ? (
+      <span className={className} key={`${part}-${index}`}>
+        {part}
+      </span>
+    ) : (
+      <span key={`${part}-${index}`}>{part}</span>
+    );
+  });
 }
 
 export function CodeEditorField({
@@ -58,16 +90,35 @@ export function CodeEditorField({
   language?: string;
 }) {
   const [scrollTop, setScrollTop] = useState(0);
+  const [scrollLeft, setScrollLeft] = useState(0);
   const lineCount = useMemo(() => value.split("\n").length, [value]);
   return (
-    <div className="code-editor-shell code-editor-input">
-      <EditorHeader label={label} language={language} />
-      <div className="code-editor-body">
+    <div
+      className="code-editor-shell code-editor-input"
+      aria-label={`${label} ${language}`}
+      data-language={language}
+    >
+      <div className="code-editor-body" style={{ minHeight }}>
         <LineNumbers count={lineCount} offset={scrollTop} />
+        <pre
+          className="code-editor-highlight"
+          aria-hidden="true"
+          style={{
+            minHeight,
+            transform: `translate(${-scrollLeft}px, ${-scrollTop}px)`,
+          }}
+        >
+          <code>
+            <HighlightedCode code={value} />
+          </code>
+        </pre>
         <textarea
           value={value}
           onChange={onChange}
-          onScroll={(event) => setScrollTop(event.currentTarget.scrollTop)}
+          onScroll={(event) => {
+            setScrollTop(event.currentTarget.scrollTop);
+            setScrollLeft(event.currentTarget.scrollLeft);
+          }}
           placeholder={placeholder}
           spellCheck={false}
           autoCapitalize="off"
@@ -90,12 +141,17 @@ export function CodeBlock({
 }) {
   const lines = code.split("\n");
   return (
-    <div className="code-editor-shell code-editor-viewer">
-      <EditorHeader label={label} language={language} />
+    <div
+      className="code-editor-shell code-editor-viewer"
+      aria-label={`${label} ${language}`}
+      data-language={language}
+    >
       <div className="code-editor-body">
         <LineNumbers count={lines.length} />
         <pre>
-          <code>{code}</code>
+          <code>
+            <HighlightedCode code={code} />
+          </code>
         </pre>
       </div>
     </div>

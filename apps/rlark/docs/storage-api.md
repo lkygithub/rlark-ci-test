@@ -26,7 +26,8 @@ Storage API 提供多集群 StorageClass 管理能力。Gateway 通过 Server �
       "provider": "s3",
       "endpoint": "https://s3.amazonaws.com",
       "region": "us-east-1",
-      "pathStyle": false
+      "pathStyle": false,
+      "accessKeyId": "AKIA..."
     }
   },
   "success": true
@@ -43,6 +44,7 @@ Storage API 提供多集群 StorageClass 管理能力。Gateway 通过 Server �
 | `endpoint` | `string` | 存储服务端点地址 |
 | `region` | `string` | 存储区域 |
 | `pathStyle` | `bool` | 是否使用 path-style 寻址 |
+| `accessKeyId` | `string` | Access Key ID；不会返回 Access Key Secret |
 
 ### 2. 获取存储提供商列表
 **GET** `/api/v1/storage/storageclass/provider`
@@ -61,12 +63,22 @@ Storage API 提供多集群 StorageClass 管理能力。Gateway 通过 Server �
 }
 ```
 
-### 3. 创建 StorageClass（待实现）
+### 3. 创建 StorageClass
 **POST** `/api/v1/storage/storageclass`
 
-创建新的 StorageClass 资源（当前返回 501 Not Implemented）。
+在一个或多个集群中创建新的 rclone CSI StorageClass 资源和配套 Secret。
 
-### 4. 列出存储桶文件
+### 4. 更新 StorageClass
+**PUT** `/api/v1/storage/storageclass/{name}`
+
+更新指定 StorageClass 的对象存储配置和关联集群。请求中的 `clusters` 是期望的最终集群集合；已不在集合内的集群会移除该 StorageClass。更新时 `access_key_secret` 可留空，Gateway 会尽量复用已有 Secret 中的密钥。
+
+### 5. 删除 StorageClass
+**DELETE** `/api/v1/storage/storageclass/{name}`
+
+从所有已关联集群删除指定 StorageClass 和配套 Secret。可通过查询参数 `clusters=agent-a,agent-b` 限制删除范围。
+
+### 6. 列出存储桶文件
 **GET** `/api/v1/storage/storageclass/{cluster}/{name}/list`
 
 列出指定集群中 StorageClass 存储桶下的文件列表。
@@ -86,7 +98,7 @@ Storage API 提供多集群 StorageClass 管理能力。Gateway 通过 Server �
 }
 ```
 
-### 5. 上传文件
+### 7. 上传文件
 **POST** `/api/v1/storage/storageclass/{cluster}/{name}/upload`
 
 向指定 StorageClass 存储桶上传文件，使用 multipart/form-data 格式。
@@ -106,7 +118,7 @@ multipart/form-data，字段 `file` 为上传的文件。
 }
 ```
 
-### 6. 下载文件
+### 8. 下载文件
 **GET** `/api/v1/storage/storageclass/{cluster}/{name}/object/*key`
 
 下载指定存储桶中的对象，返回原始文件内容。

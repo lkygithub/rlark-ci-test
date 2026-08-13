@@ -6,6 +6,7 @@ import {
   type Dispatch,
   type SetStateAction,
 } from "react";
+import { isMockMode } from "./config";
 
 export function usePersistentState<T>(
   key: string,
@@ -32,24 +33,7 @@ export function usePersistentState<T>(
 }
 
 export function useBackendMode(): { isMockMode: boolean; checking: boolean } {
-  const [state, setState] = useState<"checking" | "backend" | "mock">(
-    "checking",
-  );
-
-  useEffect(() => {
-    const controller = new AbortController();
-    fetch("/api/v1/clusters", {
-      cache: "no-store",
-      signal: controller.signal,
-    })
-      .then((response) => setState(response.ok ? "backend" : "mock"))
-      .catch((error) => {
-        if (error?.name !== "AbortError") setState("mock");
-      });
-    return () => controller.abort();
-  }, []);
-
-  return { isMockMode: state === "mock", checking: state === "checking" };
+  return { isMockMode, checking: false };
 }
 
 export function useAutoRefresh(
