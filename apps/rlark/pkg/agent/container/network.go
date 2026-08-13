@@ -2,6 +2,8 @@ package container
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"net"
 	"net/url"
@@ -16,30 +18,65 @@ import (
 	"github.com/rlinf/rlark/apps/rlark/pkg/utils"
 )
 
+// containerNetworkCred 是容器网络凭证，记录 Pod 所属 Domain 的网络信息，
+// 用于在 NodeServer 中标识连接发起方并做路由决策。
 type containerNetworkCred struct {
 	// containerID        string
-	podID              string
-	domainID           string
-	domainIP           string
-	domainPrefixLength int
+	PodID              string `json:"pid,omitempty"`
+	DomainID           string `json:"did,omitempty"`
+	DomainIP           string `json:"dip,omitempty"`
+	DomainPrefixLength int    `json:"dpl,omitempty"`
 }
 
 // IP is an exported method.
 func (c containerNetworkCred) IP() string {
-	return c.domainIP
+	return c.DomainIP
 }
 
 // IPPrefixLength is an exported method.
 func (c containerNetworkCred) IPPrefixLength() int {
-	return c.domainPrefixLength
+	return c.DomainPrefixLength
 }
 
+// MarshalContainerNetworkCred 将容器网络凭证序列化为 JSON 后做 base64 编码，
+// 返回值去掉了末尾的 padding（"="），便于作为 URL 或 socket 地址的一部分传递。
+func MarshalContainerNetworkCred(cred *containerNetworkCred) (string, error) {
+	b, err := json.Marshal(cred)
+	if err != nil {
+		return "", fmt.Errorf("marshal container network cred: %w", err)
+	}
+	return strings.TrimRight(base64.StdEncoding.EncodeToString(b), "="), nil
+}
+
+// UnmarshalContainerNetworkCred 将 base64 编码（可带也可不带 padding）的字符串
+// 解码为 JSON 并反序列化为 containerNetworkCred。
+func UnmarshalContainerNetworkCred(s string) (*containerNetworkCred, error) {
+	padded := s
+	if r := len(s) % 4; r != 0 {
+		padded += strings.Repeat("=", 4-r)
+	}
+	data, err := base64.StdEncoding.DecodeString(padded)
+	if err != nil {
+		return nil, fmt.Errorf("decode container network cred: %w", err)
+	}
+	var cred containerNetworkCred
+	if err := json.Unmarshal(data, &cred); err != nil {
+		return nil, fmt.Errorf("unmarshal container network cred: %w", err)
+	}
+	return &cred, nil
+}
+
+// containerNetworkAdapter 基于 K8s lister 提供容器网络能力：
+// 根据 PID 查询网络凭证、根据凭证构造到目标 Pod 的拨号器，以及查询 Domain 内的 hosts 映射。
 type containerNetworkAdapter struct {
 	globalNamespace     string
 	domainPeerLister    listerv1alpha1.DomainPeerLister
 	managementPodLister listerv1alpha1.PodLister
 	sshAddr             string
 	sshDialer           *SSHDialer
+
+	enableSameClusterDirect  bool
+	enableCrossClusterDirect bool
 }
 
 // NewContainerNetworkAdapter creates a new ContainerNetworkAdapter.
@@ -49,6 +86,8 @@ func NewContainerNetworkAdapter(
 	managementPodLister listerv1alpha1.PodLister,
 	sshAddr string,
 	sshHostKey string,
+	enableSameClusterDirect bool,
+	enableCrossClusterDirect bool,
 ) *containerNetworkAdapter {
 	hostKeyCallback := makeHostKeyCallback(sshHostKey)
 	return &containerNetworkAdapter{
@@ -59,6 +98,8 @@ func NewContainerNetworkAdapter(
 		sshDialer: NewSSHDialer(SSHDialerConfig{
 			HostKeyCallback: hostKeyCallback,
 		}),
+		enableSameClusterDirect:  enableSameClusterDirect,
+		enableCrossClusterDirect: enableCrossClusterDirect,
 	}
 }
 
@@ -95,17 +136,17 @@ func (a *containerNetworkAdapter) GetContainerNetworkCred(ctx context.Context, p
 			return nil, fmt.Errorf("get domain peer: %w", err)
 		}
 		ret := containerNetworkCred{
-			podID:              source,
-			domainID:           dpeer.Name,
-			domainPrefixLength: dpeer.Spec.PrefixLen,
+			PodID:              source,
+			DomainID:           dpeer.Name,
+			DomainPrefixLength: dpeer.Spec.PrefixLen,
 		}
 		for _, pod := range dpeer.Spec.Pods {
 			if pod.UID == source {
-				ret.domainIP = pod.IP
+				ret.DomainIP = pod.IP
 				break
 			}
 		}
-		if ret.domainIP == "" {
+		if ret.DomainIP == "" {
 			return nil, fmt.Errorf("pod %s not found in domain peer %s", source, dpeer.Name)
 		}
 		return &ret, nil
@@ -115,6 +156,7 @@ func (a *containerNetworkAdapter) GetContainerNetworkCred(ctx context.Context, p
 	}
 }
 
+// getPodDomainByPodUID 通过 Pod UID（即 Pod 在控制面的名称）查询其所属的 Domain 名称。
 func (a *containerNetworkAdapter) getPodDomainByPodUID(ctx context.Context, podUID string) (string, error) {
 	pod, err := a.managementPodLister.Pods(a.globalNamespace).Get(podUID) // pod UID 即为 pod 在控制面的名称
 	if err != nil {
@@ -127,7 +169,7 @@ func (a *containerNetworkAdapter) getPodDomainByPodUID(ctx context.Context, podU
 func (a *containerNetworkAdapter) GetContainerNetworkDial(ctx context.Context, cred *containerNetworkCred, host string, query url.Values) (utils.Dial, error) {
 	logger := log.FromContext(ctx)
 
-	dpeer, err := a.domainPeerLister.DomainPeers(a.globalNamespace).Get(cred.domainID)
+	dpeer, err := a.domainPeerLister.DomainPeers(a.globalNamespace).Get(cred.DomainID)
 	if err != nil {
 		return nil, fmt.Errorf("get domain peer: %w", err)
 	}
@@ -144,7 +186,7 @@ func (a *containerNetworkAdapter) GetContainerNetworkDial(ctx context.Context, c
 		}, nil
 	}
 	// 1. 如果在同一个集群内，可以直接通过节点访问
-	if targetPod.GlobalNamespace == a.globalNamespace {
+	if targetPod.GlobalNamespace == a.globalNamespace && a.enableSameClusterDirect {
 		logger.V(1).Info("Target pod is in the same cluster, using direct node access", "targetPod", targetPod.LocalIP)
 		return func(ctx context.Context) (net.Conn, error) {
 			var dialer net.Dialer
@@ -154,16 +196,31 @@ func (a *containerNetworkAdapter) GetContainerNetworkDial(ctx context.Context, c
 	}
 
 	// 2. 如果不在同一个集群内，但是可以直接访问到目标节点，也可以直接通过节点访问
-	// TODO
+	if a.enableCrossClusterDirect {
+		_ = "TODO"
+	}
 
 	// 3. 不在同一个集群内，且无法直接访问到目标节点，则通过控制面代理进行访问
 	if agentID, ok := strings.CutPrefix(targetPod.GlobalNamespace, apis.RLarkAgentNamespacePrefix); ok {
 		target := fmt.Sprintf("%s.%s.agent:5700", targetPod.LocalIP, agentID)
 		logger.V(1).Info("Target pod is in a different cluster, using control plane proxy", "targetPod", target)
 		return func(ctx context.Context) (net.Conn, error) {
-			return a.sshDialer.DialContext(ctx, cred.domainID, a.sshAddr, dpeer.Spec.Cert, dpeer.Spec.Key, target)
+			return a.sshDialer.DialContext(ctx, cred.DomainID, a.sshAddr, dpeer.Spec.Cert, dpeer.Spec.Key, target)
 		}, nil
 	}
 
-	return nil, fmt.Errorf("container network dialer for domain %s not implemented", cred.domainID)
+	return nil, fmt.Errorf("container network dialer for domain %s not implemented", cred.DomainID)
+}
+
+// GetContainerNetworkDomainHosts returns the domain hosts for the given container network credentials.
+func (a *containerNetworkAdapter) GetContainerNetworkDomainHosts(ctx context.Context, cred *containerNetworkCred) (map[string]string, error) {
+	dpeer, err := a.domainPeerLister.DomainPeers(a.globalNamespace).Get(cred.DomainID)
+	if err != nil {
+		return nil, fmt.Errorf("get domain peer: %w", err)
+	}
+	hosts := make(map[string]string)
+	for _, pod := range dpeer.Spec.Pods {
+		hosts[fmt.Sprintf("%s.rlark-domain", pod.Name)] = pod.IP
+	}
+	return hosts, nil
 }

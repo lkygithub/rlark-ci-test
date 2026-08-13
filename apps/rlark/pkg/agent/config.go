@@ -29,10 +29,12 @@ type Config struct {
 
 	MetricsBindAddress string
 
-	NodeServerConfig      nodeserver.Config
-	NetworkSidecarImage   string
-	RLarkServerSSHAddress string
-	RLarkServerSSHHostKey string
+	NodeServerConfig         nodeserver.Config
+	NetworkSidecarImage      string
+	RLarkServerSSHAddress    string
+	RLarkServerSSHHostKey    string
+	EnableSameClusterDirect  bool
+	EnableCrossClusterDirect bool
 }
 
 // DefaultConfig returns the default config.
@@ -46,6 +48,9 @@ func DefaultConfig() Config {
 		LeaderElectionID:   fmt.Sprintf("%s-%d", os.Getenv("HOSTNAME"), os.Getpid()),
 		MetricsBindAddress: ":8081",
 		NodeServerConfig:   nodeserver.DefaultConfig(),
+
+		EnableSameClusterDirect:  true,
+		EnableCrossClusterDirect: true,
 	}
 }
 
@@ -65,4 +70,7 @@ func (c *Config) SetupFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&c.RLarkServerSSHAddress, "rlark-server-ssh-address", c.RLarkServerSSHAddress, "RLark server SSH address (user@host:port)")
 	fs.StringVar(&c.RLarkServerSSHHostKey, "rlark-server-ssh-host-key", c.RLarkServerSSHHostKey, "RLark server SSH host key")
 	fs.StringVar(&c.NetworkSidecarImage, "network-sidecar-image", c.NetworkSidecarImage, "Network sidecar container image (empty=disabled)")
+
+	fs.BoolVar(&c.EnableSameClusterDirect, "enable-same-cluster-direct", c.EnableSameClusterDirect, "Enable direct access to pods in the same cluster")
+	fs.BoolVar(&c.EnableCrossClusterDirect, "enable-cross-cluster-direct", c.EnableCrossClusterDirect, "Enable direct access to pods in different clusters")
 }
