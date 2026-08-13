@@ -7,6 +7,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 
 	rlarkv1alpha1 "github.com/rlinf/rlark/api/rlark.io/v1alpha1"
 )
@@ -237,10 +238,11 @@ func applyTensorBoardSidecar(template *corev1.PodTemplateSpec, mgmtTask *rlarkv1
 		})
 	}
 
-	template.Spec.Containers = append(template.Spec.Containers, corev1.Container{
+	template.Spec.InitContainers = append(template.Spec.InitContainers, corev1.Container{
 		Name:            tensorBoardSidecarName,
 		Image:           tensorBoardImage,
 		ImagePullPolicy: corev1.PullIfNotPresent,
+		RestartPolicy:   ptr.To(corev1.ContainerRestartPolicyAlways),
 		Command:         []string{"tensorboard"},
 		Args: []string{
 			"--logdir=" + tbDir,

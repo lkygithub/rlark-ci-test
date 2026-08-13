@@ -2,9 +2,9 @@ package task
 
 import (
 	rlarkv1alpha1 "github.com/rlinf/rlark/api/rlark.io/v1alpha1"
-	corev1 "k8s.io/api/core/v1"
-
 	"github.com/rlinf/rlark/apps/rlark/pkg/utils"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/utils/ptr"
 )
 
 const (
@@ -18,16 +18,17 @@ func applyNetworkSidecar(template *corev1.PodTemplateSpec, mgmtTask *rlarkv1alph
 		return
 	}
 
-	for i := range template.Spec.Containers {
-		if template.Spec.Containers[i].Name == sidecarContainerName {
+	for i := range template.Spec.InitContainers {
+		if template.Spec.InitContainers[i].Name == sidecarContainerName {
 			return
 		}
 	}
 
-	template.Spec.Containers = append(template.Spec.Containers, corev1.Container{
+	template.Spec.InitContainers = append(template.Spec.InitContainers, corev1.Container{
 		Name:            sidecarContainerName,
 		Image:           sidecarImage,
 		ImagePullPolicy: corev1.PullIfNotPresent,
+		RestartPolicy:   ptr.To(corev1.ContainerRestartPolicyAlways),
 		Env: []corev1.EnvVar{
 			{
 				Name:  "LOG_LEVEL",
