@@ -46,11 +46,16 @@ func (n *nodeAgent) Run(ctx context.Context) error {
 		managementPodLister,
 		n.a.config.RLarkServerSSHAddress,
 		n.a.config.RLarkServerSSHHostKey,
+		n.a.config.EnableSameClusterDirect,
+		n.a.config.EnableCrossClusterDirect,
 	)
 	nodeserver := nodeserver.NewNodeServer(
 		n.a.config.NodeServerConfig,
 		networkAdapter.GetContainerNetworkCred,
 		networkAdapter.GetContainerNetworkDial,
+		networkAdapter.GetContainerNetworkDomainHosts,
+		container.MarshalContainerNetworkCred,
+		container.UnmarshalContainerNetworkCred,
 	)
 
 	return nodeserver.Run(ctx)

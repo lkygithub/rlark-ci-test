@@ -141,7 +141,21 @@ func (s *Sidecar) Run(ctx context.Context) error {
 		}
 	}()
 
-	// ─── 4. 等待任一组件退出 ───
+	// ─── 4. 启动 Hosts 同步（定期从 NodeServer 获取 hosts 并更新本地 hosts 文件） ───
+	if s.config.HostsSyncEnabled {
+		hs := newHostsSyncer(s.transport, s.config.HostsFile, s.config.HostsSyncInterval)
+		go func() {
+			if err := hs.Run(ctx); err != nil {
+				logger.Error(nil, "Hosts syncer stopped", "err", err)
+			}
+		}()
+		logger.Info("Hosts sync started",
+			"interval", s.config.HostsSyncInterval,
+			"hostsFile", s.config.HostsFile,
+		)
+	}
+
+	// ─── 5. 等待任一组件退出 ───
 	select {
 	case err := <-proxyErr:
 		logger.Error(nil, "Proxy stopped", "err", err)
