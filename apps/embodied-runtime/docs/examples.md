@@ -330,8 +330,6 @@ helm install embodied-runtime ./charts/embodied-runtime -f values-r2.yaml -n rla
 
 > The chart enables the webhook only when **both** `webhook.enabled` and `config.hostMacvlans` are set. When `hostMacvlans` is non-empty the DaemonSet also sets `hostPID: true` (required for the plugin to read the caller's PID via socket peer credentials).
 
-> **Note — macvlan needs `ip` / `nsenter` on the host and in the image.** Creating a macvlan shells out to `ip` (iproute2) and `nsenter` (util-linux). The **host node** must provide `ip` (the host-side create step enters PID 1's namespaces), and the image running the netmac code must ship both `ip` and `nsenter`. The official `embodied-runtime`, `ros-base`, and `ros2-base` images already install `iproute2` + `util-linux`; if you use a **custom controller image**, add both packages or macvlan setup fails with `ip: not found` / `nsenter: not found`. BusyBox's `ip` applet does **not** support macvlan/netns — the full `iproute2` package is required.
-
 **Run a workload pod.** The webhook injects the `devinit` init container — you only author the main container:
 
 ```yaml
@@ -372,7 +370,9 @@ initContainers:
     command: ["devinit", "setup"]   # reads RLINF_EMBODIED_DEVINIT_SOCKET_PATH
     resources:
       requests:
-        rlinf.io/device: 1
+        rlinf.io/device: 1          # triggers Allocate → RunDir mount + env vars
+      limits:                        # required: LimitRanger/ResourceQuota rejects init containers without limits
+        rlinf.io/device: 1           # extended-resource limits must equal requests
 ```
 
 ---
@@ -405,8 +405,6 @@ config:
       labels:
         app.kubernetes.io/name: ros-controller
     macvlans:                     # controller-side macvlan to reach the robot
-      # NB: the controller image must ship `ip` (iproute2) + `nsenter`
-      # (util-linux), and the host node must have `ip` — see the R2 note.
       - host_nic: eno1
         name: macvlan0
         ip: 172.16.0.101/24

@@ -243,6 +243,8 @@ initContainers:
     resources:
       requests:
         rlinf.io/device: 1          # 触发 Allocate → RunDir 挂载 + 环境变量
+      limits:                        # 必填：LimitRanger/ResourceQuota 会拒绝未设置 limits 的 init 容器
+        rlinf.io/device: 1           # 扩展资源的 limits 必须等于 requests
 ```
 
 服务通过 Unix socket 对端凭证（SO_PEERCRED）读取调用方 PID，并用 `pkg/netmac` 在该 PID 的网络命名空间内创建每个已配置的 macvlan。使用 `hostNetwork: true` 的 Pod 会被检测到（其网络命名空间与宿主相同）并跳过 —— macvlan 绝不能落入宿主网络命名空间。接口在节点侧通过 `host_macvlans` 声明，每个条目是一个 `pkg/netmac` 的 `MACVLANConfig`：
