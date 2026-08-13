@@ -231,15 +231,22 @@ func buildDevinitPatch(pod *corev1.Pod, resourceName, image string) ([]byte, err
 // unit of the plugin's extended resource (so Allocate injects the RunDir
 // socket mount and RLINF_EMBODIED_DEVINIT_SOCKET_PATH env var) and runs the
 // devinit CLI, which lives in the image at devinitBinaryPath.
+//
+// The extended resource is mirrored in limits: Kubernetes requires
+// extended-resource limits to equal their requests, and clusters enforcing a
+// LimitRanger / ResourceQuota reject containers — including init containers —
+// that declare no limits, which would otherwise block the injected pod from
+// being created.
 func buildDevinitContainer(resourceName, image string) corev1.Container {
+	resName := corev1.ResourceName(resourceName)
+	one := resource.MustParse("1")
 	return corev1.Container{
 		Name:    devinitContainerName,
 		Image:   image,
 		Command: []string{devinitBinaryPath, "setup"},
 		Resources: corev1.ResourceRequirements{
-			Requests: corev1.ResourceList{
-				corev1.ResourceName(resourceName): resource.MustParse("1"),
-			},
+			Requests: corev1.ResourceList{resName: one},
+			Limits:   corev1.ResourceList{resName: one},
 		},
 	}
 }

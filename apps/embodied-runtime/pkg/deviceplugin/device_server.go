@@ -49,6 +49,21 @@ type DeviceServer struct {
 	mu      sync.Mutex
 	srv     *grpc.Server
 	started bool
+
+	// setupMu serializes host-side macvlan work across concurrent Setup
+	// calls (gRPC runs each RPC in its own goroutine, so multiple pods
+	// starting on the same node race). Two TOCTOU windows exist: (1) the
+	// per-call IP auto-pick in EnrichMACVLANConfig reads the host ARP cache,
+	// so two pods enriching concurrently can both pick the same "unused" IP
+	// and silently conflict on the robot subnet; (2) MACVLAN.Create adds the
+	// macvlan to the host netns before moving it into the pod netns, so two
+	// pods creating a same-named macvlan collide on `ip link add` during
+	// that transient window. host_macvlans is node-level, so every pod
+	// reuses the same Name — the collision is guaranteed, not theoretical.
+	// One DeviceServer per node, so a server-level mutex fully serializes
+	// host-side work here; the critical section is a handful of `ip`
+	// commands, so the cost is negligible.
+	setupMu sync.Mutex
 }
 
 // NewDeviceServer builds a DeviceServer for the given macvlan configs and
@@ -154,6 +169,13 @@ func (s *DeviceServer) Setup(ctx context.Context, _ *devicepb.SetupRequest) (*de
 			Skipped:     macvlanNames(s.cfgs),
 		}, nil
 	}
+
+	// Serialize host-side macvlan work across concurrent Setup calls — see
+	// setupMu. The host-network skip above is per-pod and touches no shared
+	// host state, so it stays outside the lock to avoid blocking other pods
+	// behind a hostNetwork caller.
+	s.setupMu.Lock()
+	defer s.setupMu.Unlock()
 
 	created := make([]string, 0, len(s.cfgs))
 	mvs := make([]*netmac.MACVLAN, 0, len(s.cfgs))

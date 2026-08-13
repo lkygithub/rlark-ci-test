@@ -245,6 +245,8 @@ initContainers:
     resources:
       requests:
         rlinf.io/device: 1          # triggers Allocate → RunDir mount + env vars
+      limits:                        # required: LimitRanger/ResourceQuota rejects init containers without limits
+        rlinf.io/device: 1           # extended-resource limits must equal requests
 ```
 
 The service reads the caller's PID from the Unix socket peer credentials (SO_PEERCRED) and creates each configured macvlan in that PID's network namespace via `pkg/netmac`. Pods using `hostNetwork: true` are detected (their netns equals the host's) and skipped — a macvlan must never be dropped into the host netns. The interfaces are declared node-side under `host_macvlans`, each a `pkg/netmac` `MACVLANConfig`:

@@ -1,30 +1,8 @@
 package netmac
 
 import (
-	"reflect"
 	"testing"
 )
-
-// TestIsAlreadyExists verifies the "File exists" detection used to make
-// macvlan configuration commands idempotent (so reusing a leftover
-// interface from a previous container instance does not fail).
-func TestIsAlreadyExists(t *testing.T) {
-	cases := []struct {
-		out  string
-		want bool
-	}{
-		{"RTNETLINK answers: File exists\n", true},
-		{"Error: File exists\n", true},
-		{"RTNETLINK answers: No such process\n", false},
-		{"Device or resource busy\n", false},
-		{"", false},
-	}
-	for _, c := range cases {
-		if got := isAlreadyExists([]byte(c.out)); got != c.want {
-			t.Errorf("isAlreadyExists(%q) = %v, want %v", c.out, got, c.want)
-		}
-	}
-}
 
 // TestNewMACVLANDefaultPID verifies the default (no creation option) targets
 // the current network namespace (PID 0), preserving the original behaviour.
@@ -71,37 +49,10 @@ func TestNewMACVLANWithPID(t *testing.T) {
 	}
 }
 
-// TestNetnsCmd verifies the per-namespace command wrapping:
-//   - PID 0  → plain `ip <args>` (current netns)
-//   - PID >0 → `nsenter --target <pid> --net -- ip <args>`
-//
-// Only the constructed command's Args are inspected; nothing is executed,
-// so this does not require `ip` or `nsenter` to exist on the test host.
-func TestNetnsCmd(t *testing.T) {
-	m := &MACVLAN{Name: "macvlan0"}
-
-	// PID 0 → current netns: plain `ip`.
-	c := m.netnsCmd("link", "show", "macvlan0")
-	want := []string{"ip", "link", "show", "macvlan0"}
-	if !reflect.DeepEqual(c.Args, want) {
-		t.Errorf("PID 0: cmd args = %v, want %v", c.Args, want)
-	}
-
-	// PID 1234 → nsenter into that PID's netns.
-	m.PID = 1234
-	c = m.netnsCmd("addr", "add", "172.16.0.100/24", "dev", "macvlan0")
-	want = []string{
-		"nsenter", "--target", "1234", "--net", "--", "ip",
-		"addr", "add", "172.16.0.100/24", "dev", "macvlan0",
-	}
-	if !reflect.DeepEqual(c.Args, want) {
-		t.Errorf("PID 1234: cmd args = %v, want %v", c.Args, want)
-	}
-}
-
 // TestCreateRejectsNegativePID verifies that a negative PID — a programming
-// error — fails fast at Create instead of leaking into nsenter. The guard
-// runs before any command is executed, so this is safe on any platform.
+// error — fails fast at Create before any netlink operation runs, so the
+// guard is safe on any platform (on non-Linux Create returns a platform
+// error, but only after the same guard).
 func TestCreateRejectsNegativePID(t *testing.T) {
 	cfg := MACVLANConfig{Name: "macvlan0", HostNIC: "eno1", IP: "172.16.0.100/24"}
 	m := NewMACVLAN(cfg, WithPID(-1))
