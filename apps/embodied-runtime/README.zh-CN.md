@@ -328,6 +328,8 @@ helm install embodied-runtime ./charts/embodied-runtime \
 
 典型模式：`initContainer` 把 `ros-controller` / `rosctr`（或 `camera-controller` / `camctr`）从 `embodied-runtime` 镜像拷贝到共享的 `emptyDir`；主容器从该目录运行控制器二进制。存活 / 就绪探针通过 CLI（`rosctr list`、`camctr list`）访问 Unix socket 来实现。
 
+常见场景（V4L2 / 托管摄像头，USB / macvlan / ROS 托管机器人，以及组合节点）的端到端部署与使用样例见 [`docs/examples.zh-CN.md`](./docs/examples.zh-CN.md)。
+
 需要硬件的 Pod 只要申请资源，即会自动被注入 socket + CLI 挂载：
 
 ```yaml
