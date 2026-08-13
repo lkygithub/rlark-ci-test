@@ -24,10 +24,12 @@ type containerNetworkCred struct {
 	domainPrefixLength int
 }
 
+// IP is an exported method.
 func (c containerNetworkCred) IP() string {
 	return c.domainIP
 }
 
+// IPPrefixLength is an exported method.
 func (c containerNetworkCred) IPPrefixLength() int {
 	return c.domainPrefixLength
 }
@@ -40,6 +42,7 @@ type containerNetworkAdapter struct {
 	sshDialer           *SSHDialer
 }
 
+// NewContainerNetworkAdapter creates a new ContainerNetworkAdapter.
 func NewContainerNetworkAdapter(
 	globalNamespace string,
 	domainPeerLister listerv1alpha1.DomainPeerLister,
@@ -73,6 +76,7 @@ func makeHostKeyCallback(sshHostKey string) ssh.HostKeyCallback {
 	return ssh.FixedHostKey(pk)
 }
 
+// GetContainerNetworkCred returns the containerNetworkCred.
 func (a *containerNetworkAdapter) GetContainerNetworkCred(ctx context.Context, pid int32) (*containerNetworkCred, error) {
 	// 根据 pid 获取进程所属容器/pod 的信息，获取其所属的 domain，以及 domain 的网络信息
 	sourceType, source, err := a.getProcessNetworkInfo(ctx, pid)
@@ -119,6 +123,7 @@ func (a *containerNetworkAdapter) getPodDomainByPodUID(ctx context.Context, podU
 	return pod.Spec.Domain, nil
 }
 
+// GetContainerNetworkDial returns the containerNetworkDial.
 func (a *containerNetworkAdapter) GetContainerNetworkDial(ctx context.Context, cred *containerNetworkCred, host string, query url.Values) (utils.Dial, error) {
 	logger := log.FromContext(ctx)
 

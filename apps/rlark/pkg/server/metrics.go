@@ -56,14 +56,17 @@ func newServerMetrics() *serverMetrics {
 	}
 }
 
+// IncProxyRequest is an exported method.
 func (m *serverMetrics) IncProxyRequest(target, status string) {
 	m.proxyRequestsTotal.WithLabelValues(target, status).Inc()
 }
 
+// SetPeerConnections sets the peerConnections.
 func (m *serverMetrics) SetPeerConnections(cnt int) {
 	m.peerConnections.Set(float64(cnt))
 }
 
+// IncSSHConnection is an exported method.
 func (m *serverMetrics) IncSSHConnection(user, status string) {
 	m.sshConnections.WithLabelValues(user, status).Inc()
 }

@@ -21,6 +21,7 @@ import (
 	"github.com/rlinf/rlark/apps/rlark/pkg/auth/cert"
 )
 
+// Variables used by the package.
 var (
 	ServerPeerPrefix = "rlark-server-peer-"
 )

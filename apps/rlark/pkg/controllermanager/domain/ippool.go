@@ -90,6 +90,7 @@ func (p *IPPool) Allocate() (string, error) {
 	return "", fmt.Errorf("no available IP in pool %s", p.cidr)
 }
 
+// PrefixLength returns the prefix length.
 func (p *IPPool) PrefixLength() int {
 	return p.prefix.Bits()
 }

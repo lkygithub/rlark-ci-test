@@ -10,10 +10,12 @@ import (
 type localAddrContextKey struct{}
 type remoteAddrContextKey struct{}
 
+// WithLocalAddr returns a modified value with the given localAddr.
 func WithLocalAddr(ctx context.Context, addr net.Addr) context.Context {
 	return context.WithValue(ctx, localAddrContextKey{}, addr)
 }
 
+// WithRemoteAddr returns a modified value with the given remoteAddr.
 func WithRemoteAddr(ctx context.Context, addr net.Addr) context.Context {
 	return context.WithValue(ctx, remoteAddrContextKey{}, addr)
 }
@@ -23,6 +25,7 @@ type netConnWithValues struct {
 	ctx context.Context
 }
 
+// LocalAddr is an exported method.
 func (c *netConnWithValues) LocalAddr() net.Addr {
 	if addr, ok := c.ctx.Value(localAddrContextKey{}).(net.Addr); ok {
 		return addr
@@ -30,6 +33,7 @@ func (c *netConnWithValues) LocalAddr() net.Addr {
 	return c.Conn.LocalAddr()
 }
 
+// RemoteAddr is an exported method.
 func (c *netConnWithValues) RemoteAddr() net.Addr {
 	if addr, ok := c.ctx.Value(remoteAddrContextKey{}).(net.Addr); ok {
 		return addr
@@ -37,6 +41,7 @@ func (c *netConnWithValues) RemoteAddr() net.Addr {
 	return c.Conn.RemoteAddr()
 }
 
+// Dial is a dial function type.
 type Dial func(ctx context.Context) (net.Conn, error)
 
 type netPipe struct {
@@ -45,6 +50,7 @@ type netPipe struct {
 	onceClose sync.Once
 }
 
+// Accept is an exported method.
 func (p *netPipe) Accept() (net.Conn, error) {
 	select {
 	case c, ok := <-p.c:
@@ -57,6 +63,7 @@ func (p *netPipe) Accept() (net.Conn, error) {
 	}
 }
 
+// Close is an exported method.
 func (p *netPipe) Close() error {
 	p.onceClose.Do(func() {
 		close(p.done)
@@ -67,6 +74,7 @@ func (p *netPipe) Close() error {
 	return nil
 }
 
+// Addr adds the r.
 func (p *netPipe) Addr() net.Addr {
 	return &net.UnixAddr{
 		Net:  "net_pipe",
@@ -74,6 +82,7 @@ func (p *netPipe) Addr() net.Addr {
 	}
 }
 
+// DialContext dials the context.
 func (p *netPipe) DialContext(ctx context.Context) (net.Conn, error) {
 	// 快速路径：已关闭则直接返回
 	select {

@@ -15,6 +15,8 @@ import (
 // StartRobot
 // --------------------------------------------------------------------------
 
+// StartRobot launches the ROS 2 launch process for the requested robot in
+// the specified mode.
 func (c *Controller) StartRobot(ctx context.Context, req *pb.StartRobotRequest) (*pb.StartRobotResponse, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -50,6 +52,7 @@ func (c *Controller) StartRobot(ctx context.Context, req *pb.StartRobotRequest) 
 // StopRobot
 // --------------------------------------------------------------------------
 
+// StopRobot stops the running launch process for the requested robot.
 func (c *Controller) StopRobot(ctx context.Context, req *pb.StopRobotRequest) (*pb.StopRobotResponse, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -75,6 +78,8 @@ func (c *Controller) StopRobot(ctx context.Context, req *pb.StopRobotRequest) (*
 // SwitchMode
 // --------------------------------------------------------------------------
 
+// SwitchMode stops the current mode and launches the requested mode for the
+// robot.
 func (c *Controller) SwitchMode(ctx context.Context, req *pb.SwitchModeRequest) (*pb.SwitchModeResponse, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -115,6 +120,8 @@ func (c *Controller) SwitchMode(ctx context.Context, req *pb.SwitchModeRequest) 
 // ResetRobot
 // --------------------------------------------------------------------------
 
+// ResetRobot stops the launch process and resets the robot to a clean
+// stopped state.
 func (c *Controller) ResetRobot(ctx context.Context, req *pb.ResetRobotRequest) (*pb.ResetRobotResponse, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()

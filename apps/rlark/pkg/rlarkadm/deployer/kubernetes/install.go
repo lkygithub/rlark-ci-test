@@ -27,10 +27,12 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
+// Installer installs RLark components.
 type Installer struct {
 	summary *types.InstallSummary
 }
 
+// Install installs the components.
 func (d *Installer) Install(cfg *types.DeployConfig, certBundle *cert.Bundle) error {
 	logger := log.GetLogger()
 	kubeconfig := cfg.Kubernetes.Kubeconfig
@@ -123,6 +125,7 @@ func (d *Installer) Install(cfg *types.DeployConfig, certBundle *cert.Bundle) er
 	return nil
 }
 
+// Summary is an exported method.
 func (d *Installer) Summary() *types.InstallSummary {
 	return d.summary
 }

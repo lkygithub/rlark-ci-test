@@ -23,6 +23,7 @@ import (
 	"github.com/rlinf/rlark/apps/rlark/pkg/common"
 )
 
+// Constants used by the package.
 const (
 	ManagementTaskNameAnnotation            = "rlark.io/management-task-name"
 	ManagementTaskNamespaceAnnotation       = "rlark.io/management-task-namespace"
@@ -38,9 +39,10 @@ const (
 
 // pullReconciler watches management Tasks and creates workloads on local cluster.
 type pullReconciler struct {
-	c *TaskController
+	c *Controller
 }
 
+// Reconcile reconciles the resource.
 func (r *pullReconciler) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
 	logger := log.FromContext(ctx).WithValues("task", req.NamespacedName)
 

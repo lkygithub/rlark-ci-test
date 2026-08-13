@@ -34,6 +34,7 @@ type WorkflowReconciler struct {
 // +kubebuilder:rbac:groups=rlinf.io,resources=workflows/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=rlinf.io,resources=workflows/finalizers,verbs=update
 
+// NewWorkflowReconciler creates a new WorkflowReconciler.
 func NewWorkflowReconciler(config Config, client client.Client, db *bun.DB) *WorkflowReconciler {
 	return &WorkflowReconciler{
 		config: config,

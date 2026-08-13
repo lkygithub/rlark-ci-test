@@ -10,6 +10,7 @@ import (
 	"github.com/rlinf/rlark/apps/rlark/pkg/log"
 )
 
+// Reconciler reconciles resources.
 type Reconciler interface {
 	Get(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error
 	Status() client.StatusWriter
@@ -17,6 +18,7 @@ type Reconciler interface {
 	IsTerminal(obj client.Object) bool
 }
 
+// ReconcileWith reconciles the resource.
 func ReconcileWith(
 	ctx context.Context,
 	req ctrl.Request,

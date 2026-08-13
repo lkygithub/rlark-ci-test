@@ -7,32 +7,37 @@ import (
 	"github.com/rlinf/rlark/apps/rlark/pkg/agent/controllers/base"
 )
 
-type TaskController struct {
-	base.BaseController
+// Controller manages resources.
+type Controller struct {
+	base.Controller
 }
 
-var _ base.Reconciler = (*TaskController)(nil)
+var _ base.Reconciler = (*Controller)(nil)
 
-func NewTaskController(bc base.BaseController) *TaskController {
-	tc := &TaskController{
-		BaseController: bc,
+// NewTaskController creates a new Controller.
+func NewTaskController(bc base.Controller) *Controller {
+	tc := &Controller{
+		Controller: bc,
 	}
 	tc.C = tc
 	return tc
 }
 
-func (c *TaskController) KubernetesResource() base.KubernetesResource {
+// KubernetesResource is an exported method.
+func (c *Controller) KubernetesResource() base.KubernetesResource {
 	return base.KubernetesResource{
 		Name: "task",
 		Type: &rlarkv1alpha1.Task{},
 	}
 }
 
-func (c *TaskController) AsPullReconciler() base.KubernetesReconciler {
+// AsPullReconciler is an exported method.
+func (c *Controller) AsPullReconciler() base.KubernetesReconciler {
 	return &pullReconciler{c: c}
 }
 
-func (c *TaskController) AsKubePushReconcilers() map[base.KubernetesResource]base.KubernetesReconciler {
+// AsKubePushReconcilers is an exported method.
+func (c *Controller) AsKubePushReconcilers() map[base.KubernetesResource]base.KubernetesReconciler {
 	return map[base.KubernetesResource]base.KubernetesReconciler{
 		base.KubernetesResource{
 			Name: "task-deployment",
@@ -49,10 +54,12 @@ func (c *TaskController) AsKubePushReconcilers() map[base.KubernetesResource]bas
 	}
 }
 
-func (c *TaskController) AsDockerPushReconcilers() map[base.DockerResource]base.DockerReconciler {
+// AsDockerPushReconcilers is an exported method.
+func (c *Controller) AsDockerPushReconcilers() map[base.DockerResource]base.DockerReconciler {
 	return nil
 }
 
-func (c *TaskController) AsRawPushReconcilers() map[base.RawResource]base.RawReconciler {
+// AsRawPushReconcilers is an exported method.
+func (c *Controller) AsRawPushReconcilers() map[base.RawResource]base.RawReconciler {
 	return nil
 }

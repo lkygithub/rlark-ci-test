@@ -40,6 +40,7 @@ type Sidecar struct {
 	transport http.RoundTripper
 }
 
+// NewSidecar creates a new Sidecar.
 func NewSidecar(config Config) *Sidecar {
 	return &Sidecar{
 		config: config,

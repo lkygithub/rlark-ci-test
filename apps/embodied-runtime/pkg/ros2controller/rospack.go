@@ -18,6 +18,8 @@ import (
 // ListPackages
 // --------------------------------------------------------------------------
 
+// ListPackages returns the ROS 2 packages allowed by the launch package
+// whitelist.
 func (c *Controller) ListPackages(ctx context.Context, req *pb.ListPackagesRequest) (*pb.ListPackagesResponse, error) {
 	allPkgs, err := ros2PkgList()
 	if err != nil {
@@ -37,6 +39,8 @@ func (c *Controller) ListPackages(ctx context.Context, req *pb.ListPackagesReque
 // GetPackageInfo
 // --------------------------------------------------------------------------
 
+// GetPackageInfo returns metadata parsed from the package.xml of the
+// requested ROS 2 package.
 func (c *Controller) GetPackageInfo(ctx context.Context, req *pb.GetPackageInfoRequest) (*pb.GetPackageInfoResponse, error) {
 	pkgPath, err := ros2PkgPrefix(req.Name)
 	if err != nil {
@@ -63,6 +67,8 @@ func (c *Controller) GetPackageInfo(ctx context.Context, req *pb.GetPackageInfoR
 // GetPackageLaunchFiles
 // --------------------------------------------------------------------------
 
+// GetPackageLaunchFiles returns the launch files available in the requested
+// ROS 2 package.
 func (c *Controller) GetPackageLaunchFiles(ctx context.Context, req *pb.GetPackageLaunchFilesRequest) (*pb.GetPackageLaunchFilesResponse, error) {
 	pkgPath, err := ros2PkgPrefix(req.Name)
 	if err != nil {

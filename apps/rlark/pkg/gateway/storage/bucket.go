@@ -8,6 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 )
 
+// IsBucketExist reports whether bucketExist.
 func (c *Client) IsBucketExist() (bool, error) {
 	ctx := context.Background()
 	_, err := c.s3Client.HeadBucket(ctx, &s3.HeadBucketInput{
@@ -20,6 +21,7 @@ func (c *Client) IsBucketExist() (bool, error) {
 	return true, nil
 }
 
+// CreateBucket creates the bucket.
 func (c *Client) CreateBucket() error {
 	ctx := context.Background()
 	_, err := c.s3Client.CreateBucket(ctx, &s3.CreateBucketInput{
@@ -28,7 +30,7 @@ func (c *Client) CreateBucket() error {
 	return err
 }
 
-// GetBucketInfo returns basic bucket info
+// GetBucketInfo returns basic bucket info.
 func (c *Client) GetBucketInfo() (string, error) {
 	ctx := context.Background()
 	output, err := c.s3Client.GetBucketLocation(ctx, &s3.GetBucketLocationInput{
@@ -45,6 +47,7 @@ func (c *Client) GetBucketInfo() (string, error) {
 	return location, nil
 }
 
+// SetBucketACL sets the bucketACL.
 func (c *Client) SetBucketACL(acl types.BucketCannedACL) error {
 	ctx := context.Background()
 	_, err := c.s3Client.PutBucketAcl(ctx, &s3.PutBucketAclInput{
@@ -54,6 +57,7 @@ func (c *Client) SetBucketACL(acl types.BucketCannedACL) error {
 	return err
 }
 
+// GetBucketACL returns the bucketACL.
 func (c *Client) GetBucketACL() (types.AccessControlPolicy, error) {
 	ctx := context.Background()
 	output, err := c.s3Client.GetBucketAcl(ctx, &s3.GetBucketAclInput{
@@ -71,10 +75,12 @@ func (c *Client) GetBucketACL() (types.AccessControlPolicy, error) {
 	return policy, nil
 }
 
+// SetBucketPublicRead sets the bucketPublicRead.
 func (c *Client) SetBucketPublicRead() error {
 	return c.SetBucketACL(types.BucketCannedACLPublicRead)
 }
 
+// SetBucketPrivate sets the bucketPrivate.
 func (c *Client) SetBucketPrivate() error {
 	return c.SetBucketACL(types.BucketCannedACLPrivate)
 }

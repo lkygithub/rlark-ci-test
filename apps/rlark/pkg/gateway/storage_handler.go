@@ -24,7 +24,7 @@ import (
 	"github.com/rlinf/rlark/apps/rlark/pkg/utils"
 )
 
-// StorageClassData 定义StorageClass的响应数据结构
+// StorageClassData 定义StorageClass的响应数据结构.
 type StorageClassData struct {
 	Name        string   `json:"name"`
 	Clusters    []string `json:"clusters"`
@@ -37,14 +37,14 @@ type StorageClassData struct {
 	AccessKeyId string   `json:"accessKeyId"`
 }
 
-// Provider 定义存储提供商信息
+// Provider 定义存储提供商信息.
 type Provider struct {
 	Name  string `json:"name"`
 	Value string `json:"value"`
 }
 
 // listStorageClass 处理StorageClass列表请求
-// 通过Server代理向指定集群的Agent请求StorageClass列表
+// 通过Server代理向指定集群的Agent请求StorageClass列表.
 func (g *Gateway) listStorageClass(c *gin.Context) {
 	clustersParam := c.Query("clusters")
 
@@ -160,7 +160,7 @@ func (g *Gateway) listStorageClass(c *gin.Context) {
 	})
 }
 
-// fetchStorageClassesFromAgent 通过Server代理从指定Agent获取StorageClass列表
+// fetchStorageClassesFromAgent 通过Server代理从指定Agent获取StorageClass列表.
 func (g *Gateway) fetchStorageClassesFromAgent(ctx context.Context, agentID string) ([]storagev1.StorageClass, error) {
 	httpClient := &http.Client{Transport: g.serverTransport}
 	url := fmt.Sprintf("%s/api/proxy/%s/api/kubernetes/apis/storage.k8s.io/v1/storageclasses",
@@ -196,7 +196,7 @@ func (g *Gateway) fetchStorageClassesFromAgent(ctx context.Context, agentID stri
 	return listResp.Items, nil
 }
 
-// listProvider 列出支持的存储提供商
+// listProvider 列出支持的存储提供商.
 func (g *Gateway) listProvider(c *gin.Context) {
 	providers := []Provider{
 		{Name: "AWS S3", Value: "AWS"},
@@ -978,7 +978,7 @@ func (g *Gateway) listStorageClassFiles(c *gin.Context) {
 	})
 }
 
-// uploadStorageClassFile handles POST /api/v1/storage/storageclass/:cluster/:name/upload
+// uploadStorageClassFile handles POST /api/v1/storage/storageclass/:cluster/:name/upload.
 func (g *Gateway) uploadStorageClassFile(c *gin.Context) {
 	cluster := c.Param("cluster")
 	name := c.Param("name")
@@ -1043,7 +1043,7 @@ func (g *Gateway) getStorageClassObject(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"url": url})
 }
 
-// deleteStorageClassObject handles DELETE /api/v1/storage/storageclass/:cluster/:name/object/*key
+// deleteStorageClassObject handles DELETE /api/v1/storage/storageclass/:cluster/:name/object/*key.
 func (g *Gateway) deleteStorageClassObject(c *gin.Context) {
 	cluster := c.Param("cluster")
 	name := c.Param("name")

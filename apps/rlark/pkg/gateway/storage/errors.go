@@ -2,6 +2,7 @@ package storage
 
 import "errors"
 
+// Variables used by the package.
 var (
 	ErrInvalidObjectKey = errors.New("invalid object key")
 	ErrFileNotFound     = errors.New("file not found")

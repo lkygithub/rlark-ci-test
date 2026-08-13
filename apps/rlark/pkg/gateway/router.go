@@ -2,6 +2,7 @@ package gateway
 
 import "github.com/gin-gonic/gin"
 
+// RegisterRoutes registers the routes.
 func (g *Gateway) RegisterRoutes(r gin.IRouter) {
 	rlinfv1alpha1 := r.Group("/api/v1/rlinf.io/v1alpha1")
 

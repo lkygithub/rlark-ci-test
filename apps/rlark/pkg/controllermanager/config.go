@@ -7,6 +7,7 @@ import (
 	"github.com/rlinf/rlark/apps/rlark/pkg/controllermanager/sync"
 )
 
+// Config holds configuration options.
 type Config struct {
 	// Kubernetes client configuration.
 	KubeClientConfig configs.KubernetesClientConfig
@@ -26,6 +27,7 @@ type Config struct {
 	SyncConfig sync.Config
 }
 
+// DefaultConfig returns the default config.
 func DefaultConfig() Config {
 	return Config{
 		KubeClientConfig: configs.DefaultKubernetesClientConfig(),
@@ -42,6 +44,7 @@ func DefaultConfig() Config {
 	}
 }
 
+// SetupFlags sets the upFlags.
 func (c *Config) SetupFlags(fs *pflag.FlagSet) {
 	c.KubeClientConfig.SetupFlags(fs)
 

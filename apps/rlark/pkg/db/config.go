@@ -55,6 +55,7 @@ func (c Config) DSNWithSSL(sslmode string) string {
 	)
 }
 
+// UnmarshalConfig unmarshals the config.
 func UnmarshalConfig(data []byte, cfg *Config) error {
 	if err := yaml.Unmarshal(data, cfg); err == nil {
 		return nil

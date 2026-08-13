@@ -1,11 +1,13 @@
 package apis
 
+// Constants used by the package.
 const (
 	RLarkAgentNamespacePrefix    = "rlark-"
 	RLarkAgentServiceAccountName = "rlark-agent"
 	Namespace                    = "rlark-system"
 )
 
+// Constants used by the package.
 const (
 	MetaCertRole = "cert-role"
 
@@ -31,6 +33,7 @@ const (
 	MetaUserKeyID = "user-key-id"
 )
 
+// Constants used by the package.
 const (
 	RemoteDialerRoleHeader = "X-Remote-Dialer-Role"
 )

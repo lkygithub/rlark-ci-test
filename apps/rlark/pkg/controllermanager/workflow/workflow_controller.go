@@ -11,8 +11,8 @@ import (
 	"github.com/rlinf/rlark/apps/rlark/pkg/controllermanager/controller"
 )
 
-// WorkflowReconciler reconciles Workflow resources.
-type WorkflowReconciler struct {
+// Reconciler reconciles Workflow resources.
+type Reconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
 }
@@ -24,22 +24,24 @@ type WorkflowReconciler struct {
 // +kubebuilder:rbac:groups=rlinf.io,resources=jobs/status,verbs=get;update;patch
 
 // Reconcile handles a Workflow reconciliation request.
-func (r *WorkflowReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	return controller.ReconcileWith(ctx, req, &rlarkv1alpha1.Workflow{}, "workflow", r)
 }
 
-func (r *WorkflowReconciler) IsTerminal(obj client.Object) bool {
+// IsTerminal reports whether terminal.
+func (r *Reconciler) IsTerminal(obj client.Object) bool {
 	wf := obj.(*rlarkv1alpha1.Workflow)
 	return wf.Status.Phase == rlarkv1alpha1.WorkflowPhaseSucceeded ||
 		wf.Status.Phase == rlarkv1alpha1.WorkflowPhaseFailed
 }
 
-func (r *WorkflowReconciler) ReconcileStateMachine(ctx context.Context, obj client.Object) (bool, error) {
+// ReconcileStateMachine reconciles the resource.
+func (r *Reconciler) ReconcileStateMachine(ctx context.Context, obj client.Object) (bool, error) {
 	return r.reconcileWithStateMachine(ctx, obj.(*rlarkv1alpha1.Workflow))
 }
 
 // SetupWithManager registers the controller with the manager.
-func (r *WorkflowReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&rlarkv1alpha1.Workflow{}).
 		Owns(&rlarkv1alpha1.Job{}).

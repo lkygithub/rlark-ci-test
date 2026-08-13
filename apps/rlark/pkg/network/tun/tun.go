@@ -35,6 +35,7 @@ type tunClient struct {
 	queryParams map[string]string
 }
 
+// NewTunClient creates a new TunClient.
 func NewTunClient(name string, ip net.IP, prefixLength int, mtu int, dialProxy utils.Dial, queryParams map[string]string) *tunClient {
 	return &tunClient{
 		name:         name,

@@ -11,12 +11,13 @@ import (
 	"k8s.io/client-go/rest"
 )
 
+// KubeProxy is a proxy.
 type KubeProxy struct {
 	apiServer *url.URL
 	transport http.RoundTripper
 }
 
-// NewKubeProxy creates a new KubeProxy instance
+// NewKubeProxy creates a new KubeProxy instance.
 func NewKubeProxy(restConfig *rest.Config) (*KubeProxy, error) {
 	// Build API Server URL
 	apiURL, err := url.Parse(restConfig.Host)
@@ -34,7 +35,7 @@ func NewKubeProxy(restConfig *rest.Config) (*KubeProxy, error) {
 	}, nil
 }
 
-// GetHandler returns an http.Handler that proxies requests to the Kubernetes API server
+// GetHandler returns an http.Handler that proxies requests to the Kubernetes API server.
 func (p *KubeProxy) GetHandler() http.Handler {
 	logger := log.GetLogger()
 	proxy := &httputil.ReverseProxy{}

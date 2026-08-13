@@ -59,6 +59,7 @@ func NewGateway(config Config) *Gateway {
 	}
 }
 
+// Run runs the component.
 func (g *Gateway) Run(ctx context.Context) error {
 	if err := g.init(ctx); err != nil {
 		return err

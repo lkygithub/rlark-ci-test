@@ -13,6 +13,7 @@ import (
 	"github.com/rlinf/rlark/apps/rlark/pkg/server"
 )
 
+// SignCommand signs the command.
 func SignCommand() *cobra.Command {
 	req := server.SignRequest{
 		Role:     "agent",
@@ -77,6 +78,7 @@ func SignCommand() *cobra.Command {
 	return cmd
 }
 
+// RevokeCommand revokes the command.
 func RevokeCommand() *cobra.Command {
 	var certType, serialNumber, subjectKeyID, reason string
 

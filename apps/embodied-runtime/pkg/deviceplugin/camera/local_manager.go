@@ -13,7 +13,7 @@ import (
 )
 
 // ---------------------------------------------------------------------------
-// LocalManager — manages the camera-controller as a local subprocess
+// LocalManager — manages the camera-controller as a local subprocess.
 // ---------------------------------------------------------------------------
 
 // LocalManager manages the lifecycle of the camera-controller subprocess.

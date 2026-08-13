@@ -9,6 +9,7 @@ import (
 	"github.com/rlinf/rlark/apps/rlark/pkg/rlarkadm/types"
 )
 
+// Bundle is an exported type.
 type Bundle struct {
 	CACertPEM []byte
 	CAKeyPEM  []byte
@@ -33,6 +34,7 @@ func resolveCertData(field string, label string) ([]byte, error) {
 	return []byte(field), nil
 }
 
+// GenerateBundle generates the bundle.
 func GenerateBundle(cfg *types.CertConfig) (*Bundle, error) {
 	caCertPEM, err := resolveCertData(cfg.CACert, "ca-cert")
 	if err != nil {
@@ -55,6 +57,7 @@ func GenerateBundle(cfg *types.CertConfig) (*Bundle, error) {
 	}, nil
 }
 
+// WriteToDir writes the toDir.
 func (b *Bundle) WriteToDir(dir string) error {
 	if err := os.MkdirAll(dir, 0700); err != nil {
 		return fmt.Errorf("create cert dir: %w", err)

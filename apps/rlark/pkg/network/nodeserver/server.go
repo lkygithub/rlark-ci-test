@@ -14,14 +14,19 @@ import (
 	"github.com/rlinf/rlark/apps/rlark/pkg/utils"
 )
 
+// PodCred holds pod credentials.
 type PodCred interface {
 	IP() string
 	IPPrefixLength() int
 }
 
+// CredGetter retrieves values.
 type CredGetter[C PodCred] func(ctx context.Context, pid int32) (C, error)
+
+// DialGetter retrieves values.
 type DialGetter[C PodCred] func(ctx context.Context, cred C, host string, query url.Values) (utils.Dial, error)
 
+// NodeServer is a server.
 type NodeServer[C PodCred] struct {
 	config             Config
 	getCred            CredGetter[C]
@@ -29,6 +34,7 @@ type NodeServer[C PodCred] struct {
 	localServiceDialer utils.Dial
 }
 
+// NewNodeServer creates a new NodeServer.
 func NewNodeServer[C PodCred](config Config, getCred CredGetter[C], getDial DialGetter[C]) *NodeServer[C] {
 	return &NodeServer[C]{
 		config:  config,
@@ -51,6 +57,7 @@ func (s *NodeServer[C]) startLocalService(ctx context.Context) error {
 	return nil
 }
 
+// Run runs the component.
 func (s *NodeServer[C]) Run(ctx context.Context) error {
 	logger := log.FromContext(ctx)
 	if err := s.startLocalService(ctx); err != nil {

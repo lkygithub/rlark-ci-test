@@ -26,6 +26,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
+// Client is a client.
 type Client struct {
 	baseURL         string
 	tlsConfig       *tls.Config
@@ -188,14 +189,14 @@ func NewClientFromKubernetes(ctx context.Context, serverAddr string, kubeConfig 
 	return NewClient(serverUrl.String(), tlsConfig, nil), nil
 }
 
-// BuildURL 构建完整的请求 URL
+// BuildURL 构建完整的请求 URL.
 func (c *Client) BuildURL(parts ...string) string {
 	u, _ := url.Parse(c.baseURL)
 	u.Path = path.Join(u.Path, path.Join(parts...))
 	return u.String()
 }
 
-// BuildURLWithQuery 构建带查询参数的请求 URL
+// BuildURLWithQuery 构建带查询参数的请求 URL.
 func (c *Client) BuildURLWithQuery(query url.Values, parts ...string) string {
 	u, _ := url.Parse(c.baseURL)
 	u.Path = path.Join(u.Path, path.Join(parts...))
@@ -205,7 +206,7 @@ func (c *Client) BuildURLWithQuery(query url.Values, parts ...string) string {
 	return u.String()
 }
 
-// DoRequest 执行 HTTP 请求
+// DoRequest 执行 HTTP 请求.
 func (c *Client) DoRequest(ctx context.Context, method, rawURL string, body io.Reader, requestOptions ...func(*http.Request)) (*http.Response, error) {
 	req, err := http.NewRequestWithContext(ctx, method, rawURL, body)
 	if err != nil {
@@ -218,6 +219,7 @@ func (c *Client) DoRequest(ctx context.Context, method, rawURL string, body io.R
 	return c.httpClient.Do(req)
 }
 
+// DoRequestWithObject performs a request and decodes the response.
 func (c *Client) DoRequestWithObject(ctx context.Context, method, rawURL string, obj any, requestOptions ...func(*http.Request)) (*http.Response, error) {
 	body, err := json.Marshal(obj)
 	if err != nil {
@@ -226,6 +228,7 @@ func (c *Client) DoRequestWithObject(ctx context.Context, method, rawURL string,
 	return c.DoRequest(ctx, method, rawURL, bytes.NewReader(body), requestOptions...)
 }
 
+// DialWebsocket dials the websocket.
 func (c *Client) DialWebsocket(ctx context.Context, header http.Header) (*websocket.Conn, *http.Response, error) {
 	urlStr := c.BuildURL("api", "connect")
 	u, err := url.Parse(urlStr)

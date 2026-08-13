@@ -7,22 +7,24 @@ import (
 	"github.com/rlinf/rlark/apps/rlark/pkg/agent/controllers/base"
 )
 
-// PodController manages pod reporting from data-plane to management cluster.
-type PodController struct {
-	base.BaseController
+// Controller manages pod reporting from data-plane to management cluster.
+type Controller struct {
+	base.Controller
 }
 
-var _ base.Reconciler = (*PodController)(nil)
+var _ base.Reconciler = (*Controller)(nil)
 
-func NewPodController(bc base.BaseController) *PodController {
-	pc := &PodController{
-		BaseController: bc,
+// NewPodController creates a new PodController.
+func NewPodController(bc base.Controller) *Controller {
+	pc := &Controller{
+		Controller: bc,
 	}
 	pc.C = pc
 	return pc
 }
 
-func (c *PodController) KubernetesResource() base.KubernetesResource {
+// KubernetesResource is an exported method.
+func (c *Controller) KubernetesResource() base.KubernetesResource {
 	return base.KubernetesResource{
 		Name: "pod",
 		Type: &rlarkv1alpha1.Pod{},
@@ -30,12 +32,12 @@ func (c *PodController) KubernetesResource() base.KubernetesResource {
 }
 
 // AsPullReconciler returns nil — Pod CR is push-only, no need to create local resources from management Pod CRs.
-func (c *PodController) AsPullReconciler() base.KubernetesReconciler {
+func (c *Controller) AsPullReconciler() base.KubernetesReconciler {
 	return nil
 }
 
 // AsKubePushReconcilers watches local K8s Pods and reports their info to management Pod CRs.
-func (c *PodController) AsKubePushReconcilers() map[base.KubernetesResource]base.KubernetesReconciler {
+func (c *Controller) AsKubePushReconcilers() map[base.KubernetesResource]base.KubernetesReconciler {
 	return map[base.KubernetesResource]base.KubernetesReconciler{
 		base.KubernetesResource{
 			Name: "pod-k8spod",
@@ -44,10 +46,12 @@ func (c *PodController) AsKubePushReconcilers() map[base.KubernetesResource]base
 	}
 }
 
-func (c *PodController) AsDockerPushReconcilers() map[base.DockerResource]base.DockerReconciler {
+// AsDockerPushReconcilers is an exported method.
+func (c *Controller) AsDockerPushReconcilers() map[base.DockerResource]base.DockerReconciler {
 	return nil
 }
 
-func (c *PodController) AsRawPushReconcilers() map[base.RawResource]base.RawReconciler {
+// AsRawPushReconcilers is an exported method.
+func (c *Controller) AsRawPushReconcilers() map[base.RawResource]base.RawReconciler {
 	return nil
 }

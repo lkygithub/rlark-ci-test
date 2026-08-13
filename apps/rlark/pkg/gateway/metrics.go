@@ -62,18 +62,22 @@ func newGatewayMetrics() *gatewayMetrics {
 	}
 }
 
+// IncRequest is an exported method.
 func (m *gatewayMetrics) IncRequest(method, path, status string) {
 	m.requestsTotal.WithLabelValues(method, path, status).Inc()
 }
 
+// ObserveDuration is an exported method.
 func (m *gatewayMetrics) ObserveDuration(method, path string, seconds float64) {
 	m.requestDuration.WithLabelValues(method, path).Observe(seconds)
 }
 
+// IncInFlight is an exported method.
 func (m *gatewayMetrics) IncInFlight(method, path string) {
 	m.inFlight.WithLabelValues(method, path).Inc()
 }
 
+// DecInFlight is an exported method.
 func (m *gatewayMetrics) DecInFlight(method, path string) {
 	m.inFlight.WithLabelValues(method, path).Dec()
 }

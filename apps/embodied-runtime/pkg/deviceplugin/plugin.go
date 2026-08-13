@@ -739,6 +739,8 @@ func (s *Server) Stop() {
 // gRPC service methods — delegate to Plugin
 // ---------------------------------------------------------------------------
 
+// GetDevicePluginOptions returns device plugin options indicating that
+// PreStartContainer and GetPreferredAllocation are not required.
 func (s *Server) GetDevicePluginOptions(ctx context.Context, _ *pluginapi.Empty) (*pluginapi.DevicePluginOptions, error) {
 	return &pluginapi.DevicePluginOptions{
 		PreStartRequired:                false,
@@ -746,18 +748,24 @@ func (s *Server) GetDevicePluginOptions(ctx context.Context, _ *pluginapi.Empty)
 	}, nil
 }
 
+// ListAndWatch streams the current device list and subsequent health updates
+// to the kubelet.
 func (s *Server) ListAndWatch(_ *pluginapi.Empty, stream pluginapi.DevicePlugin_ListAndWatchServer) error {
 	return s.plugin.ListAndWatch(stream)
 }
 
+// Allocate returns the runtime environment for the requested devices.
 func (s *Server) Allocate(ctx context.Context, req *pluginapi.AllocateRequest) (*pluginapi.AllocateResponse, error) {
 	return s.plugin.Allocate(req)
 }
 
+// PreStartContainer performs any pre-start setup for the requested devices.
 func (s *Server) PreStartContainer(ctx context.Context, req *pluginapi.PreStartContainerRequest) (*pluginapi.PreStartContainerResponse, error) {
 	return s.plugin.PreStartContainer(req)
 }
 
+// GetPreferredAllocation returns the preferred device allocation from the
+// available devices.
 func (s *Server) GetPreferredAllocation(ctx context.Context, req *pluginapi.PreferredAllocationRequest) (*pluginapi.PreferredAllocationResponse, error) {
 	return s.plugin.GetPreferredAllocation(req)
 }
