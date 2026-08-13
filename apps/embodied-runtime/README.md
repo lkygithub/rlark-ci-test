@@ -330,6 +330,8 @@ Example manifests live in [`examples/`](./examples):
 
 The typical pattern: an `initContainer` copies `ros-controller` / `rosctr` (or `camera-controller` / `camctr`) out of the `embodied-runtime` image into a shared `emptyDir`; the main container runs the controller binary from there. Liveness / readiness probes use the CLIs (`rosctr list`, `camctr list`) against the Unix sockets.
 
+For end-to-end deployment + usage walkthroughs of common scenarios (V4L2 / managed cameras, USB / macvlan / ROS-managed robots, and combined nodes), see [`docs/examples.md`](./docs/examples.md).
+
 Pods that need hardware request the resource and are automatically wired with the socket + CLI mounts:
 
 ```yaml
