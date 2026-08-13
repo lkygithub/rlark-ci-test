@@ -21,6 +21,10 @@ import { AdminPage } from "./AdminPage";
 import { Header, Logo } from "../components/shared";
 import { useBackendMode, usePersistentState } from "../hooks";
 import { SSHKeysPage } from "../pages/SSHKeys";
+import {
+  ImageRegistriesPage,
+  ImageRegistryCreatePage,
+} from "../pages/ImageRegistries";
 
 export function AdminLogin({
   copy: c,
@@ -212,6 +216,7 @@ export function AdminApp() {
       "api",
       "config",
       "storageClass",
+      "image-registries",
     ];
     if (valid.includes(parts[0])) return parts[0];
     return parts.length > 0 ? "clusters-nodes" : "clusters-list";
@@ -231,6 +236,7 @@ export function AdminApp() {
       "api",
       "config",
       "storageClass",
+      "image-registries",
     ];
     const subParts = explicitPages.includes(parts[0]) ? parts.slice(1) : parts;
     return subParts.length > 0 ? decodeURIComponent(subParts.join("/")) : "";
@@ -269,6 +275,7 @@ export function AdminApp() {
         "api",
         "config",
         "storageClass",
+        "image-registries",
         "access-control",
         "ssh-keys",
       ];
@@ -482,6 +489,23 @@ export function AdminApp() {
             onSelect={(name?: string) => navigate("storageClass", name)}
             onCreate={() => navigate("storageClass", "create")}
             refreshKey={storageRefreshKey}
+          />
+        )}
+        {adminPage === "image-registries" && adminSub === "create" && (
+          <ImageRegistryCreatePage
+            copy={c}
+            onBack={() => navigate("image-registries")}
+            onCreated={() => setStorageRefreshKey((key) => key + 1)}
+          />
+        )}
+        {adminPage === "image-registries" && adminSub !== "create" && (
+          <ImageRegistriesPage
+            copy={c}
+            selectedName={adminSub || undefined}
+            onSelect={(name?: string) =>
+              navigate("image-registries", name ?? "")
+            }
+            onCreate={() => navigate("image-registries", "create")}
           />
         )}
       </main>

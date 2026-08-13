@@ -24,6 +24,14 @@ const (
 
 	// AgentCertSecretPrefix is the prefix for per-cluster agent cert secrets.
 	AgentCertSecretPrefix = "rlark-agent-cert-"
+
+	// ImageRegistrySecretLabel is the label on Secrets that hold image registry credentials.
+	ImageRegistrySecretLabel = "rlark.io/image-registry"
+
+	// ImageRegistryAnnotationRegistry is the annotation storing the registry URL.
+	ImageRegistryAnnotationRegistry = "rlark.io/registry"
+	// ImageRegistryAnnotationUsername is the annotation storing the registry username.
+	ImageRegistryAnnotationUsername = "rlark.io/username"
 )
 
 const (
