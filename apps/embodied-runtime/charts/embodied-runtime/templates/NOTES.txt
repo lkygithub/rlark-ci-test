@@ -37,3 +37,12 @@ No controllers are launched (none are enabled).
 Verify:
   kubectl -n {{ .Values.namespace }} get daemonset {{ include "embodied-runtime.devicePluginName" . }}
   kubectl -n {{ .Values.namespace }} logs -l app={{ include "embodied-runtime.devicePluginName" . }} -f
+{{- if include "embodied-runtime.webhookEnabled" . }}
+
+Mutating webhook is enabled. Pods requesting rlinf.io/device{{- if .Values.config.model }}-{{ .Values.config.model }}{{- end }}
+are auto-injected with the `devinit` init container (runs `devinit setup` to attach
+the node's host_macvlans into the pod netns). The caBundle is auto-managed:
+  MutatingWebhookConfiguration: {{ include "embodied-runtime.webhookConfigName" . }}
+  Service:                      {{ include "embodied-runtime.webhookServiceName" . }}
+  kubectl get mutatingwebhookconfiguration {{ include "embodied-runtime.webhookConfigName" . }} -o jsonpath='{.webhooks[0].clientConfig.caBundle}' | base64 -d | openssl x509 -text -noout
+{{- end }}

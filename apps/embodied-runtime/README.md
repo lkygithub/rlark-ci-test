@@ -259,9 +259,67 @@ host_macvlans:
 
 When the list is non-empty the plugin sets `RLINF_EMBODIED_DEVINIT_ENABLED=1` and `RLINF_EMBODIED_DEVINIT_SOCKET_PATH` so the init container / CLI can discover the service. Setup is idempotent — a leftover interface from a previous container instance (same pause netns) is reused.
 
+#### Mutating webhook (auto devinit injection)
+
+The init container above can be **added automatically** by a mutating webhook shipped with the device plugin, so operators no longer need to author it in every workload pod. When `--webhook` is set and `host_macvlans` is configured, the device plugin starts an HTTPS webhook that intercepts Pod CREATE/UPDATE: for any pod requesting `rlinf.io/device[-<model>]`, it appends a `devinit` init container (named `rlark-devinit`) that runs `devinit setup`. The injected container only **declares the same device resource** — the device plugin's `Allocate` then injects the RunDir socket mount and `RLINF_EMBODIED_DEVINIT_SOCKET_PATH` env var for it, so no extra volumes or mounts are needed from the webhook. Pods not requesting the resource (and pods using `hostNetwork`, handled by `devinit`) are unaffected.
+
+The webhook has **automatic CA management**:
+
+1. It loads the CA cert+key from a Secret (when `--webhook-ca-secret-name` is set) or generates a self-signed CA in memory.
+2. It reads the `MutatingWebhookConfiguration` (named via `--webhook-mutating-config`); when a webhook's `caBundle` is empty it patches in the CA certificate.
+3. It signs a serving certificate with the CA and starts the HTTPS server.
+
+When the `caBundle` is non-empty the webhook leaves it alone (assumed managed); a mismatch logs a warning. The init image defaults to the auto-discovered device-plugin image (downward API), which ships `devinit` — so it usually needs no configuration.
+
+Device-plugin CLI flags:
+
+| Flag | Purpose |
+|------|---------|
+| `--webhook` | Enable the webhook (requires `host_macvlans` in the config). |
+| `--webhook-addr` | HTTPS listen address (default `:9443`). |
+| `--webhook-path` | Admission endpoint path (default `/mutate`). |
+| `--webhook-mutating-config` | `MutatingWebhookConfiguration` name whose `caBundle` is auto-managed. |
+| `--webhook-service-name` / `--webhook-service-namespace` | Service fronting the webhook (forms the serving cert DNS SAN). |
+| `--webhook-ca-secret-name` / `--webhook-ca-secret-namespace` | Secret persisting the CA (empty = in-memory). |
+| `--webhook-devinit-image` | Injected init container image (default: auto-discovered device-plugin image). |
+
+See the [Helm chart](./charts/embodied-runtime) `webhook:` values for a turnkey deployment: it renders the webhook Service, the `MutatingWebhookConfiguration` (empty `caBundle`), the required RBAC (cluster-scoped `mutatingwebhookconfigurations` get/patch + namespaced `secrets`), and wires all the flags above into the device-plugin DaemonSet. Enable it with:
+
+```yaml
+webhook:
+  enabled: true
+  port: 9443
+  failurePolicy: Ignore   # Ignore = admit pods even if the webhook is down (no macvlan); Fail = reject
+  caSecret:               # persist the CA across restarts (recommended)
+    name: devinit-ca
+    namespace: rlark-system   # defaults to the release namespace
+  # devinitImage: ""      # defaults to .Values.devicePlugin.image
+```
+
+The webhook only renders when **both** `webhook.enabled` and `config.hostMacvlans` are set; enabling it without macvlans is a no-op (the handler injects nothing).
+
 ---
 
 ## Deploy
+
+### Helm chart
+
+The recommended path is the [Helm chart](./charts/embodied-runtime), which renders the DaemonSet, ConfigMap, RBAC, optional headless Services, and — when `webhook.enabled` is set with `config.hostMacvlans` — the mutating webhook Service, `MutatingWebhookConfiguration`, and cluster RBAC. See [`charts/embodied-runtime/values.yaml`](./charts/embodied-runtime/values.yaml) for all knobs.
+
+```bash
+# Minimal (no controllers, no webhook)
+helm install embodied-runtime ./charts/embodied-runtime
+
+# With host macvlans + the auto-injecting webhook
+helm install embodied-runtime ./charts/embodied-runtime \
+  --set config.hostMacvlans[0].host_nic=eno1 \
+  --set config.hostMacvlans[0].name=macvlan0 \
+  --set config.hostMacvlans[0].ip=172.16.0.0/24 \
+  --set webhook.enabled=true \
+  --set webhook.caSecret.name=devinit-ca
+```
+
+### Example manifests
 
 Example manifests live in [`examples/`](./examples):
 
