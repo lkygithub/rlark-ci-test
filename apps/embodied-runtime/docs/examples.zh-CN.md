@@ -330,8 +330,6 @@ helm install embodied-runtime ./charts/embodied-runtime -f values-r2.yaml -n rla
 
 > chart 仅在 `webhook.enabled` 与 `config.hostMacvlans` **同时**设置时才启用 webhook。`hostMacvlans` 非空时 DaemonSet 还会设置 `hostPID: true`（插件需通过 socket 对端凭证读取调用方 PID 所必需）。
 
-> **注意 —— macvlan 要求宿主机与镜像内均有 `ip` / `nsenter`。** 创建 macvlan 会调用 `ip`（iproute2）与 `nsenter`（util-linux）。**宿主机节点**必须提供 `ip`（创建步骤会进入 PID 1 的命名空间），运行 netmac 代码的镜像也必须自带 `ip` 与 `nsenter`。官方 `embodied-runtime`、`ros-base`、`ros2-base` 镜像已安装 `iproute2` + `util-linux`；若使用**自定义控制器镜像**，需补齐这两个包，否则 macvlan 配置会以 `ip: not found` / `nsenter: not found` 失败。BusyBox 的 `ip` applet **不**支持 macvlan/netns —— 必须安装完整的 `iproute2` 包。
-
 **运行业务 Pod。** webhook 会注入 `devinit` init 容器——你只需编写主容器：
 
 ```yaml
@@ -372,7 +370,9 @@ initContainers:
     command: ["devinit", "setup"]   # 读取 RLINF_EMBODIED_DEVINIT_SOCKET_PATH
     resources:
       requests:
-        rlinf.io/device: 1
+        rlinf.io/device: 1          # 触发 Allocate → RunDir 挂载 + 环境变量
+      limits:                        # 必填：LimitRanger/ResourceQuota 会拒绝未设置 limits 的 init 容器
+        rlinf.io/device: 1           # 扩展资源的 limits 必须等于 requests
 ```
 
 ---
@@ -405,8 +405,6 @@ config:
       labels:
         app.kubernetes.io/name: ros-controller
     macvlans:                     # 控制器侧 macvlan，用于接入机器人
-      # 注意：控制器镜像须自带 `ip`(iproute2) + `nsenter`(util-linux)，
-      # 且宿主机节点须有 `ip` —— 见 R2 的注意说明。
       - host_nic: eno1
         name: macvlan0
         ip: 172.16.0.101/24

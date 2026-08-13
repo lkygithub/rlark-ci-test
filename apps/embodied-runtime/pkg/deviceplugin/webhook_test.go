@@ -116,6 +116,14 @@ func TestBuildDevinitContainer(t *testing.T) {
 	if got.Value() != 1 {
 		t.Errorf("resource request = %d, want 1", got.Value())
 	}
+	// The extended resource must be mirrored in limits: Kubernetes requires
+	// extended-resource limits to equal their requests, and clusters with a
+	// LimitRanger / ResourceQuota reject containers without limits, which
+	// would block the injected pod from being created.
+	lim, ok := c.Resources.Limits[corev1.ResourceName(testResource)]
+	if !ok || lim.Value() != 1 {
+		t.Errorf("resource limit = %v ok=%v, want 1", lim, ok)
+	}
 	if len(c.Env) != 0 {
 		t.Errorf("Env should be empty (Allocate injects socket env), got %d", len(c.Env))
 	}

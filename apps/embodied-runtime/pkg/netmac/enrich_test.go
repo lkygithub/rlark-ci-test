@@ -2,7 +2,6 @@ package netmac
 
 import (
 	"net"
-	"reflect"
 	"testing"
 )
 
@@ -248,49 +247,55 @@ func TestIPv4OnNIC(t *testing.T) {
 	}
 }
 
-// TestParseIPAddrOutput parses a representative `ip -o -4 addr show` dump
-// and checks that the loopback is skipped and the two real NICs are
-// captured with the right IP and mask.
-func TestParseIPAddrOutput(t *testing.T) {
-	out := []byte("1: lo    inet 127.0.0.1/8 scope host lo\\       valid_lft forever preferred_lft forever\n" +
-		"2: eno1    inet 172.16.0.5/24 brd 172.16.0.255 scope global eno1\\       valid_lft forever preferred_lft forever\n" +
-		"3: eth0    inet 10.0.0.5/24 brd 10.0.0.255 scope global eth0\\       valid_lft forever preferred_lft forever\n" +
-		"garbage line without inet\n")
-	nics := parseIPAddrOutput(out)
-	if len(nics) != 2 {
-		t.Fatalf("got %d NICs, want 2: %+v", len(nics), nics)
-	}
-	if nics[0].Name != "eno1" || nics[0].IP.String() != "172.16.0.5" {
-		t.Errorf("nics[0] = %+v", nics[0])
-	}
-	ones, _ := nics[0].Mask.Size()
-	if ones != 24 {
-		t.Errorf("nics[0] prefix = %d, want 24", ones)
-	}
-	if nics[1].Name != "eth0" || nics[1].IP.String() != "10.0.0.5" {
-		t.Errorf("nics[1] = %+v", nics[1])
-	}
-}
+// TestCandidateIPs covers priority order, host-IP exclusion, broadcast skip,
+// wrap-around, and narrow-prefix behaviour. candidateIPs feeds the active
+// ARP probe (and the passive fallback via pickUnusedIP).
+func TestCandidateIPs(t *testing.T) {
+	_, ipNet, _ := parseIPNet("172.16.0.0/24")
 
-// TestParseIPNeighOutput verifies that only entries with a resolved MAC are
-// marked used; INCOMPLETE / FAILED entries (no lladdr) are skipped.
-func TestParseIPNeighOutput(t *testing.T) {
-	out := []byte("172.16.0.1 dev eno1 lladdr aa:bb:cc:dd:ee:ff REACHABLE\n" +
-		"172.16.0.5 dev eno1 lladdr 11:22:33:44:55:66 STALE\n" +
-		"172.16.0.99 dev eno1  FAILED\n" + // no lladdr → free
-		"172.16.0.2 dev eno1 lladdr cc:dd:ee:ff:aa:bb PERMANENT\n")
-	used := parseIPNeighOutput(out)
-	want := map[string]bool{
-		"172.16.0.1": true,
-		"172.16.0.5": true,
-		"172.16.0.2": true,
-	}
-	if !reflect.DeepEqual(used, want) {
-		t.Errorf("used = %v, want %v", used, want)
-	}
-	if used["172.16.0.99"] {
-		t.Error("172.16.0.99 (FAILED, no lladdr) should not be marked used")
-	}
+	t.Run("starts_at_100", func(t *testing.T) {
+		got := candidateIPs(ipNet, nil, 100)
+		if len(got) == 0 || got[0].String() != "172.16.0.100" {
+			t.Errorf("first = %v, want 172.16.0.100", got)
+		}
+	})
+
+	t.Run("excludes_broadcast", func(t *testing.T) {
+		for _, c := range candidateIPs(ipNet, nil, 100) {
+			if c.Equal(net.IPv4(172, 16, 0, 255)) {
+				t.Fatal("broadcast 172.16.0.255 must not be a candidate")
+			}
+		}
+	})
+
+	t.Run("excludes_host_ip", func(t *testing.T) {
+		host := net.IPv4(172, 16, 0, 5)
+		for _, c := range candidateIPs(ipNet, host, 100) {
+			if c.Equal(host) {
+				t.Fatal("host IP 172.16.0.5 must not be a candidate")
+			}
+		}
+	})
+
+	t.Run("wraps_254_to_1", func(t *testing.T) {
+		got := candidateIPs(ipNet, nil, 100)
+		// Scan octets 100..254 (155) then wrap 1..99 (99) = 254; the .0
+		// network and .255 broadcast are outside the 1..254 octet range.
+		if len(got) != 254 {
+			t.Fatalf("len = %d, want 254", len(got))
+		}
+		if got[155].String() != "172.16.0.1" { // index 155 = first after 100..254
+			t.Errorf("after wrap got[155] = %v, want 172.16.0.1", got[155])
+		}
+	})
+
+	t.Run("narrow_prefix_only_hosts", func(t *testing.T) {
+		_, ipNet30, _ := parseIPNet("192.168.1.0/30") // hosts: .1, .2 (.3 bcast)
+		got := candidateIPs(ipNet30, nil, 100)
+		if len(got) != 2 || got[0].String() != "192.168.1.1" || got[1].String() != "192.168.1.2" {
+			t.Errorf("got %v, want [192.168.1.1 192.168.1.2]", got)
+		}
+	})
 }
 
 // TestNewMACVLAN verifies the constructor copies config fields.
