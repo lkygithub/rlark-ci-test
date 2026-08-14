@@ -615,13 +615,20 @@ export function JobDetailPage({
     [job.name],
   );
 
+  const workerTaskNames = job.taskStatuses.map((ts) => {
+    const childTaskName = ts.name.toLowerCase().replace(/\s+/g, "-");
+    return `${job.name}-${childTaskName}`.toLowerCase().replace(/\s+/g, "-");
+  });
+  const workerTaskNamesKey = workerTaskNames.join(",");
+
   useEffect(() => {
-    const taskNames = job.taskStatuses.map((ts) => {
-      const childTaskName = ts.name.toLowerCase().replace(/\s+/g, "-");
-      return `${job.name}-${childTaskName}`.toLowerCase().replace(/\s+/g, "-");
-    });
-    if (taskNames.length === 0) return;
-    const labelSelector = `rlark.io/task-name in (${taskNames.join(",")})`;
+    if (!workerTaskNamesKey) {
+      setPods([]);
+      setDomainIPMap({});
+      return;
+    }
+    let cancelled = false;
+    const labelSelector = `rlark.io/task-name in (${workerTaskNamesKey})`;
 
     const domainsPromise = fetch(`/api/v1/rlinf.io/v1alpha1/domains`).then(
       (resp) =>
@@ -638,20 +645,29 @@ export function JobDetailPage({
 
     Promise.all([podsPromise, domainsPromise])
       .then(([podData, domainData]) => {
+        if (cancelled) return;
         const podItems = podData.items ?? [];
-        const podList: PodInfo[] = podItems.map((item: any) => ({
-          name: item.metadata?.name ?? "",
-          namespace: item.metadata?.namespace ?? "",
-          taskName: item.spec?.taskName ?? "",
-          taskNamespace: item.spec?.taskNamespace ?? "",
-          podName: item.spec?.podName ?? "",
-          podNamespace: item.spec?.podNamespace ?? "",
-          domain: item.spec?.domain ?? "",
-          phase: item.status?.phase ?? "Pending",
-          node: item.status?.node ?? "",
-          ip: item.status?.ip ?? "",
-          message: item.status?.message ?? "",
-        }));
+        const uniquePods = new Map<string, PodInfo>();
+        for (const item of podItems) {
+          const pod: PodInfo = {
+            name: item.metadata?.name ?? "",
+            namespace: item.metadata?.namespace ?? "",
+            taskName: item.spec?.taskName ?? "",
+            taskNamespace: item.spec?.taskNamespace ?? "",
+            podName: item.spec?.podName ?? "",
+            podNamespace: item.spec?.podNamespace ?? "",
+            domain: item.spec?.domain ?? "",
+            phase: item.status?.phase ?? "Pending",
+            node: item.status?.node ?? "",
+            ip: item.status?.ip ?? "",
+            message: item.status?.message ?? "",
+          };
+          // The control plane can briefly return duplicate/history Pod CRs for
+          // one runtime Worker. Keep one row per actual Pod identity.
+          const identity = `${pod.namespace}/${pod.podNamespace}/${pod.podName || pod.name}`;
+          uniquePods.set(identity, pod);
+        }
+        const podList = [...uniquePods.values()];
         setPods(podList);
 
         const domainItems = domainData.items ?? [];
@@ -665,10 +681,14 @@ export function JobDetailPage({
         setDomainIPMap(ipMap);
       })
       .catch(() => {
+        if (cancelled) return;
         setPods([]);
         setDomainIPMap({});
       });
-  }, [job]);
+    return () => {
+      cancelled = true;
+    };
+  }, [workerTaskNamesKey]);
 
   const fetchLogs = async (isInitial = true) => {
     if (activeTab !== "logs") return;
@@ -2117,11 +2137,14 @@ function WorkerTableRow({
                     worker: pod.name,
                     status: worker.phase,
                   });
-                  window.open(
+                  // Keep the same-origin opener just long enough for the browser
+                  // to clone sessionStorage into the new tab, then sever it so
+                  // the terminal cannot navigate or control the parent page.
+                  const terminalWindow = window.open(
                     `/terminal?${params.toString()}`,
                     "_blank",
-                    "noopener,noreferrer",
                   );
+                  if (terminalWindow) terminalWindow.opener = null;
                 }}
                 aria-label={zh ? "打开 WebTerminal" : "Open WebTerminal"}
               >
@@ -2175,7 +2198,7 @@ function WorkerTableRow({
                 </div>
                 <div className="worker-ssh-inline">
                   <KeyRound size={15} />
-                  <code>{sshCommand}</code>
+                  <code title={sshCommand}>{sshCommand}</code>
                   <button
                     className="icon-button"
                     onClick={handleCopy}

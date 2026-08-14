@@ -5466,6 +5466,11 @@ tbody tr:hover {
   margin-bottom: 11px;
 }
 
+.worker-detail-head > div:first-child {
+  min-width: 0;
+  flex: 0 1 auto;
+}
+
 .worker-detail-head strong {
   display: block;
   margin-top: 4px;
@@ -5662,6 +5667,8 @@ tbody tr:hover {
 
 .worker-ssh-inline {
   min-width: 0;
+  max-width: min(60%, 520px);
+  flex: 1 1 320px;
   display: flex;
   align-items: center;
   gap: 7px;
@@ -5672,11 +5679,19 @@ tbody tr:hover {
 }
 
 .worker-ssh-inline code {
-  max-width: 440px;
+  min-width: 0;
+  flex: 1 1 auto;
+  display: block;
+  overflow: hidden;
   color: #39475a;
   font-family: "JetBrains Mono", monospace;
   font-size: 10px;
-  overflow-wrap: anywhere;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.worker-ssh-inline > svg {
+  flex: 0 0 auto;
 }
 
 .worker-ssh-inline .icon-button {
@@ -13798,6 +13813,13 @@ tr.clickable:hover {
   .worker-ssh-access {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .worker-ssh-inline {
+    width: 100%;
+    max-width: 100%;
+    flex-basis: auto;
+    box-sizing: border-box;
   }
 
   .worker-detail-head .worker-ssh-button,
