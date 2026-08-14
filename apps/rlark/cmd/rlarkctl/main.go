@@ -6,12 +6,14 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/rlinf/rlark/apps/rlark/pkg/rlarkctl"
+	"github.com/rlinf/rlark/apps/rlark/pkg/version"
 )
 
 func main() {
 	cmd := &cobra.Command{
-		Use:   "rlark-server-cli",
-		Short: "A CLI tool for managing the rlark server",
+		Use:     "rlark-server-cli",
+		Short:   "A CLI tool for managing the rlark server",
+		Version: version.String(),
 	}
 
 	cmd.AddCommand(rlarkctl.SignCommand())
