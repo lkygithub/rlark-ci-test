@@ -38,6 +38,8 @@ type KubernetesClientConfig struct {
 func DefaultKubernetesClientConfig() KubernetesClientConfig {
 	return KubernetesClientConfig{
 		KubeconfigPath: os.Getenv("KUBECONFIG"),
+		QPS:            5000,
+		Burst:          8000,
 	}
 }
 

@@ -26,6 +26,7 @@ func (s *Server) handleTerminalProxy(c *gin.Context) {
 
 	namespace := c.Param("namespace")
 	podName := c.Param("pod")
+	nodeName := c.Param("node")
 	container := c.DefaultQuery("container", "main")
 	command := c.DefaultQuery("command", "/bin/bash")
 
@@ -41,7 +42,7 @@ func (s *Server) handleTerminalProxy(c *gin.Context) {
 	}
 	defer func() { _ = browserWs.Close() }()
 
-	agentDialer := s.getAgentDialer(c.Request.Context(), target)
+	agentDialer := s.getAgentDialer(c.Request.Context(), target, nodeName)
 	agentWsDialer := &websocket.Dialer{
 		NetDialContext: agentDialer,
 	}

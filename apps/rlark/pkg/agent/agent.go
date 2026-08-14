@@ -12,6 +12,7 @@ import (
 
 	"github.com/rlinf/rlark/api/kubeclients/clientset/versioned"
 	rlarkv1alpha1 "github.com/rlinf/rlark/api/rlark.io/v1alpha1"
+	"github.com/rlinf/rlark/apps/rlark/pkg/common"
 	"github.com/rlinf/rlark/apps/rlark/pkg/server"
 	"github.com/rlinf/rlark/apps/rlark/pkg/utils"
 )
@@ -106,7 +107,7 @@ func (a *Agent) Run(ctx context.Context) error {
 	eg.Go(func() error {
 		role := ""
 		if a.config.Mode == "node" {
-			role = "node-agent"
+			role = "node-agent:" + common.NodeName("-")
 		}
 		return a.runTunnel(ctx, role)
 	})

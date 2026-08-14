@@ -10,13 +10,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/rlinf/rlark/apps/rlark/pkg/common"
 	"golang.org/x/crypto/ssh"
 
 	gocache "github.com/patrickmn/go-cache"
 	listerv1alpha1 "github.com/rlinf/rlark/api/kubeclients/listers/rlark.io/v1alpha1"
 	"github.com/rlinf/rlark/api/rlark.io/v1alpha1"
 	"github.com/rlinf/rlark/apps/rlark/pkg/apis"
+	"github.com/rlinf/rlark/apps/rlark/pkg/common"
 	"github.com/rlinf/rlark/apps/rlark/pkg/log"
 	"github.com/rlinf/rlark/apps/rlark/pkg/utils"
 )
@@ -225,7 +225,7 @@ func (a *containerNetworkAdapter) GetContainerNetworkDial(ctx context.Context, c
 
 	// 3. 不在同一个集群内，且无法直接访问到目标节点，则通过控制面代理进行访问
 	if agentID, ok := strings.CutPrefix(targetPod.GlobalNamespace, apis.RLarkAgentNamespacePrefix); ok {
-		target := fmt.Sprintf("%s.%s.agent:5700", targetPod.LocalIP, agentID)
+		target := fmt.Sprintf("%s.%s.%s.agent-node:5700", targetPod.LocalIP, targetPod.Node, agentID)
 		logger.V(1).Info("Target pod is in a different cluster, using control plane proxy", "targetPod", target)
 		return func(ctx context.Context) (net.Conn, error) {
 			return a.sshDialer.DialContext(ctx, cred.DomainID, a.sshAddr, dpeer.Spec.Cert, dpeer.Spec.Key, target)

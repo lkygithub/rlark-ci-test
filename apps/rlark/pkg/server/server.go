@@ -22,6 +22,7 @@ import (
 	"github.com/rlinf/rlark/api/kubeclients/informers/externalversions"
 	listerv1alpha1 "github.com/rlinf/rlark/api/kubeclients/listers/rlark.io/v1alpha1"
 	"github.com/rlinf/rlark/apps/rlark/pkg/auth/cert"
+	"github.com/rlinf/rlark/apps/rlark/pkg/common"
 	"github.com/rlinf/rlark/apps/rlark/pkg/db"
 	"github.com/rlinf/rlark/apps/rlark/pkg/log"
 	"github.com/rlinf/rlark/apps/rlark/pkg/server/caches"
@@ -128,7 +129,7 @@ func (s *Server) init(ctx context.Context) error {
 	}
 
 	// 3. 通过 Kubernetes Lease 获取操作权，进行数据初始化
-	id := fmt.Sprintf("%s-%d", os.Getenv("HOSTNAME"), os.Getpid())
+	id := fmt.Sprintf("%s-%d", common.Hostname("node"), os.Getpid())
 	rl, err := resourcelock.New(
 		resourcelock.LeasesResourceLock,
 		s.config.KubeClientConfig.DefaultNamespace(),

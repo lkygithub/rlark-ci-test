@@ -19,6 +19,37 @@ import (
 	"go.yaml.in/yaml/v2"
 )
 
+var commonEnvs = []corev1.EnvVar{
+	{
+		Name: "POD_NAME",
+		ValueFrom: &corev1.EnvVarSource{
+			FieldRef: &corev1.ObjectFieldSelector{FieldPath: "metadata.name"},
+		},
+	},
+	{
+		Name: "POD_NAMESPACE",
+		ValueFrom: &corev1.EnvVarSource{
+			FieldRef: &corev1.ObjectFieldSelector{FieldPath: "metadata.namespace"},
+		},
+	},
+	{
+		Name: "NODE_NAME",
+		ValueFrom: &corev1.EnvVarSource{
+			FieldRef: &corev1.ObjectFieldSelector{FieldPath: "spec.nodeName"},
+		},
+	},
+	{
+		Name: "POD_IP",
+		ValueFrom: &corev1.EnvVarSource{
+			FieldRef: &corev1.ObjectFieldSelector{FieldPath: "status.podIP"},
+		},
+	},
+	{
+		Name:  "DISABLE_HTTP2",
+		Value: "true",
+	},
+}
+
 // Component describes a deployable component.
 type Component = types.Component
 
@@ -386,6 +417,9 @@ var components = []types.Component{
 		CommandFn: func(cfg *types.DeployConfig) []string {
 			return []string{"/usr/local/bin/gateway"}
 		},
+		K8sEnvFn: func(cfg *types.DeployConfig) []corev1.EnvVar {
+			return commonEnvs
+		},
 		ArgsFn: func(cfg *types.DeployConfig) []string {
 			args := []string{"--addr=:8090"}
 			if cfg.DB != nil {
@@ -414,6 +448,9 @@ var components = []types.Component{
 		ArtifactFn: func(cfg *types.DeployConfig) string { return cfg.Raw.ControllerManagerArtifact },
 		CommandFn: func(cfg *types.DeployConfig) []string {
 			return []string{"/usr/local/bin/controller-manager"}
+		},
+		K8sEnvFn: func(cfg *types.DeployConfig) []corev1.EnvVar {
+			return commonEnvs
 		},
 		ArgsFn: func(cfg *types.DeployConfig) []string {
 			args := []string{
@@ -447,6 +484,9 @@ var components = []types.Component{
 		ArtifactFn: func(cfg *types.DeployConfig) string { return cfg.Raw.ServerArtifact },
 		CommandFn: func(cfg *types.DeployConfig) []string {
 			return []string{"/usr/local/bin/server"}
+		},
+		K8sEnvFn: func(cfg *types.DeployConfig) []corev1.EnvVar {
+			return commonEnvs
 		},
 		ArgsFn: func(cfg *types.DeployConfig) []string {
 			args := []string{
@@ -495,6 +535,9 @@ var components = []types.Component{
 		CommandFn: func(cfg *types.DeployConfig) []string {
 			return []string{"/usr/local/bin/agent"}
 		},
+		K8sEnvFn: func(cfg *types.DeployConfig) []corev1.EnvVar {
+			return commonEnvs
+		},
 		ArgsFn: func(cfg *types.DeployConfig) []string {
 			args := []string{
 				"--server-address=" + cfg.ControlPlaneAddress,
@@ -534,6 +577,9 @@ var components = []types.Component{
 		ArtifactFn: func(cfg *types.DeployConfig) string { return cfg.Raw.AgentArtifact },
 		CommandFn: func(cfg *types.DeployConfig) []string {
 			return []string{"/usr/local/bin/agent"}
+		},
+		K8sEnvFn: func(cfg *types.DeployConfig) []corev1.EnvVar {
+			return commonEnvs
 		},
 		ArgsFn: func(cfg *types.DeployConfig) []string {
 			args := []string{
@@ -590,20 +636,7 @@ var components = []types.Component{
 		ArtifactFn: func(cfg *types.DeployConfig) string { return cfg.Raw.EtcdArtifact },
 		CommandFn:  func(cfg *types.DeployConfig) []string { return []string{"etcd"} },
 		K8sEnvFn: func(cfg *types.DeployConfig) []corev1.EnvVar {
-			return []corev1.EnvVar{
-				{
-					Name: "POD_NAME",
-					ValueFrom: &corev1.EnvVarSource{
-						FieldRef: &corev1.ObjectFieldSelector{FieldPath: "metadata.name"},
-					},
-				},
-				{
-					Name: "POD_IP",
-					ValueFrom: &corev1.EnvVarSource{
-						FieldRef: &corev1.ObjectFieldSelector{FieldPath: "status.podIP"},
-					},
-				},
-			}
+			return commonEnvs
 		},
 		ExtraPortsFn: func(cfg *types.DeployConfig) []corev1.ContainerPort {
 			return []corev1.ContainerPort{{ContainerPort: constants.EtcdPeerPort}}
@@ -874,6 +907,10 @@ func Deployment(cfg *types.DeployConfig, c *types.Component) *appsv1.Deployment 
 		dep.Spec.Template.Spec.Containers[0].Command = c.CommandFn(cfg)
 	}
 
+	if c.K8sEnvFn != nil {
+		dep.Spec.Template.Spec.Containers[0].Env = append(dep.Spec.Template.Spec.Containers[0].Env, c.K8sEnvFn(cfg)...)
+	}
+
 	if c.EnvFn != nil {
 		envMap := c.EnvFn(cfg)
 		var envs []corev1.EnvVar
@@ -961,6 +998,10 @@ func DaemonSet(cfg *types.DeployConfig, c *types.Component) *appsv1.DaemonSet {
 
 	if c.CommandFn != nil {
 		ds.Spec.Template.Spec.Containers[0].Command = c.CommandFn(cfg)
+	}
+
+	if c.K8sEnvFn != nil {
+		ds.Spec.Template.Spec.Containers[0].Env = append(ds.Spec.Template.Spec.Containers[0].Env, c.K8sEnvFn(cfg)...)
 	}
 
 	if c.EnvFn != nil {

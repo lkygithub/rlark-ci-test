@@ -19,6 +19,7 @@ import (
 	"github.com/rlinf/rlark/api/rlark.io/v1alpha1"
 	"github.com/rlinf/rlark/apps/rlark/pkg/apis"
 	"github.com/rlinf/rlark/apps/rlark/pkg/auth"
+	"github.com/rlinf/rlark/apps/rlark/pkg/log"
 	"github.com/rlinf/rlark/apps/rlark/pkg/server/reverseproxy"
 )
 
@@ -36,8 +37,8 @@ func (s *Server) GetDial(ctx context.Context, dialType, address string, certMeta
 		// 这种情况下，host 即为 agent ID，此时应该返回 agent 对应的 dialer 和 agent 的 local server 地址
 		// 这种情况下不会将请求的 certMeta 传进来，因此需要在外层完成权限检查
 		agentID := host
-		dialer := s.getAgentDialer(ctx, agentID) // TODO: 检测对应主 agent 是否连接，如果没有连接，用其他 agent 来转发请求
-		return dialer, "0.0.0.0:1", nil          // 约定 local server 地址为 0.0.0.0:1
+		dialer := s.getAgentDialer(ctx, agentID, "")
+		return dialer, "0.0.0.0:1", nil // 约定 local server 地址为 0.0.0.0:1
 
 	case "ssh":
 		if certMeta == nil || certMeta[apis.MetaCertRole] == "" {
@@ -46,30 +47,23 @@ func (s *Server) GetDial(ctx context.Context, dialType, address string, certMeta
 		switch certMeta[apis.MetaCertRole] {
 		case "domain":
 			// 以 domain 角色连接的客户端，允许连接到同一个 domain 下的 pod
-			// 连接目标格式：<targetHost>.<targetAgentID>.agent
-			fields := strings.Split(host, ".")
-			if len(fields) < 3 {
-				return nil, "", fmt.Errorf("invalid address format: %s", host)
-			}
-			targetID := fields[len(fields)-2]
-			targetType := fields[len(fields)-1]
-			targetHost := strings.Join(fields[:len(fields)-2], ".")
-			if targetType != "agent" {
-				return nil, "", fmt.Errorf("invalid target type: %s", targetType)
+			targetAgent, targetNode, targetHost, err := s.getTargetFromDomainHost(ctx, host)
+			if err != nil {
+				return nil, "", fmt.Errorf("failed to get target from domain host %s: %w", host, err)
 			}
 			// 检查证书的 domain 身份是否具有访问目标的权限
 			if domainID, ok := auth.PermissionChecker.HasDomainProxyPermission(certMeta); ok {
-				hasPermission, domainCheckErr := s.checkHostInDomain(ctx, targetHost, domainID, targetID)
+				hasPermission, domainCheckErr := s.checkHostInDomain(ctx, targetHost, domainID, targetAgent)
 				if domainCheckErr != nil {
 					return nil, "", fmt.Errorf("failed to check domain proxy permission: %w", domainCheckErr)
 				}
 				if !hasPermission {
-					return nil, "", fmt.Errorf("client certificate does not have proxy permission for %s on %s", targetHost, targetID)
+					return nil, "", fmt.Errorf("client certificate does not have proxy permission for %s on %s", targetHost, targetAgent)
 				}
 			} else {
-				return nil, "", fmt.Errorf("client certificate does not have domain proxy permission for %s on %s", targetHost, targetID)
+				return nil, "", fmt.Errorf("client certificate does not have domain proxy permission for %s on %s", targetHost, targetAgent)
 			}
-			dialer := s.getAgentDialer(ctx, targetID)
+			dialer := s.getAgentDialer(ctx, targetAgent, targetNode)
 
 			return dialer, net.JoinHostPort(targetHost, port), nil
 
@@ -77,11 +71,11 @@ func (s *Server) GetDial(ctx context.Context, dialType, address string, certMeta
 			// 以 ssh-guest 角色连接的客户端，允许连接到该用户有权限访问的 Pod
 			// 连接目标格式：podName
 			// 需要自动识别目标 Pod 所在的 agent，并使用该 agent 的 dialer 来连接
-			agentID, targetHost, err := s.getPodDialInfoByUser(ctx, host, certMeta[apis.MetaUserID])
+			agentID, nodeName, targetHost, err := s.getPodDialInfoByUser(ctx, host, certMeta[apis.MetaUserID])
 			if err != nil {
 				return nil, "", fmt.Errorf("failed to get pod %v: %w", host, err)
 			}
-			dialer := s.getAgentDialer(ctx, agentID)
+			dialer := s.getAgentDialer(ctx, agentID, nodeName)
 			return dialer, net.JoinHostPort(targetHost, port), nil
 		}
 		return nil, "", fmt.Errorf("unsupported role %s for ssh proxying", certMeta[apis.MetaCertRole])
@@ -89,10 +83,28 @@ func (s *Server) GetDial(ctx context.Context, dialType, address string, certMeta
 	return nil, "", fmt.Errorf("unsupported dial type: %s", dialType)
 }
 
-func (s *Server) getAgentDialer(ctx context.Context, agentID string) remotedialer.Dialer {
-	// TODO: 检测对应主 agent 是否连接，如果没有连接，用其他 agent 来转发请求
-	dialer := s.dialerFactory.GetDialer(ctx, agentID)
-	return dialer
+// getAgentDialer returns a remotedialer.Dialer for the specified agentID and nodeName.
+// If nodeName is provided, it will prioritize the dialer for that specific node.
+func (s *Server) getAgentDialer(ctx context.Context, agentID, nodeName string) remotedialer.Dialer {
+	candidateClientKeys := []string{}
+	if nodeName != "" {
+		candidateClientKeys = append(candidateClientKeys, agentID+":node-agent:"+nodeName)
+	}
+	candidateClientKeys = append(candidateClientKeys, agentID)
+
+	return func(ctx context.Context, network, addr string) (net.Conn, error) {
+		for _, clientKey := range candidateClientKeys {
+			d := s.dialerFactory.GetDialer(ctx, clientKey)
+			conn, err := d(ctx, network, addr)
+			if err == nil {
+				return conn, nil
+			}
+			if !strings.Contains(err.Error(), "failed to find Session") {
+				return nil, err
+			}
+		}
+		return nil, fmt.Errorf("no available dialer found for candidate client keys: %v", candidateClientKeys)
+	}
 }
 
 // checkHostInDomain 检查指定的 host 是否在指定的 domain 下，并返回该 host 的 LocalIP（如果存在）。
@@ -110,31 +122,58 @@ func (s *Server) checkHostInDomain(ctx context.Context, host string, domainID, a
 	return false, nil
 }
 
-// getPodInfoByUser 根据 podName 和 userName 获取对应的 Pod 信息，包括 Pod 所在的 agentID 和 IP。
-func (s *Server) getPodDialInfoByUser(ctx context.Context, podName, userName string) (string, string, error) {
+// getTargetFromDomainHost 解析 domain host，返回对应的 targetAgent、targetNode 和 targetHost。
+func (s *Server) getTargetFromDomainHost(ctx context.Context, host string) (string, string, string, error) {
+	fields := strings.Split(host, ".")
+	if len(fields) < 3 {
+		return "", "", "", fmt.Errorf("invalid host format: %s", host)
+	}
+	switch fields[len(fields)-1] {
+	case "agent":
+		// 连接目标格式：<targetHost>.<targetAgentID>.agent
+		targetID := fields[len(fields)-2]
+		targetHost := strings.Join(fields[:len(fields)-2], ".")
+		return targetID, "", targetHost, nil
+
+	case "agent-node":
+		// 连接目标格式：<targetHost>.<targetNodeName>.<targetAgentID>.agent-node
+		targetID := fields[len(fields)-2]
+		targetNode := fields[len(fields)-3]
+		targetHost := strings.Join(fields[:len(fields)-3], ".")
+		return targetID, targetNode, targetHost, nil
+	}
+
+	return "", "", "", fmt.Errorf("invalid target type: %s", fields[len(fields)-1])
+}
+
+// getPodInfoByUser 根据 podName 和 userName 获取对应的 Pod 信息，
+// 返回 agentID、nodeName、podIP，如果 Pod 不存在或不属于该用户，则返回错误。
+func (s *Server) getPodDialInfoByUser(ctx context.Context, podName, userName string) (string, string, string, error) {
 	pod, ok := s.podCache.GetPodByName(podName)
 	if !ok {
-		return "", "", fmt.Errorf("pod %s not found", podName)
+		return "", "", "", fmt.Errorf("pod %s not found", podName)
 	}
 	if pod.Status.IP == "" {
-		return "", "", fmt.Errorf("pod %s not ready", podName)
+		return "", "", "", fmt.Errorf("pod %s not ready", podName)
 	}
 	// TODO: 根据 userName 来检查该用户是否有权限访问该 Pod。
 	// 暂时完全放行
 	if agentID, ok := strings.CutPrefix(pod.Namespace, apis.RLarkAgentNamespacePrefix); ok {
-		return agentID, pod.Status.IP, nil
+		return agentID, pod.Status.Node, pod.Status.IP, nil
 	}
-	return "", "", fmt.Errorf("unknown error")
+	return "", "", "", fmt.Errorf("unknown error")
 }
 
 // handleProxyConnect 处理反向代理隧道的连接请求。它会根据客户端证书中的元数据来确定是代理连接还是 Peer-to-Peer 连接，并设置相应的请求头。
 func (s *Server) handleProxyConnect(ctx *gin.Context) {
+	logger := log.FromContext(ctx)
+
 	certMeta := GetCertMetaFromContext(ctx)
 	clientID := certMeta[apis.MetaRemoteDialerClientID]
 	if clientID != "" {
 		clientKey := clientID
 		if role := ctx.Request.Header.Get(apis.RemoteDialerRoleHeader); role != "" {
-			clientKey = clientID + "-" + role
+			clientKey = clientID + ":" + role
 		}
 		reverseproxy.SetClientHeader(ctx.Request, clientKey)
 	} else {
@@ -151,12 +190,14 @@ func (s *Server) handleProxyConnect(ctx *gin.Context) {
 	if agentID := certMeta[apis.MetaAgentID]; agentID != "" {
 		// 如果是 Agent 接入，需要检查是否完成该 Agent 的注册流程
 		if err := s.registerAgent(ctx.Request.Context(), agentID); err != nil {
+			logger.Error(err, "Agent registration failed", "agentID", agentID)
 			ctx.JSON(http.StatusBadGateway, gin.H{"error": fmt.Sprintf("agent registration failed: %v", err)})
 			return
 		}
 		// 在接入期间，启动 Broadcast 机制，向集群广播该 Agent 的存在信息
 		role := ctx.Request.Header.Get(apis.RemoteDialerRoleHeader)
 		if err := s.startAgentBroadcaster(ctx.Request.Context(), agentID, role, uuid.NewString()); err != nil {
+			logger.Error(err, "Start agent broadcaster failed", "agentID", agentID)
 			ctx.JSON(http.StatusBadGateway, gin.H{"error": fmt.Sprintf("start agent broadcaster failed: %v", err)})
 			return
 		}
