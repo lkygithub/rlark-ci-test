@@ -44,10 +44,10 @@ git clone https://github.com/RLinf/RLark
 cd RLark && make build
 
 # 2. 部署控制面（Kubernetes 模式）
-./bin/rlarkadm install -f apps/rlark/docs/examples/deploy-control-plane.yaml
+./apps/rlark/bin/rlarkadm install -f apps/rlark/docs/examples/deploy-control-plane.yaml
 
 # 3. 部署数据面 Agent
-./bin/rlarkadm install -f apps/rlark/docs/examples/deploy-data-plane.yaml
+./apps/rlark/bin/rlarkadm install -f apps/rlark/docs/examples/deploy-data-plane.yaml
 
 # 4. 创建训练任务
 curl -X POST http://localhost:8080/api/v1/rlinf.io/v1alpha1/jobs \

@@ -59,6 +59,12 @@ docker compose -f apps/rlark/docs/examples/docker-compose.yml ps
 
 # 从 kcp 容器中提取 admin kubeconfig
 docker cp kcp:/.kcp/admin.kubeconfig ~/.rlark/admin.kubeconfig
+
+# 修复 kubeconfig 中的 server 地址（Docker 内部 IP → localhost）
+# macOS/BSD:
+sed -i '' 's|https://[0-9.]*:6443|https://localhost:6443|g' ~/.rlark/admin.kubeconfig
+# Linux:
+# sed -i 's|https://[0-9.]*:6443|https://localhost:6443|g' ~/.rlark/admin.kubeconfig
 ```
 
 组件包括：
@@ -75,35 +81,45 @@ kind create cluster --name rlark-data
 kind get kubeconfig --name rlark-data > ~/.rlark/kind-kubeconfig
 ```
 
-### 2.4 启动控制面组件
+### 2.4 安装 CRD
+
+```bash
+# 向 kcp 安装 RLark CRD
+for f in api/config/crd/bases/rlinf.io_*.yaml; do
+  kubectl --kubeconfig ~/.rlark/admin.kubeconfig apply -f "$f"
+done
+```
+
+### 2.5 启动控制面组件
 
 打开三个终端，分别启动 Server、Controller-Manager 和 Gateway：
 
 ```bash
 # 终端 1：启动 Server
-./bin/server \
+./apps/rlark/bin/server \
   --kubeconfig ~/.rlark/admin.kubeconfig \
   --https-port 8443 \
   --ssh-port 2222 \
-  --db-config apps/rlark/docs/examples/db-config.yaml
+  --db-config apps/rlark/docs/examples/db-config.yaml \
+  --auto-sign-tls-ca-cert
 
 # 终端 2：启动 Controller-Manager
-./bin/controller-manager \
+./apps/rlark/bin/controller-manager \
   --kubeconfig ~/.rlark/admin.kubeconfig \
   --server-address https://localhost:8443 \
   --leader-elect=false
 
 # 终端 3：启动 Gateway
-./bin/gateway \
+./apps/rlark/bin/gateway \
   --kubeconfig ~/.rlark/admin.kubeconfig \
   --addr :8080 \
   --db-config apps/rlark/docs/examples/db-config.yaml
 ```
 
-### 2.5 启动数据面 Agent
+### 2.6 启动数据面 Agent
 
 ```bash
-./bin/agent \
+./apps/rlark/bin/agent \
   --kubeconfig ~/.rlark/kind-kubeconfig \
   --server-address https://localhost:8443 \
   --client-cert ~/.rlark/certs/cert.pem \

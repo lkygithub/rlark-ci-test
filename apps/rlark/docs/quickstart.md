@@ -59,6 +59,9 @@ docker compose -f apps/rlark/docs/examples/docker-compose.yml ps
 
 # Extract admin kubeconfig from kcp container
 docker cp kcp:/.kcp/admin.kubeconfig ~/.rlark/admin.kubeconfig
+
+# Fix kubeconfig server address (Docker internal IP -> localhost)
+sed -i '' 's|https://[0-9.]*:6443|https://localhost:6443|g' ~/.rlark/admin.kubeconfig
 ```
 
 Components include:
@@ -75,35 +78,45 @@ kind create cluster --name rlark-data
 kind get kubeconfig --name rlark-data > ~/.rlark/kind-kubeconfig
 ```
 
-### 2.4 Start Control Plane Components
+### 2.4 Install CRDs
+
+```bash
+# Install RLark CRDs to kcp
+for f in api/config/crd/bases/rlinf.io_*.yaml; do
+  kubectl --kubeconfig ~/.rlark/admin.kubeconfig apply -f "$f"
+done
+```
+
+### 2.5 Start Control Plane Components
 
 Open three terminals and start Server, Controller-Manager, and Gateway:
 
 ```bash
 # Terminal 1: Start Server
-./bin/server \
+./apps/rlark/bin/server \
   --kubeconfig ~/.rlark/admin.kubeconfig \
   --https-port 8443 \
   --ssh-port 2222 \
-  --db-config apps/rlark/docs/examples/db-config.yaml
+  --db-config apps/rlark/docs/examples/db-config.yaml \
+  --auto-sign-tls-ca-cert
 
 # Terminal 2: Start Controller-Manager
-./bin/controller-manager \
+./apps/rlark/bin/controller-manager \
   --kubeconfig ~/.rlark/admin.kubeconfig \
   --server-address https://localhost:8443 \
   --leader-elect=false
 
 # Terminal 3: Start Gateway
-./bin/gateway \
+./apps/rlark/bin/gateway \
   --kubeconfig ~/.rlark/admin.kubeconfig \
   --addr :8080 \
   --db-config apps/rlark/docs/examples/db-config.yaml
 ```
 
-### 2.5 Start Data Plane Agent
+### 2.6 Start Data Plane Agent
 
 ```bash
-./bin/agent \
+./apps/rlark/bin/agent \
   --kubeconfig ~/.rlark/kind-kubeconfig \
   --server-address https://localhost:8443 \
   --client-cert ~/.rlark/certs/cert.pem \

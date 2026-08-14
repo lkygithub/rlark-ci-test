@@ -31,7 +31,7 @@ func init() {
 		// Indexes: cluster-scoped resources use (name), namespace-scoped use (namespace, name)
 		commonIndexes := map[string][]string{
 			"ssh_user_keys": {
-				"CREATE INDEX IF NOT EXISTS idx_ssh_user_keys_user_added_at ON ssh_user_keys (user, added_at)",
+				"CREATE INDEX IF NOT EXISTS idx_ssh_user_keys_user_added_at ON ssh_user_keys (\"user\", added_at)",
 				"CREATE INDEX IF NOT EXISTS idx_ssh_user_keys_added_at ON ssh_user_keys (added_at)",
 			},
 			"jobs": {
