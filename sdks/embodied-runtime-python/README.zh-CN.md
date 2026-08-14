@@ -4,7 +4,7 @@
 
 [embodied-runtime][repo] 机器人（ROS）与摄像头 gRPC 服务的 Python 客户端。两个控制器在 task pod 内通过 **Unix domain socket** 暴露；本 SDK 镜像 `rosctr` / `camctr` Go CLI，并代为处理 socket 连接。
 
-[repo]: https://github.com/rlinf/rlark/apps/embodied-runtime
+[repo]: https://github.com/RLinf/RLark/tree/main/apps/embodied-runtime
 
 生成的 gRPC stub 位于 `embodied_runtime/gen/`；封装客户端位于 `embodied_runtime.robot` 与 `embodied_runtime.camera`。
 

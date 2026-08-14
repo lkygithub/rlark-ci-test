@@ -6,23 +6,26 @@
 
 | 工具 | 版本 | 说明 |
 |------|------|------|
-| Go | >= 1.22 | 编译 Go 代码 |
+| Go | >= 1.26.5 | 编译 Go 代码 |
 | Docker | >= 24.0 | 运行 kcp 和 kind 集群 |
 | kind | >= 0.20 | 运行本地 k8s 数据面集群 |
 | kubectl | >= 1.28 | 与集群交互 |
+| jq | >= 1.6 | 解析 JSON 响应 |
 
 ## 1. 编译
 
 ```bash
 git clone https://github.com/RLinf/RLark
-cd rlark
+cd RLark
+# Linux: make build
+# macOS: GOOS=darwin make build
 make build
 ```
 
-编译完成后，`bin/` 目录下会生成以下二进制：
+编译完成后，`apps/rlark/bin/` 目录下会生成以下二进制：
 
 ```
-bin/
+apps/rlark/bin/
 ├── server                # 控制面 Server
 ├── gateway               # API Gateway
 ├── controller-manager    # 控制面控制器
@@ -35,66 +38,103 @@ bin/
 
 rlark 支持通过 Docker Compose 快速搭建本地开发环境，包含 kcp 集群、数据库和必要的运行时组件。
 
-### 2.1 启动控制面
+### 2.1 创建运行时目录
 
 ```bash
-# 使用 Docker Compose 启动所有控制面组件
-docker compose -f tmp/test/docker-compose.yml up -d
+mkdir -p ~/.rlark/certs
+```
+
+### 2.2 启动控制面
+
+```bash
+# 使用 Docker Compose 启动 kcp 和 PostgreSQL
+docker compose -f apps/rlark/docs/examples/docker-compose.yml up -d
 
 # 等待服务就绪（约 30 秒）
 # 检查状态
-docker compose -f tmp/test/docker-compose.yml ps
+docker compose -f apps/rlark/docs/examples/docker-compose.yml ps
+
+# 从 kcp 容器中提取 admin kubeconfig
+docker cp kcp:/.kcp/admin.kubeconfig ~/.rlark/admin.kubeconfig
+
+# 将 Docker 内部 IP 替换为 localhost（macOS/Linux Docker Desktop）
+sed -i '' 's|https://[0-9]\+\.[0-9]\+\.[0-9]\+\.[0-9]\+:6443|https://localhost:6443|g' ~/.rlark/admin.kubeconfig 2>/dev/null || \
+sed -i    's|https://[0-9]\+\.[0-9]\+\.[0-9]\+\.[0-9]\+:6443|https://localhost:6443|g' ~/.rlark/admin.kubeconfig
+
+# 安装 CRD 到 kcp（启动组件前必须执行）
+kubectl --kubeconfig ~/.rlark/admin.kubeconfig apply -f api/config/crd/bases/
 ```
 
 组件包括：
 - **kcp**：API Server（控制面集群）
-- **kcp-data**：kcp 数据存储
 - **postgresql**：rlark 运行数据库
 
-### 2.2 创建数据面 Kind 集群
+### 2.3 创建数据面 Kind 集群
 
 ```bash
 # 创建 kind 集群（如果尚未创建）
 kind create cluster --name rlark-data
 
 # 导出 kubeconfig
-kind get kubeconfig --name rlark-data > tmp/test/kind-kubeconfig
+kind get kubeconfig --name rlark-data > ~/.rlark/kind-kubeconfig
 ```
 
-### 2.3 启动控制面组件
+### 2.4 启动控制面组件
 
 打开三个终端，分别启动 Server、Controller-Manager 和 Gateway：
 
 ```bash
 # 终端 1：启动 Server
-./bin/server \
-  --kubeconfig tmp/test/admin.kubeconfig \
+./apps/rlark/bin/server \
+  --kubeconfig ~/.rlark/admin.kubeconfig \
   --https-port 8443 \
   --ssh-port 2222 \
-  --db-config tmp/test/db-config.yaml
+  --auto-sign-tls-ca-cert \
+  --db-config apps/rlark/docs/examples/db-config.yaml
 
 # 终端 2：启动 Controller-Manager
-./bin/controller-manager \
-  --kubeconfig tmp/test/admin.kubeconfig \
+./apps/rlark/bin/controller-manager \
+  --kubeconfig ~/.rlark/admin.kubeconfig \
   --server-address https://localhost:8443 \
-  --leader-elect=false
+  --leader-elect=false \
+  --metrics-bind-address :0
 
 # 终端 3：启动 Gateway
-./bin/gateway \
-  --kubeconfig tmp/test/admin.kubeconfig \
-  --port 8080 \
-  --db-config tmp/test/db-config.yaml
+./apps/rlark/bin/gateway \
+  --kubeconfig ~/.rlark/admin.kubeconfig \
+  --addr :8080 \
+  --server-address https://localhost:8443 \
+  --db-config apps/rlark/docs/examples/db-config.yaml
 ```
 
-### 2.4 启动数据面 Agent
+### 2.5 生成 Agent 证书
+
+Agent 需要客户端证书才能与控制面进行认证。通过 Gateway API 申请：
 
 ```bash
-./bin/agent \
-  --kubeconfig tmp/test/kind-kubeconfig \
-  --control-plane https://localhost:8443 \
-  --agent-cert tmp/test/certs/cert.pem \
-  --agent-key tmp/test/certs/key.pem \
-  --ca-cert tmp/test/certs/ca-cert.pem \
+# 生成 Agent 证书（请将 "my-cluster" 替换为你的集群名称）
+RESP=$(curl -s -X POST "http://localhost:8080/api/v1/certificates/agent" \
+  -H "Content-Type: application/json" \
+  -d '{"cluster_id": "my-cluster"}')
+echo "$RESP" | jq -r .ca_cert > ~/.rlark/certs/ca-cert.pem
+echo "$RESP" | jq -r .agent_cert > ~/.rlark/certs/cert.pem
+echo "$RESP" | jq -r .agent_key > ~/.rlark/certs/key.pem
+```
+
+这会在 `~/.rlark/certs/` 下生成三个文件：
+- `ca-cert.pem` — CA 证书，用于验证 Server
+- `cert.pem` — Agent 客户端证书（X.509，由控制面 CA 签发）
+- `key.pem` — Agent 私钥
+
+### 2.6 启动数据面 Agent
+
+```bash
+./apps/rlark/bin/agent \
+  --kubeconfig ~/.rlark/kind-kubeconfig \
+  --server-address https://localhost:8443 \
+  --client-cert ~/.rlark/certs/cert.pem \
+  --client-key ~/.rlark/certs/key.pem \
+  --ca-cert ~/.rlark/certs/ca-cert.pem \
   --mode both \
   --rlark-server-ssh-address localhost:2222
 ```
@@ -113,8 +153,8 @@ curl "http://localhost:8080/api/v1/rlinf.io/v1alpha1/nodes?namespace=default" | 
 ### 3.2 检查控制面
 
 ```bash
-# 查看可用的 CRD
-curl "http://localhost:8080/api/v1/rlinf.io/v1alpha1" | jq .
+# 验证 API 是否正常工作（应返回节点列表）
+curl "http://localhost:8080/api/v1/rlinf.io/v1alpha1/nodes"
 ```
 
 ## 4. 创建第一个训练任务
@@ -193,17 +233,17 @@ curl "http://localhost:8080/api/v1/rlinf.io/v1alpha1/jobs/hello-world/logs" | jq
 
 ```bash
 # 数据面应该能看到 Deployment
-kubectl --kubeconfig tmp/test/kind-kubeconfig get deployment -A
+kubectl --kubeconfig ~/.rlark/kind-kubeconfig get deployment -A
 
 # 查看 Pod
-kubectl --kubeconfig tmp/test/kind-kubeconfig get pods -A
+kubectl --kubeconfig ~/.rlark/kind-kubeconfig get pods -A
 ```
 
 ## 5. 使用 Web UI
 
 ```bash
 # 启动前端开发服务器
-cd web && npm install && npm run dev
+cd apps/rlark-ui && npm install && npm run dev
 ```
 
 浏览器访问 `http://localhost:5173`，可以看到：
@@ -216,13 +256,16 @@ cd web && npm install && npm run dev
 
 ```bash
 # 停止所有组件
-docker compose -f tmp/test/docker-compose.yml down
+docker compose -f apps/rlark/docs/examples/docker-compose.yml down
 
 # 删除 kind 集群
 kind delete cluster --name rlark-data
 
 # 清理 kcp 数据
-docker compose -f tmp/test/docker-compose.yml down -v
+docker compose -f apps/rlark/docs/examples/docker-compose.yml down -v
+
+# 删除运行时文件
+rm -rf ~/.rlark
 ```
 
 ## 7. 下一步

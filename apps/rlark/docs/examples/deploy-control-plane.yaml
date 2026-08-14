@@ -15,10 +15,10 @@ plane: control
 # --- 三选一 ---
 
 kubernetes:
-  kubeconfig: /Users/ar/test/kubeconfig.yaml # 往 k8s 集群部署平台，访问集群的 kubeconfig
-  gateway-image: rlark-gateway:latest
-  controller-manager-image: rlark-controller-manager:latest
-  server-image: rlark-server:latest
+  kubeconfig: ~/.kube/config # kubeconfig for the target cluster
+  gateway-image: rlark:latest
+  controller-manager-image: rlark:latest
+  server-image: rlark:latest
   kcp-image: kcp:v0.30.0
   # etcd-image: etcd:3.5.15-0
   postgresql-image: postgres:15

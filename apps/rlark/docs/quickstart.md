@@ -6,23 +6,26 @@ This guide walks you through setting up rlark locally and running your first tra
 
 | Tool | Version | Purpose |
 |------|---------|---------|
-| Go | >= 1.22 | Compile Go code |
+| Go | >= 1.26.5 | Compile Go code |
 | Docker | >= 24.0 | Run kcp and kind clusters |
 | kind | >= 0.20 | Run local k8s data plane cluster |
 | kubectl | >= 1.28 | Interact with clusters |
+| jq | >= 1.6 | Parse JSON responses |
 
 ## 1. Build
 
 ```bash
 git clone https://github.com/RLinf/RLark
-cd rlark
+cd RLark
+# Linux: make build
+# macOS: GOOS=darwin make build
 make build
 ```
 
-After building, the `bin/` directory contains:
+After building, the `apps/rlark/bin/` directory contains:
 
 ```
-bin/
+apps/rlark/bin/
 ├── server                # Control plane Server
 ├── gateway               # API Gateway
 ├── controller-manager    # Control plane controllers
@@ -35,66 +38,103 @@ bin/
 
 rlark supports quick local development environment setup via Docker Compose, including kcp cluster, database, and necessary runtime components.
 
-### 2.1 Start Control Plane
+### 2.1 Create runtime directory
 
 ```bash
-# Start all control plane components via Docker Compose
-docker compose -f tmp/test/docker-compose.yml up -d
+mkdir -p ~/.rlark/certs
+```
+
+### 2.2 Start Control Plane
+
+```bash
+# Start kcp and PostgreSQL via Docker Compose
+docker compose -f apps/rlark/docs/examples/docker-compose.yml up -d
 
 # Wait for services to be ready (~30 seconds)
 # Check status
-docker compose -f tmp/test/docker-compose.yml ps
+docker compose -f apps/rlark/docs/examples/docker-compose.yml ps
+
+# Extract admin kubeconfig from kcp container
+docker cp kcp:/.kcp/admin.kubeconfig ~/.rlark/admin.kubeconfig
+
+# Replace Docker internal IP with localhost (macOS/Linux with Docker Desktop)
+sed -i '' 's|https://[0-9]\+\.[0-9]\+\.[0-9]\+\.[0-9]\+:6443|https://localhost:6443|g' ~/.rlark/admin.kubeconfig 2>/dev/null || \
+sed -i    's|https://[0-9]\+\.[0-9]\+\.[0-9]\+\.[0-9]\+:6443|https://localhost:6443|g' ~/.rlark/admin.kubeconfig
+
+# Install CRDs into kcp (required before starting components)
+kubectl --kubeconfig ~/.rlark/admin.kubeconfig apply -f api/config/crd/bases/
 ```
 
 Components include:
 - **kcp**: API Server (control plane cluster)
-- **kcp-data**: kcp data storage
 - **postgresql**: rlark operational database
 
-### 2.2 Create Data Plane Kind Cluster
+### 2.3 Create Data Plane Kind Cluster
 
 ```bash
 # Create kind cluster (if not already created)
 kind create cluster --name rlark-data
 
 # Export kubeconfig
-kind get kubeconfig --name rlark-data > tmp/test/kind-kubeconfig
+kind get kubeconfig --name rlark-data > ~/.rlark/kind-kubeconfig
 ```
 
-### 2.3 Start Control Plane Components
+### 2.4 Start Control Plane Components
 
 Open three terminals and start Server, Controller-Manager, and Gateway:
 
 ```bash
 # Terminal 1: Start Server
-./bin/server \
-  --kubeconfig tmp/test/admin.kubeconfig \
+./apps/rlark/bin/server \
+  --kubeconfig ~/.rlark/admin.kubeconfig \
   --https-port 8443 \
   --ssh-port 2222 \
-  --db-config tmp/test/db-config.yaml
+  --auto-sign-tls-ca-cert \
+  --db-config apps/rlark/docs/examples/db-config.yaml
 
 # Terminal 2: Start Controller-Manager
-./bin/controller-manager \
-  --kubeconfig tmp/test/admin.kubeconfig \
+./apps/rlark/bin/controller-manager \
+  --kubeconfig ~/.rlark/admin.kubeconfig \
   --server-address https://localhost:8443 \
-  --leader-elect=false
+  --leader-elect=false \
+  --metrics-bind-address :0
 
 # Terminal 3: Start Gateway
-./bin/gateway \
-  --kubeconfig tmp/test/admin.kubeconfig \
-  --port 8080 \
-  --db-config tmp/test/db-config.yaml
+./apps/rlark/bin/gateway \
+  --kubeconfig ~/.rlark/admin.kubeconfig \
+  --addr :8080 \
+  --server-address https://localhost:8443 \
+  --db-config apps/rlark/docs/examples/db-config.yaml
 ```
 
-### 2.4 Start Data Plane Agent
+### 2.5 Generate Agent Certificate
+
+The Agent requires a client certificate to authenticate with the control plane. Request one via the Gateway API:
 
 ```bash
-./bin/agent \
-  --kubeconfig tmp/test/kind-kubeconfig \
-  --control-plane https://localhost:8443 \
-  --agent-cert tmp/test/certs/cert.pem \
-  --agent-key tmp/test/certs/key.pem \
-  --ca-cert tmp/test/certs/ca-cert.pem \
+# Generate agent certificate (replace "my-cluster" with your cluster name)
+RESP=$(curl -s -X POST "http://localhost:8080/api/v1/certificates/agent" \
+  -H "Content-Type: application/json" \
+  -d '{"cluster_id": "my-cluster"}')
+echo "$RESP" | jq -r .ca_cert > ~/.rlark/certs/ca-cert.pem
+echo "$RESP" | jq -r .agent_cert > ~/.rlark/certs/cert.pem
+echo "$RESP" | jq -r .agent_key > ~/.rlark/certs/key.pem
+```
+
+This writes three files to `~/.rlark/certs/`:
+- `ca-cert.pem` — CA certificate for verifying the Server
+- `cert.pem` — Agent client certificate (X.509, signed by the control plane CA)
+- `key.pem` — Agent private key
+
+### 2.6 Start Data Plane Agent
+
+```bash
+./apps/rlark/bin/agent \
+  --kubeconfig ~/.rlark/kind-kubeconfig \
+  --server-address https://localhost:8443 \
+  --client-cert ~/.rlark/certs/cert.pem \
+  --client-key ~/.rlark/certs/key.pem \
+  --ca-cert ~/.rlark/certs/ca-cert.pem \
   --mode both \
   --rlark-server-ssh-address localhost:2222
 ```
@@ -113,8 +153,8 @@ curl "http://localhost:8080/api/v1/rlinf.io/v1alpha1/nodes?namespace=default" | 
 ### 3.2 Check Control Plane
 
 ```bash
-# View available CRDs
-curl "http://localhost:8080/api/v1/rlinf.io/v1alpha1" | jq .
+# Verify the API is working (should return nodes list)
+curl "http://localhost:8080/api/v1/rlinf.io/v1alpha1/nodes"
 ```
 
 ## 4. Create Your First Training Job
@@ -193,10 +233,10 @@ curl "http://localhost:8080/api/v1/rlinf.io/v1alpha1/jobs/hello-world/logs" | jq
 
 ```bash
 # Data plane should show the Deployment
-kubectl --kubeconfig tmp/test/kind-kubeconfig get deployment -A
+kubectl --kubeconfig ~/.rlark/kind-kubeconfig get deployment -A
 
 # View Pods
-kubectl --kubeconfig tmp/test/kind-kubeconfig get pods -A
+kubectl --kubeconfig ~/.rlark/kind-kubeconfig get pods -A
 ```
 
 ## 5. Use Web UI
@@ -216,13 +256,16 @@ Open `http://localhost:5173` in your browser to see:
 
 ```bash
 # Stop all components
-docker compose -f tmp/test/docker-compose.yml down
+docker compose -f apps/rlark/docs/examples/docker-compose.yml down
 
 # Delete kind cluster
 kind delete cluster --name rlark-data
 
 # Clean up kcp data
-docker compose -f tmp/test/docker-compose.yml down -v
+docker compose -f apps/rlark/docs/examples/docker-compose.yml down -v
+
+# Remove runtime files
+rm -rf ~/.rlark
 ```
 
 ## 7. Next Steps
