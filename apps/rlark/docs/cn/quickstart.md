@@ -109,7 +109,8 @@ kind get kubeconfig --name rlark-data > ~/.rlark/kind-kubeconfig
   --kubeconfig ~/.rlark/admin.kubeconfig \
   --server-address https://localhost:8443 \
   --leader-elect=false \
-  --metrics-bind-address :0
+  --metrics-bind-address :0 \
+  --db-config apps/rlark/docs/examples/db-config.yaml
 
 # 终端 3：启动 Gateway
 ./apps/rlark/bin/gateway \

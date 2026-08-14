@@ -109,7 +109,8 @@ Open three terminals and start Server, Controller-Manager, and Gateway:
   --kubeconfig ~/.rlark/admin.kubeconfig \
   --server-address https://localhost:8443 \
   --leader-elect=false \
-  --metrics-bind-address :0
+  --metrics-bind-address :0 \
+  --db-config apps/rlark/docs/examples/db-config.yaml
 
 # Terminal 3: Start Gateway
 ./apps/rlark/bin/gateway \
