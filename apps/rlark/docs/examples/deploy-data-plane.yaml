@@ -28,8 +28,8 @@ cert:
 
 kubernetes:
   kubeconfig: ~/.kube/config # 往 k8s 集群部署平台，访问集群的 kubeconfig
-  agent-image: rlark-agent:latest
-  network-sidecar-image: rlark-network-sidecar:latest # 可选，启用跨集群 Pod 网络互通
+  agent-image: rlark:latest
+  network-sidecar-image: rlark:latest # 可选，启用跨集群 Pod 网络互通
 
 #docker:
 #  agent-image: rlark-agent:latest

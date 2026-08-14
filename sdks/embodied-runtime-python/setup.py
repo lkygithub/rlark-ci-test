@@ -8,7 +8,7 @@ setup(
     long_description_content_type="text/markdown",
     author="rlinf",
     author_email="pigeonligh@hotmail.com",
-    url="https://github.com/RLinf/RLark/tree/main/apps/embodied-runtime",
+    url="https://github.com/RLinf/RLark/tree/main/sdks/embodied-runtime-python",
     license="Apache 2.0",
     packages=find_packages(include=["embodied_runtime", "embodied_runtime.*"]),
     include_package_data=True,

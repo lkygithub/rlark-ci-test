@@ -28,7 +28,11 @@ fmt-web: ## Format web UI (prettier)
 
 ##@ Go targets
 
-.PHONY: go-tidy
+.PHONY: build go-tidy
+
+build: ## Build all binaries (apps/rlark)
+	$(MAKE) -C apps/rlark build $(MAKEOVERRIDES)
+
 go-tidy: ## Run go mod tidy on all workspace modules
 	@for dir in $$(grep '^\t\./' go.work | sed 's/^\t//'); do \
 		(cd $$dir && go mod tidy); \

@@ -16,9 +16,9 @@ plane: control
 
 kubernetes:
   kubeconfig: ~/.kube/config # kubeconfig for the target cluster
-  gateway-image: rlark-gateway:latest
-  controller-manager-image: rlark-controller-manager:latest
-  server-image: rlark-server:latest
+  gateway-image: rlark:latest
+  controller-manager-image: rlark:latest
+  server-image: rlark:latest
   kcp-image: kcp:v0.30.0
   # etcd-image: etcd:3.5.15-0
   postgresql-image: postgres:15

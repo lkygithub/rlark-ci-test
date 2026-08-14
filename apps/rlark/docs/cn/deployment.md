@@ -140,7 +140,7 @@ services:
     environment:
       POSTGRES_DB: rlark
       POSTGRES_USER: rlark
-      POSTGRES_PASSWORD: rlark123
+      POSTGRES_PASSWORD: CHANGE_ME
     ports:
       - "5432:5432"
     volumes:
@@ -426,7 +426,7 @@ db:
   port: 5432
   database: rlark
   user: rlark
-  password: rlark123
+  password: CHANGE_ME
 ```
 
 ## 11. 监控与运维
