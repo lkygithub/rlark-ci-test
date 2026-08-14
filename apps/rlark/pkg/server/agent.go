@@ -81,7 +81,7 @@ func (s *Server) registerAgent(ctx context.Context, agentID string) error {
 		}
 	}
 
-	rbName := roleName + "-binding"
+	rbName := fmt.Sprintf("%s-cluster-binding-%s", roleName, agentID)
 	rb := &rbacv1.RoleBinding{
 		ObjectMeta: metav1.ObjectMeta{Name: rbName, Namespace: namespace},
 		Subjects:   []rbacv1.Subject{{Kind: "ServiceAccount", Name: saName, Namespace: namespace}},

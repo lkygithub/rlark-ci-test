@@ -38,4 +38,6 @@ const (
 const (
 	AgentCertLabelKey   = "rlark.io/agent-cert"
 	AgentCertLabelValue = "true"
+
+	DomainSuffix = "rlark-domain"
 )

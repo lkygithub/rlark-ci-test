@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/rlinf/rlark/apps/rlark/pkg/common"
 	"golang.org/x/crypto/ssh"
 
 	gocache "github.com/patrickmn/go-cache"
@@ -242,7 +243,7 @@ func (a *containerNetworkAdapter) GetContainerNetworkDomainHosts(ctx context.Con
 	}
 	hosts := make(map[string]string)
 	for _, pod := range dpeer.Spec.Pods {
-		hosts[fmt.Sprintf("%s.rlark-domain", pod.Name)] = pod.IP
+		hosts[fmt.Sprintf("%s.%s", pod.Name, common.DomainSuffix)] = pod.IP
 	}
 	return hosts, nil
 }

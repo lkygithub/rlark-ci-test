@@ -5,6 +5,7 @@ import (
 	"path"
 	"strings"
 
+	"github.com/rlinf/rlark/apps/rlark/pkg/common"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -55,6 +56,13 @@ func buildRayConfigMap(namespace, role string) *corev1.ConfigMap {
 			rayCheckScriptName: rayCheckScript,
 		},
 	}
+}
+
+func rayHeadDomain(mgmtTask *rlarkv1alpha1.Task, taskName string) string {
+	if mgmtTask.Spec.Domain != "" {
+		return fmt.Sprintf("%s-0.%s", taskName, common.DomainSuffix)
+	}
+	return rayHeadServiceName(taskName)
 }
 
 func rayHeadServiceName(taskName string) string {
@@ -156,7 +164,7 @@ func applyRayInit(template *corev1.PodTemplateSpec, mgmtTask *rlarkv1alpha1.Task
 		} else {
 			headTaskName := annotations[rlarkv1alpha1.RayHeadTaskNameAnnotation]
 			if headTaskName != "" {
-				envs = append(envs, corev1.EnvVar{Name: "RLARK_HEAD_ADDRESS", Value: rayHeadServiceName(headTaskName)})
+				envs = append(envs, corev1.EnvVar{Name: "RLARK_HEAD_ADDRESS", Value: rayHeadDomain(mgmtTask, headTaskName)})
 			}
 		}
 
