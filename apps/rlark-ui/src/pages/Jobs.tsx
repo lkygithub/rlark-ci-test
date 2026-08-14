@@ -2010,8 +2010,23 @@ function WorkerTableRow({
   const zh = c.nav.overview === "总览";
   const [copied, setCopied] = useState(false);
   const [expanded, setExpanded] = useState(false);
-  const sshServer = "ssh.rlark.ai";
-  const sshCommand = `ssh -J rlark-user@${sshServer} user@${worker.name}`;
+  const [sshConfig, setSSHConfig] = useState<{
+    sshJumpHost: string;
+    sshJumpPort: string;
+  } | null>(null);
+  useEffect(() => {
+    fetch("/api/v1/system-config")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d) setSSHConfig(d);
+      })
+      .catch(() => {});
+  }, []);
+  const sshUser = sessionStorage.getItem("rlark-user-name") || "<ssh-user>";
+  const sshJump = sshConfig?.sshJumpHost
+    ? `${sshUser}@${sshConfig.sshJumpHost}${sshConfig.sshJumpPort ? ":" + sshConfig.sshJumpPort : ""}`
+    : "";
+  const sshCommand = sshJump ? `ssh -J ${sshJump} root@${worker.name}` : "";
   const handleCopy = async () => {
     if (!(await copyText(sshCommand))) return;
     setCopied(true);

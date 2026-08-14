@@ -25,6 +25,7 @@ import {
   ImageRegistriesPage,
   ImageRegistryCreatePage,
 } from "../pages/ImageRegistries";
+import { SystemConfigPage } from "../pages/SystemConfig";
 
 export function AdminLogin({
   copy: c,
@@ -461,20 +462,7 @@ export function AdminApp() {
           <CreateClusterPage copy={c} lang={lang} />
         )}
         {adminPage === "addons" && <AddonsPage copy={c} lang={lang} />}
-        {adminPage === "config" && (
-          <div className="page-content">
-            <div className="section-heading">
-              <div>
-                <span className="eyebrow">
-                  <Settings size={13} />
-                  {zh ? "系统配置" : "Config"}
-                </span>
-                <h2>{zh ? "系统配置" : "Config"}</h2>
-              </div>
-            </div>
-            <p className="muted">{zh ? "即将推出" : "Coming soon"}</p>
-          </div>
-        )}
+        {adminPage === "config" && <SystemConfigPage copy={c} />}
         {adminPage === "storageClass" && adminSub === "create" && (
           <StorageClassCreatePage
             copy={c}

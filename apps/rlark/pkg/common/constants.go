@@ -32,6 +32,15 @@ const (
 	ImageRegistryAnnotationRegistry = "rlark.io/registry"
 	// ImageRegistryAnnotationUsername is the annotation storing the registry username.
 	ImageRegistryAnnotationUsername = "rlark.io/username"
+
+	// SystemConfigSecretName is the KCP Secret holding platform system configuration.
+	SystemConfigSecretName = "rlark-system-config"
+)
+
+// SystemConfig keys stored in the SystemConfigSecret data field.
+const (
+	SystemConfigKeySSHJumpHost = "sshJumpHost"
+	SystemConfigKeySSHJumpPort = "sshJumpPort"
 )
 
 // Constants used by the package.

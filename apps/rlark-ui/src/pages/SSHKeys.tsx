@@ -120,7 +120,21 @@ export function SSHKeysPage({ copy: c }: { copy: Copy }) {
     }
   };
 
-  const sshCommand = `ssh -J ${newUser}@<server>:2222 root@<pod-name>`;
+  const [sshConfig, setSSHConfig] = useState<{
+    sshJumpHost: string;
+    sshJumpPort: string;
+  } | null>(null);
+  useEffect(() => {
+    fetch("/api/v1/system-config")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d) setSSHConfig(d);
+      })
+      .catch(() => {});
+  }, []);
+  const sshCommand = sshConfig?.sshJumpHost
+    ? `ssh -J ${newUser}@${sshConfig.sshJumpHost}${sshConfig.sshJumpPort ? ":" + sshConfig.sshJumpPort : ""} root@<pod-name>`
+    : `ssh -J ${newUser}@<server>:2222 root@<pod-name>`;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(sshCommand);
