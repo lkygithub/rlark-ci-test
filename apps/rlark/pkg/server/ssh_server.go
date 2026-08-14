@@ -73,14 +73,17 @@ type wrapSSHMetadata struct {
 	ssh.Context
 }
 
+// SessionID is an exported method.
 func (m wrapSSHMetadata) SessionID() []byte {
 	return []byte(m.Context.SessionID())
 }
 
+// ClientVersion is an exported method.
 func (m wrapSSHMetadata) ClientVersion() []byte {
 	return []byte(m.Context.ClientVersion())
 }
 
+// ServerVersion is an exported method.
 func (m wrapSSHMetadata) ServerVersion() []byte {
 	return []byte(m.Context.ServerVersion())
 }

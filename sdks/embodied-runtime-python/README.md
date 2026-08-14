@@ -4,7 +4,7 @@ English | [简体中文](./README.zh-CN.md)
 
 A Python client for the [embodied-runtime][repo] robot (ROS) and camera gRPC services. Both controllers are exposed over **Unix domain sockets** inside a task pod; this SDK mirrors the `rosctr` / `camctr` Go CLIs and handles the socket plumbing for you.
 
-[repo]: https://github.com/rlinf/rlark/apps/embodied-runtime
+[repo]: https://github.com/RLinf/RLark/tree/main/apps/embodied-runtime
 
 Generated gRPC stubs live under `embodied_runtime/gen/`; the wrapper clients live in `embodied_runtime.robot` and `embodied_runtime.camera`.
 
@@ -24,7 +24,7 @@ Runtime dependencies: `grpcio`, `protobuf`.
 from embodied_runtime import RobotClient, ModeConfig
 from embodied_runtime.robot import state_name
 
-# Default socket: /var/run/rlinf/ros-ctrl.sock
+# Default socket: /var/run/rlark/ros-ctrl.sock
 with RobotClient() as robot:
     # preset mode + extra arg override
     robot.start_robot("franka-0", mode="impedance", args={"robot_ip": "172.16.0.2"})
@@ -47,7 +47,7 @@ with RobotClient() as robot:
 ```python
 from embodied_runtime import CameraClient
 
-with CameraClient() as cam:                       # /var/run/rlinf/camera-ctrl.sock
+with CameraClient() as cam:                       # /var/run/rlark/camera-ctrl.sock
     cam.open_camera("camera-0", encoding="h264")
     for frame in cam.watch_frames("camera-0"):
         # jpeg/png/bmp/tiff -> one complete, independently decodable frame per message
@@ -121,12 +121,13 @@ RobotClient(address="10.0.0.5:50051")
 
 ## Environment variables
 
-The device plugin injects `RLINF_EMBODIED_ROS_SOCKET_PATH` and `RLINF_EMBODIED_CAMERA_SOCKET_PATH` into task pods; both clients read them automatically (an explicit `socket_path` / `address` argument always wins):
+The device plugin injects `RLINF_EMBODIED_ROS_SOCKET_PATH` (ROS 1), `RLINF_EMBODIED_ROS2_SOCKET_PATH` (ROS 2), and `RLINF_EMBODIED_CAMERA_SOCKET_PATH` into task pods; both clients read them automatically (an explicit `socket_path` / `address` argument always wins):
 
 | Env var | Used by | Default |
 |---------|---------|---------|
-| `RLINF_EMBODIED_ROS_SOCKET_PATH` | `RobotClient` | `/var/run/rlinf/ros-ctrl.sock` |
-| `RLINF_EMBODIED_CAMERA_SOCKET_PATH` | `CameraClient` | `/var/run/rlinf/camera-ctrl.sock` |
+| `RLINF_EMBODIED_ROS_SOCKET_PATH` | `RobotClient` | `/var/run/rlark/ros-ctrl.sock` |
+| `RLINF_EMBODIED_ROS2_SOCKET_PATH` | `RobotClient` | `/var/run/rlark/ros2-ctrl.sock` |
+| `RLINF_EMBODIED_CAMERA_SOCKET_PATH` | `CameraClient` | `/var/run/rlark/camera-ctrl.sock` |
 
 ## Regenerate stubs
 

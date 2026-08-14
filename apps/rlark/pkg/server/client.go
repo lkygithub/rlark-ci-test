@@ -20,11 +20,13 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/rancher/remotedialer"
 	"github.com/rlinf/rlark/apps/rlark/pkg/auth/cert"
+	"github.com/rlinf/rlark/apps/rlark/pkg/common"
 	"github.com/rlinf/rlark/apps/rlark/pkg/configs"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
+// Client is a client.
 type Client struct {
 	baseURL         string
 	tlsConfig       *tls.Config
@@ -158,9 +160,9 @@ func NewClientFromKubernetes(ctx context.Context, serverAddr string, kubeConfig 
 		serverUrl.Host = net.JoinHostPort(serverHost, serverUrl.Port())
 	}
 
-	clientSecret, err := kubeClient.CoreV1().Secrets(namespace).Get(ctx, defaultAdminCertSecretName, metav1.GetOptions{})
+	clientSecret, err := kubeClient.CoreV1().Secrets(namespace).Get(ctx, common.AdminCertSecretName, metav1.GetOptions{})
 	if err != nil {
-		return nil, fmt.Errorf("get secret %s/%s: %w", namespace, defaultAdminCertSecretName, err)
+		return nil, fmt.Errorf("get secret %s/%s: %w", namespace, common.AdminCertSecretName, err)
 	}
 	certData, err := cert.LoadData(clientSecret.Data["client.crt"], clientSecret.Data["client.key"])
 	if err != nil {
@@ -172,7 +174,7 @@ func NewClientFromKubernetes(ctx context.Context, serverAddr string, kubeConfig 
 	}
 
 	var caCertPool *x509.CertPool
-	caSecret, err := kubeClient.CoreV1().Secrets(namespace).Get(ctx, defaultTLSCASecretName, metav1.GetOptions{})
+	caSecret, err := kubeClient.CoreV1().Secrets(namespace).Get(ctx, common.AdminCertSecretName, metav1.GetOptions{})
 	if err == nil {
 		caCertPool = x509.NewCertPool()
 		caCertPool.AppendCertsFromPEM(caSecret.Data["ca.crt"])
@@ -187,14 +189,14 @@ func NewClientFromKubernetes(ctx context.Context, serverAddr string, kubeConfig 
 	return NewClient(serverUrl.String(), tlsConfig, nil), nil
 }
 
-// BuildURL 构建完整的请求 URL
+// BuildURL 构建完整的请求 URL.
 func (c *Client) BuildURL(parts ...string) string {
 	u, _ := url.Parse(c.baseURL)
 	u.Path = path.Join(u.Path, path.Join(parts...))
 	return u.String()
 }
 
-// BuildURLWithQuery 构建带查询参数的请求 URL
+// BuildURLWithQuery 构建带查询参数的请求 URL.
 func (c *Client) BuildURLWithQuery(query url.Values, parts ...string) string {
 	u, _ := url.Parse(c.baseURL)
 	u.Path = path.Join(u.Path, path.Join(parts...))
@@ -204,7 +206,7 @@ func (c *Client) BuildURLWithQuery(query url.Values, parts ...string) string {
 	return u.String()
 }
 
-// DoRequest 执行 HTTP 请求
+// DoRequest 执行 HTTP 请求.
 func (c *Client) DoRequest(ctx context.Context, method, rawURL string, body io.Reader, requestOptions ...func(*http.Request)) (*http.Response, error) {
 	req, err := http.NewRequestWithContext(ctx, method, rawURL, body)
 	if err != nil {
@@ -217,6 +219,7 @@ func (c *Client) DoRequest(ctx context.Context, method, rawURL string, body io.R
 	return c.httpClient.Do(req)
 }
 
+// DoRequestWithObject performs a request and decodes the response.
 func (c *Client) DoRequestWithObject(ctx context.Context, method, rawURL string, obj any, requestOptions ...func(*http.Request)) (*http.Response, error) {
 	body, err := json.Marshal(obj)
 	if err != nil {
@@ -225,6 +228,7 @@ func (c *Client) DoRequestWithObject(ctx context.Context, method, rawURL string,
 	return c.DoRequest(ctx, method, rawURL, bytes.NewReader(body), requestOptions...)
 }
 
+// DialWebsocket dials the websocket.
 func (c *Client) DialWebsocket(ctx context.Context, header http.Header) (*websocket.Conn, *http.Response, error) {
 	urlStr := c.BuildURL("api", "connect")
 	u, err := url.Parse(urlStr)

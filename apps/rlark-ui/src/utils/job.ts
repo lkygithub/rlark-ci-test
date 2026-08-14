@@ -130,6 +130,7 @@ export function generateJobCRD(opts: {
   runScript: string;
   domain: string;
   tensorBoardDir?: string;
+  sshPublicKey?: string;
 }) {
   const tasks = opts.roles
     .map((role) => {
@@ -250,6 +251,10 @@ export function generateJobCRD(opts: {
     apiVersion: "rlinf.io/v1alpha1",
     kind: "Job",
     metadata: { name: opts.name },
-    spec: { tasks, ...(opts.domain ? { domain: opts.domain } : {}) },
+    spec: {
+      tasks,
+      ...(opts.domain ? { domain: opts.domain } : {}),
+      ...(opts.sshPublicKey ? { sshPublicKey: opts.sshPublicKey } : {}),
+    },
   };
 }

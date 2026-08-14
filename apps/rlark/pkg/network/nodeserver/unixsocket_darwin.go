@@ -8,9 +8,13 @@ import (
 	"syscall"
 )
 
+// SOL_LOCAL is a constant value.
 const SOL_LOCAL = 0
+
+// LOCAL_PEERPID is a constant value.
 const LOCAL_PEERPID = 0x002
 
+// GetPeerProcess returns the peerProcess.
 func GetPeerProcess(conn net.Conn) (int32, error) {
 	// 0. 将 net.Conn 转换为 *net.UnixConn
 	unixConn, ok := conn.(*net.UnixConn)

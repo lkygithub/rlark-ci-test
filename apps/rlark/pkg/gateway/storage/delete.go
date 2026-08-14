@@ -8,6 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 )
 
+// DeleteObject deletes the object.
 func (c *Client) DeleteObject(objectKey string) error {
 	ctx := context.Background()
 	_, err := c.s3Client.DeleteObject(ctx, &s3.DeleteObjectInput{
@@ -17,6 +18,7 @@ func (c *Client) DeleteObject(objectKey string) error {
 	return err
 }
 
+// DeleteMultipleObjects deletes the multipleObjects.
 func (c *Client) DeleteMultipleObjects(objectKeys []string) ([]string, error) {
 	if len(objectKeys) == 0 {
 		return nil, nil
@@ -46,6 +48,7 @@ func (c *Client) DeleteMultipleObjects(objectKeys []string) ([]string, error) {
 	return extractDeletedObjects(output), nil
 }
 
+// DeleteObjectsByPrefix deletes the objectsByPrefix.
 func (c *Client) DeleteObjectsByPrefix(prefix string) ([]string, error) {
 	objects, err := c.ListObjectsByPrefix(prefix)
 	if err != nil {
@@ -64,6 +67,7 @@ func (c *Client) DeleteObjectsByPrefix(prefix string) ([]string, error) {
 	return c.DeleteMultipleObjects(objectKeys)
 }
 
+// DeleteObjectIfExists deletes the objectIfExists.
 func (c *Client) DeleteObjectIfExists(objectKey string) (bool, error) {
 	exists, err := c.IsObjectExist(objectKey)
 	if err != nil {

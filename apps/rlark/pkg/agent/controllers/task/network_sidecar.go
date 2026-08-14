@@ -2,14 +2,13 @@ package task
 
 import (
 	rlarkv1alpha1 "github.com/rlinf/rlark/api/rlark.io/v1alpha1"
-	corev1 "k8s.io/api/core/v1"
-
 	"github.com/rlinf/rlark/apps/rlark/pkg/utils"
+	corev1 "k8s.io/api/core/v1"
 )
 
 const (
 	sidecarContainerName  = "rlark-network-sidecar"
-	sidecarUnixSocketPath = "/run/rlark"
+	sidecarUnixSocketPath = "/var/run/rlark"
 	sidecarVolumeName     = "rlark-nodeserver-socket"
 )
 
@@ -18,16 +17,15 @@ func applyNetworkSidecar(template *corev1.PodTemplateSpec, mgmtTask *rlarkv1alph
 		return
 	}
 
-	for i := range template.Spec.Containers {
-		if template.Spec.Containers[i].Name == sidecarContainerName {
-			return
-		}
+	if findSidecar(&template.Spec, sidecarContainerName) != nil {
+		return
 	}
 
-	template.Spec.Containers = append(template.Spec.Containers, corev1.Container{
+	sidecar := corev1.Container{
 		Name:            sidecarContainerName,
 		Image:           sidecarImage,
 		ImagePullPolicy: corev1.PullIfNotPresent,
+		Command:         []string{"network-sidecar"},
 		Env: []corev1.EnvVar{
 			{
 				Name:  "LOG_LEVEL",
@@ -46,7 +44,8 @@ func applyNetworkSidecar(template *corev1.PodTemplateSpec, mgmtTask *rlarkv1alph
 				MountPath: sidecarUnixSocketPath,
 			},
 		},
-	})
+	}
+	applySidecar(&template.Spec, sidecar)
 
 	template.Spec.Volumes = append(template.Spec.Volumes, corev1.Volume{
 		Name: sidecarVolumeName,

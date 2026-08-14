@@ -13,13 +13,13 @@
 
 | 服务 | 包 | Proto | 默认 socket |
 |---------|---------|-------|----------------|
-| `RobotController` | `ros.controller.v1` | `proto/roscontroller/v1/robot.proto` | `/var/run/rlinf/ros-ctrl.sock` |
-| `CameraController` | `camera.controller.v1` | `proto/cameracontroller/v1/camera.proto` | `/var/run/rlinf/camera-ctrl.sock` |
+| `RobotController` | `ros.controller.v1` | `proto/roscontroller/v1/robot.proto` | `/var/run/rlark/ros-ctrl.sock` |
+| `CameraController` | `camera.controller.v1` | `proto/cameracontroller/v1/camera.proto` | `/var/run/rlark/camera-ctrl.sock` |
 
 ### 传输
 
-- 两个服务均监听节点本地 `/var/run/rlinf` 目录下的 Unix domain socket；device plugin 会将该目录以只读方式挂载进 task pod。
-- device plugin 会注入 `RLINF_EMBODIED_ROS_SOCKET_PATH` 与 `RLINF_EMBODIED_CAMERA_SOCKET_PATH`；`rosctr` / `camctr` CLI 会自动读取（显式传入的 `--socket-path` 参数始终优先）。
+- 两个服务均监听节点本地 `/var/run/rlark` 目录下的 Unix domain socket；device plugin 会将该目录以只读方式挂载进 task pod。
+- device plugin 会注入 `RLINF_EMBODIED_ROS_SOCKET_PATH`（ROS 1）、`RLINF_EMBODIED_ROS2_SOCKET_PATH`（ROS 2）与 `RLINF_EMBODIED_CAMERA_SOCKET_PATH`；`rosctr` / `camctr` CLI 会自动读取（显式传入的 `--socket-path` 参数始终优先）。对 `rosctr` 而言，ROS 1 的 socket 路径优先；未设置时回退至 ROS 2 的 socket 路径。
 
 ### HTTP 网关
 
@@ -69,6 +69,13 @@
 
 `ros.controller.v1.RobotController` 管理主机上的机器人节点：生命周期（启动 / 停止 / 重置）、控制模式切换、状态、日志，以及 ROS 包查询。device plugin 通过它驱动运行在主机网络上的机器人节点（如 Franka）。
 
+该服务由两个独立控制器实现，注册在不同 Unix socket 上，遵循同一套 RPC 契约：
+
+- **ROS 1**（`ros-controller`，`ros-ctrl.sock`）：启动每机器人 `roscore`；响应中填充 `ros_master_uri`。
+- **ROS 2**（`ros2-controller`，`ros2-ctrl.sock`）：无 master；为每机器人分配 `ROS_DOMAIN_ID` 实现 DDS 隔离；响应中填充 `ros_domain_id`。
+
+> **组播要求（仅 ROS 2）。** ROS 2 DDS 默认使用 IP 组播进行节点发现。集群的网络层（CNI 插件、节点 / 底层交换机）**必须支持组播路由**，跨 Pod / 跨节点的 ROS 2 节点才能互相发现。若组播被屏蔽，需在各 robot 的 mode 级 `env` 中设置 `CYCLONEDDS_URI` 改为单播发现，或部署 DDS Discovery Server。
+
 ### RPC
 
 | RPC | 请求 | 响应 | 说明 |
@@ -79,12 +86,12 @@
 | `SwitchMode` | `SwitchModeRequest` | `SwitchModeResponse` | 切换运行中机器人的控制模式。 |
 | `ListRobots` | `ListRobotsRequest` | `ListRobotsResponse` | 所有受管机器人及状态。 |
 | `ListModes` | `ListModesRequest` | `ListModesResponse` | 机器人支持的控制模式。 |
-| `GetRobotLogs` | `GetRobotLogsRequest` | `GetRobotLogsResponse` | 最近的 roslaunch 日志行。 |
+| `GetRobotLogs` | `GetRobotLogsRequest` | `GetRobotLogsResponse` | 最近的 launch 进程日志行。 |
 | `ListPackages` | `ListPackagesRequest` | `ListPackagesResponse` | 白名单内的 ROS 包。 |
 | `GetPackageInfo` | `GetPackageInfoRequest` | `GetPackageInfoResponse` | 某个 ROS 包的元信息。 |
 | `GetPackageLaunchFiles` | `GetPackageLaunchFilesRequest` | `GetPackageLaunchFilesResponse` | 包内的 launch 文件。 |
 | `GetLaunchFileArgs` | `GetLaunchFileArgsRequest` | `GetLaunchFileArgsResponse` | launch 文件支持的参数。 |
-| `ResetRobot` | `ResetRobotRequest` | `ResetRobotResponse` | 停止、重启 roscore、状态重置为 STOPPED。 |
+| `ResetRobot` | `ResetRobotRequest` | `ResetRobotResponse` | 停止、重启 ROS 中间件（ROS 1 重启 roscore；ROS 2 重启 launch 进程）、状态重置为 STOPPED。 |
 
 ### 枚举
 
@@ -118,8 +125,9 @@
 | `robot_id` | `string` | 机器人 id。 |
 | `state` | `RobotState` | 结果状态。 |
 | `current_mode` | `ModeInfo` | 解析后的模式信息。 |
-| `ros_master_uri` | `string` | 机器人监听的 ROS master URI。 |
+| `ros_master_uri` | `string` | 机器人监听的 ROS master URI（仅 ROS 1）。 |
 | `params` | `map<string,string>` | 机器人级参数，可经 `arg_from` 引用。 |
+| `ros_domain_id` | `int32` | `ROS_DOMAIN_ID`，用于 DDS 隔离（仅 ROS 2；ROS 1 为 0）。 |
 
 #### `StopRobotRequest` / `StopRobotResponse`
 
@@ -141,8 +149,9 @@
 | `mode` | `string` | 当前模式名。 |
 | `state` | `RobotState` | 生命周期状态。 |
 | `current_mode` | `ModeInfo` | 解析后的模式信息。 |
-| `ros_master_uri` | `string` | ROS master URI。 |
+| `ros_master_uri` | `string` | ROS master URI（仅 ROS 1）。 |
 | `params` | `map<string,string>` | 机器人级参数。 |
+| `ros_domain_id` | `int32` | `ROS_DOMAIN_ID`（仅 ROS 2；ROS 1 为 0）。 |
 
 #### `SwitchModeRequest`
 
@@ -160,8 +169,9 @@
 | `mode` | `string` | 当前模式。 |
 | `state` | `RobotState` | 生命周期状态。 |
 | `current_mode` | `ModeInfo` | 解析后的模式信息。 |
-| `ros_master_uri` | `string` | ROS master URI。 |
+| `ros_master_uri` | `string` | ROS master URI（仅 ROS 1）。 |
 | `params` | `map<string,string>` | 机器人级参数。 |
+| `ros_domain_id` | `int32` | `ROS_DOMAIN_ID`（仅 ROS 2；ROS 1 为 0）。 |
 
 #### `ResetRobotRequest`
 
@@ -175,7 +185,8 @@
 |-------|------|-------------|
 | `robot_id` | `string` | 机器人 id。 |
 | `state` | `RobotState` | 重置后状态（STOPPED）。 |
-| `ros_master_uri` | `string` | ROS master URI（roscore 重启后可能变化）。 |
+| `ros_master_uri` | `string` | ROS master URI（ROS 1；roscore 重启后可能变化）。 |
+| `ros_domain_id` | `int32` | `ROS_DOMAIN_ID`（ROS 2；重置后保持不变）。 |
 
 ### 消息 —— 清单与模式
 
@@ -197,8 +208,9 @@
 | `mode` | `string` | 当前模式名。 |
 | `state` | `RobotState` | 生命周期状态。 |
 | `current_mode` | `ModeInfo` | 解析后的模式信息。 |
-| `ros_master_uri` | `string` | ROS master URI。 |
+| `ros_master_uri` | `string` | ROS master URI（仅 ROS 1）。 |
 | `params` | `map<string,string>` | 机器人级参数。 |
+| `ros_domain_id` | `int32` | `ROS_DOMAIN_ID`（仅 ROS 2；ROS 1 为 0）。 |
 
 #### `ListModesRequest`
 

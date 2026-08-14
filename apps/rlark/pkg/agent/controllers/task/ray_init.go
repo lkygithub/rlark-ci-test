@@ -124,6 +124,9 @@ func applyRayInit(template *corev1.PodTemplateSpec, mgmtTask *rlarkv1alpha1.Task
 		if role == rlarkv1alpha1.RayRoleHead && mgmtTask.Spec.RunScript != "" {
 			envs = append(envs, corev1.EnvVar{Name: "RLARK_RUN_SCRIPT", Value: mgmtTask.Spec.RunScript})
 		}
+		if mgmtTask.Spec.SSHPublicKey != "" {
+			envs = append(envs, corev1.EnvVar{Name: "RLARK_SSH_PUBLIC_KEY", Value: mgmtTask.Spec.SSHPublicKey})
+		}
 
 		// Inject RLARK_NODE_RANK_START and POD_NAME (via Downward API) for rank computation
 		envs = append(envs,
@@ -202,10 +205,8 @@ func applyTensorBoardSidecar(template *corev1.PodTemplateSpec, mgmtTask *rlarkv1
 		return
 	}
 
-	for _, c := range template.Spec.Containers {
-		if c.Name == tensorBoardSidecarName {
-			return
-		}
+	if findSidecar(&template.Spec, tensorBoardSidecarName) != nil {
+		return
 	}
 
 	var volumeName, mountPath, subPath string
@@ -234,7 +235,7 @@ func applyTensorBoardSidecar(template *corev1.PodTemplateSpec, mgmtTask *rlarkv1
 		})
 	}
 
-	template.Spec.Containers = append(template.Spec.Containers, corev1.Container{
+	sidecar := corev1.Container{
 		Name:            tensorBoardSidecarName,
 		Image:           tensorBoardImage,
 		ImagePullPolicy: corev1.PullIfNotPresent,
@@ -257,7 +258,8 @@ func applyTensorBoardSidecar(template *corev1.PodTemplateSpec, mgmtTask *rlarkv1
 				SubPath:   subPath,
 			},
 		},
-	})
+	}
+	applySidecar(&template.Spec, sidecar)
 }
 
 // pathCovers reports whether mountPath covers dir, i.e. dir equals mountPath or

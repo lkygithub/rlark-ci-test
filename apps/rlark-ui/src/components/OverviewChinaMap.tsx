@@ -11,7 +11,9 @@ import {
   Workflow,
 } from "lucide-react";
 import type { Copy } from "../i18n";
-import type { Page } from "../types";
+import type { CRDNode, Page } from "../types";
+import type { Cluster, Job } from "../data";
+import { getNodeCategory } from "../utils/nodes";
 
 type Position = [number, number];
 type Geometry = {
@@ -33,66 +35,156 @@ const VIEWBOX = {
   maxLat: 54,
 };
 
-const cityResources = [
-  { name: "北京市", lon: 116.41, lat: 39.9, nodes: 56, clusters: 2 },
-  { name: "上海市", lon: 121.47, lat: 31.23, nodes: 48, clusters: 2 },
-  { name: "杭州市", lon: 120.15, lat: 30.27, nodes: 28, clusters: 1 },
-  { name: "深圳市", lon: 114.06, lat: 22.54, nodes: 26, clusters: 1 },
-  { name: "广州市", lon: 113.26, lat: 23.13, nodes: 24, clusters: 1 },
-  { name: "成都市", lon: 104.06, lat: 30.67, nodes: 21, clusters: 1 },
-  { name: "重庆市", lon: 106.55, lat: 29.56, nodes: 22, clusters: 1 },
-  { name: "武汉市", lon: 114.31, lat: 30.59, nodes: 26, clusters: 1 },
-  { name: "西安市", lon: 108.94, lat: 34.34, nodes: 19, clusters: 1 },
-  { name: "南京市", lon: 118.8, lat: 32.06, nodes: 20, clusters: 1 },
-  { name: "青岛市", lon: 120.38, lat: 36.07, nodes: 16, clusters: 1 },
-  { name: "长沙市", lon: 112.94, lat: 28.23, nodes: 21, clusters: 1 },
-];
+const cityCoords: Record<string, [number, number]> = {
+  北京市: [116.41, 39.9],
+  上海市: [121.47, 31.23],
+  杭州市: [120.15, 30.27],
+  深圳市: [114.06, 22.54],
+  广州市: [113.26, 23.13],
+  成都市: [104.06, 30.67],
+  重庆市: [106.55, 29.56],
+  武汉市: [114.31, 30.59],
+  西安市: [108.94, 34.34],
+  南京市: [118.8, 32.06],
+  青岛市: [120.38, 36.07],
+  长沙市: [112.94, 28.23],
+  天津市: [117.2, 39.13],
+  苏州市: [120.58, 31.3],
+  郑州市: [113.62, 34.75],
+  合肥市: [117.27, 31.86],
+  福州市: [119.3, 26.08],
+  厦门市: [118.09, 24.48],
+  南昌市: [115.86, 28.68],
+  济南市: [117.0, 36.65],
+  沈阳市: [123.43, 41.8],
+  长春市: [125.32, 43.82],
+  哈尔滨市: [126.64, 45.75],
+  大连市: [121.61, 38.91],
+  石家庄市: [114.5, 38.05],
+  太原市: [112.55, 37.87],
+  兰州市: [103.84, 36.06],
+  银川市: [106.23, 38.49],
+  西宁市: [101.78, 36.62],
+  乌鲁木齐市: [87.62, 43.82],
+  拉萨市: [91.13, 29.65],
+  呼和浩特市: [111.75, 40.84],
+  贵阳市: [106.71, 26.57],
+  昆明市: [102.83, 24.88],
+  南宁市: [108.37, 22.82],
+  海口市: [110.32, 20.03],
+  宁波市: [121.55, 29.87],
+  无锡市: [120.3, 31.57],
+  佛山市: [113.12, 23.02],
+  东莞市: [113.75, 23.05],
+  珠海市: [113.58, 22.27],
+  中山市: [113.39, 22.52],
+  惠州市: [114.41, 23.11],
+};
 
-const cityConnections = [
-  [0, 1],
-  [0, 8],
-  [8, 5],
-  [5, 6],
-  [6, 11],
-  [11, 7],
-  [7, 9],
-  [9, 2],
-  [2, 1],
-  [1, 10],
-  [7, 3],
-  [3, 4],
-  [0, 3],
-  [0, 4],
-  [0, 5],
-  [0, 11],
-  [1, 5],
-  [1, 8],
-  [1, 3],
-  [2, 5],
-  [2, 8],
-  [3, 5],
-  [3, 8],
-  [3, 10],
-  [4, 6],
-  [4, 8],
-  [4, 10],
-  [5, 9],
-  [5, 10],
-  [6, 9],
-  [6, 10],
-  [7, 10],
-  [9, 4],
-  [10, 11],
-] as const;
+interface CityData {
+  name: string;
+  lon: number;
+  lat: number;
+  nodes: number;
+  clusters: number;
+  cloud: number;
+  edge: number;
+  robot: number;
+  dominant: "cloud" | "edge" | "robot";
+}
 
-const stats = [
-  { key: "clusters", zh: "集群分布", en: "Clusters", value: 10 },
-  { key: "nodes", zh: "节点分布", en: "Nodes", value: 307 },
-  { key: "jobs", zh: "任务分布", en: "Jobs", value: 8 },
-  { key: "cloud", zh: "云算力节点", en: "Cloud nodes", value: 69 },
-  { key: "edge", zh: "端算力节点", en: "Edge nodes", value: 97 },
-  { key: "robot", zh: "端真机节点", en: "Robot nodes", value: 141 },
-];
+function parseIPLocation(nodes: CRDNode[]): {
+  cities: CityData[];
+  totalByCat: { cloud: number; edge: number; robot: number };
+} {
+  const cityMap = new Map<
+    string,
+    {
+      nodes: number;
+      clusters: Set<string>;
+      cloud: number;
+      edge: number;
+      robot: number;
+    }
+  >();
+  const totalByCat = { cloud: 0, edge: 0, robot: 0 };
+
+  for (const node of nodes) {
+    const raw = node.metadata.annotations?.["rlark.io/ip-location"];
+    if (!raw) continue;
+    let loc: { city?: string; province?: string };
+    try {
+      loc = JSON.parse(raw);
+    } catch {
+      continue;
+    }
+    const city = loc.city;
+    if (!city) continue;
+
+    const cat = getNodeCategory(node);
+    if (cat === "cloud" || cat === "edge" || cat === "robot") {
+      totalByCat[cat]++;
+    }
+
+    const ns = node.metadata.namespace ?? "";
+    if (!cityMap.has(city)) {
+      cityMap.set(city, {
+        nodes: 0,
+        clusters: new Set(),
+        cloud: 0,
+        edge: 0,
+        robot: 0,
+      });
+    }
+    const entry = cityMap.get(city)!;
+    entry.nodes++;
+    if (ns) entry.clusters.add(ns);
+    if (cat === "cloud") entry.cloud++;
+    else if (cat === "edge") entry.edge++;
+    else if (cat === "robot") entry.robot++;
+  }
+
+  const cities: CityData[] = [];
+  for (const [name, entry] of cityMap) {
+    const coords = cityCoords[name];
+    if (!coords) continue;
+    const dominant = (
+      [
+        ["cloud", entry.cloud],
+        ["edge", entry.edge],
+        ["robot", entry.robot],
+      ] as Array<["cloud" | "edge" | "robot", number]>
+    ).sort((a, b) => b[1] - a[1])[0][0];
+    cities.push({
+      name,
+      lon: coords[0],
+      lat: coords[1],
+      nodes: entry.nodes,
+      clusters: entry.clusters.size,
+      cloud: entry.cloud,
+      edge: entry.edge,
+      robot: entry.robot,
+      dominant,
+    });
+  }
+
+  cities.sort((a, b) => b.nodes - a.nodes);
+  return { cities, totalByCat };
+}
+
+function buildConnections(cities: CityData[]): [number, number][] {
+  if (cities.length < 2) return [];
+  const conns: [number, number][] = [];
+  for (let i = 1; i < cities.length; i++) {
+    conns.push([0, i]);
+  }
+  for (let i = 1; i < cities.length && i <= 4; i++) {
+    for (let j = i + 1; j < cities.length && j <= 4; j++) {
+      conns.push([i, j]);
+    }
+  }
+  return conns;
+}
 
 function project(lon: number, lat: number) {
   return {
@@ -124,9 +216,13 @@ function geometryPath(geometry: Geometry) {
   return polygons.flatMap((polygon) => polygon.map(ringPath)).join(" ");
 }
 
-function connectionPath(fromIndex: number, toIndex: number) {
-  const fromCity = cityResources[fromIndex];
-  const toCity = cityResources[toIndex];
+function connectionPath(
+  cities: CityData[],
+  fromIndex: number,
+  toIndex: number,
+) {
+  const fromCity = cities[fromIndex];
+  const toCity = cities[toIndex];
   const from = project(fromCity.lon, fromCity.lat);
   const to = project(toCity.lon, toCity.lat);
   const dx = to.x - from.x;
@@ -148,6 +244,9 @@ function clampPan(pan: { x: number; y: number }, zoom: number) {
 export function OverviewChinaMap({
   navigate,
   copy: c,
+  nodes,
+  jobs,
+  clusters,
 }: {
   navigate: (
     page: Page,
@@ -155,6 +254,9 @@ export function OverviewChinaMap({
     options?: { query?: Record<string, string | undefined> },
   ) => void;
   copy: Copy;
+  nodes: CRDNode[];
+  jobs: Job[];
+  clusters: Cluster[];
 }) {
   const [features, setFeatures] = useState<Feature[]>([]);
   const [zoom, setZoom] = useState(1);
@@ -169,6 +271,14 @@ export function OverviewChinaMap({
   } | null>(null);
   const hasDraggedRef = useRef(false);
   const zh = c.nav.overview === "总览";
+
+  const { cities, totalByCat } = useMemo(() => parseIPLocation(nodes), [nodes]);
+  const connections = useMemo(() => buildConnections(cities), [cities]);
+
+  const totalNodes = nodes.length;
+  const totalClusters = clusters.length;
+  const totalJobs = jobs.length;
+  const runningJobs = jobs.filter((j) => j.phase === "Running").length;
 
   const updateZoom = (nextZoom: number) => {
     const normalized = Math.max(1, Math.min(1.8, Number(nextZoom.toFixed(1))));
@@ -209,13 +319,29 @@ export function OverviewChinaMap({
     [features],
   );
 
+  const stats = [
+    { key: "clusters", zh: "集群分布", en: "Clusters", value: totalClusters },
+    { key: "nodes", zh: "节点分布", en: "Nodes", value: totalNodes },
+    { key: "jobs", zh: "任务分布", en: "Jobs", value: totalJobs },
+    {
+      key: "cloud",
+      zh: "云算力节点",
+      en: "Cloud nodes",
+      value: totalByCat.cloud,
+    },
+    { key: "edge", zh: "端算力节点", en: "Edge nodes", value: totalByCat.edge },
+    {
+      key: "robot",
+      zh: "端真机节点",
+      en: "Robot nodes",
+      value: totalByCat.robot,
+    },
+  ];
+
   return (
     <section className="panel overview-china-panel">
       <div className="overview-china-heading">
         <div>
-          <span className="overview-demo-badge">
-            {zh ? "演示数据" : "Demo data"}
-          </span>
           <h3>{zh ? "资源与任务分布" : "Resource and task distribution"}</h3>
           <p>
             {zh
@@ -336,34 +462,36 @@ export function OverviewChinaMap({
                   </path>
                 ))}
               </g>
-              <g className="china-city-links" aria-hidden="true">
-                {cityConnections.map(([from, to], index) => {
-                  const path = connectionPath(from, to);
-                  return (
-                    <g key={`${from}-${to}`}>
-                      <path className="city-link-line" d={path} />
-                      <circle
-                        className={`link-particle particle-${index % 3}`}
-                        r="2.7"
-                      >
-                        <animateMotion
-                          path={path}
-                          dur={`${2.8 + (index % 4) * 0.65}s`}
-                          begin={`${index * -0.42}s`}
-                          repeatCount="indefinite"
-                        />
-                      </circle>
-                    </g>
-                  );
-                })}
-              </g>
+              {cities.length >= 2 && (
+                <g className="china-city-links" aria-hidden="true">
+                  {connections.map(([from, to], index) => {
+                    const path = connectionPath(cities, from, to);
+                    return (
+                      <g key={`${from}-${to}`}>
+                        <path className="city-link-line" d={path} />
+                        <circle
+                          className={`link-particle particle-${index % 3}`}
+                          r="2.7"
+                        >
+                          <animateMotion
+                            path={path}
+                            dur={`${2.8 + (index % 4) * 0.65}s`}
+                            begin={`${index * -0.42}s`}
+                            repeatCount="indefinite"
+                          />
+                        </circle>
+                      </g>
+                    );
+                  })}
+                </g>
+              )}
               <g className="china-city-pins">
-                {cityResources.map((city, index) => {
+                {cities.map((city, index) => {
                   const point = project(city.lon, city.lat);
                   return (
                     <g
                       key={city.name}
-                      className={`china-city-pin pin-${index % 3}`}
+                      className={`china-city-pin pin-${city.dominant}`}
                       transform={`translate(${point.x} ${point.y})`}
                       role="button"
                       tabIndex={0}
@@ -405,13 +533,18 @@ export function OverviewChinaMap({
                         transform={`translate(${point.x > 660 ? -134 : point.x < 135 ? 12 : -62} ${point.y < 80 ? 24 : -72})`}
                         pointerEvents="none"
                       >
-                        <rect width="124" height="54" rx="9" />
+                        <rect width="150" height="70" rx="9" />
                         <text className="tooltip-city" x="10" y="18">
                           {city.name}
                         </text>
                         <text className="tooltip-detail" x="10" y="36">
                           {city.nodes} {zh ? "个节点" : "nodes"} ·{" "}
                           {city.clusters} {zh ? "个集群" : "clusters"}
+                        </text>
+                        <text className="tooltip-detail" x="10" y="54">
+                          {zh ? "云" : "Cloud"} {city.cloud} ·{" "}
+                          {zh ? "端" : "Edge"} {city.edge} ·{" "}
+                          {zh ? "真机" : "Robot"} {city.robot}
                         </text>
                       </g>
                     </g>
@@ -425,12 +558,19 @@ export function OverviewChinaMap({
               {zh ? "地图加载中…" : "Loading map…"}
             </div>
           )}
+          {cities.length === 0 && provincePaths.length > 0 && (
+            <div className="overview-map-loading">
+              {zh ? "暂无节点位置数据" : "No node location data"}
+            </div>
+          )}
           <div className="overview-map-caption">
             <Network size={15} />
             <span>
               <strong>{zh ? "全国调度视图" : "Nationwide scheduling"}</strong>
               <small>
-                {zh ? "覆盖 12 个城市 · Mock 数据" : "12 cities · Mock data"}
+                {zh
+                  ? `覆盖 ${cities.length} 个城市`
+                  : `${cities.length} cities`}
               </small>
             </span>
           </div>
@@ -473,17 +613,17 @@ export function OverviewChinaMap({
             </span>
             <strong>
               {zh
-                ? "3 个任务正在跨集群调度"
-                : "3 jobs scheduled across clusters"}
+                ? `${runningJobs} 个任务正在运行`
+                : `${runningJobs} jobs running`}
             </strong>
             <small>
               {zh
-                ? "覆盖 5 个城市、6 个集群"
-                : "5 cities and 6 clusters covered"}
+                ? `覆盖 ${cities.length} 个城市、${totalClusters} 个集群`
+                : `${cities.length} cities and ${totalClusters} clusters covered`}
             </small>
           </button>
           <div className="overview-city-summary">
-            {cityResources.slice(0, 3).map((city) => (
+            {cities.slice(0, 3).map((city) => (
               <button
                 key={city.name}
                 onClick={() =>

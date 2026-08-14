@@ -32,6 +32,15 @@ class RobotControllerStub:
     This service is exposed over a Unix socket. The device plugin calls it
     to control the lifecycle and mode of robot nodes (e.g. Franka) that run
     on the host network.
+
+    The service is implemented by two independent controller packages that
+    register on separate Unix sockets:
+    - pkg/roscontroller (ROS 1): starts a per-robot roscore; fills
+    ros_master_uri in responses.
+    - pkg/ros2controller (ROS 2): no master; assigns a per-robot
+    ROS_DOMAIN_ID for DDS isolation; fills ros_domain_id in responses.
+    Both implementations honour the same RPC contract so a single client
+    library and CLI can target either by pointing at the right socket.
     ---------------------------------------------------------------------------
     """
 
@@ -110,6 +119,15 @@ class RobotControllerServicer:
     This service is exposed over a Unix socket. The device plugin calls it
     to control the lifecycle and mode of robot nodes (e.g. Franka) that run
     on the host network.
+
+    The service is implemented by two independent controller packages that
+    register on separate Unix sockets:
+    - pkg/roscontroller (ROS 1): starts a per-robot roscore; fills
+    ros_master_uri in responses.
+    - pkg/ros2controller (ROS 2): no master; assigns a per-robot
+    ROS_DOMAIN_ID for DDS isolation; fills ros_domain_id in responses.
+    Both implementations honour the same RPC contract so a single client
+    library and CLI can target either by pointing at the right socket.
     ---------------------------------------------------------------------------
     """
 
@@ -159,7 +177,7 @@ class RobotControllerServicer:
         raise NotImplementedError('Method not implemented!')
 
     def GetRobotLogs(self, request, context):
-        """GetRobotLogs returns recent log output from a robot's roslaunch process.
+        """GetRobotLogs returns recent log output from a robot's launch process.
         Logs are buffered in memory with a fixed capacity; tail=N returns the
         last N lines, tail=0 returns all buffered lines.
         """
@@ -197,8 +215,10 @@ class RobotControllerServicer:
         raise NotImplementedError('Method not implemented!')
 
     def ResetRobot(self, request, context):
-        """ResetRobot stops the robot process, restarts roscore, and resets the
-        robot state back to STOPPED. Useful for recovering from error states.
+        """ResetRobot stops the robot process, restarts the ROS middleware (roscore
+        for ROS 1; the launch process for ROS 2 — there is no master to restart),
+        and resets the robot state back to STOPPED. Useful for recovering from
+        error states.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -282,6 +302,15 @@ class RobotController:
     This service is exposed over a Unix socket. The device plugin calls it
     to control the lifecycle and mode of robot nodes (e.g. Franka) that run
     on the host network.
+
+    The service is implemented by two independent controller packages that
+    register on separate Unix sockets:
+    - pkg/roscontroller (ROS 1): starts a per-robot roscore; fills
+    ros_master_uri in responses.
+    - pkg/ros2controller (ROS 2): no master; assigns a per-robot
+    ROS_DOMAIN_ID for DDS isolation; fills ros_domain_id in responses.
+    Both implementations honour the same RPC contract so a single client
+    library and CLI can target either by pointing at the right socket.
     ---------------------------------------------------------------------------
     """
 

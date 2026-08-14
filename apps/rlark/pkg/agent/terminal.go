@@ -458,6 +458,7 @@ func (p *wsPipe) ctx() context.Context {
 	return context.Background()
 }
 
+// Read is an exported method.
 func (p *wsPipe) Read(dst []byte) (int, error) {
 	p.rcond.L.Lock()
 	for len(p.buf) == 0 && !p.closed {
@@ -472,6 +473,7 @@ func (p *wsPipe) Read(dst []byte) (int, error) {
 	return n, nil
 }
 
+// Write is an exported method.
 func (p *wsPipe) Write(data []byte) (int, error) {
 	p.wmu.Lock()
 	defer p.wmu.Unlock()
@@ -482,6 +484,7 @@ func (p *wsPipe) Write(data []byte) (int, error) {
 	return len(data), nil
 }
 
+// Close is an exported method.
 func (p *wsPipe) Close() error {
 	p.rcond.L.Lock()
 	p.closed = true

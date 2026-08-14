@@ -14,7 +14,7 @@ import (
 	"github.com/rlinf/rlark/apps/rlark/pkg/utils"
 )
 
-func (r *WorkflowReconciler) syncJobStatuses(
+func (r *Reconciler) syncJobStatuses(
 	ctx context.Context,
 	wf *rlarkv1alpha1.Workflow,
 ) (bool, error) {
@@ -43,7 +43,7 @@ func (r *WorkflowReconciler) syncJobStatuses(
 	return changed, nil
 }
 
-func (r *WorkflowReconciler) reconcileDAG(
+func (r *Reconciler) reconcileDAG(
 	ctx context.Context,
 	wf *rlarkv1alpha1.Workflow,
 	logger logr.Logger,
@@ -78,7 +78,7 @@ func (r *WorkflowReconciler) reconcileDAG(
 	return statusChanged, nil
 }
 
-func (r *WorkflowReconciler) reconcileJob(
+func (r *Reconciler) reconcileJob(
 	ctx context.Context,
 	wf *rlarkv1alpha1.Workflow,
 	jt rlarkv1alpha1.WorkflowJobTemplate,
@@ -108,7 +108,7 @@ func (r *WorkflowReconciler) reconcileJob(
 	return newJob, nil
 }
 
-func (r *WorkflowReconciler) reconcileWithStateMachine(
+func (r *Reconciler) reconcileWithStateMachine(
 	ctx context.Context,
 	wf *rlarkv1alpha1.Workflow,
 ) (bool, error) {
@@ -158,7 +158,7 @@ func (r *WorkflowReconciler) reconcileWithStateMachine(
 	return changed, nil
 }
 
-func (r *WorkflowReconciler) evaluateWorkflowEvent(wf *rlarkv1alpha1.Workflow) string {
+func (r *Reconciler) evaluateWorkflowEvent(wf *rlarkv1alpha1.Workflow) string {
 	phases := make([]string, len(wf.Status.Jobs))
 	for i, js := range wf.Status.Jobs {
 		phases[i] = string(js.Phase)

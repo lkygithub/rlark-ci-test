@@ -88,7 +88,12 @@ export interface CRDJob {
   apiVersion: string;
   kind: string;
   metadata: { name: string; creationTimestamp?: string };
-  spec: { domain?: string; stopped?: boolean; tasks: CRDJobTask[] };
+  spec: {
+    domain?: string;
+    stopped?: boolean;
+    sshPublicKey?: string;
+    tasks: CRDJobTask[];
+  };
   status?: {
     phase: string;
     tasks?: Array<{
@@ -214,6 +219,7 @@ export interface CRDNode {
     name: string;
     namespace?: string;
     labels?: Record<string, string>;
+    annotations?: Record<string, string>;
     creationTimestamp?: string;
   };
   spec: {

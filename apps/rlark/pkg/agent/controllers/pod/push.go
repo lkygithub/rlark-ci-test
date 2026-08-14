@@ -16,9 +16,10 @@ import (
 
 // pushPodReconciler watches local K8s Pods and reports their info to management Pod CRs.
 type pushPodReconciler struct {
-	c *PodController
+	c *Controller
 }
 
+// Reconcile reconciles the resource.
 func (r *pushPodReconciler) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
 	logger := log.FromContext(ctx).WithValues("pod", req.NamespacedName)
 

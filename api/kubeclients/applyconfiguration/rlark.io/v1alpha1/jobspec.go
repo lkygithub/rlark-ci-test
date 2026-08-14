@@ -20,9 +20,10 @@ package v1alpha1
 // JobSpecApplyConfiguration represents a declarative configuration of the JobSpec type for use
 // with apply.
 type JobSpecApplyConfiguration struct {
-	Domain  *string                             `json:"domain,omitempty"`
-	Stopped *bool                               `json:"stopped,omitempty"`
-	Tasks   []JobTaskTemplateApplyConfiguration `json:"tasks,omitempty"`
+	Domain       *string                             `json:"domain,omitempty"`
+	Stopped      *bool                               `json:"stopped,omitempty"`
+	Tasks        []JobTaskTemplateApplyConfiguration `json:"tasks,omitempty"`
+	SSHPublicKey *string                             `json:"sshPublicKey,omitempty"`
 }
 
 // JobSpecApplyConfiguration constructs a declarative configuration of the JobSpec type for use with
@@ -57,5 +58,13 @@ func (b *JobSpecApplyConfiguration) WithTasks(values ...*JobTaskTemplateApplyCon
 		}
 		b.Tasks = append(b.Tasks, *values[i])
 	}
+	return b
+}
+
+// WithSSHPublicKey sets the SSHPublicKey field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the SSHPublicKey field is set to the value of the last call.
+func (b *JobSpecApplyConfiguration) WithSSHPublicKey(value string) *JobSpecApplyConfiguration {
+	b.SSHPublicKey = &value
 	return b
 }

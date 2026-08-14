@@ -7,6 +7,7 @@ import (
 	"github.com/uptrace/bun"
 )
 
+// RevokedCertificateModel represents a stored model.
 type RevokedCertificateModel struct {
 	bun.BaseModel `bun:"table:revoked_certificates,alias:rc"`
 
@@ -22,14 +23,17 @@ type RevokedCertificateModel struct {
 	RevokedAt time.Time `bun:"revoked_at,notnull"`
 }
 
+// RevokedCertificateStore provides access to stored entries.
 type RevokedCertificateStore struct {
 	db *bun.DB
 }
 
+// NewRevokedCertificateStore creates a new RevokedCertificateStore.
 func NewRevokedCertificateStore(db *bun.DB) *RevokedCertificateStore {
 	return &RevokedCertificateStore{db: db}
 }
 
+// AddRevokedCertificate adds the revokedCertificate.
 func (s *RevokedCertificateStore) AddRevokedCertificate(ctx context.Context, cert *RevokedCertificateModel) error {
 	_, err := s.db.NewInsert().
 		Model(cert).
@@ -38,6 +42,7 @@ func (s *RevokedCertificateStore) AddRevokedCertificate(ctx context.Context, cer
 	return err
 }
 
+// IsCertificateRevoked reports whether certificateRevoked.
 func (s *RevokedCertificateStore) IsCertificateRevoked(ctx context.Context, certType, serialNumber, subjectKeyID string) (bool, error) {
 	count, err := s.db.NewSelect().
 		Model((*RevokedCertificateModel)(nil)).
@@ -49,6 +54,7 @@ func (s *RevokedCertificateStore) IsCertificateRevoked(ctx context.Context, cert
 	return count > 0, nil
 }
 
+// SSHUserKeyModel represents a stored model.
 type SSHUserKeyModel struct {
 	bun.BaseModel `bun:"table:ssh_user_keys,alias:suk"`
 
@@ -66,14 +72,17 @@ type SSHUserKeyModel struct {
 	Notes string `bun:"notes"`
 }
 
+// SSHUserKeyStore provides access to stored entries.
 type SSHUserKeyStore struct {
 	db *bun.DB
 }
 
+// NewSSHUserKeyStore creates a new SSHUserKeyStore.
 func NewSSHUserKeyStore(db *bun.DB) *SSHUserKeyStore {
 	return &SSHUserKeyStore{db: db}
 }
 
+// AddSSHUserKey adds the sSHUserKey.
 func (s *SSHUserKeyStore) AddSSHUserKey(ctx context.Context, key *SSHUserKeyModel) error {
 	_, err := s.db.NewInsert().
 		Model(key).
@@ -81,6 +90,7 @@ func (s *SSHUserKeyStore) AddSSHUserKey(ctx context.Context, key *SSHUserKeyMode
 	return err
 }
 
+// GetSSHUserKeysByUser returns the sSHUserKeysByUser.
 func (s *SSHUserKeyStore) GetSSHUserKeysByUser(ctx context.Context, user string) ([]*SSHUserKeyModel, error) {
 	var keys []*SSHUserKeyModel
 	err := s.db.NewSelect().
@@ -91,6 +101,7 @@ func (s *SSHUserKeyStore) GetSSHUserKeysByUser(ctx context.Context, user string)
 	return keys, err
 }
 
+// UpdateLastUsedAt updates the lastUsedAt.
 func (s *SSHUserKeyStore) UpdateLastUsedAt(ctx context.Context, id int64, lastUsedAt time.Time) error {
 	_, err := s.db.NewUpdate().
 		Model((*SSHUserKeyModel)(nil)).
@@ -100,6 +111,7 @@ func (s *SSHUserKeyStore) UpdateLastUsedAt(ctx context.Context, id int64, lastUs
 	return err
 }
 
+// DeleteSSHUserKey deletes the sSHUserKey.
 func (s *SSHUserKeyStore) DeleteSSHUserKey(ctx context.Context, id int64) error {
 	_, err := s.db.NewDelete().
 		Model((*SSHUserKeyModel)(nil)).
@@ -108,6 +120,7 @@ func (s *SSHUserKeyStore) DeleteSSHUserKey(ctx context.Context, id int64) error 
 	return err
 }
 
+// ListAllSSHUserKeys lists the allSSHUserKeys.
 func (s *SSHUserKeyStore) ListAllSSHUserKeys(ctx context.Context, options ListOptions) ([]*SSHUserKeyModel, error) {
 	var keys []*SSHUserKeyModel
 	query := s.db.NewSelect().

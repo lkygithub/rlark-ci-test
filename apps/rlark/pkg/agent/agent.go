@@ -16,6 +16,7 @@ import (
 	"github.com/rlinf/rlark/apps/rlark/pkg/utils"
 )
 
+// Agent is the data plane agent.
 type Agent struct {
 	config Config
 
@@ -32,6 +33,7 @@ type Agent struct {
 	localDialer   utils.Dial
 }
 
+// NewAgent creates a new Agent.
 func NewAgent(config Config) *Agent {
 	return &Agent{
 		config: config,
@@ -92,6 +94,7 @@ func (a *Agent) init(ctx context.Context) error {
 	return nil
 }
 
+// Run runs the component.
 func (a *Agent) Run(ctx context.Context) error {
 	if err := a.init(ctx); err != nil {
 		return err

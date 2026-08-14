@@ -5,41 +5,49 @@ import (
 	"github.com/rlinf/rlark/apps/rlark/pkg/agent/controllers/base"
 )
 
+// Constants used by the package.
 const (
 	AddonFinalizer = "rlark.io/agent-cleanup"
 )
 
-type AddonController struct {
-	base.BaseController
+// Controller manages resources.
+type Controller struct {
+	base.Controller
 }
 
-var _ base.Reconciler = (*AddonController)(nil)
+var _ base.Reconciler = (*Controller)(nil)
 
-func NewAddonController(bc base.BaseController) *AddonController {
-	ac := &AddonController{BaseController: bc}
+// NewAddonController creates a new Controller.
+func NewAddonController(bc base.Controller) *Controller {
+	ac := &Controller{Controller: bc}
 	ac.C = ac
 	return ac
 }
 
-func (c *AddonController) KubernetesResource() base.KubernetesResource {
+// KubernetesResource is an exported method.
+func (c *Controller) KubernetesResource() base.KubernetesResource {
 	return base.KubernetesResource{
 		Name: "addon",
 		Type: &rlarkv1alpha1.Addon{},
 	}
 }
 
-func (c *AddonController) AsPullReconciler() base.KubernetesReconciler {
+// AsPullReconciler is an exported method.
+func (c *Controller) AsPullReconciler() base.KubernetesReconciler {
 	return &pullReconciler{c: c}
 }
 
-func (c *AddonController) AsKubePushReconcilers() map[base.KubernetesResource]base.KubernetesReconciler {
+// AsKubePushReconcilers is an exported method.
+func (c *Controller) AsKubePushReconcilers() map[base.KubernetesResource]base.KubernetesReconciler {
 	return nil
 }
 
-func (c *AddonController) AsDockerPushReconcilers() map[base.DockerResource]base.DockerReconciler {
+// AsDockerPushReconcilers is an exported method.
+func (c *Controller) AsDockerPushReconcilers() map[base.DockerResource]base.DockerReconciler {
 	return nil
 }
 
-func (c *AddonController) AsRawPushReconcilers() map[base.RawResource]base.RawReconciler {
+// AsRawPushReconcilers is an exported method.
+func (c *Controller) AsRawPushReconcilers() map[base.RawResource]base.RawReconciler {
 	return nil
 }

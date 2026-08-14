@@ -15,9 +15,10 @@ import (
 
 // pushStatefulSetReconciler watches local StatefulSets and reports status to management Task.
 type pushStatefulSetReconciler struct {
-	c *TaskController
+	c *Controller
 }
 
+// Reconcile reconciles the resource.
 func (r *pushStatefulSetReconciler) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
 	logger := log.FromContext(ctx).WithValues("statefulset", req.NamespacedName)
 

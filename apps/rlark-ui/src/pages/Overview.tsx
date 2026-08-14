@@ -14,7 +14,7 @@ import type { Copy } from "../i18n";
 import type { CRDJob, CRDNode, Page, ResourceRow } from "../types";
 import { useAutoRefresh } from "../hooks";
 import { crdToJob } from "../utils/crd";
-import { buildMockCRDNodes, getNodeCategory } from "../utils/nodes";
+import { getNodeCategory } from "../utils/nodes";
 import {
   MetricCard,
   ResourceDistribution,
@@ -58,10 +58,7 @@ export function Overview({
     setRealJobs(jobItems.map(crdToJob));
   }, 15000);
 
-  const displayNodes = useMemo(
-    () => (isMockMode ? buildMockCRDNodes() : realNodes),
-    [isMockMode, realNodes],
-  );
+  const displayNodes = realNodes;
   const cloudClusters = realClusters.filter((x) => x.type === "Cloud");
   const embodiedClusters = realClusters.filter((x) => x.type === "Embodied");
   const runningJobs = realJobs.filter((x) => x.phase === "Running").length;
@@ -237,7 +234,13 @@ export function Overview({
           onClick={() => navigate("jobs")}
         />
       </section>
-      <OverviewChinaMap navigate={navigate} copy={c} />
+      <OverviewChinaMap
+        navigate={navigate}
+        copy={c}
+        nodes={displayNodes}
+        jobs={realJobs}
+        clusters={realClusters}
+      />
       <section className="dashboard-grid">
         <div className="panel chart-panel">
           <div className="panel-title">

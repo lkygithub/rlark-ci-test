@@ -758,6 +758,7 @@ Responses:
 - `metadata`: `object`, optional
 - `spec`: `object`, optional
   - `domain`: `string`, optional
+  - `sshPublicKey`: `string`, optional
   - `stopped`: `boolean`, optional
   - `tasks`: `array`, optional
     - `items`: `object`, optional
@@ -773,6 +774,7 @@ Responses:
       - `raw`: `object`, optional
       - `role`: `string`, required
       - `runScript`: `string`, optional
+      - `sshPublicKey`: `string`, optional
       - `tensorBoardDir`: `string`, optional
 - `status`: `object`, optional
   - `conditions`: `array`, optional
@@ -1183,7 +1185,7 @@ Responses:
   - `podNamespace`: `string`, optional
   - `taskName`: `string`, optional
   - `taskNamespace`: `string`, optional
-- `status`: `object`, optional - PodStatus 包含 Pod 的运行状态信息（节点、IP、阶段等）， 对应 k8s 中由调度器和 kubelet 设�...
+- `status`: `object`, optional - PodStatus 包含 Pod 的运行状态信息（节点、IP、阶段等）， 对应 k8s 中由调度器和 kubelet 设�...
   - `ip`: `string`, optional
   - `message`: `string`, optional
   - `node`: `string`, optional
@@ -1394,6 +1396,7 @@ Responses:
       - `items`: `object`, optional
   - `role`: `string`, required
   - `runScript`: `string`, optional
+  - `sshPublicKey`: `string`, optional
   - `tensorBoardDir`: `string`, optional
 - `status`: `object`, optional
   - `completionTime`: `string`, optional
@@ -1608,4 +1611,48 @@ Responses:
       - `phase`: `string`, optional
   - `phase`: `string`, optional
   - `startTime`: `string`, optional
+
+## SSH User Keys
+
+SSH public key management for passwordless SSH login to Pods.
+
+### `GET /api/v1/ssh-user-keys`
+
+List all SSH user keys.
+
+Parameters:
+- `user` (query, optional) — filter by user
+
+Responses:
+- `200` OK → `[]sshUserKeyItem`
+- `401` Unauthorized
+
+### `POST /api/v1/ssh-user-keys`
+
+Add a new SSH public key for a user.
+
+Request body:
+- `user`: `string`, required — username
+- `public_key`: `string`, required — SSH public key in authorized_keys format
+- `notes`: `string`, optional
+
+Responses:
+- `200` OK → `{"ok": true, "user": "..."}`
+- `400` Bad Request (invalid public key)
+- `409` Conflict (key already exists)
+- `401` Unauthorized
+
+### `DELETE /api/v1/ssh-user-keys/:id`
+
+Delete an SSH public key by index.
+
+Parameters:
+- `user` (query, required) — username
+- `id` (path, required) — key index
+
+Responses:
+- `200` OK → `{"ok": true}`
+- `400` Bad Request (invalid index)
+- `404` Not Found (user not found)
+- `401` Unauthorized
 

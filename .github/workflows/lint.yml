@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        module: [api, apps/rlark]
+        module: [api, apps/rlark, apps/embodied-runtime]
     steps:
       - uses: actions/checkout@v5
 

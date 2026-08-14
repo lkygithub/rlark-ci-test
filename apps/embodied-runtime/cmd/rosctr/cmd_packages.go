@@ -15,7 +15,8 @@ func packagesCmd(socketPath string) *cobra.Command {
 		Use:   "packages",
 		Short: "List available ROS packages on the server",
 		Long: `List ROS packages available on the server, filtered by the
-allowed launch packages whitelist configured in ros-controller.
+allowed launch packages whitelist configured in the controller
+(ros-controller or ros2-controller, depending on --socket-path).
 
 Use -o json or -o yaml to get machine-readable output.`,
 		RunE: func(cmd *cobra.Command, args []string) error {

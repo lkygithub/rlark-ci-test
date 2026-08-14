@@ -133,7 +133,26 @@ status:
 - **标签管理**：控制面可下发标签到 Node，Agent 的 Pull 控制器同步到本地 k8s Node
 - **污点管理**：通过 `unschedulable` 字段控制节点是否可调度
 
-## 5. Job（训练作业）
+## 5. Node 调度控制（Cordon/Uncordon）
+
+通过 `unschedulable` 字段控制节点是否可调度。
+
+### 概念
+
+设置 `spec.unschedulable: true` 将节点标记为不可调度，阻止新工作负载分配到该节点，等同于 Kubernetes 的 `kubectl cordon`。
+
+### 使用方式
+
+```bash
+# PATCH 切换不可调度状态
+curl -X PATCH "http://localhost:8080/api/v1/rlinf.io/v1alpha1/nodes/gpu-node-01?namespace=default" \
+  -H "Content-Type: application/merge-patch+json" \
+  -d '{ "spec": { "unschedulable": true } }'
+```
+
+Web UI 在节点列表中为每个节点提供 Cordon/Uncordon 按钮。
+
+## 6. Job（训练作业）
 
 Job 是用户**直接操作的核心资源**，代表一个完整的 RL 训练任务。
 
@@ -207,7 +226,27 @@ Job Controller 调谐完成后：
 - Task 带有 `rlinf.io/job=<job-name>` 标签，可据此查询
 - Task 设置 OwnerReference 指向 Job，删除 Job 时级联删除 Task
 
-## 6. Task（任务单元）
+## 7. Job 停止/启动
+
+通过 Job spec 中的 `stopped` 字段，可以停止和重启 Job，提供对运行中工作负载的手动生命周期控制。
+
+### 概念
+
+将 `spec.stopped: true` 设置为 Job 会通知 Job 控制器停止所有关联的工作负载（Pod、Deployment、StatefulSet），但不删除 Job 资源。将其设置回 `false`（或移除该字段）会重新启动工作负载。
+
+### 工作原理
+
+1. **停止**：当 `spec.stopped` 设置为 `true` 时，Job 控制器检测到变化并删除底层 Kubernetes 工作负载（Deployment/StatefulSet），同时保留 Job CR
+2. **重启**：当 `spec.stopped` 被移除或设置为 `false` 时，Job 控制器根据 Task 模板重新创建工作负载
+3. **状态保留**：Job 的 phase 和 status 字段在停止/重启周期中保持不变
+
+### 关键特性
+
+- **非破坏性**：停止 Job 不会删除 Job CR 或其 Task
+- **持久化状态**：PVC 和其他持久化资源不受停止影响
+- **Web UI 集成**：Web UI 在 Job 列表中提供一键停止/启动按钮
+
+## 8. Task（任务单元）
 
 Task 是 Job 的**执行单元**，由 Job Controller 自动创建，**用户不应直接创建 Task**。
 
@@ -269,21 +308,23 @@ status:
 
 **具身智能场景映射**：
 
-```
-┌─────────────────────────────────────────────────────┐
-│  云端 (k8s)            端侧 (Docker/Raw)            │
-│  ┌──────────┐         ┌──────────────┐             │
-│  │ 训练      │──梯度──▶│ 机械臂        │             │
-│  │ (GPU)    │◀─数据──│ (推理)        │             │
-│  └──────────┘         └──────────────┘             │
-│  ┌──────────┐         ┌──────────────┐             │
-│  │ 环境模拟  │──控制──▶│ 摄像头        │             │
-│  │ (Env)    │◀─观测──│ (传感器)      │             │
-│  └──────────┘         └──────────────┘             │
-└─────────────────────────────────────────────────────┘
+```mermaid
+graph LR
+    subgraph Cloud["云端 (k8s)"]
+        Training["训练 (GPU)"]
+        Env["环境模拟 (Env)"]
+    end
+    subgraph Edge["端侧 (k8s / Docker / Raw)"]
+        Robot["机械臂 (推理)"]
+        Camera["摄像头 (传感器)"]
+    end
+    Training -->|"梯度"| Robot
+    Training <-->|"数据"| Robot
+    Env -->|"控制"| Camera
+    Env <-->|"观测"| Camera
 ```
 
-## 7. Workflow（工作流）
+## 9. Workflow（工作流）
 
 Workflow 是**多 Job 的 DAG 编排**，支持有依赖关系的训练流水线。
 
@@ -336,7 +377,7 @@ spec:
 - 所有 Job 成功 → Workflow Succeeded
 - 任一 Job 失败 → Workflow Failed
 
-## 8. Pod（容器实例）
+## 10. Pod（容器实例）
 
 Pod CR 是数据面 Pod 的**控制面镜像**，由 Agent 的 Push 控制器上报。
 
@@ -350,49 +391,19 @@ Pod CR 是数据面 Pod 的**控制面镜像**，由 Agent 的 Push 控制器上
 - **SSH 查找**：Server 的 PodCache 基于 Pod CR 快速定位 Pod 所在 Agent
 - **日志查询**：Gateway 通过 Pod CR 找到 Pod 所在 Agent，转发日志请求
 
-## 9. 资源关系总结
+## 11. 资源关系总结
 
-```
-                          ┌──────────────┐
-                          │   Workflow   │ (Cluster scoped)
-                          │ DAG 编排     │
-                          └──────┬───────┘
-                                 │ 1:N
-                          ┌──────▼───────┐
-                          │     Job      │ (Cluster scoped)
-                          │ 训练任务定义  │
-                          └──────┬───────┘
-                                 │ 1:N
-                          ┌──────▼───────┐
-                          │    Task      │ (Namespaced: agent-{id})
-                          │ 任务执行单元  │
-                          └──────┬───────┘
-                                 │ 1:1 (K8s workload)
-                          ┌──────▼───────┐
-                          │ Deployment/  │ (本地 k8s 集群)
-                          │ DaemonSet/   │
-                          │ StatefulSet  │
-                          └──────┬───────┘
-                                 │ 1:N
-                          ┌──────▼───────┐
-                          │     Pod      │ Agent Push 上报
-                          │  + Sidecar   │ ───────────────▶ Pod CR
-                          └──────────────┘
-
-┌──────────┐                              ┌──────────────┐
-│  Domain  │ (Cluster scoped)              │    Node      │ (Namespaced)
-│ 网络隔离  │                              │ 计算节点信息  │
-└────┬─────┘                              └──────────────┘
-     │
-     │ 1:N (每个集群一个)
-     ▼
-┌──────────────┐
-│  DomainPeer  │ (Namespaced: agent-{id})
-│ Pod 路由表    │
-└──────────────┘
+```mermaid
+graph TD
+    wf["Workflow<br/>(Cluster scoped)<br/>DAG 编排"] -->|"1:N"| job["Job<br/>(Cluster scoped)<br/>训练任务定义"]
+    job -->|"1:N"| task["Task<br/>(Namespaced: agent-{id})<br/>任务执行单元"]
+    task -->|"1:1 (K8s workload)"| workload["Deployment /<br/>DaemonSet /<br/>StatefulSet<br/>(本地 k8s 集群)"]
+    workload -->|"1:N"| pod["Pod + Sidecar<br/>Agent Push 上报 → Pod CR"]
+    domain["Domain<br/>(Cluster scoped)<br/>网络隔离"] -->|"1:N (每个集群一个)"| dp["DomainPeer<br/>(Namespaced: agent-{id})<br/>Pod 路由表"]
+    node["Node<br/>(Namespaced)<br/>计算节点信息"]
 ```
 
-## 10. 命名约定
+## 12. 命名约定
 
 | 命名空间前缀 | 含义 | 示例 |
 |-------------|------|------|
@@ -401,7 +412,7 @@ Pod CR 是数据面 Pod 的**控制面镜像**，由 Agent 的 Push 控制器上
 | Label `rlinf.io/job` | Pod/Task 所属 Job | `rlinf.io/job=ppo-cartpole-v1` |
 | Annotation `rlinf.io/ray-role` | Ray 集群角色 | `head` / `worker` |
 
-## 11. Ray 集群集成
+## 13. Ray 集群集成
 
 rlark 支持通过 Task 注解声明式创建 Ray 集群：
 
@@ -415,13 +426,13 @@ annotations:
 **自动初始化流程**：
 
 1. Agent 的 Pull 控制器检测到 Ray 注解
-2. 创建 ConfigMap 挂载初始化脚本（`ray_head.sh` / `ray_worker.sh`）
+2. 创建 ConfigMap 挂载初始化脚本（`ray_head.sh` / `ray_worker.sh` / `ray_check.py`）
 3. 修改容器启动命令为 `bash ray_head.sh`（或 `ray_worker.sh`）
 4. 注入环境变量（`RLARK_RAY_PORT`、`RLARK_HEAD_ADDRESS` 等）
 5. Head 节点创建 Service（暴露 6379/8265/8080 端口）
 6. Worker 节点等待 Head 就绪后加入集群
 
-## 12. 对象存储与 PVC
+## 14. 对象存储与 PVC
 
 rlark 支持通过 Task 的 `pvcStorageMap` 为训练任务挂载持久化存储卷。
 
@@ -445,7 +456,7 @@ kubernetes:
 3. PVC 创建在目标命名空间中，作用域为当前 Task
 4. 任务删除时，PVC 自动清理
 
-## 13. 用户认证
+## 15. 用户认证
 
 rlark 为 Web UI 提供简单的基于角色的认证系统。
 
@@ -463,26 +474,7 @@ rlark 为 Web UI 提供简单的基于角色的认证系统。
 3. Gateway 对比 KCP Secret 中的凭据，返回角色
 4. 前端将认证结果存储在 `sessionStorage` 中
 
-## 14. Node 调度控制（Cordon/Uncordon）
-
-通过 `unschedulable` 字段控制节点是否可调度。
-
-### 概念
-
-设置 `spec.unschedulable: true` 将节点标记为不可调度，阻止新工作负载分配到该节点，等同于 Kubernetes 的 `kubectl cordon`。
-
-### 使用方式
-
-```bash
-# PATCH 切换不可调度状态
-curl -X PATCH "http://localhost:8080/api/v1/rlinf.io/v1alpha1/nodes/gpu-node-01?namespace=default" \
-  -H "Content-Type: application/merge-patch+json" \
-  -d '{ "spec": { "unschedulable": true } }'
-```
-
-Web UI 在节点列表中为每个节点提供 Cordon/Uncordon 按钮。
-
-## 15. Addon（组件管理）
+## 16. Addon（组件管理）
 
 Addon 是 rlark 的组件管理系统，允许用户在多个数据面集群中安装、配置和管理第三方组件（设备插件、监控代理等）。
 
@@ -538,8 +530,9 @@ status:
 - **可配置**：Addon 的值可通过 `spec.values` 按集群自定义
 - **版本化**：Addon 支持通过 `spec.version` 进行版本升级
 - **自动应用**：Agent 的 Pull 控制器在 Addon CR 创建或更新时自动应用清单
+- **Mutating Webhook**：Device Plugin 内置 mutating admission webhook，自动向申请 `rlinf.io/device` 的 Pod 注入 `devinit` init 容器，在 Pod 网络命名空间中创建 macvlan，无需手动配置
 
-## 16. Web Terminal（Web 终端）
+## 17. Web Terminal（Web 终端）
 
 Web Terminal 提供从 Web UI 直接交互式访问 Pod 终端的能力。
 
@@ -561,7 +554,7 @@ Web Terminal 允许用户打开任何 rlark 管理的 Pod 的终端会话，无�
 4. Agent 打开 Pod 容器的 exec 会话，流式传输 I/O
 5. 终端会话保持到 WebSocket 关闭
 
-## 17. Pod HTTP Proxy（Pod HTTP 代理）
+## 18. Pod HTTP Proxy（Pod HTTP 代理）
 
 Pod HTTP Proxy 允许通过 Server → Agent 代理链直接向 rlark 管理的 Pod 发送 HTTP 请求。
 
@@ -591,7 +584,7 @@ Pod HTTP Proxy 使用户无需知道 Pod 的真实 IP 地址或建立 SSH 隧道
 - **基于证书的访问控制**：访问权限由客户端证书的权限决定
 - **透明代理**：支持所有 HTTP 方法（GET、POST、PUT、DELETE 等）
 
-## 18. TensorBoard Proxy（TensorBoard 代理）
+## 19. TensorBoard Proxy（TensorBoard 代理）
 
 TensorBoard Proxy 提供基于 Web 的训练指标可视化仪表板（损失曲线、标量摘要、直方图等），可直接从 rlark Web UI 访问，无需对外暴露 TensorBoard 端口。
 
@@ -621,3 +614,25 @@ TensorBoard Proxy 提供基于 Web 的训练指标可视化仪表板（损失曲
 - **自动代理注入**：Task 列表/详情响应自动包含 `tensorBoardProxy` URL
 - **HTML 重写**：代理的 TensorBoard 页面经过重写，确保所有相对和绝对路径正确工作
 - **Ray 集成**：TensorBoard 随 Ray 任务自动启动，无需额外配置
+
+## 20. SSH 密钥管理
+
+SSH 密钥管理允许用户通过 API 或 Web UI 上传 SSH 公钥，实现免密 SSH 登录 Pod，无需共享证书。
+
+### 概念
+
+每位用户可以上传一个或多个 SSH 公钥。这些密钥存储在控制平面命名空间的 Kubernetes Secret（`rlark-ssh-user-keys`）中。当 Pod 创建时，Agent 会将用户的公钥注入到 Pod 的 `authorized_keys` 文件中，实现免密 SSH 访问。
+
+### API
+
+- `GET /api/v1/ssh-user-keys` — 列出所有 SSH 密钥（可按用户过滤）
+- `POST /api/v1/ssh-user-keys` — 为用户添加新的 SSH 公钥
+- `DELETE /api/v1/ssh-user-keys/:id` — 按索引删除密钥
+
+### 关键特性
+
+- **Web UI 管理**：Web UI 中提供专用的 SSH 密钥管理页面
+- **按任务注入**：单个 Job 和 Task 可通过 `sshPublicKey` 字段指定密钥，对特定工作负载优先于集中管理的密钥
+- **冲突检测**：重复密钥会被检测并返回 409 响应
+- **写入重试**：API 在写入冲突时自动重试（最多 5 次）
+- **密钥验证**：使用 `golang.org/x/crypto/ssh` 在存储前验证公钥格式

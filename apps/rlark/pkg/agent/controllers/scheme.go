@@ -10,7 +10,7 @@ import (
 	rlarkv1alpha1 "github.com/rlinf/rlark/api/rlark.io/v1alpha1"
 )
 
-// MgmtScheme is used for the management cluster manager, includes RLark CRDs + standard K8s types
+// MgmtScheme is used for the management cluster manager, includes RLark CRDs + standard K8s types.
 var MgmtScheme = runtime.NewScheme()
 
 func init() {

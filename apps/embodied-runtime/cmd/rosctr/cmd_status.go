@@ -35,6 +35,9 @@ func statusCmd(socketPath string) *cobra.Command {
 				if resp.RosMasterUri != "" {
 					fmt.Printf("ROS:       %s\n", resp.RosMasterUri)
 				}
+				if resp.RosDomainId != 0 {
+					fmt.Printf("DOMAIN_ID: %d\n", resp.RosDomainId)
+				}
 				if m := resp.CurrentMode; m != nil {
 					fmt.Printf("Package:   %s\n", m.Package)
 					fmt.Printf("Launch:    %s\n", m.LaunchFile)

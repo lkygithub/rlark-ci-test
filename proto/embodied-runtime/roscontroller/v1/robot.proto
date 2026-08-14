@@ -10,6 +10,15 @@ option go_package = "github.com/rlinf/rlark/sdks/embodied-runtime-go/gen/roscont
 // This service is exposed over a Unix socket. The device plugin calls it
 // to control the lifecycle and mode of robot nodes (e.g. Franka) that run
 // on the host network.
+//
+// The service is implemented by two independent controller packages that
+// register on separate Unix sockets:
+//   - pkg/roscontroller (ROS 1): starts a per-robot roscore; fills
+//     ros_master_uri in responses.
+//   - pkg/ros2controller (ROS 2): no master; assigns a per-robot
+//     ROS_DOMAIN_ID for DDS isolation; fills ros_domain_id in responses.
+// Both implementations honour the same RPC contract so a single client
+// library and CLI can target either by pointing at the right socket.
 // ---------------------------------------------------------------------------
 service RobotController {
   // StartRobot launches a robot node with the specified mode.
@@ -33,7 +42,7 @@ service RobotController {
   // "velocity", "torque", etc.).
   rpc ListModes(ListModesRequest) returns (ListModesResponse);
 
-  // GetRobotLogs returns recent log output from a robot's roslaunch process.
+  // GetRobotLogs returns recent log output from a robot's launch process.
   // Logs are buffered in memory with a fixed capacity; tail=N returns the
   // last N lines, tail=0 returns all buffered lines.
   rpc GetRobotLogs(GetRobotLogsRequest) returns (GetRobotLogsResponse);
@@ -51,8 +60,10 @@ service RobotController {
   // GetLaunchFileArgs returns the arguments supported by a launch file.
   rpc GetLaunchFileArgs(GetLaunchFileArgsRequest) returns (GetLaunchFileArgsResponse);
 
-  // ResetRobot stops the robot process, restarts roscore, and resets the
-  // robot state back to STOPPED. Useful for recovering from error states.
+  // ResetRobot stops the robot process, restarts the ROS middleware (roscore
+  // for ROS 1; the launch process for ROS 2 — there is no master to restart),
+  // and resets the robot state back to STOPPED. Useful for recovering from
+  // error states.
   rpc ResetRobot(ResetRobotRequest) returns (ResetRobotResponse);
 }
 
@@ -95,6 +106,9 @@ message StartRobotResponse {
 
   // Robot-level parameters that can be referenced via arg_from.
   map<string, string> params = 5;
+
+  // ROS_DOMAIN_ID for DDS isolation (ROS 2 only; 0 for ROS 1).
+  int32 ros_domain_id = 6;
 }
 
 message StopRobotRequest {
@@ -118,6 +132,9 @@ message GetRobotStatusResponse {
 
   // Robot-level parameters that can be referenced via arg_from.
   map<string, string> params = 6;
+
+  // ROS_DOMAIN_ID for DDS isolation (ROS 2 only; 0 for ROS 1).
+  int32 ros_domain_id = 7;
 }
 
 message SwitchModeRequest {
@@ -141,6 +158,9 @@ message SwitchModeResponse {
 
   // Robot-level parameters that can be referenced via arg_from.
   map<string, string> params = 6;
+
+  // ROS_DOMAIN_ID for DDS isolation (ROS 2 only; 0 for ROS 1).
+  int32 ros_domain_id = 7;
 }
 
 message ListRobotsRequest {}
@@ -158,6 +178,9 @@ message RobotInfo {
 
   // Robot-level parameters that can be referenced via arg_from.
   map<string, string> params = 6;
+
+  // ROS_DOMAIN_ID for DDS isolation (ROS 2 only; 0 for ROS 1).
+  int32 ros_domain_id = 7;
 }
 
 message ListModesRequest {
@@ -171,16 +194,18 @@ message ModeInfo {
   // ROS package containing the launch file.
   string package = 2;
 
-  // Launch file name, e.g. "impedance.launch".
+  // Launch file name. ROS 1 uses ".launch" (XML); ROS 2 uses ".launch.py",
+  // ".launch.xml", or ".launch.yaml".
   string launch_file = 3;
 
-  // Default key=value arguments passed to roslaunch.
+  // Default key=value arguments passed to the launcher (roslaunch / ros2
+  // launch both use the "key:=value" syntax).
   map<string, string> args = 4;
 
-  // Additional environment variables for the roslaunch process.
+  // Additional environment variables for the launch process.
   map<string, string> env = 5;
 
-  // Maps roslaunch arg names → robot param names.
+  // Maps launch arg names → robot param names.
   map<string, string> arg_from = 6;
 
   // When true, merge all robot params with identity mapping.
@@ -194,21 +219,23 @@ message ModeConfig {
   // ROS package containing the launch file.
   string package = 1;
 
-  // Launch file name, e.g. "impedance.launch".
+  // Launch file name. ROS 1 uses ".launch" (XML); ROS 2 uses ".launch.py",
+  // ".launch.xml", or ".launch.yaml".
   string launch_file = 2;
 
-  // Key=value arguments passed to roslaunch.
+  // Key=value arguments passed to the launcher (roslaunch / ros2 launch
+  // both use the "key:=value" syntax).
   map<string, string> args = 3;
 
   // When true, merge all robot params with identity mapping (param name = arg name).
   // Mutually exclusive with arg_from.
   bool passthrough_robot_args = 4;
 
-  // Maps roslaunch arg names → robot param names.
+  // Maps launch arg names → robot param names.
   // Mutually exclusive with passthrough_robot_args.
   map<string, string> arg_from = 5;
 
-  // Additional environment variables for the roslaunch process.
+  // Additional environment variables for the launch process.
   map<string, string> env = 6;
 }
 
@@ -312,4 +339,7 @@ message ResetRobotResponse {
   string robot_id = 1;
   RobotState state = 2;
   string ros_master_uri = 3;
+
+  // ROS_DOMAIN_ID for DDS isolation (ROS 2 only; 0 for ROS 1).
+  int32 ros_domain_id = 4;
 }

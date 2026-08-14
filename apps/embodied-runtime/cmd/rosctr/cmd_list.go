@@ -36,18 +36,20 @@ func listCmd(socketPath string) *cobra.Command {
 				}
 
 				w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
-				_, _ = fmt.Fprintln(w, "ROBOT ID\tMODE\tPACKAGE\tLAUNCH FILE\tROS URI\tSTATE")
-				_, _ = fmt.Fprintln(w, "---------\t----\t-------\t-----------\t-------\t-----")
+				_, _ = fmt.Fprintln(w, "ROBOT ID\tMODE\tPACKAGE\tLAUNCH FILE\tROS URI / DOMAIN\tSTATE")
+				_, _ = fmt.Fprintln(w, "---------\t----\t-------\t-----------\t----------------\t-----")
 				for _, r := range resp.Robots {
-					pkg, launch, rosURI := "", "", ""
+					pkg, launch, rosInfo := "", "", ""
 					if m := r.CurrentMode; m != nil {
 						pkg = m.Package
 						launch = m.LaunchFile
 					}
 					if r.RosMasterUri != "" {
-						rosURI = r.RosMasterUri
+						rosInfo = r.RosMasterUri
+					} else if r.RosDomainId != 0 {
+						rosInfo = fmt.Sprintf("domain:%d", r.RosDomainId)
 					}
-					_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n", r.RobotId, r.Mode, pkg, launch, rosURI, stateStr(r.State))
+					_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n", r.RobotId, r.Mode, pkg, launch, rosInfo, stateStr(r.State))
 				}
 				_ = w.Flush()
 			})

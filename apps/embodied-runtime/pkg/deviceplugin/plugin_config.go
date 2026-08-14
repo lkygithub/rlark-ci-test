@@ -5,6 +5,8 @@ import (
 	"os"
 
 	"github.com/rlinf/rlark/apps/embodied-runtime/pkg/cameracontroller"
+	"github.com/rlinf/rlark/apps/embodied-runtime/pkg/netmac"
+	"github.com/rlinf/rlark/apps/embodied-runtime/pkg/ros2controller"
 	"github.com/rlinf/rlark/apps/embodied-runtime/pkg/roscontroller"
 	"gopkg.in/yaml.v3"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -129,6 +131,23 @@ type ROSConfig struct {
 	roscontroller.ControllerConfig `yaml:",inline"`
 }
 
+// ROS2Config holds all ros2-controller configuration, both local and pod
+// mode. Mirrors ROSConfig but for the ROS 2 controller.
+type ROS2Config struct {
+	ManagerMode ManagerMode `yaml:"manager_mode"`
+
+	// Local-mode fields (used when manager_mode == "local").
+	CtrlConfigPath string `yaml:"ctrl_config_path"`
+	CtrlBin        string `yaml:"ctrl_bin"`
+	CtrCLI         string `yaml:"ctr_cli"`
+
+	// Pod-mode fields (used when manager_mode == "pod").
+	Pod PodConfig `yaml:"pod"`
+
+	// Device config — ros2-controller config inlined.
+	ros2controller.ControllerConfig `yaml:",inline"`
+}
+
 // ---------------------------------------------------------------------------
 // Host device passthrough config
 // ---------------------------------------------------------------------------
@@ -190,11 +209,33 @@ type PluginConfig struct {
 	// paths, pod-mode settings).
 	ROS ROSConfig `yaml:"ros"`
 
+	// ROS2 holds all ros2-controller configuration (manager_mode,
+	// local-mode paths, pod-mode settings).
+	ROS2 ROS2Config `yaml:"ros2"`
+
 	// HostDevices lists host /dev/* nodes to mount directly into pods
 	// during Allocate. Unlike Camera and ROS, no controller manager is
 	// launched — the device paths defined here are simply passed through.
 	// Empty (default) means no host device passthrough.
 	HostDevices []HostDeviceConfig `yaml:"host_devices,omitempty"`
+
+	// HostMacvlans lists macvlan interfaces to attach to requesting pods'
+	// network namespaces at startup. Unlike HostDevices (mounted directly
+	// during Allocate), macvlans are NOT device-mounted — they are created
+	// on demand via the device init gRPC service: a pod's init container runs
+	// the `devinit` CLI, which connects to the init service Unix socket (see
+	// DevinitSocketPath). The service reads the caller's PID from the socket
+	// peer credentials and creates the macvlans in that PID's network
+	// namespace using pkg/netmac. Pods using hostNetwork are skipped (the
+	// macvlan would land in the host netns). Empty (default) means the init
+	// service is not started.
+	HostMacvlans []netmac.MACVLANConfig `yaml:"host_macvlans,omitempty"`
+
+	// DevinitSocketPath overrides the Unix socket path for the device init
+	// gRPC service consumed by the `devinit` init-container CLI. When empty,
+	// DevinitSocketPath (a socket inside RunDir, which is already mounted
+	// into requesting pods) is used.
+	DevinitSocketPath string `yaml:"devinit_socket_path,omitempty"`
 
 	// SkipRegister skips kubelet registration. Useful for testing.
 	SkipRegister bool `yaml:"skip_register"`
@@ -217,6 +258,12 @@ func DefaultPluginConfig() PluginConfig {
 			CtrlConfigPath: ROSCtrlConfigPath,
 			CtrlBin:        envOrDefault("ROS_CTRL_BIN", "/usr/local/bin/ros-controller"),
 			CtrCLI:         envOrDefault("ROS_CTR_BIN", "/opt/rlinf/bin/rosctr"),
+		},
+		ROS2: ROS2Config{
+			ManagerMode:    ManagerModeDisabled,
+			CtrlConfigPath: ROS2CtrlConfigPath,
+			CtrlBin:        envOrDefault("ROS2_CTRL_BIN", "/usr/local/bin/ros2-controller"),
+			CtrCLI:         envOrDefault("ROS2_CTR_BIN", "/opt/rlinf/bin/rosctr"),
 		},
 	}
 }
@@ -249,6 +296,18 @@ func (cfg PluginConfig) EffectiveSocketPath() string {
 		return pluginSocketPathForModel(cfg.Model)
 	}
 	return PluginSocketPath()
+}
+
+// EffectiveDevinitSocketPath returns the Unix socket path the device init
+// gRPC service (consumed by the `devinit` init-container CLI) listens on.
+// An explicit DevinitSocketPath always wins; otherwise the service reuses
+// RunDir (already mounted read-only into requesting pods via Allocate) so
+// the init container can reach the socket without an extra mount.
+func (cfg PluginConfig) EffectiveDevinitSocketPath() string {
+	if cfg.DevinitSocketPath != "" {
+		return cfg.DevinitSocketPath
+	}
+	return DevinitSocketPath
 }
 
 // ---------------------------------------------------------------------------

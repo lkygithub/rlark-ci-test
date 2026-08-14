@@ -114,7 +114,7 @@ func (t *WSTerminal) Write(data []byte) (int, error) {
 }
 
 // Resize sends a resize control message to the server.
-// The message format is: {"type":"resize","rows":N,"cols":N}
+// The message format is: {"type":"resize","rows":N,"cols":N}.
 func (t *WSTerminal) Resize(rows, cols uint16) error {
 	msg, err := json.Marshal(resizeMsg{Type: "resize", Rows: rows, Cols: cols})
 	if err != nil {

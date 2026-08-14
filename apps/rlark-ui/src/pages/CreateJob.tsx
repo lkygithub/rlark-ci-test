@@ -32,6 +32,7 @@ export function CreateJobModal({
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [errorNonce, setErrorNonce] = useState(0);
   const errorBannerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -41,7 +42,7 @@ export function CreateJobModal({
         block: "center",
       });
     }
-  }, [error]);
+  }, [error, errorNonce]);
 
   useEffect(() => {
     const handleEscape = (event: KeyboardEvent) => {
@@ -74,6 +75,13 @@ export function CreateJobModal({
   const [tensorBoardDir, setTensorBoardDir] = useState(
     sourceJob?.tensorBoardDir ?? "",
   );
+  const [sshPublicKey, setSSHPublicKey] = useState(
+    sourceJob?.sshPublicKey ?? "",
+  );
+  const [sshKeys, setSShKeys] = useState<
+    { index: number; user: string; public_key: string; added_at: string }[]
+  >([]);
+  const [sshKeysLoaded, setSShKeysLoaded] = useState(false);
   const [domains, setDomains] = useState<{ name: string; cidr: string }[]>([]);
   const {
     clusterDisplayNames,
@@ -106,6 +114,18 @@ export function CreateJobModal({
         ),
       )
       .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    fetch("/api/v1/ssh-user-keys")
+      .then((r) =>
+        r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)),
+      )
+      .then((data) => {
+        setSShKeys(data ?? []);
+        setSShKeysLoaded(true);
+      })
+      .catch(() => setSShKeysLoaded(true));
   }, []);
 
   useEffect(() => {
@@ -177,14 +197,13 @@ export function CreateJobModal({
       const resp = await fetch(url.pathname + url.search);
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const data = await resp.json();
-      if (data.success && data.data) {
-        const storageClassList = Object.values(data.data).map((sc: any) => ({
-          name: sc.name,
-          description: sc.description || "",
-          bucket: sc.bucket || "",
-        }));
-        setStorageClasses(storageClassList);
-      }
+      const scData = data.data ?? {};
+      const storageClassList = Object.values(scData).map((sc: any) => ({
+        name: sc.name,
+        description: sc.description || "",
+        bucket: sc.bucket || "",
+      }));
+      setStorageClasses(storageClassList);
     } catch (e) {
       console.warn("Failed to fetch storage classes:", e);
     } finally {
@@ -239,6 +258,7 @@ export function CreateJobModal({
   const [roleResources, setRoleResources] = useState<
     Record<string, RoleResource>
   >(sourceJob ? cloneRR : defaultRoleResources);
+  const [roleMaxGPU, setRoleMaxGPU] = useState<Record<string, number>>({});
   const [activeRoleTab, setActiveRoleTab] = useState<string>(roles[0] ?? "");
 
   useEffect(() => {
@@ -493,6 +513,7 @@ export function CreateJobModal({
     runScript,
     domain,
     tensorBoardDir,
+    sshPublicKey,
   });
   const yaml = toYaml(crd);
   const steps = zh
@@ -537,6 +558,12 @@ export function CreateJobModal({
           return zh
             ? `${role} 当前没有匹配到可用节点，请调整集群或节点选择条件。`
             : `${role} has no matched nodes. Adjust its cluster or node selector.`;
+        const maxGpu = roleMaxGPU[role] ?? 0;
+        const curGpu = parseInt(resource.gpu, 10);
+        if (maxGpu > 0 && !isNaN(curGpu) && curGpu > maxGpu)
+          return zh
+            ? `${role} 的 GPU 数量超过最大可用值（${maxGpu}）。`
+            : `${role} GPU exceeds max available (${maxGpu}).`;
         for (const mount of resource.mounts) {
           if (!mount.mountPath.trim())
             return zh
@@ -544,7 +571,7 @@ export function CreateJobModal({
               : `${role} has a mount without a target path.`;
           if (mount.type === "host" && !mount.hostPath.trim())
             return zh
-              ? `${role} 的主机路径不能为空。`
+              ? `${role} 的主机目录不能为空。`
               : `${role} has an empty host path.`;
           if (mount.type === "storage" && !mount.objectStorage.trim())
             return zh
@@ -569,6 +596,7 @@ export function CreateJobModal({
       const message = validateStep(currentStep);
       if (message) {
         setError(message);
+        setErrorNonce((n) => n + 1);
         setStep(currentStep);
         return;
       }
@@ -582,6 +610,7 @@ export function CreateJobModal({
       const message = validateStep(currentStep);
       if (message) {
         setError(message);
+        setErrorNonce((n) => n + 1);
         setStep(currentStep);
         return;
       }
@@ -605,6 +634,7 @@ export function CreateJobModal({
       onClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
+      setErrorNonce((n) => n + 1);
     } finally {
       setSubmitting(false);
     }
@@ -819,6 +849,30 @@ export function CreateJobModal({
                           nodes={allNodes}
                           loading={nodesLoading}
                           onMatchedCount={(n) => updateRR(role, "replicas", n)}
+                          onMaxGPU={(gpu) => {
+                            setRoleMaxGPU((prev) => {
+                              if (prev[role] === gpu) return prev;
+                              return { ...prev, [role]: gpu };
+                            });
+                            setRoleResources((prev) => {
+                              const cur = prev[role];
+                              if (!cur) return prev;
+                              const curGPU = parseInt(cur.gpu, 10);
+                              if (
+                                isNaN(curGPU) ||
+                                curGPU === 0 ||
+                                curGPU > gpu
+                              ) {
+                                if (gpu > 0) {
+                                  return {
+                                    ...prev,
+                                    [role]: { ...cur, gpu: String(gpu) },
+                                  };
+                                }
+                              }
+                              return prev;
+                            });
+                          }}
                         />
                       </div>
                       <div
@@ -835,13 +889,45 @@ export function CreateJobModal({
                           />
                         </label>
                         <label>
-                          GPU
+                          <span className="label-row">
+                            GPU
+                            {(() => {
+                              const maxGpu = roleMaxGPU[role] ?? 0;
+                              const curGpu = parseInt(rr.gpu, 10);
+                              if (
+                                maxGpu > 0 &&
+                                !isNaN(curGpu) &&
+                                curGpu > maxGpu
+                              ) {
+                                return (
+                                  <small
+                                    className="label-hint"
+                                    style={{ color: "var(--red, #cf3f61)" }}
+                                  >
+                                    {zh
+                                      ? `（超过最大 ${maxGpu}）`
+                                      : ` (exceeds max ${maxGpu})`}
+                                  </small>
+                                );
+                              }
+                              if (maxGpu > 0)
+                                return (
+                                  <small className="label-hint">
+                                    {zh
+                                      ? `（最大 ${maxGpu}）`
+                                      : ` (max ${maxGpu})`}
+                                  </small>
+                                );
+                              return null;
+                            })()}
+                          </span>
                           <input
+                            type="number"
                             value={rr.gpu}
                             onChange={(e) =>
                               updateRR(role, "gpu", e.target.value)
                             }
-                            placeholder="4"
+                            placeholder="0"
                           />
                         </label>
                       </div>
@@ -1061,7 +1147,7 @@ export function CreateJobModal({
                                   updateRRMount(role, index, "type", "host");
                                 }}
                               >
-                                {zh ? "主机" : "Host"}
+                                {zh ? "主机目录" : "Host directory"}
                               </button>
                               <button
                                 type="button"
@@ -1074,63 +1160,79 @@ export function CreateJobModal({
                                   fetchStorageClasses(rr.cluster);
                                 }}
                               >
-                                {zh ? "存储" : "Storage"}
+                                {zh ? "对象存储" : "Object storage"}
                               </button>
                             </div>
-                            {mount.type === "storage" ? (
-                              <select
-                                value={mount.objectStorage}
-                                onChange={(e) =>
-                                  updateRRMount(
-                                    role,
-                                    index,
-                                    "objectStorage",
-                                    e.target.value,
-                                  )
-                                }
-                              >
-                                <option value="">
-                                  {storageClassFetched &&
-                                  storageClasses.length === 0
-                                    ? zh
-                                      ? "无可用存储类"
-                                      : "No storage classes"
-                                    : zh
-                                      ? "选择存储类"
-                                      : "Select storage class"}
-                                </option>
-                                {storageClasses.map((sc) => (
-                                  <option key={sc.name} value={sc.name}>
-                                    {sc.name}
+                            <label className="mount-field-box">
+                              <span>
+                                {mount.type === "storage"
+                                  ? zh
+                                    ? "对象存储"
+                                    : "Object storage"
+                                  : zh
+                                    ? "主机目录"
+                                    : "Host directory"}
+                              </span>
+                              {mount.type === "storage" ? (
+                                <select
+                                  value={mount.objectStorage}
+                                  onChange={(e) =>
+                                    updateRRMount(
+                                      role,
+                                      index,
+                                      "objectStorage",
+                                      e.target.value,
+                                    )
+                                  }
+                                >
+                                  <option value="">
+                                    {storageClassFetched &&
+                                    storageClasses.length === 0
+                                      ? zh
+                                        ? "无可用存储类"
+                                        : "No storage classes"
+                                      : zh
+                                        ? "选择存储类"
+                                        : "Select storage class"}
                                   </option>
-                                ))}
-                              </select>
-                            ) : (
+                                  {storageClasses.map((sc) => (
+                                    <option key={sc.name} value={sc.name}>
+                                      {sc.name}
+                                    </option>
+                                  ))}
+                                </select>
+                              ) : (
+                                <input
+                                  value={mount.hostPath}
+                                  onChange={(e) =>
+                                    updateRRMount(
+                                      role,
+                                      index,
+                                      "hostPath",
+                                      e.target.value,
+                                    )
+                                  }
+                                  placeholder="/host/path"
+                                />
+                              )}
+                            </label>
+                            <label className="mount-field-box">
+                              <span>
+                                {zh ? "挂载到 Worker" : "Mount in worker"}
+                              </span>
                               <input
-                                value={mount.hostPath}
+                                value={mount.mountPath}
                                 onChange={(e) =>
                                   updateRRMount(
                                     role,
                                     index,
-                                    "hostPath",
+                                    "mountPath",
                                     e.target.value,
                                   )
                                 }
-                                placeholder="/path"
+                                placeholder="/mnt/data"
                               />
-                            )}
-                            <input
-                              value={mount.mountPath}
-                              onChange={(e) =>
-                                updateRRMount(
-                                  role,
-                                  index,
-                                  "mountPath",
-                                  e.target.value,
-                                )
-                              }
-                              placeholder="/path"
-                            />
+                            </label>
                             <button
                               className="icon-button danger"
                               onClick={() => removeRRMount(role, index)}
@@ -1194,6 +1296,42 @@ export function CreateJobModal({
                     </option>
                   ))}
                 </select>
+              </div>
+              <div className="form-section">
+                <div className="form-section-head">
+                  <small>
+                    {zh
+                      ? "SSH 公钥注入 (可选)"
+                      : "SSH Public Key Injection (optional)"}
+                  </small>
+                </div>
+                <select
+                  value={sshPublicKey}
+                  onChange={(e) => setSSHPublicKey(e.target.value)}
+                >
+                  <option value="">
+                    {zh ? "不注入 SSH 公钥" : "No SSH key injection"}
+                  </option>
+                  {sshKeys.map((k) => (
+                    <option key={`${k.user}-${k.index}`} value={k.public_key}>
+                      {k.user} #{k.index + 1} ({k.public_key.slice(0, 40)}...)
+                    </option>
+                  ))}
+                </select>
+                {sshKeysLoaded && sshKeys.length === 0 && (
+                  <small className="field-hint">
+                    {zh
+                      ? "未找到 SSH 公钥，请先在 SSH 公钥管理页面添加。"
+                      : "No SSH keys found. Add keys in the SSH Key Management page first."}
+                  </small>
+                )}
+                {sshPublicKey && (
+                  <small className="field-hint">
+                    {zh
+                      ? "选中的公钥将注入到所有角色的 Pod 的 authorized_keys 中。"
+                      : "The selected public key will be injected into all role pods' authorized_keys."}
+                  </small>
+                )}
               </div>
               <div className="form-section">
                 <div className="form-section-head">

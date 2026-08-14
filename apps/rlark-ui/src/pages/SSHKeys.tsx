@@ -310,8 +310,8 @@ export function SSHKeysPage({ copy: c }: { copy: Copy }) {
         />
         <div style={{ fontSize: 12, lineHeight: 1.6, color: "var(--muted)" }}>
           {zh
-            ? "请确保任务 Pod 的 authorized_keys 中包含你上传的公钥，且 Pod 内 sshd 已启动并允许公钥认证。连接时使用 root 用户登录 Pod。"
-            : "Ensure your uploaded public key is present in the task Pod's authorized_keys, and that sshd is running with public key authentication enabled. Use root user to connect to the Pod."}
+            ? "创建任务时可在「公共配置」中选择已上传的公钥。连接时使用 root 用户登录 Pod。"
+            : "When creating a job, select your uploaded key in 'Common Config'. Use root user to connect to the Pod."}
         </div>
       </div>
 

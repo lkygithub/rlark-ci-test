@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/rlinf/rlark/api/config"
+	"github.com/rlinf/rlark/apps/rlark/pkg/common"
 	"github.com/rlinf/rlark/apps/rlark/pkg/log"
 	"github.com/rlinf/rlark/apps/rlark/pkg/rlarkadm/cert"
 	"github.com/rlinf/rlark/apps/rlark/pkg/rlarkadm/component"
@@ -26,10 +27,12 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
+// Installer installs RLark components.
 type Installer struct {
 	summary *types.InstallSummary
 }
 
+// Install installs the components.
 func (d *Installer) Install(cfg *types.DeployConfig, certBundle *cert.Bundle) error {
 	logger := log.GetLogger()
 	kubeconfig := cfg.Kubernetes.Kubeconfig
@@ -122,6 +125,7 @@ func (d *Installer) Install(cfg *types.DeployConfig, certBundle *cert.Bundle) er
 	return nil
 }
 
+// Summary is an exported method.
 func (d *Installer) Summary() *types.InstallSummary {
 	return d.summary
 }
@@ -409,9 +413,9 @@ func createUIAuthSecretInKCP(ctx context.Context, clientset *kubernetes.Clientse
 
 	// Check if secret already exists in KCP
 	checkCmd := exec.Command("kubectl", "-n", constants.Namespace, "exec", podName, "--",
-		"kubectl", "--kubeconfig", kc, "get", "secret", constants.UIAuthSecretName, "-n", "default")
+		"kubectl", "--kubeconfig", kc, "get", "secret", common.UIAuthSecretName, "-n", "default")
 	if err := checkCmd.Run(); err == nil {
-		logger.Info("ui auth secret already exists in KCP, skipping", "name", constants.UIAuthSecretName)
+		logger.Info("ui auth secret already exists in KCP, skipping", "name", common.UIAuthSecretName)
 		return nil
 	}
 
@@ -434,7 +438,7 @@ type: Opaque
 stringData:
   admin-password: %s
   user-password: %s
-`, constants.UIAuthSecretName, adminPassword, userPassword)
+`, common.UIAuthSecretName, adminPassword, userPassword)
 
 	applyCmd := exec.Command("kubectl", "-n", constants.Namespace, "exec", "-i", podName, "--",
 		"kubectl", "--kubeconfig", kc, "apply", "-f", "-")
@@ -445,7 +449,7 @@ stringData:
 		return fmt.Errorf("apply ui auth secret in kcp: %w: %s", err, errBuf.String())
 	}
 
-	logger.Info("ui auth secret created in KCP", "name", constants.UIAuthSecretName)
+	logger.Info("ui auth secret created in KCP", "name", common.UIAuthSecretName)
 	return nil
 }
 
@@ -464,7 +468,7 @@ func readUIAuthFromKCP(ctx context.Context, clientset *kubernetes.Clientset) (ad
 	kc := constants.KCPDataDir + "/admin.kubeconfig"
 
 	cmd := exec.Command("kubectl", "-n", constants.Namespace, "exec", podName, "--",
-		"kubectl", "--kubeconfig", kc, "get", "secret", constants.UIAuthSecretName, "-n", "default",
+		"kubectl", "--kubeconfig", kc, "get", "secret", common.UIAuthSecretName, "-n", "default",
 		"-o", "json")
 	var jsonOut bytes.Buffer
 	cmd.Stdout = &jsonOut

@@ -12,12 +12,14 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// Client is a client.
 type Client struct {
 	config        *Config
 	s3Client      *s3.Client
 	presignClient *s3.PresignClient
 }
 
+// NewClient creates a new Client.
 func NewClient(config *Config) (*Client, error) {
 	cfg, err := awsconfig.LoadDefaultConfig(context.Background(),
 		awsconfig.WithRegion(config.Region),
@@ -65,16 +67,17 @@ func NewClient(config *Config) (*Client, error) {
 	return ossClient, nil
 }
 
+// NewClientWithDefault creates a new ClientWithDefault.
 func NewClientWithDefault() (*Client, error) {
 	return NewClient(DefaultConfig())
 }
 
-// getBucket returns the bucket name from config
+// getBucket returns the bucket name from config.
 func (c *Client) getBucket() string {
 	return c.config.Bucket
 }
 
-// Helper to convert types.Object to our ObjectInfo
+// Helper to convert types.Object to our ObjectInfo.
 func convertToObjectInfo(obj types.Object) ObjectInfo {
 	info := ObjectInfo{}
 	if obj.Key != nil {
@@ -92,7 +95,7 @@ func convertToObjectInfo(obj types.Object) ObjectInfo {
 	return info
 }
 
-// Helper function to extract deletion result
+// Helper function to extract deletion result.
 func extractDeletedObjects(output *s3.DeleteObjectsOutput) []string {
 	var deleted []string
 	if output.Deleted != nil {

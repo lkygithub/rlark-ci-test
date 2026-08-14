@@ -9,6 +9,7 @@ import (
 	"github.com/rlinf/rlark/apps/rlark/pkg/rlarkadm"
 )
 
+// UninstallCommand uninstalls the components.
 func UninstallCommand() *cobra.Command {
 	var uninstallConf string
 	var purge bool

@@ -18,9 +18,10 @@ import (
 
 // pushDeploymentReconciler watches local Deployments and reports status to management Task.
 type pushDeploymentReconciler struct {
-	c *TaskController
+	c *Controller
 }
 
+// Reconcile reconciles the resource.
 func (r *pushDeploymentReconciler) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
 	logger := log.FromContext(ctx).WithValues("deployment", req.NamespacedName)
 

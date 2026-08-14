@@ -8,20 +8,24 @@ import (
 	"github.com/spf13/pflag"
 )
 
+// Config holds configuration options.
 type Config struct {
 	UnixSocketAddress string
 }
 
+// DefaultConfig returns the default config.
 func DefaultConfig() Config {
 	return Config{
-		UnixSocketAddress: "/run/rlark/nodeserver.sock",
+		UnixSocketAddress: "/var/run/rlark/nodeserver.sock",
 	}
 }
 
+// SetupFlags sets the upFlags.
 func (c *Config) SetupFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&c.UnixSocketAddress, "nodeserver-unix-socket", c.UnixSocketAddress, "Unix socket address for node server")
 }
 
+// Listen lists the en.
 func (c *Config) Listen() (net.Listener, error) {
 	s, err := os.Stat(c.UnixSocketAddress)
 	if err != nil {

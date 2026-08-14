@@ -3,7 +3,8 @@ PY_SDK_DIR ?= ../../sdks/embodied-runtime-python
 
 PROTO_SPECS = \
 	roscontroller/v1/robot.proto \
-	cameracontroller/v1/camera.proto
+	cameracontroller/v1/camera.proto \
+	device/v1/device.proto
 
 ##@ Proto generation
 

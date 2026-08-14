@@ -9,6 +9,7 @@ import (
 	"github.com/rlinf/rlark/apps/rlark/pkg/rlarkadm"
 )
 
+// InstallCommand installs the components.
 func InstallCommand() *cobra.Command {
 	var installConf string
 

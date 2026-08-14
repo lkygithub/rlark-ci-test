@@ -34,6 +34,7 @@ type JobReconciler struct {
 // +kubebuilder:rbac:groups=rlinf.io,resources=jobs/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=rlinf.io,resources=jobs/finalizers,verbs=update
 
+// NewJobReconciler creates a new JobReconciler.
 func NewJobReconciler(config Config, client client.Client, db *bun.DB) *JobReconciler {
 	return &JobReconciler{
 		config: config,

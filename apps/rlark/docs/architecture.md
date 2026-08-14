@@ -2,17 +2,17 @@
 
 ## 1. Design Goals
 
-rlark is an embodied intelligence scheduling platform for cross-cluster, multi-runtime scenarios. Core design goals:
+rlark is an embodied intelligence cloud-native management platform for cross-cluster, multi-runtime scenarios. Core design goals:
 
 1. **Cloud-to-Edge workload orchestration**: From cloud GPU training (RL/LLM) to edge deployment (robot arm, sensor, camera), unified declarative abstraction across the full embodied AI pipeline
-2. **Multi-runtime data plane**: Native support for Kubernetes, Docker, and Raw runtimes — GPU clusters run k8s for large-scale training, edge devices run Docker/Raw for lightweight embodied deployment (Docker/Raw runtimes: framework in place, runtime implementation TODO)
+2. **Multi-runtime data plane**: Native support for Kubernetes, Docker, and Raw runtimes — GPU clusters run k8s for large-scale training, edge devices run k8s or Docker/Raw for lightweight embodied deployment (Docker/Raw runtimes: framework in place, runtime implementation TODO)
 3. **Cross-cluster resource pooling**: Unify GPU clusters and edge devices distributed across different regions into a single logical resource pool
 4. **Direct Pod-to-Pod network communication**: Embodied AI workloads require real-time communication between training actors and edge robots, requiring cross-cluster Pods to establish direct TCP connections
 5. **Security isolation**: Multi-tenant embodied AI tasks require network isolation — different teams/projects must not access each other's devices or data
 
 ## 2. Overall Architecture
 
-rlark uses a **control plane—data plane** separation architecture. The control plane runs on kcp (Kubernetes Control Plane), and data plane Agents are deployed in each GPU cluster or edge device, supporting k8s, Docker, and Raw runtimes.
+rlark uses a **control plane—data plane** separation architecture. The control plane runs on kcp (Kubernetes Control Plane), and data plane Agents are deployed in each GPU cluster or edge device, supporting k8s, Docker, and Raw runtimes. The **embodied-runtime** (Device Plugin + Controllers) runs as a DaemonSet on each data plane node to manage robot (ROS 1/2) and camera hardware, exposing them as Kubernetes device resources.
 
 ![System Architecture](images/architecture.svg)
 
@@ -201,6 +201,32 @@ Per-Domain SSH connection pool. Design highlights:
 - Exponential backoff on reconnection failure (1s → 2s → 4s → ... → 30s)
 - Background GC closes idle connections (default 10 min timeout)
 - Thread-safe; read lock on normal path, no blocking
+
+### 4.6 Embodied Runtime
+
+The **embodied-runtime** is a node-level component deployed as a DaemonSet on each data plane node, managing robot (ROS 1/2) and camera hardware. It integrates with the Agent to expose physical devices as Kubernetes device resources (`rlinf.io/device`), allowing training Tasks to request robot arms and cameras just like GPU resources.
+
+**Key Files**: [apps/embodied-runtime/](../../../embodied-runtime/)
+
+**Component Overview**:
+
+| Component | Responsibility | Key File |
+|-----------|---------------|----------|
+| Device Plugin | Registers `rlinf.io/device` with kubelet; detects node-local hardware; injects sockets and CLI binaries into Task Pods | [plugin.go](../../../../embodied-runtime/pkg/deviceplugin/plugin.go) |
+| Mutating Webhook | Auto-injects `devinit` init container into Pods requesting `rlinf.io/device`; manages CA certificate and serving certificate | [webhook.go](../../../../embodied-runtime/pkg/deviceplugin/webhook.go) |
+| ros-controller | Manages ROS 1 (`roscore` + `roslaunch`) robot lifecycle; exposes gRPC API via Unix socket | [roscontroller/](../../../../embodied-runtime/pkg/roscontroller/) |
+| ros2-controller | Manages ROS 2 robot lifecycle; exposes gRPC API via Unix socket | [ros2controller/](../../../../embodied-runtime/pkg/ros2controller/) |
+| camera-controller | Manages camera (V4L2 / RTSP / RealSense) lifecycle; ffmpeg transcoding; exposes gRPC API via Unix socket | [cameracontroller/](../../../../embodied-runtime/pkg/cameracontroller/) |
+| CLI (rosctr / camctr) | Command-line tools mounted into Task Pods for direct robot/camera control | [cmd/rosctr/](../../../../embodied-runtime/cmd/rosctr/) |
+
+**Device Lifecycle**:
+
+1. Device Plugin detects hardware (V4L2 cameras, robot controllers) and registers them with kubelet
+2. Task Pod requests `rlinf.io/device` resources in its spec
+3. **Mutating Webhook** intercepts the Pod creation and auto-injects a `devinit` init container (requesting the same resource) that runs `devinit setup` to create macvlans in the Pod's network namespace
+4. On Allocate, Device Plugin injects Unix sockets and CLI binaries into the Pod
+5. The task container communicates with ros-controller / camera-controller via gRPC over Unix sockets
+6. On Pod termination, Device Plugin cleans up and returns the device to the pool
 
 ## 5. Cross-Cluster Pod Network Data Flow
 

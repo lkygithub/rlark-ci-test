@@ -102,6 +102,50 @@ func (s *Server) registerAgent(ctx context.Context, agentID string) error {
 		}
 	}
 
+	// 4. 创建 ClusterRole 和 ClusterRoleBinding，授予 agent 集群级别的只读权限
+	clusterRoleName := roleName + "-cluster"
+	clusterRole := &rbacv1.ClusterRole{
+		ObjectMeta: metav1.ObjectMeta{Name: clusterRoleName},
+		Rules: []rbacv1.PolicyRule{
+			{APIGroups: []string{""}, Resources: []string{"secrets"}, Verbs: []string{"get", "list"}},
+		},
+	}
+	_, err = s.kubeClient.RbacV1().ClusterRoles().Get(ctx, clusterRoleName, metav1.GetOptions{})
+	if err != nil {
+		if !errors.IsNotFound(err) {
+			return fmt.Errorf("get ClusterRole %s: %w", clusterRoleName, err)
+		}
+		_, err = s.kubeClient.RbacV1().ClusterRoles().Create(ctx, clusterRole, metav1.CreateOptions{})
+		if err != nil {
+			return fmt.Errorf("create ClusterRole %s: %w", clusterRoleName, err)
+		}
+	} else {
+		if _, err := s.kubeClient.RbacV1().ClusterRoles().Update(ctx, clusterRole, metav1.UpdateOptions{}); err != nil {
+			return fmt.Errorf("update ClusterRole %s: %w", clusterRoleName, err)
+		}
+	}
+
+	clusterRbName := clusterRoleName + "-binding"
+	clusterRb := &rbacv1.ClusterRoleBinding{
+		ObjectMeta: metav1.ObjectMeta{Name: clusterRbName},
+		Subjects:   []rbacv1.Subject{{Kind: "ServiceAccount", Name: saName, Namespace: namespace}},
+		RoleRef:    rbacv1.RoleRef{Kind: "ClusterRole", Name: clusterRoleName, APIGroup: "rbac.authorization.k8s.io"},
+	}
+	_, err = s.kubeClient.RbacV1().ClusterRoleBindings().Get(ctx, clusterRbName, metav1.GetOptions{})
+	if err != nil {
+		if !errors.IsNotFound(err) {
+			return fmt.Errorf("get ClusterRoleBinding %s: %w", clusterRbName, err)
+		}
+		_, err = s.kubeClient.RbacV1().ClusterRoleBindings().Create(ctx, clusterRb, metav1.CreateOptions{})
+		if err != nil {
+			return fmt.Errorf("create ClusterRoleBinding %s: %w", clusterRbName, err)
+		}
+	} else {
+		if _, err := s.kubeClient.RbacV1().ClusterRoleBindings().Update(ctx, clusterRb, metav1.UpdateOptions{}); err != nil {
+			return fmt.Errorf("update ClusterRoleBinding %s: %w", clusterRbName, err)
+		}
+	}
+
 	return nil
 }
 

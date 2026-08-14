@@ -4,7 +4,7 @@ on:
   pull_request:
     branches:
       - main
-    types: [synchronize, labeled]
+    types: [opened, reopened, synchronize, labeled]
   workflow_dispatch:
 
 concurrency:
@@ -26,40 +26,29 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v5
 
-      - name: Fail if the PR does not have the 'run-ci' label
-        if: github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'run-ci')
-        run: |
-          echo "This pull request does not have the 'run-ci' label. Failing the workflow."
-          exit 1
-
-      - name: Fail if the PR is a draft
-        if: github.event_name == 'pull_request' && github.event.pull_request.draft == true
-        run: |
-          echo "This pull request is a draft. Failing the workflow."
-          exit 1
-
       - name: Detect file changes
         id: filter
         uses: dorny/paths-filter@v3
         with:
           filters: |
             docker_filter:
-              - 'build/**/Dockerfile'
-              - 'cmd/**'
-              - 'pkg/**'
-              - 'go.mod'
-              - 'go.sum'
+              - 'apps/rlark/**/Dockerfile'
+              - 'apps/rlark-ui/**/Dockerfile'
+              - 'apps/embodied-runtime/**/Dockerfile'
+              - 'apps/rlark/cmd/**'
+              - 'apps/rlark/pkg/**'
+              - 'api/**'
               - '.github/workflows/docker-build.yml'
             unit_test_filter:
               - '**/*.go'
-              - 'go.mod'
-              - 'go.sum'
+              - '**/go.mod'
+              - '**/go.sum'
               - '.github/workflows/unit-tests.yml'
             lint_filter:
               - '**/*.go'
-              - 'web/**'
-              - 'go.mod'
-              - 'go.sum'
+              - 'apps/rlark-ui/**'
+              - '**/go.mod'
+              - '**/go.sum'
               - '.github/workflows/lint.yml'
 
   # =============================================== lint ====================================================

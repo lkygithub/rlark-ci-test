@@ -8,7 +8,7 @@ import (
 )
 
 // ---------------------------------------------------------------------------
-// H.264/H.265 Annex B bitstream helpers
+// H.264/H.265 Annex B bitstream helpers.
 // ---------------------------------------------------------------------------
 
 // paramSetsBlob caches the most recently observed parameter-set NAL units

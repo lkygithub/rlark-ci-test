@@ -2,6 +2,7 @@ package gateway
 
 import "github.com/gin-gonic/gin"
 
+// RegisterRoutes registers the routes.
 func (g *Gateway) RegisterRoutes(r gin.IRouter) {
 	rlinfv1alpha1 := r.Group("/api/v1/rlinf.io/v1alpha1")
 
@@ -93,14 +94,26 @@ func (g *Gateway) RegisterRoutes(r gin.IRouter) {
 		auth.POST("/login", g.handleLogin)
 	}
 
+	// Image Registry APIs
+	imageRegistries := r.Group("/api/v1/image-registries")
+	{
+		imageRegistries.GET("", g.handleListImageRegistries)
+		imageRegistries.POST("", g.handleCreateImageRegistry)
+		imageRegistries.GET("/:name", g.handleGetImageRegistry)
+		imageRegistries.PUT("/:name", g.handleUpdateImageRegistry)
+		imageRegistries.DELETE("/:name", g.handleDeleteImageRegistry)
+	}
+
 	// Storage APIs
 	storage := r.Group("/api/v1/storage")
 	{
 		storage.GET("/storageclass", g.listStorageClass)
 		storage.POST("/storageclass", g.createStorageClass)
+		storage.PUT("/storageclass/:name", g.updateStorageClass)
+		storage.DELETE("/storageclass/:name", g.deleteStorageClass)
 		storage.GET("/storageclass/provider", g.listProvider)
 
-		scFiles := storage.Group("/storageclass/:cluster/:name")
+		scFiles := storage.Group("/storageclass/:name/:cluster")
 		{
 			scFiles.GET("/list", g.listStorageClassFiles)
 			scFiles.POST("/upload", g.uploadStorageClassFile)

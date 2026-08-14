@@ -156,10 +156,10 @@ func main() {
 The `embodiedruntime` package provides convenience dial functions:
 
 ```go
-// Default: Unix socket at /var/run/rlinf/ros-ctrl.sock
+// Default: Unix socket at /var/run/rlark/ros-ctrl.sock
 conn, err := embodiedruntime.DialRobot("")
 
-// Default: Unix socket at /var/run/rlinf/camera-ctrl.sock
+// Default: Unix socket at /var/run/rlark/camera-ctrl.sock
 conn, err := embodiedruntime.DialCamera("")
 
 // Remote TCP server
@@ -176,8 +176,9 @@ The device plugin injects these into task pods; the `embodiedruntime` package re
 
 | Env var | Used by | Default |
 |---------|---------|---------|
-| `RLINF_EMBODIED_ROS_SOCKET_PATH` | `DialRobot()` | `/var/run/rlinf/ros-ctrl.sock` |
-| `RLINF_EMBODIED_CAMERA_SOCKET_PATH` | `DialCamera()` | `/var/run/rlinf/camera-ctrl.sock` |
+| `RLINF_EMBODIED_ROS_SOCKET_PATH` | `DialRobot()` | `/var/run/rlark/ros-ctrl.sock` |
+| `RLINF_EMBODIED_ROS2_SOCKET_PATH` | `DialRobot2()` | `/var/run/rlark/ros2-ctrl.sock` |
+| `RLINF_EMBODIED_CAMERA_SOCKET_PATH` | `DialCamera()` | `/var/run/rlark/camera-ctrl.sock` |
 
 ## Regenerate stubs
 

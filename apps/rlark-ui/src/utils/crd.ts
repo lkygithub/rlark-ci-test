@@ -133,6 +133,7 @@ export function crdToJob(crd: CRDJob): Job {
     sshAddress: "",
     stopped: crd.spec.stopped ?? false,
     domain: crd.spec.domain ?? "",
+    sshPublicKey: crd.spec.sshPublicKey ?? "",
     resources,
     taskStatuses: allTaskStatuses,
   };

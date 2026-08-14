@@ -13,15 +13,17 @@ import (
 func resetCmd(socketPath string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "reset <robot-id>",
-		Short: "Reset a robot — stop process, restart roscore, clear state",
+		Short: "Reset a robot — stop process, restart middleware, clear state",
 		Long: `Reset a robot node.
 
-Stops the roslaunch process, restarts roscore on the same port, and
+Stops the launch process, restarts the ROS middleware (roscore for ROS 1;
+the launch process for ROS 2 — there is no master to restart), and
 resets the robot state back to STOPPED. Useful for recovering from
 error states without re-registering the robot.
 
 Example:
-  rosctr reset franka-0`,
+  rosctr reset franka-0
+  rosctr --socket-path /var/run/rlark/ros2-ctrl.sock reset franka-0`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client, conn := newClient(socketPath)
@@ -39,8 +41,13 @@ Example:
 
 			format := cli.FormatFromCmd(cmd)
 			cli.Print(format, resp, func() {
-				fmt.Printf("Robot %s reset → %s (ROS_MASTER_URI=%s)\n",
-					resp.RobotId, stateStr(resp.State), resp.RosMasterUri)
+				if resp.RosMasterUri != "" {
+					fmt.Printf("Robot %s reset → %s (ROS_MASTER_URI=%s)\n",
+						resp.RobotId, stateStr(resp.State), resp.RosMasterUri)
+				} else {
+					fmt.Printf("Robot %s reset → %s (ROS_DOMAIN_ID=%d)\n",
+						resp.RobotId, stateStr(resp.State), resp.RosDomainId)
+				}
 			})
 			return nil
 		},

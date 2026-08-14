@@ -16,11 +16,7 @@ import type { Phase } from "../data";
 import type { Copy } from "../i18n";
 import type { CRDNode } from "../types";
 import { useAutoRefresh } from "../hooks";
-import {
-  buildMockCRDNodes,
-  categoryLabels,
-  getNodeCategory,
-} from "../utils/nodes";
+import { categoryLabels, getNodeCategory } from "../utils/nodes";
 import { MetricCard, StatusBadge } from "../components/shared";
 import { NodeResourceBrowser } from "../components/NodeResourceBrowser";
 
@@ -67,9 +63,8 @@ export function ClustersPage({
       const data = await resp.json();
       setRealNodes(data.items ?? []);
     } catch (e) {
-      setRealNodes(buildMockCRDNodes());
-      setError("");
-      console.warn("API request failed, using mock data:", e);
+      setRealNodes([]);
+      setError(e instanceof Error ? e.message : String(e));
     } finally {
       setLoading(false);
     }
@@ -372,7 +367,9 @@ export function NodeDetailReal({
   const zh = c.nav.overview === "总览";
   const phase = (node.status?.phase ?? "Offline") as Phase;
   const labels = node.metadata.labels ?? {};
-  const labelEntries = Object.entries(labels);
+  const labelEntries = Object.entries(labels).filter(
+    ([k]) => k.startsWith("kubernetes.io/") || k.startsWith("rlark.io/"),
+  );
   const addresses = node.status?.addresses ?? [];
   const internalAddress =
     addresses.find((address) => address.type === "InternalIP")?.address ??

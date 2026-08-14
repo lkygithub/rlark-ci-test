@@ -6,6 +6,9 @@ on:
 jobs:
   unit-tests:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        module: [api, apps/rlark, apps/embodied-runtime]
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
@@ -13,9 +16,11 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version-file: "go.mod"
+          go-version-file: "${{ matrix.module }}/go.mod"
           cache: true
+          cache-dependency-path: "${{ matrix.module }}/go.sum"
 
       - name: Run unit tests
         timeout-minutes: 10
-        run: go test ./pkg/... -v -count=1 -short
+        working-directory: ${{ matrix.module }}
+        run: go test ./... -v -count=1 -short

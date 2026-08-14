@@ -8,6 +8,7 @@ import (
 	"github.com/rlinf/rlark/api/rlark.io/v1alpha1"
 )
 
+// PodCache caches values.
 type PodCache struct {
 	mutex       sync.RWMutex
 	podInformer cache.SharedIndexInformer
@@ -15,6 +16,7 @@ type PodCache struct {
 	taskPods    map[string]*v1alpha1.Pod
 }
 
+// NewPodCache creates a new PodCache.
 func NewPodCache(podInformer cache.SharedIndexInformer) *PodCache {
 	c := &PodCache{
 		podInformer: podInformer,
@@ -90,6 +92,7 @@ func (c *PodCache) onDelete(obj interface{}) {
 	}
 }
 
+// GetPodByName returns the podByName.
 func (c *PodCache) GetPodByName(podName string) (*v1alpha1.Pod, bool) {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
@@ -98,6 +101,7 @@ func (c *PodCache) GetPodByName(podName string) (*v1alpha1.Pod, bool) {
 	return pod, exists
 }
 
+// GetPodByTaskName returns the podByTaskName.
 func (c *PodCache) GetPodByTaskName(taskName string) (*v1alpha1.Pod, bool) {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()

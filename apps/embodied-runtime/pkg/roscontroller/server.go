@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"syscall"
 
+	"github.com/rlinf/rlark/apps/embodied-runtime/pkg/netmac"
 	pb "github.com/rlinf/rlark/sdks/embodied-runtime-go/gen/roscontroller/v1"
 	"google.golang.org/grpc"
 )
@@ -20,13 +21,13 @@ type Server struct {
 	httpSrv    *HTTPServer
 	srv        *grpc.Server
 	socket     string
-	macvlans   []*MACVLAN // created at startup, destroyed at shutdown
+	macvlans   []*netmac.MACVLAN // created at startup, destroyed at shutdown
 }
 
 // ServerConfig holds configuration for the ros-controller server.
 type ServerConfig struct {
 	// SocketPath is the Unix socket path the gRPC server listens on.
-	// Default: "/var/run/rlinf/ros-ctrl.sock"
+	// Default: "/var/run/rlark/ros-ctrl.sock"
 	SocketPath string
 
 	// PodIP is the IP address of this pod on the container network.
@@ -64,7 +65,7 @@ type ServerConfig struct {
 // DefaultServerConfig returns a ServerConfig with sensible defaults.
 func DefaultServerConfig() ServerConfig {
 	return ServerConfig{
-		SocketPath: "/var/run/rlinf/ros-ctrl.sock",
+		SocketPath: "/var/run/rlark/ros-ctrl.sock",
 	}
 }
 
@@ -103,14 +104,9 @@ func NewServer(cfg ServerConfig) *Server {
 	}
 
 	// Build MACVLAN objects from config (created later in Run).
-	macvlans := make([]*MACVLAN, 0, len(cfg.MACVLANs))
+	macvlans := make([]*netmac.MACVLAN, 0, len(cfg.MACVLANs))
 	for _, m := range cfg.MACVLANs {
-		macvlans = append(macvlans, &MACVLAN{
-			Name:    m.Name,
-			HostNIC: m.HostNIC,
-			IP:      m.IP,
-			Gateway: m.Gateway,
-		})
+		macvlans = append(macvlans, netmac.NewMACVLAN(m))
 	}
 
 	return &Server{

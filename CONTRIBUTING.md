@@ -56,7 +56,7 @@ We will review your changes and run CI tests before merging them.
 
   Run linting before committing:
   ```bash
-  make lint
+  make lint-go && make lint-web
   ```
 
 * **TypeScript/React** (web UI): Follow standard React/TypeScript conventions.

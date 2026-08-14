@@ -9,6 +9,7 @@ import (
 	rlarkv1alpha1 "github.com/rlinf/rlark/api/rlark.io/v1alpha1"
 )
 
+// Constants used by the package.
 const (
 	EventInit          = "init"
 	EventTasksRunning  = "tasks-running"
@@ -41,7 +42,7 @@ var jobEvents = fsm.Events{
 	},
 	{
 		Name: EventJobStopped,
-		Src:  []string{string(rlarkv1alpha1.JobPhasePending), string(rlarkv1alpha1.JobPhaseRunning)},
+		Src:  []string{string(rlarkv1alpha1.JobPhasePending), string(rlarkv1alpha1.JobPhaseRunning), string(rlarkv1alpha1.JobPhaseFailed)},
 		Dst:  string(rlarkv1alpha1.JobPhaseStopped),
 	},
 	{

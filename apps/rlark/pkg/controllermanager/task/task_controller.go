@@ -12,8 +12,8 @@ import (
 	rlarkv1alpha1 "github.com/rlinf/rlark/api/rlark.io/v1alpha1"
 )
 
-// TaskReconciler reconciles Task resources.
-type TaskReconciler struct {
+// Reconciler reconciles Task resources.
+type Reconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
 }
@@ -23,7 +23,7 @@ type TaskReconciler struct {
 // +kubebuilder:rbac:groups=rlinf.io,resources=tasks/finalizers,verbs=update
 
 // Reconcile handles a Task reconciliation request.
-func (r *TaskReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx).WithValues("task", req.NamespacedName)
 	logger.Info("Reconciling Task")
 
@@ -46,7 +46,7 @@ func (r *TaskReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 }
 
 // SetupWithManager registers the controller with the manager.
-func (r *TaskReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&rlarkv1alpha1.Task{}).
 		Named("task").

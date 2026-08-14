@@ -19,6 +19,7 @@ import (
 	"go.yaml.in/yaml/v2"
 )
 
+// Component describes a deployable component.
 type Component = types.Component
 
 func commonArgs() []string {
@@ -372,7 +373,7 @@ func postgresqlInitVolume() ([]corev1.Volume, []corev1.VolumeMount) {
 		}}
 }
 
-// 全局部署配置，后续新部署的组件往上添加，也可通过配置文件控制
+// 全局部署配置，后续新部署的组件往上添加，也可通过配置文件控制.
 var components = []types.Component{
 	{
 		Name: constants.ComponentGateway, Port: 8090, Plane: types.PlaneControl, NeedsService: true,
@@ -562,14 +563,14 @@ var components = []types.Component{
 				Name: "nodeserver-socket",
 				VolumeSource: corev1.VolumeSource{
 					HostPath: &corev1.HostPathVolumeSource{
-						Path: "/run/rlark",
+						Path: "/var/run/rlark",
 						Type: &[]corev1.HostPathType{corev1.HostPathDirectoryOrCreate}[0],
 					},
 				},
 			})
 			mounts = append(mounts, corev1.VolumeMount{
 				Name:      "nodeserver-socket",
-				MountPath: "/run/rlark",
+				MountPath: "/var/run/rlark",
 			})
 			return vols, mounts
 		},
@@ -808,6 +809,7 @@ func networkSidecarImage(cfg *types.DeployConfig) string {
 	return ""
 }
 
+// ComponentsForPlane returns the components for the given plane.
 func ComponentsForPlane(cfg *types.DeployConfig) []types.Component {
 	logger := log.GetLogger()
 	var result []types.Component
@@ -837,6 +839,7 @@ func ComponentsForPlane(cfg *types.DeployConfig) []types.Component {
 	return sortedComps
 }
 
+// Deployment returns a Deployment for the component.
 func Deployment(cfg *types.DeployConfig, c *types.Component) *appsv1.Deployment {
 	labels := map[string]string{"app": c.Name}
 
@@ -922,6 +925,7 @@ func Deployment(cfg *types.DeployConfig, c *types.Component) *appsv1.Deployment 
 	return dep
 }
 
+// DaemonSet returns a DaemonSet for the component.
 func DaemonSet(cfg *types.DeployConfig, c *types.Component) *appsv1.DaemonSet {
 	labels := map[string]string{"app": c.Name}
 
@@ -977,6 +981,7 @@ func DaemonSet(cfg *types.DeployConfig, c *types.Component) *appsv1.DaemonSet {
 	return ds
 }
 
+// StatefulSet returns a StatefulSet for the component.
 func StatefulSet(cfg *types.DeployConfig, c *types.Component) *appsv1.StatefulSet {
 	labels := map[string]string{"app": c.Name}
 
@@ -1074,6 +1079,7 @@ func StatefulSet(cfg *types.DeployConfig, c *types.Component) *appsv1.StatefulSe
 	return sts
 }
 
+// ServiceAccountName returns the service account name.
 func ServiceAccountName(c *types.Component) string {
 	if c.ServiceAccount != "" {
 		return c.ServiceAccount
@@ -1081,6 +1087,7 @@ func ServiceAccountName(c *types.Component) string {
 	return "default"
 }
 
+// RBAC returns RBAC resources for the component.
 func RBAC(c *types.Component) (*corev1.ServiceAccount, *rbacv1.ClusterRole, *rbacv1.ClusterRoleBinding) {
 	if len(c.RBACRules) == 0 {
 		return nil, nil, nil
@@ -1100,6 +1107,7 @@ func RBAC(c *types.Component) (*corev1.ServiceAccount, *rbacv1.ClusterRole, *rba
 	return sa, cr, crb
 }
 
+// Service returns a Service for the component.
 func Service(cfg *types.DeployConfig, c *types.Component) *corev1.Service {
 	if !c.NeedsService {
 		return nil
@@ -1148,6 +1156,7 @@ func Service(cfg *types.DeployConfig, c *types.Component) *corev1.Service {
 	return svc
 }
 
+// DBConfigYAML returns the database config as YAML.
 func DBConfigYAML(cfg *types.DBConfig) ([]byte, error) {
 	data, err := yaml.Marshal(cfg)
 	if err != nil {

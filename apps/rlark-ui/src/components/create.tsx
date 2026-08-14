@@ -8,6 +8,7 @@ export function NodeSelectorPicker({
   onChange,
   zh,
   onMatchedCount,
+  onMaxGPU,
   cluster,
   nodes,
   loading,
@@ -16,6 +17,7 @@ export function NodeSelectorPicker({
   onChange: (v: string) => void;
   zh: boolean;
   onMatchedCount?: (n: number) => void;
+  onMaxGPU?: (gpu: number) => void;
   cluster?: string;
   nodes: CRDNodeLite[];
   loading: boolean;
@@ -53,9 +55,27 @@ export function NodeSelectorPicker({
       ? clusterNodes.length
       : matchedNodes.length;
 
+  const maxGPU = (() => {
+    const nodesToCheck =
+      Object.keys(selectorMap).length === 0 ? clusterNodes : matchedNodes;
+    let min = Infinity;
+    for (const n of nodesToCheck) {
+      const g = n.status?.allocatable?.["nvidia.com/gpu"];
+      if (g !== undefined) {
+        const num = parseInt(g, 10);
+        if (!isNaN(num) && num < min) min = num;
+      }
+    }
+    return min === Infinity ? 0 : min;
+  })();
+
   useEffect(() => {
     onMatchedCount?.(matchedCount);
   }, [matchedCount]);
+
+  useEffect(() => {
+    onMaxGPU?.(maxGPU);
+  }, [maxGPU]);
 
   useEffect(() => {
     if (!open) return;

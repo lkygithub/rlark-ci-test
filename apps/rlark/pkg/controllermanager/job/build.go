@@ -14,7 +14,7 @@ import (
 	"github.com/rlinf/rlark/apps/rlark/pkg/utils"
 )
 
-func (r *JobReconciler) resolveTaskNamespace(ctx context.Context, t *rlarkv1alpha1.JobTaskTemplate) string {
+func (r *Reconciler) resolveTaskNamespace(ctx context.Context, t *rlarkv1alpha1.JobTaskTemplate) string {
 	if len(t.NodeSelector) == 0 {
 		return "default"
 	}
@@ -53,6 +53,7 @@ func buildTask(
 ) *rlarkv1alpha1.Task {
 	taskSpec := t.TaskSpec
 	taskSpec.Domain = job.Spec.Domain
+	taskSpec.SSHPublicKey = job.Spec.SSHPublicKey
 
 	if job.Spec.Stopped && taskSpec.Kubernetes != nil && taskSpec.Kubernetes.Workload != nil {
 		taskSpec.Kubernetes.Workload.Replicas = ptr.To(int32(0))

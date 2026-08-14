@@ -1,4 +1,4 @@
-package roscontroller
+package netmac
 
 import (
 	"fmt"
@@ -121,6 +121,23 @@ func ipv4OnNIC(nics []hostNIC, name string) (net.IP, bool) {
 // the last-octet range of the network base, so for prefixes wider than /24
 // only the first /24 slice is scanned.
 func pickUnusedIP(ipNet *net.IPNet, used map[string]bool, startOctet int) net.IP {
+	for _, c := range candidateIPs(ipNet, nil, startOctet) {
+		if !used[c.String()] {
+			return c
+		}
+	}
+	return nil
+}
+
+// candidateIPs returns the host IPs of ipNet in priority order for ARP-probe
+// based selection: the last octet scans from startOctet upward, wrapping at
+// 254 back to 1, skipping the network and broadcast addresses. hostIP (the
+// host's own address, never handed out) is excluded when non-nil. Used by
+// both the passive fallback (pickUnusedIP, via a `used` set filter) and the
+// active probe (probeFreeIP, which probes each candidate in turn). Best-
+// effort for the common /24 robot network — like pickUnusedIP, only the
+// first /24 slice is scanned for prefixes wider than /24.
+func candidateIPs(ipNet *net.IPNet, hostIP net.IP, startOctet int) []net.IP {
 	base := ipNet.IP.To4()
 	if base == nil {
 		return nil
@@ -136,76 +153,35 @@ func pickUnusedIP(ipNet *net.IPNet, used map[string]bool, startOctet int) net.IP
 		base[2]|^m[2],
 		base[3]|^m[3],
 	).To4()
+	var hostStr string
+	if hostIP != nil {
+		if h4 := hostIP.To4(); h4 != nil {
+			hostStr = h4.String()
+		}
+	}
 	if startOctet < 1 {
 		startOctet = 1
 	}
 	if startOctet > 254 {
 		startOctet = 100
 	}
+	out := make([]net.IP, 0, 254)
 	for n := 0; n < 254; n++ {
 		octet := startOctet + n
 		if octet > 254 {
 			octet -= 254
 		}
-		cand := net.IPv4(base[0], base[1], base[2], byte(octet))
+		cand := net.IPv4(base[0], base[1], base[2], byte(octet)).To4()
 		if !ipNet.Contains(cand) {
 			continue // outside subnet (e.g. /30, /29)
 		}
 		if cand.Equal(broadcast) {
 			continue // broadcast, not a host
 		}
-		if !used[cand.String()] {
-			return cand.To4()
+		if hostStr != "" && cand.String() == hostStr {
+			continue // the host's own address — never hand out
 		}
+		out = append(out, cand)
 	}
-	return nil
-}
-
-// parseIPAddrOutput parses the output of `ip -o -4 addr show` into a list
-// of host NICs. The loopback interface and any non-IPv4 / unparseable lines
-// are skipped.
-func parseIPAddrOutput(out []byte) []hostNIC {
-	var nics []hostNIC
-	for _, line := range strings.Split(string(out), "\n") {
-		fields := strings.Fields(line)
-		if len(fields) < 4 {
-			continue
-		}
-		// fields[0] = "N:", fields[1] = name, fields[2] = "inet", fields[3] = CIDR
-		if fields[2] != "inet" {
-			continue
-		}
-		name := fields[1]
-		if name == "lo" {
-			continue
-		}
-		ip, ipNet, err := net.ParseCIDR(fields[3])
-		if err != nil {
-			continue
-		}
-		if ip.To4() == nil {
-			continue
-		}
-		nics = append(nics, hostNIC{Name: name, IP: ip, Mask: ipNet.Mask})
-	}
-	return nics
-}
-
-// parseIPNeighOutput parses the output of `ip neigh show` and returns the
-// set of IPs that have a resolved MAC (an "lladdr" field). Entries without
-// a MAC — INCOMPLETE / FAILED probes — are skipped, since they signal a
-// free address rather than a used one.
-func parseIPNeighOutput(out []byte) map[string]bool {
-	used := map[string]bool{}
-	for _, line := range strings.Split(string(out), "\n") {
-		fields := strings.Fields(line)
-		// "IP dev IF lladdr MAC STATE"
-		if len(fields) < 5 || fields[3] != "lladdr" {
-			continue
-		}
-		if ip := net.ParseIP(fields[0]); ip != nil {
-			used[ip.String()] = true
-		}
-	}
-	return used
+	return out
 }

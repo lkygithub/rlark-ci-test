@@ -13,6 +13,7 @@ import (
 	gossh "golang.org/x/crypto/ssh"
 )
 
+// Sign signs the input.
 func Sign(ca *Data, signType string, meta map[string]string) (*Data, error) {
 	leafKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {

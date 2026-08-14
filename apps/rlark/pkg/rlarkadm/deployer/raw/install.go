@@ -23,10 +23,12 @@ const (
 	systemdDir = "/etc/systemd/system"
 )
 
+// Installer installs RLark components.
 type Installer struct {
 	summary *types.InstallSummary
 }
 
+// Install installs the components.
 func (d *Installer) Install(cfg *types.DeployConfig, certBundle *cert.Bundle) error {
 	logger := log.GetLogger()
 	certDir := filepath.Join(configDir, "certs")
@@ -86,6 +88,7 @@ func (d *Installer) Install(cfg *types.DeployConfig, certBundle *cert.Bundle) er
 	return nil
 }
 
+// Summary is an exported method.
 func (d *Installer) Summary() *types.InstallSummary {
 	return d.summary
 }

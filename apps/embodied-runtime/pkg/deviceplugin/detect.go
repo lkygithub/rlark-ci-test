@@ -11,8 +11,8 @@ import (
 // Reports N unified devices, each representing a device runtime available
 // on this node. N is configured via DeviceCount.
 //
-// Device health reflects whether the ros-controller and camera-controller
-// subprocesses are alive. Device IDs are prefixed with the configured model
+// Device health reflects whether the ros-controller, ros2-controller, and
+// camera-controller subprocesses are alive. Device IDs are prefixed with the configured model
 // (e.g. "franka-0") so different device types are distinguishable; when no
 // model is set the prefix defaults to "device".
 //
@@ -26,10 +26,11 @@ func (p *Plugin) detectDevices() []*pluginapi.Device {
 	// device health; an enabled but not-running manager marks devices as
 	// Unhealthy.
 	rosRunning := p.rosManager == nil || p.rosManager.IsRunning(ctx)
+	ros2Running := p.ros2Manager == nil || p.ros2Manager.IsRunning(ctx)
 	cameraRunning := p.cameraManager == nil || p.cameraManager.IsRunning(ctx)
 
 	health := pluginapi.Healthy
-	if !rosRunning || !cameraRunning {
+	if !rosRunning || !ros2Running || !cameraRunning {
 		health = pluginapi.Unhealthy
 	}
 
@@ -39,6 +40,9 @@ func (p *Plugin) detectDevices() []*pluginapi.Device {
 	// that are disabled or not yet started.
 	if p.rosManager != nil && rosRunning {
 		p.refreshRobotInventory(ctx)
+	}
+	if p.ros2Manager != nil && ros2Running {
+		p.refreshROS2RobotInventory(ctx)
 	}
 	if p.cameraManager != nil && cameraRunning {
 		p.refreshCameraInventory(ctx)

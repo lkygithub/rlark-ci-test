@@ -67,6 +67,7 @@ func (r *genericReconciler[T]) handleFinalizer(ctx context.Context, obj T) error
 	return r.client.Update(ctx, obj)
 }
 
+// Reconcile reconciles the resource.
 func (r *genericReconciler[T]) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	obj := r.newObj()
 	if err := r.client.Get(ctx, req.NamespacedName, obj); err != nil {
