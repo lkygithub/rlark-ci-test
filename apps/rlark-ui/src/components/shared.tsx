@@ -10,10 +10,63 @@ import {
   RefreshCw,
   Search,
   Activity,
+  ArrowDown,
+  ArrowUp,
 } from "lucide-react";
 import type { Phase } from "../data";
 import type { Copy, Lang, Theme } from "../i18n";
 import type { ResourceRow } from "../types";
+
+export type SortDirection = "asc" | "desc";
+
+export function compareSortValues(
+  left: string | number,
+  right: string | number,
+  direction: SortDirection,
+  locale = "en",
+) {
+  const comparison =
+    typeof left === "number" && typeof right === "number"
+      ? left - right
+      : String(left).localeCompare(String(right), locale, {
+          numeric: true,
+          sensitivity: "base",
+        });
+  return direction === "asc" ? comparison : -comparison;
+}
+
+export function SortButton({
+  label,
+  active,
+  direction,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  direction: SortDirection;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      className={`table-sort-button${active ? " active" : ""}`}
+      onClick={onClick}
+      aria-label={`${label} ${active && direction === "desc" ? "descending" : "ascending"}`}
+      aria-pressed={active}
+    >
+      <span>{label}</span>
+      {active ? (
+        direction === "asc" ? (
+          <ArrowUp size={12} />
+        ) : (
+          <ArrowDown size={12} />
+        )
+      ) : (
+        <span className="table-sort-placeholder">↕</span>
+      )}
+    </button>
+  );
+}
 
 export function Logo() {
   return (

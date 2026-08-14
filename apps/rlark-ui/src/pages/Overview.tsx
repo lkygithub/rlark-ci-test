@@ -6,7 +6,6 @@ import {
   CloudCog,
   RefreshCw,
   Server,
-  Sparkles,
   Workflow,
 } from "lucide-react";
 import { activity, type Cluster, type Job, type Phase } from "../data";
@@ -82,17 +81,6 @@ export function Overview({
         : realClusters.flatMap((x) => x.robotModels),
     ),
   );
-  const gpuModels = gpuModelList.slice(0, 4).join(" / ") || (isZh ? "—" : "—");
-  const robotModels =
-    robotModelList.slice(0, 4).join(" / ") || (isZh ? "—" : "—");
-  const regionCount = isMockMode
-    ? new Set(
-        displayNodes
-          .filter((node) => getNodeCategory(node) === "cloud")
-          .map((node) => node.metadata.namespace),
-      ).size
-    : new Set(cloudClusters.map((x) => x.region)).size;
-  const runningWorkerCount = realJobs.reduce((s, x) => s + x.runningWorkers, 0);
 
   const categoryCounts = useMemo(() => {
     const counts = { cloud: 0, edge: 0, robot: 0 };
@@ -105,19 +93,18 @@ export function Overview({
     return counts;
   }, [displayNodes]);
 
-  const cloudNodeCount = isMockMode
-    ? categoryCounts.cloud
-    : realClusters.reduce((sum, cluster) => sum + cluster.cloudNodes, 0);
-  const robotCount = isMockMode
-    ? categoryCounts.robot
-    : realClusters.reduce((sum, cluster) => sum + cluster.robots, 0);
-  const cloudClusterCount = isMockMode
-    ? new Set(
-        displayNodes
-          .filter((node) => getNodeCategory(node) === "cloud")
-          .map((node) => node.metadata.namespace),
-      ).size
-    : cloudClusters.length;
+  const embodiedNodeCount = isMockMode
+    ? categoryCounts.edge + categoryCounts.robot
+    : realClusters.reduce(
+        (sum, cluster) => sum + cluster.embodiedNodes + cluster.robots,
+        0,
+      );
+  const embodiedModelCount = new Set(
+    displayNodes
+      .filter((node) => getNodeCategory(node) !== "cloud")
+      .map((node) => node.metadata.labels?.["rlark.io/model"])
+      .filter(Boolean),
+  ).size;
   const embodiedClusterCount = isMockMode
     ? new Set(
         displayNodes
@@ -148,77 +135,38 @@ export function Overview({
   ];
 
   const robotNodes = displayNodes.filter((n) => getNodeCategory(n) === "robot");
-  const today = new Intl.DateTimeFormat(isZh ? "zh-CN" : "en", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  }).format(new Date());
-
   return (
     <div className="page-content overview-page">
-      <section className="hero-strip">
+      <div className="section-heading">
         <div>
-          <span className="eyebrow">
-            <Sparkles size={13} />
-            {today}
-          </span>
+          <span className="eyebrow">{c.overview.eyebrow}</span>
           <h2>{c.overview.title}</h2>
           <p>{c.overview.desc}</p>
         </div>
-        <div className="hero-health">
-          <span>
-            {isMockMode ? (isZh ? "数据模式" : "Data mode") : c.overview.health}
-          </span>
-          <strong>
-            <i />
-            {isMockMode
-              ? isZh
-                ? "Mock 演示"
-                : "Mock demo"
-              : c.overview.operational}
-          </strong>
-          <small>
-            {isMockMode
-              ? isZh
-                ? "未连接后端服务"
-                : "Backend unavailable"
-              : isZh
-                ? "实时数据"
-                : "Live data"}
-          </small>
-        </div>
-      </section>
+      </div>
       <section className="metric-grid platform-metrics">
         <MetricCard
           icon={CloudCog}
           tone="blue"
-          label={c.overview.cloudClusters}
-          value={`${cloudClusterCount}`}
-          note={isZh ? `${regionCount} 个地域` : `${regionCount} regions`}
+          label={isZh ? "具身集群数量" : "Embodied clusters"}
+          value={`${embodiedClusterCount}`}
+          note={isZh ? "已纳管具身集群" : "Managed embodied clusters"}
           onClick={() => navigate("clusters-management")}
         />
         <MetricCard
           icon={Server}
           tone="mint"
-          label={c.overview.cloudNodes}
-          value={`${cloudNodeCount}`}
-          note={
-            isZh
-              ? `${gpuModelList.length} 种 GPU 型号`
-              : `${gpuModelList.length} GPU models`
-          }
+          label={isZh ? "具身节点数量" : "Embodied nodes"}
+          value={`${embodiedNodeCount}`}
+          note={isZh ? "算力节点与真机" : "Compute nodes and robots"}
           onClick={() => navigate("clusters-nodes")}
         />
         <MetricCard
           icon={Bot}
           tone="violet"
-          label={c.overview.robots}
-          value={`${robotCount}`}
-          note={
-            isZh
-              ? `${embodiedClusterCount} 个具身集群 · ${robotModelList.length} 种真机`
-              : `${embodiedClusterCount} embodied clusters · ${robotModelList.length} robot models`
-          }
+          label={isZh ? "具身种类数量" : "Embodied types"}
+          value={`${embodiedModelCount}`}
+          note={isZh ? "按设备型号去重" : "Unique device models"}
           onClick={() => navigate("clusters-nodes")}
         />
         <MetricCard
@@ -226,11 +174,7 @@ export function Overview({
           tone="orange"
           label={c.overview.jobs}
           value={`${runningJobs} / ${realJobs.length}`}
-          note={
-            isZh
-              ? `${runningWorkerCount} 个运行 Worker`
-              : `${runningWorkerCount} running workers`
-          }
+          note={isZh ? "正在运行 / 任务总数" : "Running / total jobs"}
           onClick={() => navigate("jobs")}
         />
       </section>

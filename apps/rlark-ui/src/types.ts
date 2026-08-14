@@ -87,7 +87,12 @@ export interface CRDJobTask {
 export interface CRDJob {
   apiVersion: string;
   kind: string;
-  metadata: { name: string; creationTimestamp?: string };
+  metadata: {
+    name: string;
+    creationTimestamp?: string;
+    labels?: Record<string, string>;
+    annotations?: Record<string, string>;
+  };
   spec: {
     domain?: string;
     stopped?: boolean;
@@ -96,6 +101,8 @@ export interface CRDJob {
   };
   status?: {
     phase: string;
+    startTime?: string;
+    endTime?: string;
     tasks?: Array<{
       name: string;
       phase: string;

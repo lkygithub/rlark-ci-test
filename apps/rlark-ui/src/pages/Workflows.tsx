@@ -25,10 +25,18 @@ import {
   ROLE_TEMPLATES,
 } from "../utils/job";
 import { toYaml } from "../utils/yaml";
+import { formatChinaDateTime } from "../utils/time";
 import { useNodeLabels } from "../utils/nodes";
 import { NodeSelectorPicker, RoleNameInput } from "../components/create";
 import { CodeEditorField } from "../components/CodeEditor";
-import { PageToolbar, Pagination, StatusBadge } from "../components/shared";
+import {
+  compareSortValues,
+  PageToolbar,
+  Pagination,
+  SortButton,
+  StatusBadge,
+  type SortDirection,
+} from "../components/shared";
 
 export function WorkflowDetailPage({
   wf,
@@ -368,6 +376,16 @@ export function WorkflowsPage({
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
+  const [sort, setSort] = useState<{
+    key: "name" | "phase" | "jobCount" | "created";
+    direction: SortDirection;
+  }>({ key: "created", direction: "desc" });
+  const toggleSort = (key: typeof sort.key) =>
+    setSort((current) => ({
+      key,
+      direction:
+        current.key === key && current.direction === "asc" ? "desc" : "asc",
+    }));
 
   const fetchWorkflows = async (isInitial = true) => {
     if (isInitial) setLoading(true);
@@ -410,9 +428,17 @@ export function WorkflowsPage({
       .toLowerCase()
       .includes(query.trim().toLowerCase()),
   );
-  const totalPages = Math.max(1, Math.ceil(filteredItems.length / pageSize));
+  const sortedItems = [...filteredItems].sort((a, b) =>
+    compareSortValues(
+      a[sort.key],
+      b[sort.key],
+      sort.direction,
+      zh ? "zh-CN" : "en",
+    ),
+  );
+  const totalPages = Math.max(1, Math.ceil(sortedItems.length / pageSize));
   const currentPage = Math.min(page, totalPages);
-  const pagedItems = filteredItems.slice(
+  const pagedItems = sortedItems.slice(
     (currentPage - 1) * pageSize,
     currentPage * pageSize,
   );
@@ -469,10 +495,38 @@ export function WorkflowsPage({
         <table>
           <thead>
             <tr>
-              <th>{zh ? "工作流名称" : "Name"}</th>
-              <th>{zh ? "状态" : "Status"}</th>
-              <th>{zh ? "任务数" : "Jobs"}</th>
-              <th>{zh ? "创建时间" : "Created"}</th>
+              <th>
+                <SortButton
+                  label={zh ? "工作流名称" : "Name"}
+                  active={sort.key === "name"}
+                  direction={sort.direction}
+                  onClick={() => toggleSort("name")}
+                />
+              </th>
+              <th>
+                <SortButton
+                  label={zh ? "状态" : "Status"}
+                  active={sort.key === "phase"}
+                  direction={sort.direction}
+                  onClick={() => toggleSort("phase")}
+                />
+              </th>
+              <th>
+                <SortButton
+                  label={zh ? "任务数" : "Jobs"}
+                  active={sort.key === "jobCount"}
+                  direction={sort.direction}
+                  onClick={() => toggleSort("jobCount")}
+                />
+              </th>
+              <th>
+                <SortButton
+                  label={zh ? "创建时间" : "Created"}
+                  active={sort.key === "created"}
+                  direction={sort.direction}
+                  onClick={() => toggleSort("created")}
+                />
+              </th>
               <th />
             </tr>
           </thead>
@@ -505,7 +559,7 @@ export function WorkflowsPage({
                   </span>
                 </td>
                 <td>
-                  <small>{wf.created}</small>
+                  <small>{formatChinaDateTime(wf.created)}</small>
                 </td>
                 <td>
                   <div className="row-actions">

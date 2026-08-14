@@ -27,7 +27,14 @@ import {
   type StorageProvider,
 } from "../data";
 import { copy, type Copy } from "../i18n";
-import { PageToolbar, Pagination } from "../components/shared";
+import {
+  compareSortValues,
+  PageToolbar,
+  Pagination,
+  SortButton,
+  type SortDirection,
+} from "../components/shared";
+import { formatChinaDateTime } from "../utils/time";
 
 type StorageClassFormState = {
   name: string;
@@ -115,6 +122,16 @@ export function StorageClassesPage({
   const [providerFilter, setProviderFilter] = useState("All");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
+  const [sort, setSort] = useState<{
+    key: "name" | "provider" | "bucket" | "clusters" | "description";
+    direction: SortDirection;
+  }>({ key: "name", direction: "asc" });
+  const toggleSort = (key: typeof sort.key) =>
+    setSort((current) => ({
+      key,
+      direction:
+        current.key === key && current.direction === "asc" ? "desc" : "asc",
+    }));
   const [editingClass, setEditingClass] = useState<StorageClass | null>(null);
 
   const selected = useMemo(
@@ -198,9 +215,21 @@ export function StorageClassesPage({
   });
   const providers = Array.from(new Set(realClasses.map((sc) => sc.provider)));
   const associatedClusters = new Set(realClasses.flatMap((sc) => sc.clusters));
-  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const sortedClasses = [...filtered].sort((a, b) => {
+    const value = (storageClass: StorageClass) =>
+      sort.key === "clusters"
+        ? storageClass.clusters.length
+        : storageClass[sort.key];
+    return compareSortValues(
+      value(a),
+      value(b),
+      sort.direction,
+      zh ? "zh-CN" : "en",
+    );
+  });
+  const totalPages = Math.max(1, Math.ceil(sortedClasses.length / pageSize));
   const currentPage = Math.min(page, totalPages);
-  const pagedClasses = filtered.slice(
+  const pagedClasses = sortedClasses.slice(
     (currentPage - 1) * pageSize,
     currentPage * pageSize,
   );
@@ -292,11 +321,46 @@ export function StorageClassesPage({
         <table>
           <thead>
             <tr>
-              <th>{c.storageClass.name}</th>
-              <th>{c.storageClass.provider}</th>
-              <th>{c.storageClass.bucket}</th>
-              <th>{c.storageClass.clusters}</th>
-              <th>{c.storageClass.description}</th>
+              <th>
+                <SortButton
+                  label={c.storageClass.name}
+                  active={sort.key === "name"}
+                  direction={sort.direction}
+                  onClick={() => toggleSort("name")}
+                />
+              </th>
+              <th>
+                <SortButton
+                  label={c.storageClass.provider}
+                  active={sort.key === "provider"}
+                  direction={sort.direction}
+                  onClick={() => toggleSort("provider")}
+                />
+              </th>
+              <th>
+                <SortButton
+                  label={c.storageClass.bucket}
+                  active={sort.key === "bucket"}
+                  direction={sort.direction}
+                  onClick={() => toggleSort("bucket")}
+                />
+              </th>
+              <th>
+                <SortButton
+                  label={c.storageClass.clusters}
+                  active={sort.key === "clusters"}
+                  direction={sort.direction}
+                  onClick={() => toggleSort("clusters")}
+                />
+              </th>
+              <th>
+                <SortButton
+                  label={c.storageClass.description}
+                  active={sort.key === "description"}
+                  direction={sort.direction}
+                  onClick={() => toggleSort("description")}
+                />
+              </th>
               <th></th>
             </tr>
           </thead>
@@ -1168,9 +1232,7 @@ export function StorageClassFilesPage({
   };
 
   const formatDate = (dateStr: string) => {
-    if (!dateStr) return "—";
-    const d = new Date(dateStr);
-    return d.toLocaleString(zh ? "zh-CN" : "en-US");
+    return formatChinaDateTime(dateStr);
   };
 
   const breadcrumbs = () => {

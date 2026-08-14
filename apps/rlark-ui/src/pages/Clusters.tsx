@@ -16,9 +16,15 @@ import type { Phase } from "../data";
 import type { Copy } from "../i18n";
 import type { CRDNode } from "../types";
 import { useAutoRefresh } from "../hooks";
-import { categoryLabels, getNodeCategory } from "../utils/nodes";
+import {
+  categoryLabels,
+  getNodeCategory,
+  getNodeLocation,
+  getNodeResourceSummary,
+} from "../utils/nodes";
 import { MetricCard, StatusBadge } from "../components/shared";
 import { NodeResourceBrowser } from "../components/NodeResourceBrowser";
+import { formatChinaDateTime } from "../utils/time";
 
 export function ClustersPage({
   copy: c,
@@ -165,13 +171,27 @@ export function ClustersPage({
       <div className="section-heading">
         <div>
           <span className="eyebrow">{c.clusters.eyebrow}</span>
-          <h2>{c.clusters.title}</h2>
-          <p>{c.clusters.desc}</p>
+          <h2>
+            {resourceView === "nodes"
+              ? zh
+                ? "节点管理"
+                : "Node Management"
+              : c.clusters.title}
+          </h2>
+          <p>
+            {resourceView === "nodes"
+              ? zh
+                ? "统一查看和管理各集群中的算力节点与具身设备。"
+                : "View and manage compute nodes and embodied devices across clusters."
+              : c.clusters.desc}
+          </p>
         </div>
-        <button className="secondary-button" onClick={() => fetchNodes()}>
-          <RefreshCw size={16} />
-          {c.common.refresh}
-        </button>
+        {resourceView === "clusters" && (
+          <button className="secondary-button" onClick={() => fetchNodes()}>
+            <RefreshCw size={16} />
+            {c.common.refresh}
+          </button>
+        )}
       </div>
       {resourceView === "clusters" && (
         <section className="cluster-overview-grid">
@@ -237,17 +257,6 @@ export function ClustersPage({
       )}
       {resourceView === "nodes" && (
         <section className="nodes-resource-section">
-          <div className="section-heading compact">
-            <div>
-              <span className="eyebrow">{c.clusters.nodeList}</span>
-              <h2>{zh ? "节点资源" : "Node Resources"}</h2>
-              <p>
-                {zh
-                  ? "按类型和状态快速筛选，在统一列表中查看节点详情。"
-                  : "Filter by type and status in one unified node list."}
-              </p>
-            </div>
-          </div>
           <NodeResourceBrowser
             nodes={realNodes}
             copy={c}
@@ -276,6 +285,11 @@ export function ClusterDetailReal({
     (n) => n.status?.phase === "Online",
   ).length;
   const phase: Phase = onlineCount > 0 ? "Online" : "Offline";
+  const sortedNodes = [...clusterNodes].sort((a, b) =>
+    a.metadata.name.localeCompare(b.metadata.name, zh ? "zh-CN" : "en", {
+      numeric: true,
+    }),
+  );
   return (
     <div className="panel selected-cluster-panel">
       <div className="cluster-detail-header">
@@ -305,39 +319,58 @@ export function ClusterDetailReal({
           <thead>
             <tr>
               <th>{zh ? "节点名称" : "Name"}</th>
+              <th>{zh ? "类型" : "Type"}</th>
               <th>{zh ? "状态" : "Phase"}</th>
-              <th>{zh ? "架构" : "Arch"}</th>
-              <th>{zh ? "地址" : "Addresses"}</th>
+              <th>{zh ? "物理位置" : "Location"}</th>
+              <th>{zh ? "节点 IP" : "Node IP"}</th>
+              <th>{zh ? "资源与空闲" : "Resources"}</th>
+              <th>{zh ? "型号" : "Model"}</th>
             </tr>
           </thead>
           <tbody>
-            {clusterNodes.map((node) => (
-              <tr key={node.metadata.name}>
-                <td>
-                  <strong>{node.metadata.name}</strong>
-                </td>
-                <td>
-                  <StatusBadge
-                    phase={(node.status?.phase ?? "Offline") as Phase}
-                    copy={c}
-                  />
-                </td>
-                <td>
-                  <small>{node.status?.nodeInfo?.architecture ?? "—"}</small>
-                </td>
-                <td>
-                  <small>
-                    {(node.status?.addresses ?? [])
-                      .map((a) => a.address)
-                      .join(", ") || "—"}
-                  </small>
-                </td>
-              </tr>
-            ))}
+            {sortedNodes.map((node) => {
+              const category = getNodeCategory(node);
+              const categoryInfo = categoryLabels[category];
+              const resource = getNodeResourceSummary(node, zh);
+              const address =
+                node.status?.addresses?.find(
+                  (item) => item.type === "InternalIP",
+                )?.address ??
+                node.status?.addresses?.[0]?.address ??
+                "—";
+              return (
+                <tr key={node.metadata.name}>
+                  <td>
+                    <strong>{node.metadata.name}</strong>
+                  </td>
+                  <td>
+                    <small>{zh ? categoryInfo.zh : categoryInfo.en}</small>
+                  </td>
+                  <td>
+                    <StatusBadge
+                      phase={(node.status?.phase ?? "Offline") as Phase}
+                      copy={c}
+                    />
+                  </td>
+                  <td>
+                    <small>{getNodeLocation(node) || "—"}</small>
+                  </td>
+                  <td>
+                    <code>{address}</code>
+                  </td>
+                  <td>
+                    <small>{resource.primary}</small>
+                  </td>
+                  <td>
+                    <small>{resource.secondary}</small>
+                  </td>
+                </tr>
+              );
+            })}
             {clusterNodes.length === 0 && (
               <tr>
                 <td
-                  colSpan={4}
+                  colSpan={7}
                   style={{ textAlign: "center", padding: "16px" }}
                 >
                   <small className="muted">
@@ -405,11 +438,7 @@ export function NodeDetailReal({
     { key: "memory", label: zh ? "内存" : "Memory", icon: MemoryStick },
     { key: "nvidia.com/gpu", label: "GPU", icon: Activity },
   ];
-  const created = node.metadata.creationTimestamp
-    ? new Date(node.metadata.creationTimestamp).toLocaleString(
-        zh ? "zh-CN" : "en-US",
-      )
-    : "—";
+  const created = formatChinaDateTime(node.metadata.creationTimestamp);
   return (
     <div className="node-resource-detail node-insight-detail">
       <header className="node-insight-hero">

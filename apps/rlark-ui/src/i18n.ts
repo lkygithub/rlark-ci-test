@@ -66,8 +66,9 @@ export const copy = {
     },
     overview: {
       date: "2026 年 6 月 29 日",
+      eyebrow: "运行总览",
       title: "具身集群运行总览",
-      desc: "重点观察已纳管的云集群、云算力节点、具身真机、任务与 Worker 的实时状态。",
+      desc: "集中查看具身集群、具身节点、设备种类与任务运行状态。",
       health: "平台健康度",
       operational: "运行正常",
       checked: "32 秒前检查",
@@ -97,7 +98,7 @@ export const copy = {
       robotState: "真机状态",
     },
     jobs: {
-      title: "任务",
+      title: "任务管理",
       eyebrow: "Job / Worker",
       desc: "创建强化学习、数据采集、评测或自定义任务，并观察每个 Worker 的日志、监控和具身实时通道。",
       search: "搜索任务...",
@@ -114,7 +115,7 @@ export const copy = {
       sshCopied: "已复制",
     },
     workflows: {
-      title: "工作流",
+      title: "工作流管理",
       eyebrow: "Workflow",
       desc: "由多个任务组成的有向无环图，按依赖关系自动编排执行。",
       search: "搜索工作流...",
@@ -257,8 +258,9 @@ export const copy = {
     },
     overview: {
       date: "Monday, June 29",
+      eyebrow: "Operations overview",
       title: "Embodied cluster overview",
-      desc: "Track managed cloud clusters, compute nodes, robot fleets, jobs, and workers in real time.",
+      desc: "Review embodied clusters, nodes, device types, and job status in one place.",
       health: "Platform health",
       operational: "Operational",
       checked: "Last checked 32s ago",
@@ -288,7 +290,7 @@ export const copy = {
       robotState: "Robot state",
     },
     jobs: {
-      title: "Jobs",
+      title: "Job Management",
       eyebrow: "Job / Worker",
       desc: "Create RL, data collection, evaluation, or custom jobs, and inspect every worker, log, metric, and robot channel.",
       search: "Search jobs...",
@@ -307,7 +309,7 @@ export const copy = {
       sshCopied: "Copied",
     },
     workflows: {
-      title: "Workflows",
+      title: "Workflow Management",
       eyebrow: "Workflow",
       desc: "DAG of jobs, automatically orchestrated by dependency.",
       search: "Search workflows...",

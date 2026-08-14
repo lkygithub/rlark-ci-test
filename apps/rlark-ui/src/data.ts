@@ -70,6 +70,7 @@ export interface Worker {
 export interface Job {
   id: string;
   name: string;
+  displayName: string;
   type: JobType;
   phase: Phase;
   owner: string;
@@ -78,6 +79,9 @@ export interface Job {
   workers: number;
   runningWorkers: number;
   startedAt: string;
+  submittedAt: string;
+  stoppedAt: string;
+  roleCount: number;
   duration: string;
   progress: number;
   defaultRoles: string[];
