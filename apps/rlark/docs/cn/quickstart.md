@@ -85,8 +85,9 @@ kind get kubeconfig --name rlark-data > ~/.rlark/kind-kubeconfig
 
 ```bash
 # 向 kcp 安装 RLark CRD
+# 使用 'create --validate=false' 避免 kcp 对大体积 CRD 的 256KB annotation 限制
 for f in api/config/crd/bases/rlinf.io_*.yaml; do
-  kubectl --kubeconfig ~/.rlark/admin.kubeconfig apply -f "$f"
+  kubectl --kubeconfig ~/.rlark/admin.kubeconfig create -f "$f" --validate=false
 done
 ```
 
@@ -107,16 +108,44 @@ done
 ./apps/rlark/bin/controller-manager \
   --kubeconfig ~/.rlark/admin.kubeconfig \
   --server-address https://localhost:8443 \
-  --leader-elect=false
+  --leader-elect=false \
+  --metrics-bind-address :9090
 
 # 终端 3：启动 Gateway
 ./apps/rlark/bin/gateway \
   --kubeconfig ~/.rlark/admin.kubeconfig \
   --addr :8080 \
+  --server-address https://localhost:8443 \
   --db-config apps/rlark/docs/examples/db-config.yaml
 ```
 
 ### 2.6 启动数据面 Agent
+
+首先，生成 Agent 证书并配置 RBAC：
+
+```bash
+# 通过 Gateway API 生成 Agent 证书
+curl -X POST "http://localhost:8080/api/v1/certificates/agent" \
+  -H "Content-Type: application/json" \
+  -d '{"agentID": "agent-rlark-data", "cluster_id": "rlark-data"}' \
+  | python3 -c "
+import json,sys
+data = json.load(sys.stdin)
+with open('$HOME/.rlark/certs/cert.pem','w') as f: f.write(data['agent_cert'])
+with open('$HOME/.rlark/certs/key.pem','w') as f: f.write(data['agent_key'])
+with open('$HOME/.rlark/certs/ca-cert.pem','w') as f: f.write(data['ca_cert'])
+print('证书已保存到 ~/.rlark/certs/')
+"
+
+# 在 kcp 中为 Agent 授予 RBAC 权限
+kubectl --kubeconfig ~/.rlark/admin.kubeconfig create clusterrole rlark-agent \
+  --verb='*' --resource='*'
+kubectl --kubeconfig ~/.rlark/admin.kubeconfig create clusterrolebinding rlark-agent \
+  --clusterrole=rlark-agent \
+  --user="system:serviceaccount:rlark-rlark-data:rlark-agent"
+```
+
+然后启动 Agent：
 
 ```bash
 ./apps/rlark/bin/agent \
@@ -129,7 +158,7 @@ done
   --rlark-server-ssh-address localhost:2222
 ```
 
-> **注意**：Agent 证书文件（`cert.pem`、`key.pem`、`ca-cert.pem`）由 Server 生成并在 Agent 注册时提供。本地开发时可以使用 admin kubeconfig 方式或手动生成证书。
+> **注意**：证书请求中的 `cluster_id` 必须与 Agent kubeconfig 中的集群名一致。生产环境请使用强密码的集群 ID 并限制 RBAC 权限。
 
 ## 3. 验证环境
 
