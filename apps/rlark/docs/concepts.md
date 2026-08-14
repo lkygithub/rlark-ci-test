@@ -308,18 +308,20 @@ status:
 
 **Embodied AI Mapping**:
 
-```
-┌─────────────────────────────────────────────────────┐
-│  Cloud (k8s)          Edge (Docker/Raw)             │
-│  ┌──────────┐         ┌──────────────┐             │
-│  │ Training │──grad──▶│ Robot Arm    │             │
-│  │ (GPU)    │◀─data──│ (Inference)  │             │
-│  └──────────┘         └──────────────┘             │
-│  ┌──────────┐         ┌──────────────┐             │
-│  │ Rollout  │──ctrl──▶│ Camera       │             │
-│  │ (Env)    │◀─obs───│ (Sensor)     │             │
-│  └──────────┘         └──────────────┘             │
-└─────────────────────────────────────────────────────┘
+```mermaid
+graph LR
+    subgraph Cloud["Cloud (k8s)"]
+        Training["Training (GPU)"]
+        Rollout["Rollout (Env)"]
+    end
+    subgraph Edge["Edge (k8s / Docker / Raw)"]
+        Robot["Robot Arm (Inference)"]
+        Camera["Camera (Sensor)"]
+    end
+    Training -->|"grad"| Robot
+    Training <-->|"data"| Robot
+    Rollout -->|"ctrl"| Camera
+    Rollout <-->|"obs"| Camera
 ```
 
 ## 9. Workflow
@@ -391,46 +393,14 @@ When a Pod is created in the data plane cluster, the Agent's Pod Push controller
 
 ## 11. Resource Relationship Summary
 
-```
-                          ┌──────────────┐
-                          │   Workflow   │ (Cluster scoped)
-                          │ DAG Pipeline │
-                          └──────┬───────┘
-                                 │ 1:N
-                          ┌──────▼───────┐
-                          │     Job      │ (Cluster scoped)
-                          │ Training Job │
-                          └──────┬───────┘
-                                 │ 1:N
-                          ┌──────▼───────┐
-                          │    Task      │ (Namespaced: agent-{id})
-                          │ Exec Unit    │
-                          └──────┬───────┘
-                                 │ 1:1 (K8s workload)
-                          ┌──────▼───────┐
-                          │ Deployment/  │ (Local k8s cluster)
-                          │ DaemonSet/   │
-                          │ StatefulSet  │
-                          └──────┬───────┘
-                                 │ 1:N
-                          ┌──────▼───────┐
-                          │     Pod      │ Agent Push reports
-                          │  + Sidecar   │ ───────────────▶ Pod CR
-                          └──────────────┘
-
-┌──────────┐                              ┌──────────────┐
-│  Domain  │ (Cluster scoped)              │    Node      │ (Namespaced)
-│ Network  │                              │ Compute Node │
-│ Isolation│                              └──────────────┘
-└────┬─────┘
-     │
-     │ 1:N (one per cluster)
-     ▼
-┌──────────────┐
-│  DomainPeer  │ (Namespaced: agent-{id})
-│ Pod Routing  │
-│ Table        │
-└──────────────┘
+```mermaid
+graph TD
+    wf["Workflow<br/>(Cluster scoped)<br/>DAG Pipeline"] -->|"1:N"| job["Job<br/>(Cluster scoped)<br/>Training Job"]
+    job -->|"1:N"| task["Task<br/>(Namespaced: agent-{id})<br/>Exec Unit"]
+    task -->|"1:1 (K8s workload)"| workload["Deployment /<br/>DaemonSet /<br/>StatefulSet<br/>(Local k8s cluster)"]
+    workload -->|"1:N"| pod["Pod + Sidecar<br/>Agent Push reports → Pod CR"]
+    domain["Domain<br/>(Cluster scoped)<br/>Network Isolation"] -->|"1:N (one per cluster)"| dp["DomainPeer<br/>(Namespaced: agent-{id})<br/>Pod Routing Table"]
+    node["Node<br/>(Namespaced)<br/>Compute Node"]
 ```
 
 ## 12. Naming Conventions

@@ -308,18 +308,20 @@ status:
 
 **具身智能场景映射**：
 
-```
-┌─────────────────────────────────────────────────────┐
-│  云端 (k8s)            端侧 (Docker/Raw)            │
-│  ┌──────────┐         ┌──────────────┐             │
-│  │ 训练      │──梯度──▶│ 机械臂        │             │
-│  │ (GPU)    │◀─数据──│ (推理)        │             │
-│  └──────────┘         └──────────────┘             │
-│  ┌──────────┐         ┌──────────────┐             │
-│  │ 环境模拟  │──控制──▶│ 摄像头        │             │
-│  │ (Env)    │◀─观测──│ (传感器)      │             │
-│  └──────────┘         └──────────────┘             │
-└─────────────────────────────────────────────────────┘
+```mermaid
+graph LR
+    subgraph Cloud["云端 (k8s)"]
+        Training["训练 (GPU)"]
+        Env["环境模拟 (Env)"]
+    end
+    subgraph Edge["端侧 (k8s / Docker / Raw)"]
+        Robot["机械臂 (推理)"]
+        Camera["摄像头 (传感器)"]
+    end
+    Training -->|"梯度"| Robot
+    Training <-->|"数据"| Robot
+    Env -->|"控制"| Camera
+    Env <-->|"观测"| Camera
 ```
 
 ## 9. Workflow（工作流）
@@ -391,44 +393,14 @@ Pod CR 是数据面 Pod 的**控制面镜像**，由 Agent 的 Push 控制器上
 
 ## 11. 资源关系总结
 
-```
-                          ┌──────────────┐
-                          │   Workflow   │ (Cluster scoped)
-                          │ DAG 编排     │
-                          └──────┬───────┘
-                                 │ 1:N
-                          ┌──────▼───────┐
-                          │     Job      │ (Cluster scoped)
-                          │ 训练任务定义  │
-                          └──────┬───────┘
-                                 │ 1:N
-                          ┌──────▼───────┐
-                          │    Task      │ (Namespaced: agent-{id})
-                          │ 任务执行单元  │
-                          └──────┬───────┘
-                                 │ 1:1 (K8s workload)
-                          ┌──────▼───────┐
-                          │ Deployment/  │ (本地 k8s 集群)
-                          │ DaemonSet/   │
-                          │ StatefulSet  │
-                          └──────┬───────┘
-                                 │ 1:N
-                          ┌──────▼───────┐
-                          │     Pod      │ Agent Push 上报
-                          │  + Sidecar   │ ───────────────▶ Pod CR
-                          └──────────────┘
-
-┌──────────┐                              ┌──────────────┐
-│  Domain  │ (Cluster scoped)              │    Node      │ (Namespaced)
-│ 网络隔离  │                              │ 计算节点信息  │
-└────┬─────┘                              └──────────────┘
-     │
-     │ 1:N (每个集群一个)
-     ▼
-┌──────────────┐
-│  DomainPeer  │ (Namespaced: agent-{id})
-│ Pod 路由表    │
-└──────────────┘
+```mermaid
+graph TD
+    wf["Workflow<br/>(Cluster scoped)<br/>DAG 编排"] -->|"1:N"| job["Job<br/>(Cluster scoped)<br/>训练任务定义"]
+    job -->|"1:N"| task["Task<br/>(Namespaced: agent-{id})<br/>任务执行单元"]
+    task -->|"1:1 (K8s workload)"| workload["Deployment /<br/>DaemonSet /<br/>StatefulSet<br/>(本地 k8s 集群)"]
+    workload -->|"1:N"| pod["Pod + Sidecar<br/>Agent Push 上报 → Pod CR"]
+    domain["Domain<br/>(Cluster scoped)<br/>网络隔离"] -->|"1:N (每个集群一个)"| dp["DomainPeer<br/>(Namespaced: agent-{id})<br/>Pod 路由表"]
+    node["Node<br/>(Namespaced)<br/>计算节点信息"]
 ```
 
 ## 12. 命名约定

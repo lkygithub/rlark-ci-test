@@ -5,7 +5,7 @@
 rlark is an embodied intelligence cloud-native management platform for cross-cluster, multi-runtime scenarios. Core design goals:
 
 1. **Cloud-to-Edge workload orchestration**: From cloud GPU training (RL/LLM) to edge deployment (robot arm, sensor, camera), unified declarative abstraction across the full embodied AI pipeline
-2. **Multi-runtime data plane**: Native support for Kubernetes, Docker, and Raw runtimes — GPU clusters run k8s for large-scale training, edge devices run Docker/Raw for lightweight embodied deployment (Docker/Raw runtimes: framework in place, runtime implementation TODO)
+2. **Multi-runtime data plane**: Native support for Kubernetes, Docker, and Raw runtimes — GPU clusters run k8s for large-scale training, edge devices run k8s or Docker/Raw for lightweight embodied deployment (Docker/Raw runtimes: framework in place, runtime implementation TODO)
 3. **Cross-cluster resource pooling**: Unify GPU clusters and edge devices distributed across different regions into a single logical resource pool
 4. **Direct Pod-to-Pod network communication**: Embodied AI workloads require real-time communication between training actors and edge robots, requiring cross-cluster Pods to establish direct TCP connections
 5. **Security isolation**: Multi-tenant embodied AI tasks require network isolation — different teams/projects must not access each other's devices or data
