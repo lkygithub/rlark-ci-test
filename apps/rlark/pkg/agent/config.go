@@ -35,6 +35,7 @@ type Config struct {
 	RLarkServerSSHHostKey    string
 	EnableSameClusterDirect  bool
 	EnableCrossClusterDirect bool
+	KubeletDir               string
 }
 
 // DefaultConfig returns the default config.
@@ -51,6 +52,7 @@ func DefaultConfig() Config {
 
 		EnableSameClusterDirect:  true,
 		EnableCrossClusterDirect: true,
+		KubeletDir:               "",
 	}
 }
 
@@ -73,4 +75,5 @@ func (c *Config) SetupFlags(fs *pflag.FlagSet) {
 
 	fs.BoolVar(&c.EnableSameClusterDirect, "enable-same-cluster-direct", c.EnableSameClusterDirect, "Enable direct access to pods in the same cluster")
 	fs.BoolVar(&c.EnableCrossClusterDirect, "enable-cross-cluster-direct", c.EnableCrossClusterDirect, "Enable direct access to pods in different clusters")
+	fs.StringVar(&c.KubeletDir, "kubelet-dir", c.KubeletDir, "Kubelet directory(optional, used for reading pod UID from kube-api-access projected volume)")
 }
