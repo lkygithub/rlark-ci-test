@@ -65,7 +65,7 @@ func TestReadPodUIDFromTokenFile_PaddedPayload(t *testing.T) {
 			"pod": map[string]any{"uid": wantUID},
 		},
 	})
-	encoded := base64.URLEncoding.EncodeToString(b)
+	encoded := base64.RawURLEncoding.EncodeToString(b)
 	token := "header." + encoded + ".sig"
 	path := writeTokenFile(t, token)
 

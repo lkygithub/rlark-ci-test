@@ -6,11 +6,11 @@ import (
 	"crypto/x509"
 	"fmt"
 	"net/http"
-	"os"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/rlinf/rlark/apps/rlark/pkg/common"
 	"github.com/rlinf/rlark/apps/rlark/pkg/log"
 	coordinationv1 "k8s.io/api/coordination/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -64,8 +64,8 @@ func (s *Server) runBroadcaster(ctx context.Context) error {
 	// 向 Kubernetes 集群通过 Lease 广播服务器的存在，并且检查其他服务器的信息
 	// 用于构建 Peer-to-Peer 的服务器集群，确保高可用和负载均衡。
 
-	id := ServerPeerPrefix + os.Getenv("HOSTNAME")
-	ip := os.Getenv("POD_IP") + "/" + s.dialerFactory.GetPeerID() + "/" + s.dialerFactory.GetPeerToken()
+	id := ServerPeerPrefix + common.Hostname("node")
+	ip := common.PodIP("localhost") + "/" + s.dialerFactory.GetPeerID() + "/" + s.dialerFactory.GetPeerToken()
 	rl, err := resourcelock.New(
 		resourcelock.LeasesResourceLock,
 		s.config.KubeClientConfig.DefaultNamespace(),
@@ -107,7 +107,7 @@ func (s *Server) runPeerTunnel(ctx context.Context) error {
 	var mu sync.Mutex
 	leaseMap := make(map[string]string) // leaseName -> leaseIdentity(ip/peerID/peerToken)
 
-	myLeaseName := ServerPeerPrefix + os.Getenv("HOSTNAME")
+	myLeaseName := ServerPeerPrefix + common.Hostname("node")
 
 	setLease := func(name, identity string) {
 		mu.Lock()
@@ -175,18 +175,18 @@ func (s *Server) runPeerTunnel(ctx context.Context) error {
 			if !strings.HasPrefix(lease.Name, ServerPeerPrefix) {
 				continue
 			}
+			// 如果过期太长时间，删除该 Lease，避免列表中充斥大量过期的 Lease。
+			if lease.Spec.RenewTime != nil && time.Since(lease.Spec.RenewTime.Time) > time.Minute*30 {
+				if err := client.Delete(ctx, lease.Name, metav1.DeleteOptions{}); err != nil {
+					logger.Error(nil, "Failed to delete expired lease", "lease", lease.Name, "err", err)
+				}
+				continue
+			}
 			// 从列表中将符合条件的 Lease 添加到 Peer 列表中。
 			// 这里进行检查：如果 Lease 持续没有 HolderIdentity，说明对应的服务器可能已经不可用，可以将该 Lease 删除。
 			leaseNames[lease.Name] = struct{}{}
 			if lease.Spec.HolderIdentity != nil {
 				setLease(lease.Name, *lease.Spec.HolderIdentity)
-			} else {
-				// 如果过期太长时间，删除该 Lease，避免列表中充斥大量过期的 Lease。
-				if lease.Spec.RenewTime != nil && time.Since(lease.Spec.RenewTime.Time) > time.Minute*5 {
-					if err := client.Delete(ctx, lease.Name, metav1.DeleteOptions{}); err != nil {
-						logger.Error(nil, "Failed to delete expired lease", "lease", lease.Name, "err", err)
-					}
-				}
 			}
 		}
 		// 释放已经过期的 Lease

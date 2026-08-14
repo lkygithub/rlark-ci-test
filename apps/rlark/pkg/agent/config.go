@@ -6,6 +6,7 @@ import (
 
 	"github.com/spf13/pflag"
 
+	"github.com/rlinf/rlark/apps/rlark/pkg/common"
 	"github.com/rlinf/rlark/apps/rlark/pkg/configs"
 	"github.com/rlinf/rlark/apps/rlark/pkg/network/nodeserver"
 	"github.com/rlinf/rlark/apps/rlark/pkg/server"
@@ -46,7 +47,7 @@ func DefaultConfig() Config {
 		AgentType:          "Kubernetes",
 		Mode:               "cluster",
 		LeaderElectionKey:  "default/rlark-agent",
-		LeaderElectionID:   fmt.Sprintf("%s-%d", os.Getenv("HOSTNAME"), os.Getpid()),
+		LeaderElectionID:   fmt.Sprintf("%s-%d", common.Hostname("node"), os.Getpid()),
 		MetricsBindAddress: ":8081",
 		NodeServerConfig:   nodeserver.DefaultConfig(),
 
