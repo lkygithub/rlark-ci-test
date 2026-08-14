@@ -21,7 +21,7 @@
 ## Key Capabilities
 
 - **Embodied AI Workload Orchestration**: From cloud GPU training (RL/LLM) to edge deployment (robot arm, sensor, camera), unified declarative Job/Workflow/Task abstraction across the full pipeline
-- **Multi-Runtime Data Plane**: Native support for Kubernetes runtime (production-ready), with Docker and Raw runtimes in experimental/planned status — GPU clusters run k8s for large-scale training, edge devices run Docker for lightweight embodied deployment
+- **Multi-Runtime Data Plane**: Native support for Kubernetes runtime (production-ready), with Docker and Raw runtimes in experimental/planned status — GPU clusters run k8s for large-scale training, edge devices run k8s or Docker for lightweight embodied deployment
 - **Cross-Cluster Resource Abstraction**: Unify multi-site GPU clusters and edge devices via Domain (security domain) and Node (compute node) CRDs, with the control plane running on kcp
 - **Declarative Training Jobs**: Multi-layer abstraction (Job/Workflow/Task) with DAG-based training pipelines and declarative Ray cluster definition
 - **Cross-Cluster Pod Networking**: Virtual network based on TUN devices + gVisor netstack + SSH tunnels, enabling Pod-to-Pod communication without NAT traversal — cloud GPUs and edge robots communicate directly
