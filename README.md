@@ -14,9 +14,11 @@
   <sub>RLark — Cross-Cluster Embodied Intelligence Cloud-Native Platform</sub>
 </h1>
 
+Manage cross-cluster embodied intelligence workloads natively with Kubernetes, from cloud GPU training to edge device deployment. Through unified job scheduling, cross-cluster Pod-to-Pod networking, and multi-runtime support (k8s production-ready, Docker/Raw experimental), RLark enables seamless collaboration between GPU clusters, robot arms, sensors, and other heterogeneous devices.
+
 ## What's NEW!
 
-- [2026/07] RLark is now open-source.
+- [2026/08] RLark is now open-source.
 
 ## Key Capabilities
 

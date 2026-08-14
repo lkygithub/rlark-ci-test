@@ -12,7 +12,7 @@ rlark is an embodied intelligence cloud-native management platform for cross-clu
 
 ## 2. Overall Architecture
 
-rlark uses a **control plane—data plane** separation architecture. The control plane runs on kcp (Kubernetes Control Plane), and data plane Agents are deployed in each GPU cluster or edge device, supporting k8s, Docker, and Raw runtimes. The **embodied-runtime** (Device Plugin + Controllers) runs on each data plane node to manage robot (ROS 1/2) and camera hardware, exposing them as Kubernetes device resources.
+rlark uses a **control plane—data plane** separation architecture. The control plane runs on kcp (Kubernetes Control Plane), and data plane Agents are deployed in each GPU cluster or edge device, supporting k8s, Docker, and Raw runtimes. The **embodied-runtime** (Device Plugin + Controllers) runs as a DaemonSet on each data plane node to manage robot (ROS 1/2) and camera hardware, exposing them as Kubernetes device resources.
 
 ![System Architecture](images/architecture.svg)
 
