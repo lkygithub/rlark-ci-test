@@ -140,7 +140,7 @@ services:
     environment:
       POSTGRES_DB: rlark
       POSTGRES_USER: rlark
-      POSTGRES_PASSWORD: rlark123
+      POSTGRES_PASSWORD: CHANGE_ME
     ports:
       - "5432:5432"
     volumes:
@@ -179,18 +179,18 @@ volumes:
 | 参数 | 默认值 | 说明 |
 |------|--------|------|
 | `--kubeconfig` | `""` | 控制面 kubeconfig |
-| `--port` | `8080` | HTTP 服务端口 |
+| `--addr` | `:8080` | HTTP 服务地址 |
 | `--db-config` | `""` | 数据库配置文件路径 |
-| `--server-address` | `""` | 控制面 Server 地址（用于代理请求） |
+| `--server-address` | `""` | 控制面 Server 地址，用于证书签发 |
 
 ### 5.4 Agent
 
 | 参数 | 默认值 | 说明 |
 |------|--------|------|
 | `--kubeconfig` | `""` | 数据面 kubeconfig |
-| `--control-plane` | `""` | 控制面 Server 地址 |
-| `--agent-cert` | `""` | Agent 证书路径 |
-| `--agent-key` | `""` | Agent 私钥路径 |
+| `--server-address` | `""` | 控制面 Server 地址 |
+| `--client-cert` | `""` | Agent 证书路径 |
+| `--client-key` | `""` | Agent 私钥路径 |
 | `--ca-cert` | `""` | CA 证书路径 |
 | `--mode` | `both` | 运行模式：`cluster` / `node` / `both` |
 | `--rlark-server-ssh-address` | `""` | Server SSH 地址（跨集群网络） |
@@ -426,7 +426,7 @@ db:
   port: 5432
   database: rlark
   user: rlark
-  password: rlark123
+  password: CHANGE_ME
 ```
 
 ## 11. 监控与运维

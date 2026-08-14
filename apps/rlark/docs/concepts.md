@@ -133,7 +133,26 @@ status:
 - **Label Management**: Control plane can push labels to Nodes; Agent's Pull controller syncs them to local k8s Nodes
 - **Taint Management**: Control node schedulability via the `unschedulable` field
 
-## 5. Job
+## 5. Node Cordon/Uncordon
+
+Node scheduling can be controlled via the `unschedulable` field.
+
+### Concept
+
+Setting `spec.unschedulable: true` marks a node as unschedulable, preventing new workloads from being assigned to it. This is equivalent to Kubernetes `kubectl cordon`.
+
+### Usage
+
+```bash
+# PATCH to toggle unschedulable
+curl -X PATCH "http://localhost:8080/api/v1/rlinf.io/v1alpha1/nodes/gpu-node-01?namespace=default" \
+  -H "Content-Type: application/merge-patch+json" \
+  -d '{ "spec": { "unschedulable": true } }'
+```
+
+The Web UI provides a Cordon/Uncordon button for each node in the node list.
+
+## 6. Job
 
 Job is the **core resource directly operated by users**, representing a complete RL training task.
 
@@ -207,13 +226,69 @@ After Job Controller reconciliation:
 - Tasks have the label `rlinf.io/job=<job-name>` for querying
 - Tasks set OwnerReference to Job; deleting a Job cascades to delete Tasks
 
-## 6. Task
+## 7. Job Stop/Start
+
+Jobs can be stopped and restarted via the `stopped` field in the Job spec, providing manual lifecycle control over running workloads.
+
+### Concept
+
+Setting `spec.stopped: true` on a Job causes the Job controller to stop all associated workloads (Pods, Deployments, StatefulSets) without deleting the Job resource. Setting it back to `false` (or removing the field) restarts the workloads.
+
+### How it works
+
+1. **Stop**: When `spec.stopped` is set to `true`, the Job controller detects the change and deletes the underlying Kubernetes workloads (Deployments/StatefulSets) while keeping the Job CR.
+2. **Restart**: When `spec.stopped` is removed or set to `false`, the Job controller recreates the workloads from the Task templates.
+3. **State preservation**: The Job's phase and status fields are preserved during stop/restart cycles.
+
+### Key Features
+
+- **Non-destructive**: Stopping a Job does not delete the Job CR or its Tasks
+- **Persistent state**: PVCs and other persistent resources are not affected by stopping
+- **Web UI integration**: The Web UI provides one-click Stop/Start buttons in the Job list
+
+## 8. Task
 
 Task is the **execution unit** of a Job, automatically created by the Job Controller. **Users should not create Tasks directly**.
 
 ### Concept
 
 Each Task represents a concrete "training role instance". Agent's Pull controller watches for Tasks and creates corresponding K8s workloads.
+
+### Key Properties
+
+```yaml
+apiVersion: rlinf.io/v1alpha1
+kind: Task
+metadata:
+  name: ppo-cartpole-v1-actor-head
+  namespace: agent-beijing
+  labels:
+    rlinf.io/job: ppo-cartpole-v1
+spec:
+  role: Actor
+  agentType: Kubernetes
+  domain: ppo-experiment-1
+  nodeSelector:
+    nvidia.com/gpu: "true"
+  kubernetes:
+    workload:
+      kind: Deployment
+      replicas: 1
+      template:
+        namespace: default
+        spec:
+          containers:
+            - name: trainer
+              image: pytorch/pytorch:2.3.0
+status:
+  phase: Running
+  observedNodes: ["gpu-node-01"]
+  startTime: "2026-06-25T03:20:30Z"
+  conditions:
+    - type: Ready
+      status: "True"
+      reason: PodRunning
+```
 
 ### Task Roles
 
@@ -233,21 +308,23 @@ Each Task represents a concrete "training role instance". Agent's Pull controlle
 
 **Embodied AI Mapping**:
 
-```
-┌─────────────────────────────────────────────────────┐
-│  Cloud (k8s)          Edge (Docker/Raw)             │
-│  ┌──────────┐         ┌──────────────┐             │
-│  │ Training │──grad──▶│ Robot Arm    │             │
-│  │ (GPU)    │◀─data──│ (Inference)  │             │
-│  └──────────┘         └──────────────┘             │
-│  ┌──────────┐         ┌──────────────┐             │
-│  │ Rollout  │──ctrl──▶│ Camera       │             │
-│  │ (Env)    │◀─obs───│ (Sensor)     │             │
-│  └──────────┘         └──────────────┘             │
-└─────────────────────────────────────────────────────┘
+```mermaid
+graph LR
+    subgraph Cloud["Cloud (k8s)"]
+        Training["Training (GPU)"]
+        Rollout["Rollout (Env)"]
+    end
+    subgraph Edge["Edge (k8s / Docker / Raw)"]
+        Robot["Robot Arm (Inference)"]
+        Camera["Camera (Sensor)"]
+    end
+    Training -->|"grad"| Robot
+    Training <-->|"data"| Robot
+    Rollout -->|"ctrl"| Camera
+    Rollout <-->|"obs"| Camera
 ```
 
-## 7. Workflow
+## 9. Workflow
 
 Workflow is **DAG orchestration of multiple Jobs**, supporting training pipelines with dependencies.
 
@@ -294,7 +371,13 @@ Data Preparation ──▶ Model Training ──▶ Model Evaluation
     prepare             train             evaluate
 ```
 
-## 8. Pod
+### State Machine
+
+Similar to Job, Workflow state is determined by the aggregate of its Jobs' states:
+- All Jobs succeed → Workflow Succeeded
+- Any Job fails → Workflow Failed
+
+## 10. Pod
 
 Pod CR is the **control plane mirror** of data plane Pods, reported by the Agent's Push controller.
 
@@ -308,51 +391,19 @@ When a Pod is created in the data plane cluster, the Agent's Pod Push controller
 - **SSH Lookup**: Server's PodCache quickly locates Pod's Agent based on Pod CR
 - **Log Queries**: Gateway finds Pod's Agent via Pod CR and forwards log requests
 
-## 9. Resource Relationship Summary
+## 11. Resource Relationship Summary
 
-```
-                          ┌──────────────┐
-                          │   Workflow   │ (Cluster scoped)
-                          │ DAG Pipeline │
-                          └──────┬───────┘
-                                 │ 1:N
-                          ┌──────▼───────┐
-                          │     Job      │ (Cluster scoped)
-                          │ Training Job │
-                          └──────┬───────┘
-                                 │ 1:N
-                          ┌──────▼───────┐
-                          │    Task      │ (Namespaced: agent-{id})
-                          │ Exec Unit    │
-                          └──────┬───────┘
-                                 │ 1:1 (K8s workload)
-                          ┌──────▼───────┐
-                          │ Deployment/  │ (Local k8s cluster)
-                          │ DaemonSet/   │
-                          │ StatefulSet  │
-                          └──────┬───────┘
-                                 │ 1:N
-                          ┌──────▼───────┐
-                          │     Pod      │ Agent Push reports
-                          │  + Sidecar   │ ───────────────▶ Pod CR
-                          └──────────────┘
-
-┌──────────┐                              ┌──────────────┐
-│  Domain  │ (Cluster scoped)              │    Node      │ (Namespaced)
-│ Network  │                              │ Compute Node │
-│ Isolation│                              └──────────────┘
-└────┬─────┘
-     │
-     │ 1:N (one per cluster)
-     ▼
-┌──────────────┐
-│  DomainPeer  │ (Namespaced: agent-{id})
-│ Pod Routing  │
-│ Table        │
-└──────────────┘
+```mermaid
+graph TD
+    wf["Workflow<br/>(Cluster scoped)<br/>DAG Pipeline"] -->|"1:N"| job["Job<br/>(Cluster scoped)<br/>Training Job"]
+    job -->|"1:N"| task["Task<br/>(Namespaced: agent-{id})<br/>Exec Unit"]
+    task -->|"1:1 (K8s workload)"| workload["Deployment /<br/>DaemonSet /<br/>StatefulSet<br/>(Local k8s cluster)"]
+    workload -->|"1:N"| pod["Pod + Sidecar<br/>Agent Push reports → Pod CR"]
+    domain["Domain<br/>(Cluster scoped)<br/>Network Isolation"] -->|"1:N (one per cluster)"| dp["DomainPeer<br/>(Namespaced: agent-{id})<br/>Pod Routing Table"]
+    node["Node<br/>(Namespaced)<br/>Compute Node"]
 ```
 
-## 10. Naming Conventions
+## 12. Naming Conventions
 
 | Namespace Prefix | Meaning | Example |
 |-----------------|---------|---------|
@@ -361,7 +412,7 @@ When a Pod is created in the data plane cluster, the Agent's Pod Push controller
 | Label `rlinf.io/job` | Pod/Task's owning Job | `rlinf.io/job=ppo-cartpole-v1` |
 | Annotation `rlinf.io/ray-role` | Ray cluster role | `head` / `worker` |
 
-## 11. Ray Cluster Integration
+## 13. Ray Cluster Integration
 
 rlark supports declarative Ray cluster creation via Task annotations:
 
@@ -381,7 +432,7 @@ annotations:
 5. Head node creates a Service (exposing 6379/8265/8080)
 6. Worker nodes wait for Head to be ready, then join the cluster
 
-## 12. Object Storage & PVCs
+## 14. Object Storage & PVCs
 
 rlark supports mounting persistent volumes to training tasks via `pvcStorageMap` in the Task specification.
 
@@ -405,7 +456,7 @@ kubernetes:
 3. PVCs are created in the target namespace, scoped to the task
 4. On task deletion, PVCs are cleaned up automatically
 
-## 13. User Authentication
+## 15. User Authentication
 
 rlark provides a simple role-based authentication system for the Web UI.
 
@@ -423,26 +474,7 @@ rlark provides a simple role-based authentication system for the Web UI.
 3. Gateway validates against the KCP Secret and returns the role
 4. Frontend stores the authentication result in `sessionStorage`
 
-## 14. Node Cordon/Uncordon
-
-Node scheduling can be controlled via the `unschedulable` field.
-
-### Concept
-
-Setting `spec.unschedulable: true` marks a node as unschedulable, preventing new workloads from being assigned to it. This is equivalent to Kubernetes `kubectl cordon`.
-
-### Usage
-
-```bash
-# PATCH to toggle unschedulable
-curl -X PATCH "http://localhost:8080/api/v1/rlinf.io/v1alpha1/nodes/gpu-node-01?namespace=default" \
-  -H "Content-Type: application/merge-patch+json" \
-  -d '{ "spec": { "unschedulable": true } }'
-```
-
-The Web UI provides a Cordon/Uncordon button for each node in the node list.
-
-## 15. Addon (Component Management)
+## 16. Addon (Component Management)
 
 Addon is rlark's component management system, allowing users to install, configure, and manage third-party components (device plugins, monitoring agents, etc.) across multiple data plane clusters.
 
@@ -498,8 +530,9 @@ status:
 - **Configurable**: Addon values can be customized per cluster via `spec.values`
 - **Versioned**: Addons support version upgrades via `spec.version`
 - **Auto-apply**: Agent's Pull controller automatically applies manifests when Addon CR is created or updated
+- **Mutating Webhook**: The Device Plugin includes a mutating admission webhook that auto-injects a `devinit` init container into Pods requesting `rlinf.io/device`, creating macvlans in the Pod's network namespace without manual configuration
 
-## 16. Web Terminal
+## 17. Web Terminal
 
 Web Terminal provides interactive Pod terminal access directly from the Web UI.
 
@@ -521,7 +554,7 @@ Browser ──WebSocket──▶ Gateway ──proxy via Server──▶ Agent �
 4. Agent opens an exec session into the Pod's container and streams I/O
 5. The terminal session persists until the WebSocket is closed
 
-## 17. Pod HTTP Proxy
+## 18. Pod HTTP Proxy
 
 Pod HTTP Proxy allows direct HTTP access to Pods managed by rlark through the Server → Agent proxy chain.
 
@@ -551,7 +584,7 @@ Client ──HTTP──▶ Gateway ──proxy via Server──▶ Agent ──r
 - **Certificate-based access control**: Access is gated by the client certificate's permissions
 - **Transparent proxy**: All HTTP methods (GET, POST, PUT, DELETE, etc.) are supported
 
-## 18. TensorBoard Proxy
+## 19. TensorBoard Proxy
 
 TensorBoard Proxy provides a web-based visualization dashboard for training metrics (loss curves, scalar summaries, histograms, etc.) directly from the rlark Web UI, without needing to expose TensorBoard ports externally.
 
@@ -581,3 +614,25 @@ Browser ──HTTP──▶ Gateway ──proxy to Server──▶ Server ──
 - **Automatic proxy injection**: Task listing/GET responses include the `tensorBoardProxy` URL
 - **HTML rewriting**: Proxied TensorBoard pages are rewritten so all relative and absolute paths work correctly
 - **Ray integration**: TensorBoard auto-starts for Ray tasks with the appropriate configuration
+
+## 20. SSH Key Management
+
+SSH Key Management allows users to upload their SSH public keys through the API or Web UI, enabling passwordless SSH login to Pods without sharing certificates.
+
+### Concept
+
+Each user can upload one or more SSH public keys. These keys are stored in a Kubernetes Secret (`rlark-ssh-user-keys`) in the control plane namespace. When a Pod is created, the Agent injects the user's public keys into the Pod's `authorized_keys` file, allowing SSH access without a password.
+
+### API
+
+- `GET /api/v1/ssh-user-keys` — list all SSH keys (optionally filtered by user)
+- `POST /api/v1/ssh-user-keys` — add a new SSH public key for a user
+- `DELETE /api/v1/ssh-user-keys/:id` — delete a key by index
+
+### Key Features
+
+- **Web UI management**: A dedicated SSH Keys page in the Web UI for viewing and managing keys
+- **Per-task key injection**: Individual Jobs and Tasks can specify an `sshPublicKey` field, which takes precedence over centrally managed keys for that specific workload
+- **Conflict detection**: Duplicate keys are detected and rejected with a 409 response
+- **Retry on conflict**: The API automatically retries on write conflicts (up to 5 attempts)
+- **Key validation**: Public keys are validated using `golang.org/x/crypto/ssh` before storage

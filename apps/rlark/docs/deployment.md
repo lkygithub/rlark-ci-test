@@ -140,7 +140,7 @@ services:
     environment:
       POSTGRES_DB: rlark
       POSTGRES_USER: rlark
-      POSTGRES_PASSWORD: rlark123
+      POSTGRES_PASSWORD: CHANGE_ME
     ports:
       - "5432:5432"
     volumes:
@@ -179,18 +179,18 @@ volumes:
 | Parameter | Default | Description |
 |-----------|---------|-------------|
 | `--kubeconfig` | `""` | Control plane kubeconfig |
-| `--port` | `8080` | HTTP service port |
+| `--addr` | `:8080` | HTTP service address |
 | `--db-config` | `""` | Database config file path |
-| `--server-address` | `""` | Control plane Server address for proxying requests |
+| `--server-address` | `""` | Control plane Server address for certificate signing |
 
 ### 5.4 Agent
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
 | `--kubeconfig` | `""` | Data plane kubeconfig |
-| `--control-plane` | `""` | Control plane Server address |
-| `--agent-cert` | `""` | Agent certificate path |
-| `--agent-key` | `""` | Agent private key path |
+| `--server-address` | `""` | Control plane Server address |
+| `--client-cert` | `""` | Agent certificate path |
+| `--client-key` | `""` | Agent private key path |
 | `--ca-cert` | `""` | CA certificate path |
 | `--mode` | `both` | Run mode: `cluster` / `node` / `both` |
 | `--rlark-server-ssh-address` | `""` | Server SSH address (cross-cluster networking) |
@@ -426,7 +426,7 @@ db:
   port: 5432
   database: rlark
   user: rlark
-  password: rlark123
+  password: CHANGE_ME
 ```
 
 ## 11. Monitoring & Operations

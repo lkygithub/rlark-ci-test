@@ -2,17 +2,17 @@
 
 ## 1. 设计目标
 
-rlark 是一个面向跨集群具身智能场景的调度平台，核心设计目标：
+rlark 是一个面向跨集群具身智能场景的云原生纳管平台，核心设计目标：
 
 1. **云端到端侧的工作负载编排**：从云端 GPU 训练（RL/LLM）到端侧部署（机械臂、传感器、摄像头），统一的声明式抽象覆盖具身智能全链路
-2. **多运行时数据面**：原生支持 Kubernetes、Docker、Raw 三种运行时 — GPU 集群运行 k8s 承载大规模训练，端侧设备运行 Docker/Raw 实现轻量级具身部署（Docker/Raw 运行时：代码框架已就绪，运行时实现尚为 TODO）
+2. **多运行时数据面**：原生支持 Kubernetes、Docker、Raw 三种运行时 — GPU 集群运行 k8s 承载大规模训练，端侧设备运行 k8s 或 Docker/Raw 实现轻量级具身部署（Docker/Raw 运行时：代码框架已就绪，运行时实现尚为 TODO）
 3. **跨集群资源池化**：将分布在不同地域的 GPU 集群和端侧设备统一管理，形成逻辑上的单一资源池
 4. **Pod 间直接网络通信**：具身智能场景中训练进程与端侧机器人之间需要实时通信，要求跨集群 Pod 能够直接建立 TCP 连接
 5. **安全隔离**：多租户下的具身智能任务需要网络隔离，不同团队/项目的设备和数据不能互相访问
 
 ## 2. 总体架构
 
-rlark 采用**控制面—数据面**分离架构，控制面基于 kcp（Kubernetes Control Plane）运行，数据面 Agent 部署在每个 GPU 集群中。
+rlark 采用**控制面—数据面**分离架构，控制面基于 kcp（Kubernetes Control Plane）运行，数据面 Agent 部署在每个 GPU 集群或端侧设备中，支持 k8s、Docker 和 Raw 三种运行时。**embodied-runtime**（Device Plugin + Controllers）以 DaemonSet 形式运行在每个数据面节点上，管理机械臂（ROS 1/2）和摄像头硬件，将其作为 Kubernetes 设备资源暴露。
 
 ![系统架构](../images/architecture.svg)
 
@@ -201,6 +201,32 @@ func (a *containerNetworkAdapter) GetContainerNetworkDial(...) (utils.Dial, erro
 - 重连失败指数退避（1s → 2s → 4s → ... → 30s）
 - 后台 GC 关闭空闲超时连接（默认 10 分钟）
 - 线程安全，正常路径读锁无阻塞
+
+### 4.6 Embodied Runtime
+
+**embodied-runtime** 是部署在每个数据面节点上的 DaemonSet 组件，管理机械臂（ROS 1/2）和摄像头硬件。它与 Agent 集成，将物理设备作为 Kubernetes 设备资源（`rlinf.io/device`）暴露，使训练 Task 可以像申请 GPU 一样申请机械臂和摄像头。
+
+**关键文件**：[apps/embodied-runtime/](../../../embodied-runtime/)
+
+**组件概览**：
+
+| 组件 | 职责 | 关键文件 |
+|-----------|---------------|----------|
+| Device Plugin | 向 kubelet 注册 `rlinf.io/device`；检测节点本地硬件；向 Task Pod 注入 socket 和 CLI 二进制 | [plugin.go](../../../../embodied-runtime/pkg/deviceplugin/plugin.go) |
+| Mutating Webhook | 自动向申请 `rlinf.io/device` 的 Pod 注入 `devinit` init 容器；管理 CA 证书和 serving 证书 | [webhook.go](../../../../embodied-runtime/pkg/deviceplugin/webhook.go) |
+| ros-controller | 管理 ROS 1（`roscore` + `roslaunch`）机器人生命周期；通过 Unix socket 暴露 gRPC API | [roscontroller/](../../../../embodied-runtime/pkg/roscontroller/) |
+| ros2-controller | 管理 ROS 2 机器人生命周期；通过 Unix socket 暴露 gRPC API | [ros2controller/](../../../../embodied-runtime/pkg/ros2controller/) |
+| camera-controller | 管理摄像头（V4L2 / RTSP / RealSense）生命周期；ffmpeg 转码；通过 Unix socket 暴露 gRPC API | [cameracontroller/](../../../../embodied-runtime/pkg/cameracontroller/) |
+| CLI（rosctr / camctr） | 挂载到 Task Pod 中的命令行工具，用于直接控制机器人/摄像头 | [cmd/rosctr/](../../../../embodied-runtime/cmd/rosctr/) |
+
+**设备生命周期**：
+
+1. Device Plugin 检测硬件（V4L2 摄像头、机器人控制器）并向 kubelet 注册
+2. Task Pod 在 spec 中申请 `rlinf.io/device` 资源
+3. **Mutating Webhook** 拦截 Pod 创建请求，自动注入 `devinit` init 容器（申请同一资源），执行 `devinit setup` 在 Pod 网络命名空间中创建 macvlan
+4. Allocate 时，Device Plugin 将 Unix socket 和 CLI 二进制注入 Pod
+5. 任务容器通过 gRPC over Unix socket 与 ros-controller / camera-controller 通信
+6. Pod 终止时，Device Plugin 清理并归还设备到资源池
 
 ## 5. 跨集群 Pod 网络数据流
 
