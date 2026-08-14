@@ -36,8 +36,10 @@ Manage cross-cluster embodied intelligence workloads natively with Kubernetes, f
 
 ## Quick Start
 
+> For a detailed guided walkthrough (Docker Compose + kind), see the [Quick Start guide](apps/rlark/docs/quickstart.md).
+
 ```bash
-# 1. Install CLI
+# 1. Build CLI
 git clone https://github.com/RLinf/RLark
 cd RLark && make build
 

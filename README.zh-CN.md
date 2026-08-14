@@ -36,8 +36,10 @@
 
 ## 快速开始
 
+> 详细的本地开发引导（Docker Compose + kind）请参考 [快速开始指南](apps/rlark/docs/cn/quickstart.md)。
+
 ```bash
-# 1. 安装 CLI
+# 1. 构建 CLI
 git clone https://github.com/RLinf/RLark
 cd RLark && make build
 

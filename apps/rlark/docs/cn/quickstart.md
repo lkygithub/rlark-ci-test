@@ -10,13 +10,19 @@
 | Docker | >= 24.0 | 运行 kcp 和 kind 集群 |
 | kind | >= 0.20 | 运行本地 k8s 数据面集群 |
 | kubectl | >= 1.28 | 与集群交互 |
+| jq | 任意 | 解析 JSON API 响应 |
 
 ## 1. 编译
 
 ```bash
 git clone https://github.com/RLinf/RLark
 cd RLark
+# Linux
 make build
+# macOS (Intel)
+GOOS=darwin GOARCH=amd64 make build
+# macOS (Apple Silicon)
+GOOS=darwin GOARCH=arm64 make build
 ```
 
 编译完成后，`bin/` 目录下会生成以下二进制：
@@ -90,7 +96,7 @@ kind get kubeconfig --name rlark-data > ~/.rlark/kind-kubeconfig
 # 终端 3：启动 Gateway
 ./bin/gateway \
   --kubeconfig ~/.rlark/admin.kubeconfig \
-  --port 8080 \
+  --addr :8080 \
   --db-config apps/rlark/docs/examples/db-config.yaml
 ```
 
@@ -99,9 +105,9 @@ kind get kubeconfig --name rlark-data > ~/.rlark/kind-kubeconfig
 ```bash
 ./bin/agent \
   --kubeconfig ~/.rlark/kind-kubeconfig \
-  --control-plane https://localhost:8443 \
-  --agent-cert ~/.rlark/certs/cert.pem \
-  --agent-key ~/.rlark/certs/key.pem \
+  --server-address https://localhost:8443 \
+  --client-cert ~/.rlark/certs/cert.pem \
+  --client-key ~/.rlark/certs/key.pem \
   --ca-cert ~/.rlark/certs/ca-cert.pem \
   --mode both \
   --rlark-server-ssh-address localhost:2222

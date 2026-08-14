@@ -10,13 +10,19 @@ This guide walks you through setting up rlark locally and running your first tra
 | Docker | >= 24.0 | Run kcp and kind clusters |
 | kind | >= 0.20 | Run local k8s data plane cluster |
 | kubectl | >= 1.28 | Interact with clusters |
+| jq | any | Parse JSON API responses |
 
 ## 1. Build
 
 ```bash
 git clone https://github.com/RLinf/RLark
 cd RLark
+# Linux
 make build
+# macOS (Intel)
+GOOS=darwin GOARCH=amd64 make build
+# macOS (Apple Silicon)
+GOOS=darwin GOARCH=arm64 make build
 ```
 
 After building, the `bin/` directory contains:
@@ -90,7 +96,7 @@ Open three terminals and start Server, Controller-Manager, and Gateway:
 # Terminal 3: Start Gateway
 ./bin/gateway \
   --kubeconfig ~/.rlark/admin.kubeconfig \
-  --port 8080 \
+  --addr :8080 \
   --db-config apps/rlark/docs/examples/db-config.yaml
 ```
 
@@ -99,9 +105,9 @@ Open three terminals and start Server, Controller-Manager, and Gateway:
 ```bash
 ./bin/agent \
   --kubeconfig ~/.rlark/kind-kubeconfig \
-  --control-plane https://localhost:8443 \
-  --agent-cert ~/.rlark/certs/cert.pem \
-  --agent-key ~/.rlark/certs/key.pem \
+  --server-address https://localhost:8443 \
+  --client-cert ~/.rlark/certs/cert.pem \
+  --client-key ~/.rlark/certs/key.pem \
   --ca-cert ~/.rlark/certs/ca-cert.pem \
   --mode both \
   --rlark-server-ssh-address localhost:2222
