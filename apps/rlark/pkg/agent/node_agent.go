@@ -48,6 +48,7 @@ func (n *nodeAgent) Run(ctx context.Context) error {
 		n.a.config.RLarkServerSSHHostKey,
 		n.a.config.EnableSameClusterDirect,
 		n.a.config.EnableCrossClusterDirect,
+		n.a.config.KubeletDir,
 	)
 	nodeserver := nodeserver.NewNodeServer(
 		n.a.config.NodeServerConfig,

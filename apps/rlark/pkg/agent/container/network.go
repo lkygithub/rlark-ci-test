@@ -8,9 +8,11 @@ import (
 	"net"
 	"net/url"
 	"strings"
+	"time"
 
 	"golang.org/x/crypto/ssh"
 
+	gocache "github.com/patrickmn/go-cache"
 	listerv1alpha1 "github.com/rlinf/rlark/api/kubeclients/listers/rlark.io/v1alpha1"
 	"github.com/rlinf/rlark/api/rlark.io/v1alpha1"
 	"github.com/rlinf/rlark/apps/rlark/pkg/apis"
@@ -38,24 +40,19 @@ func (c containerNetworkCred) IPPrefixLength() int {
 	return c.DomainPrefixLength
 }
 
-// MarshalContainerNetworkCred 将容器网络凭证序列化为 JSON 后做 base64 编码，
-// 返回值去掉了末尾的 padding（"="），便于作为 URL 或 socket 地址的一部分传递。
+// MarshalContainerNetworkCred 将容器网络凭证序列化为 JSON 后做 base64 编码。
 func MarshalContainerNetworkCred(cred *containerNetworkCred) (string, error) {
 	b, err := json.Marshal(cred)
 	if err != nil {
 		return "", fmt.Errorf("marshal container network cred: %w", err)
 	}
-	return strings.TrimRight(base64.StdEncoding.EncodeToString(b), "="), nil
+	return base64.RawURLEncoding.EncodeToString(b), nil
 }
 
-// UnmarshalContainerNetworkCred 将 base64 编码（可带也可不带 padding）的字符串
-// 解码为 JSON 并反序列化为 containerNetworkCred。
+// UnmarshalContainerNetworkCred 将 base64 编码的字符串解码为 JSON 并反序列
+// 化为 containerNetworkCred。
 func UnmarshalContainerNetworkCred(s string) (*containerNetworkCred, error) {
-	padded := s
-	if r := len(s) % 4; r != 0 {
-		padded += strings.Repeat("=", 4-r)
-	}
-	data, err := base64.StdEncoding.DecodeString(padded)
+	data, err := base64.RawURLEncoding.DecodeString(s)
 	if err != nil {
 		return nil, fmt.Errorf("decode container network cred: %w", err)
 	}
@@ -77,6 +74,9 @@ type containerNetworkAdapter struct {
 
 	enableSameClusterDirect  bool
 	enableCrossClusterDirect bool
+
+	kubeletDir  string
+	podUIDCache *gocache.Cache
 }
 
 // NewContainerNetworkAdapter creates a new ContainerNetworkAdapter.
@@ -88,6 +88,7 @@ func NewContainerNetworkAdapter(
 	sshHostKey string,
 	enableSameClusterDirect bool,
 	enableCrossClusterDirect bool,
+	kubeletDir string,
 ) *containerNetworkAdapter {
 	hostKeyCallback := makeHostKeyCallback(sshHostKey)
 	return &containerNetworkAdapter{
@@ -100,6 +101,8 @@ func NewContainerNetworkAdapter(
 		}),
 		enableSameClusterDirect:  enableSameClusterDirect,
 		enableCrossClusterDirect: enableCrossClusterDirect,
+		kubeletDir:               kubeletDir,
+		podUIDCache:              gocache.New(5*time.Minute, 10*time.Minute),
 	}
 }
 
@@ -117,6 +120,24 @@ func makeHostKeyCallback(sshHostKey string) ssh.HostKeyCallback {
 	return ssh.FixedHostKey(pk)
 }
 
+func (a *containerNetworkAdapter) getPodUIDFromSource(source string) string {
+	// source 即为从进程中解析出来的 Pod UID
+	if a.kubeletDir == "" {
+		return source
+	}
+	if cached, found := a.podUIDCache.Get(source); found {
+		if podUID, ok := cached.(string); ok {
+			return podUID
+		}
+	}
+	podUID := readPodUIDFromKubeAPIAccess(a.kubeletDir, source)
+	if podUID == "" {
+		return source
+	}
+	a.podUIDCache.Set(source, podUID, gocache.DefaultExpiration)
+	return podUID
+}
+
 // GetContainerNetworkCred returns the containerNetworkCred.
 func (a *containerNetworkAdapter) GetContainerNetworkCred(ctx context.Context, pid int32) (*containerNetworkCred, error) {
 	// 根据 pid 获取进程所属容器/pod 的信息，获取其所属的 domain，以及 domain 的网络信息
@@ -127,7 +148,8 @@ func (a *containerNetworkAdapter) GetContainerNetworkCred(ctx context.Context, p
 
 	switch sourceType {
 	case "pod":
-		domain, err := a.getPodDomainByPodUID(ctx, source)
+		uid := a.getPodUIDFromSource(source)
+		domain, err := a.getPodDomainByPodUID(ctx, uid)
 		if err != nil {
 			return nil, fmt.Errorf("get pod domain by pod UID: %w", err)
 		}
@@ -136,18 +158,18 @@ func (a *containerNetworkAdapter) GetContainerNetworkCred(ctx context.Context, p
 			return nil, fmt.Errorf("get domain peer: %w", err)
 		}
 		ret := containerNetworkCred{
-			PodID:              source,
+			PodID:              uid,
 			DomainID:           dpeer.Name,
 			DomainPrefixLength: dpeer.Spec.PrefixLen,
 		}
 		for _, pod := range dpeer.Spec.Pods {
-			if pod.UID == source {
+			if pod.UID == uid {
 				ret.DomainIP = pod.IP
 				break
 			}
 		}
 		if ret.DomainIP == "" {
-			return nil, fmt.Errorf("pod %s not found in domain peer %s", source, dpeer.Name)
+			return nil, fmt.Errorf("pod %s not found in domain peer %s", uid, dpeer.Name)
 		}
 		return &ret, nil
 

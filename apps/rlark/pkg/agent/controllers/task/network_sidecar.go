@@ -4,7 +4,6 @@ import (
 	rlarkv1alpha1 "github.com/rlinf/rlark/api/rlark.io/v1alpha1"
 	"github.com/rlinf/rlark/apps/rlark/pkg/utils"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/utils/ptr"
 )
 
 const (
@@ -18,17 +17,14 @@ func applyNetworkSidecar(template *corev1.PodTemplateSpec, mgmtTask *rlarkv1alph
 		return
 	}
 
-	for i := range template.Spec.InitContainers {
-		if template.Spec.InitContainers[i].Name == sidecarContainerName {
-			return
-		}
+	if findSidecar(&template.Spec, sidecarContainerName) != nil {
+		return
 	}
 
-	template.Spec.InitContainers = append(template.Spec.InitContainers, corev1.Container{
+	sidecar := corev1.Container{
 		Name:            sidecarContainerName,
 		Image:           sidecarImage,
 		ImagePullPolicy: corev1.PullIfNotPresent,
-		RestartPolicy:   ptr.To(corev1.ContainerRestartPolicyAlways),
 		Command:         []string{"network-sidecar"},
 		Env: []corev1.EnvVar{
 			{
@@ -48,7 +44,8 @@ func applyNetworkSidecar(template *corev1.PodTemplateSpec, mgmtTask *rlarkv1alph
 				MountPath: sidecarUnixSocketPath,
 			},
 		},
-	})
+	}
+	applySidecar(&template.Spec, sidecar)
 
 	template.Spec.Volumes = append(template.Spec.Volumes, corev1.Volume{
 		Name: sidecarVolumeName,
