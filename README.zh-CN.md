@@ -32,7 +32,7 @@
 
 ## 架构概览
 
-![系统架构](apps/rlark/docs/images/architecture.svg)
+![系统架构](apps/rlark/docs/images/architechtrue.png)
 
 ## 快速开始
 

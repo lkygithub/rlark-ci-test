@@ -32,7 +32,7 @@ Manage cross-cluster embodied intelligence workloads natively with Kubernetes, f
 
 ## Architecture Overview
 
-![System Architecture](apps/rlark/docs/images/architecture.svg)
+![System Architecture](apps/rlark/docs/images/architechtrue.png)
 
 ## Quick Start
 
