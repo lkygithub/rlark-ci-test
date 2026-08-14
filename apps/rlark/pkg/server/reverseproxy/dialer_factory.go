@@ -12,6 +12,7 @@ import (
 	"github.com/rlinf/rlark/apps/rlark/pkg/log"
 )
 
+// Variables used by the package.
 var (
 	ClientKeyHeader = "X-API-Tunnel-Client-Key"
 	PeerIDHeader    = remotedialer.ID
@@ -45,6 +46,7 @@ func (c *client) onDisconnect() {
 	}
 }
 
+// DialerFactory creates instances.
 type DialerFactory struct {
 	dialerServer *remotedialer.Server
 
@@ -52,6 +54,7 @@ type DialerFactory struct {
 	mutex   sync.Mutex
 }
 
+// NewDialerFactory creates a new DialerFactory.
 func NewDialerFactory() *DialerFactory {
 	f := &DialerFactory{
 		clients: make(map[string]*client),
@@ -101,6 +104,7 @@ func (f *DialerFactory) removeClient(clientKey string) {
 	}
 }
 
+// ServeHTTP serves HTTP requests.
 func (f *DialerFactory) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	logger := log.GetLogger()
 	if req.Header.Get(PeerIDHeader) != "" && req.Header.Get(PeerTokenHeader) != "" {
@@ -125,26 +129,32 @@ func (f *DialerFactory) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	f.dialerServer.ServeHTTP(rw, req)
 }
 
+// GetDialer returns the dialer.
 func (f *DialerFactory) GetDialer(ctx context.Context, clientKey string) remotedialer.Dialer {
 	return f.dialerServer.Dialer(clientKey)
 }
 
+// GetPeerID returns the peerID.
 func (f *DialerFactory) GetPeerID() string {
 	return f.dialerServer.PeerID
 }
 
+// GetPeerToken returns the peerToken.
 func (f *DialerFactory) GetPeerToken() string {
 	return f.dialerServer.PeerToken
 }
 
+// AddPeer adds the peer.
 func (f *DialerFactory) AddPeer(server, peerID, peerToken string) {
 	f.dialerServer.AddPeer(server, peerID, peerToken)
 }
 
+// RemovePeer removes the peer.
 func (f *DialerFactory) RemovePeer(peerID string) {
 	f.dialerServer.RemovePeer(peerID)
 }
 
+// SetPeerHeaders sets the peerHeaders.
 func SetPeerHeaders(req *http.Request, peerID, peerToken string) {
 	if req.Header == nil {
 		req.Header = make(http.Header)
@@ -157,6 +167,7 @@ func SetPeerHeaders(req *http.Request, peerID, peerToken string) {
 	req.Header.Set(PeerTokenHeader, peerToken)
 }
 
+// SetClientHeader sets the clientHeader.
 func SetClientHeader(req *http.Request, clientKey string) {
 	if req.Header == nil {
 		req.Header = make(http.Header)

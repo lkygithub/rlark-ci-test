@@ -24,6 +24,7 @@ import (
 // 真实网络协议进行转发，回复数据同样帧封装后沿 TCP 连接返回。
 type Proxy struct{}
 
+// NewProxy creates a new Proxy.
 func NewProxy() *Proxy {
 	return &Proxy{}
 }

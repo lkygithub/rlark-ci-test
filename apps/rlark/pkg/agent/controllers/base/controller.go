@@ -7,6 +7,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// Reconciler reconciles resources.
 type Reconciler interface {
 	KubernetesResource() KubernetesResource
 	AsPullReconciler() KubernetesReconciler
@@ -15,7 +16,8 @@ type Reconciler interface {
 	AsRawPushReconcilers() map[RawResource]RawReconciler
 }
 
-type BaseController struct {
+// Controller manages resources.
+type Controller struct {
 	ManagementClient    client.Client
 	ManagementNamespace string
 	AgentType           string // Kubernetes/Docker/Raw
@@ -29,7 +31,8 @@ type BaseController struct {
 	C Reconciler
 }
 
-func (c *BaseController) SetupPullController(mgr ctrl.Manager) error {
+// SetupPullController sets the upPullController.
+func (c *Controller) SetupPullController(mgr ctrl.Manager) error {
 	pullReconciler := c.C.AsPullReconciler()
 	if pullReconciler == nil {
 		// Skip setup — no pull logic needed (e.g. Node controller)
@@ -42,7 +45,8 @@ func (c *BaseController) SetupPullController(mgr ctrl.Manager) error {
 		Complete(pullReconciler)
 }
 
-func (c *BaseController) SetupPushController(mgr any) error {
+// SetupPushController sets the upPushController.
+func (c *Controller) SetupPushController(mgr any) error {
 	if mgr == nil {
 		return fmt.Errorf("manager is nil")
 	}

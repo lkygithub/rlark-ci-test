@@ -79,6 +79,7 @@ func NewController(podIP string, allowedPackages []string) *Controller {
 // Configuration API
 // --------------------------------------------------------------------------
 
+// RegisterType registers a robot type with its supported modes.
 func (c *Controller) RegisterType(cfg *RobotTypeConfig) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -95,6 +96,8 @@ func (c *Controller) RegisterType(cfg *RobotTypeConfig) error {
 	return nil
 }
 
+// RegisterRobot registers a robot instance of a previously registered type
+// and assigns it a ROS_DOMAIN_ID.
 func (c *Controller) RegisterRobot(cfg *RobotConfig) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()

@@ -25,17 +25,19 @@ import (
 	"github.com/rlinf/rlark/apps/rlark/pkg/apis"
 )
 
+// Constants used by the package.
 const (
 	AddonRequeueInterval = 10 * time.Second
 
-	// Annotation on local resources linking back to the management Addon CR
+	// AddonResourceVersionAnnotation annotates local resources linking back to the management Addon CR.
 	AddonResourceVersionAnnotation = "rlark.io/addon-resource-version"
 )
 
 type pullReconciler struct {
-	c *AddonController
+	c *Controller
 }
 
+// Reconcile reconciles the resource.
 func (r *pullReconciler) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
 	logger := log.FromContext(ctx).WithValues("addon", req.NamespacedName)
 

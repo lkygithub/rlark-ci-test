@@ -13,9 +13,10 @@ import (
 )
 
 type pullNodeReconciler struct {
-	c *NodeController
+	c *Controller
 }
 
+// Reconcile reconciles the resource.
 func (r *pullNodeReconciler) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
 	logger := log.FromContext(ctx).WithValues("node", req.NamespacedName)
 

@@ -12,11 +12,11 @@ import (
 
 type signer struct {
 	once   sync.Once
-	r      *DomainReconciler
+	r      *Reconciler
 	client *server.Client
 }
 
-func newSigner(r *DomainReconciler) *signer {
+func newSigner(r *Reconciler) *signer {
 	return &signer{
 		r: r,
 	}
@@ -30,6 +30,7 @@ func (s *signer) initClient(ctx context.Context) error {
 	return err
 }
 
+// Sign signs the input.
 func (s *signer) Sign(ctx context.Context, domainID, agentID string) ([]byte, []byte, error) {
 	if err := s.initClient(ctx); err != nil {
 		return nil, nil, err

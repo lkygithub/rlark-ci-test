@@ -8,6 +8,7 @@ import (
 
 const metaSSHExtKey = "x-rlark-meta@rlark.io"
 
+// SetSSHCertMeta sets the sSHCertMeta.
 func SetSSHCertMeta(template *gossh.Certificate, meta map[string]string) {
 	if template == nil {
 		return
@@ -19,6 +20,7 @@ func SetSSHCertMeta(template *gossh.Certificate, meta map[string]string) {
 	template.Extensions[metaSSHExtKey] = string(metaBytes)
 }
 
+// GetSSHCertMeta returns the sSHCertMeta.
 func GetSSHCertMeta(cert *gossh.Certificate) (map[string]string, bool) {
 	if cert == nil || cert.Extensions == nil {
 		return nil, false

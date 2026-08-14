@@ -10,6 +10,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
+// KubernetesClientConfig holds configuration options.
 type KubernetesClientConfig struct {
 	// KubeconfigPath is the path to the kubeconfig file for connecting to the Kubernetes cluster.
 	KubeconfigPath string
@@ -33,12 +34,14 @@ type KubernetesClientConfig struct {
 	Timeout time.Duration
 }
 
+// DefaultKubernetesClientConfig returns the default kubernetesClientConfig.
 func DefaultKubernetesClientConfig() KubernetesClientConfig {
 	return KubernetesClientConfig{
 		KubeconfigPath: os.Getenv("KUBECONFIG"),
 	}
 }
 
+// SetupFlags sets the upFlags.
 func (c *KubernetesClientConfig) SetupFlags(fs *pflag.FlagSet) {
 	// Kubernetes client flags
 	fs.StringVar(&c.KubeconfigPath, "kubeconfig", c.KubeconfigPath, "Path to kubeconfig file (if not using in-cluster config)")
@@ -50,10 +53,12 @@ func (c *KubernetesClientConfig) SetupFlags(fs *pflag.FlagSet) {
 	fs.DurationVar(&c.Timeout, "kube-timeout", c.Timeout, "Kubernetes client request timeout")
 }
 
+// DefaultNamespace returns the default namespace.
 func (c KubernetesClientConfig) DefaultNamespace() string {
 	return cmp.Or(c.Namespace, "default")
 }
 
+// BuildRestConfig builds the restConfig.
 func (c KubernetesClientConfig) BuildRestConfig() (*rest.Config, error) {
 	var restConfig *rest.Config
 	var err error

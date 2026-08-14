@@ -3,6 +3,7 @@ import {
   Braces,
   Globe2,
   HardDrive,
+  Image,
   Network,
   Package,
   Server,
@@ -52,4 +53,10 @@ export const adminNavItems: AdminNavItem[] = [
   { id: "api", icon: Braces, zh: "接口参考", en: "API Reference" },
   { id: "config", icon: Settings, zh: "系统配置", en: "Config" },
   { id: "storageClass", icon: HardDrive, zh: "存储管理", en: "Storage" },
+  {
+    id: "image-registries",
+    icon: Image,
+    zh: "镜像管理",
+    en: "Image Registries",
+  },
 ];

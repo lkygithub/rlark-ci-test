@@ -1,5 +1,6 @@
 package storage
 
+// Config holds configuration options.
 type Config struct {
 	AccessKeyId     string
 	SecretAccessKey string
@@ -10,6 +11,7 @@ type Config struct {
 	Provider        string
 }
 
+// DefaultConfig returns the default config.
 func DefaultConfig() *Config {
 	return &Config{
 		AccessKeyId:     "",

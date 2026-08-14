@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// ProxyCurlCommand proxies the curlCommand.
 func ProxyCurlCommand() *cobra.Command {
 	method := "GET"
 	var data string

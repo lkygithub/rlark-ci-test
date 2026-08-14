@@ -99,7 +99,7 @@ func (ns *netstack) handleTCPConnection(local, remote net.Conn) {
 //
 // 配置项包括：
 // - TCP Keepalive（空闲 60s 后开始探测，间隔 30s，最多 32 次）
-// - 发送/接收缓冲区大小（从协议栈的默认配置中读取）
+// - 发送/接收缓冲区大小（从协议栈的默认配置中读取）.
 func setSocketOptions(s *stack.Stack, ep tcpip.Endpoint) tcpip.Error {
 	{ /* TCP keepalive 选项 */
 		ep.SocketOptions().SetKeepAlive(true)

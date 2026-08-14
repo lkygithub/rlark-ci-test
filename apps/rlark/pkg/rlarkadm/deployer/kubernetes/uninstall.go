@@ -14,6 +14,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
+// Uninstall uninstalls the components.
 func (d *Installer) Uninstall(cfg *types.DeployConfig, purge bool) error {
 	logger := log.GetLogger()
 	kubeconfig := cfg.Kubernetes.Kubeconfig

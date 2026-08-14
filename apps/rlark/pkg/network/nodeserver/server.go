@@ -14,26 +14,45 @@ import (
 	"github.com/rlinf/rlark/apps/rlark/pkg/utils"
 )
 
+// PodCred holds pod credentials.
 type PodCred interface {
 	IP() string
 	IPPrefixLength() int
 }
 
+// CredGetter retrieves values.
 type CredGetter[C PodCred] func(ctx context.Context, pid int32) (C, error)
+
+// DialGetter retrieves values.
 type DialGetter[C PodCred] func(ctx context.Context, cred C, host string, query url.Values) (utils.Dial, error)
 
+// HostsGetter retrieves values.
+type HostsGetter[C PodCred] func(ctx context.Context, cred C) (map[string]string, error)
+
+// NodeServer is a server.
 type NodeServer[C PodCred] struct {
 	config             Config
 	getCred            CredGetter[C]
 	getDial            DialGetter[C]
+	getHosts           HostsGetter[C]
+	marshalCred        func(C) (string, error)
+	unmarshalCred      func(string) (C, error)
 	localServiceDialer utils.Dial
 }
 
-func NewNodeServer[C PodCred](config Config, getCred CredGetter[C], getDial DialGetter[C]) *NodeServer[C] {
+// NewNodeServer creates a new NodeServer.
+func NewNodeServer[C PodCred](
+	config Config,
+	getCred CredGetter[C], getDial DialGetter[C], getHosts HostsGetter[C],
+	marshalCred func(C) (string, error), unmarshalCred func(string) (C, error),
+) *NodeServer[C] {
 	return &NodeServer[C]{
-		config:  config,
-		getCred: getCred,
-		getDial: getDial,
+		config:        config,
+		getCred:       getCred,
+		getDial:       getDial,
+		getHosts:      getHosts,
+		marshalCred:   marshalCred,
+		unmarshalCred: unmarshalCred,
 	}
 }
 
@@ -43,6 +62,7 @@ func (s *NodeServer[C]) startLocalService(ctx context.Context) error {
 	r := gin.New()
 	r.Use(gin.Recovery())
 	r.GET("/get_ip", s.handleGetIP)
+	r.GET("/get_hosts", s.handleGetHosts)
 
 	srv := http.Server{Handler: r}
 	go func() {
@@ -51,6 +71,7 @@ func (s *NodeServer[C]) startLocalService(ctx context.Context) error {
 	return nil
 }
 
+// Run runs the component.
 func (s *NodeServer[C]) Run(ctx context.Context) error {
 	logger := log.FromContext(ctx)
 	if err := s.startLocalService(ctx); err != nil {
@@ -109,9 +130,14 @@ func (s *NodeServer[C]) handleConnection(ctx context.Context, conn *utils.WrapCo
 	// 如果 host 为 0.0.0.0，则表示连接的是本地服务，此时使用 localServiceDialer 连接本地服务。
 	// 否则，使用 getDial 获取到目标的 dialer，并连接到目标。
 	if host == "0.0.0.0" {
+		credName, err := s.marshalCred(cred)
+		if err != nil {
+			logger.Error(nil, "Failed to marshal credentials", "err", err)
+			return
+		}
 		ctx = utils.WithRemoteAddr(ctx, &net.UnixAddr{
 			Net:  "pod",
-			Name: fmt.Sprintf("%v/%v", cred.IP(), cred.IPPrefixLength()),
+			Name: credName,
 		})
 		conn2, err = s.localServiceDialer(ctx)
 		if err != nil {
@@ -150,8 +176,13 @@ func (s *NodeServer[C]) handleConnection(ctx context.Context, conn *utils.WrapCo
 }
 
 func (s *NodeServer[C]) handleGetIP(ctx *gin.Context) {
-	// 按照上面 Dial 的逻辑，这里 RemoteAddr 获取到的格式为：ip/prefixLength，即 Pod 的 CIDR 地址。
-	ip, ipNet, err := net.ParseCIDR(ctx.Request.RemoteAddr)
+	// 按照上面 Dial 的逻辑，这里 RemoteAddr 获取到的格式为 marshaledCred。
+	cred, err := s.unmarshalCred(ctx.Request.RemoteAddr)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	ip, ipNet, err := net.ParseCIDR(fmt.Sprintf("%s/%d", cred.IP(), cred.IPPrefixLength()))
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -161,4 +192,19 @@ func (s *NodeServer[C]) handleGetIP(ctx *gin.Context) {
 		IP:           ip.String(),
 		PrefixLength: prefixLength,
 	})
+}
+
+func (s *NodeServer[C]) handleGetHosts(ctx *gin.Context) {
+	// 按照上面 Dial 的逻辑，这里 RemoteAddr 获取到的格式为 marshaledCred。
+	cred, err := s.unmarshalCred(ctx.Request.RemoteAddr)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	hosts, err := s.getHosts(ctx.Request.Context(), cred)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	ctx.JSON(http.StatusOK, hosts)
 }

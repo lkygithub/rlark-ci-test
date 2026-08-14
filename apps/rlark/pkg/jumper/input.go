@@ -83,6 +83,7 @@ type muxReader struct {
 	buf    []byte
 }
 
+// Read is an exported method.
 func (r *muxReader) Read(p []byte) (int, error) {
 	if len(r.buf) > 0 {
 		n := copy(p, r.buf)

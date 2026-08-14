@@ -9,21 +9,26 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 )
 
+// Plane identifies a deployment plane.
 type Plane string
 
+// Constants used by the package.
 const (
 	PlaneControl Plane = "control"
 	PlaneData    Plane = "data"
 )
 
+// StorageType represents a storage type.
 type StorageType string
 
+// Constants used by the package.
 const (
 	StorageEmptyDir StorageType = "emptyDir"
 	StorageHostPath StorageType = "hostPath"
 	StoragePVC      StorageType = "pvc"
 )
 
+// DeployConfig holds configuration options.
 type DeployConfig struct {
 	APIVersion            string         `yaml:"apiVersion"`
 	Kind                  string         `yaml:"kind"`
@@ -37,6 +42,7 @@ type DeployConfig struct {
 	InsecureSkipTLSVerify bool           `yaml:"insecure-skip-tls-verify,omitempty"`
 }
 
+// KubernetesEnv holds environment configuration.
 type KubernetesEnv struct {
 	Kubeconfig             string           `yaml:"kubeconfig,omitempty"`
 	GatewayImage           string           `yaml:"gateway-image"`
@@ -55,17 +61,20 @@ type KubernetesEnv struct {
 	Postgresql             *ComponentConfig `yaml:"postgresql,omitempty"`
 }
 
+// ComponentConfig holds configuration options.
 type ComponentConfig struct {
 	Replicas int32          `yaml:"replicas,omitempty"`
 	Storage  *StorageConfig `yaml:"storage,omitempty"`
 }
 
+// EtcdConfig holds configuration options.
 type EtcdConfig struct {
 	Address  string         `yaml:"address,omitempty"` // 外部 etcd 地址，如 https://etcd.example.com:2379
 	Replicas int32          `yaml:"replicas,omitempty"`
 	Storage  *StorageConfig `yaml:"storage,omitempty"`
 }
 
+// StorageConfig holds configuration options.
 type StorageConfig struct {
 	Type         StorageType       `yaml:"type"`
 	HostPath     string            `yaml:"host-path,omitempty"`
@@ -74,6 +83,7 @@ type StorageConfig struct {
 	NodeSelector map[string]string `yaml:"node-selector,omitempty"`
 }
 
+// DockerEnv holds environment configuration.
 type DockerEnv struct {
 	GatewayImage           string `yaml:"gateway-image"`
 	ControllerManagerImage string `yaml:"controller-manager-image"`
@@ -86,6 +96,7 @@ type DockerEnv struct {
 	UIImage                string `yaml:"ui-image,omitempty"`
 }
 
+// RawEnv holds environment configuration.
 type RawEnv struct {
 	GatewayArtifact           string `yaml:"gateway-artifact"`
 	ControllerManagerArtifact string `yaml:"controller-manager-artifact"`
@@ -97,12 +108,14 @@ type RawEnv struct {
 	PostgresqlArtifact        string `yaml:"postgresql-artifact,omitempty"`
 }
 
+// CertConfig holds configuration options.
 type CertConfig struct {
 	CACert    string `yaml:"ca-cert,omitempty"`
 	AgentCert string `yaml:"agent-cert,omitempty"`
 	AgentKey  string `yaml:"agent-key,omitempty"`
 }
 
+// DBConfig holds configuration options.
 type DBConfig struct {
 	Host     string `yaml:"host"`
 	Port     int    `yaml:"port"`
@@ -111,6 +124,7 @@ type DBConfig struct {
 	Password string `yaml:"password"`
 }
 
+// Component describes a deployable component.
 type Component struct {
 	Name            string
 	Port            int32
@@ -139,14 +153,17 @@ type Component struct {
 	PostDeployFn    func(cfg *DeployConfig) error
 }
 
+// GetName returns the name.
 func (c *Component) GetName() string {
 	return c.Name
 }
 
+// GetDependencies returns the dependencies.
 func (c *Component) GetDependencies() []string {
 	return c.Dependencies
 }
 
+// LoadDeployConfig loads the deployConfig.
 func LoadDeployConfig(path string) (*DeployConfig, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -162,6 +179,7 @@ func LoadDeployConfig(path string) (*DeployConfig, error) {
 	return &cfg, nil
 }
 
+// Validate validates the configuration.
 func (c *DeployConfig) Validate() error {
 	if c.APIVersion == "" {
 		return fmt.Errorf("apiVersion is required")
@@ -205,6 +223,7 @@ func (c *DeployConfig) Validate() error {
 	return nil
 }
 
+// EnvMode returns the environment mode.
 func (c *DeployConfig) EnvMode() string {
 	if c.Kubernetes != nil {
 		return "Kubernetes"

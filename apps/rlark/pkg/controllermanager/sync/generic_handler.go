@@ -28,14 +28,17 @@ type genericSyncHandler struct {
 
 var _ Handler = (*genericSyncHandler)(nil)
 
+// GetTableName returns the tableName.
 func (h *genericSyncHandler) GetTableName() string {
 	return h.tableName
 }
 
+// GetResourceType returns the resourceType.
 func (h *genericSyncHandler) GetResourceType() string {
 	return h.resourceType
 }
 
+// ShouldSyncObject is an exported method.
 func (h *genericSyncHandler) ShouldSyncObject(obj client.Object) bool {
 	return CheckSync(obj)
 }
@@ -54,6 +57,7 @@ func (h *genericSyncHandler) buildLatestID(obj client.Object) string {
 	return obj.GetName()
 }
 
+// ToPersistedModelObject is an exported method.
 func (h *genericSyncHandler) ToPersistedModelObject(obj client.Object) (db.ResourceModel, error) {
 	rawData, err := json.Marshal(obj)
 	if err != nil {
@@ -75,6 +79,7 @@ func (h *genericSyncHandler) ToPersistedModelObject(obj client.Object) (db.Resou
 	return h.wrapBaseModel(m), nil
 }
 
+// ToPersistedLastestModelObject is an exported method.
 func (h *genericSyncHandler) ToPersistedLastestModelObject(obj client.Object) (db.ResourceModel, error) {
 	rawData, err := json.Marshal(obj)
 	if err != nil {

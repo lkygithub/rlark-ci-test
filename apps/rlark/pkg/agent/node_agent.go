@@ -10,11 +10,12 @@ import (
 )
 
 // node agent
-// 节点级别的 Agent，主要负责节点和控制面之间的通信和管理
+// 节点级别的 Agent，主要负责节点和控制面之间的通信和管理.
 type nodeAgent struct {
 	a *Agent
 }
 
+// Run runs the component.
 func (n *nodeAgent) Run(ctx context.Context) error {
 	factory := externalversions.NewSharedInformerFactoryWithOptions(
 		n.a.managementClient,
@@ -45,11 +46,16 @@ func (n *nodeAgent) Run(ctx context.Context) error {
 		managementPodLister,
 		n.a.config.RLarkServerSSHAddress,
 		n.a.config.RLarkServerSSHHostKey,
+		n.a.config.EnableSameClusterDirect,
+		n.a.config.EnableCrossClusterDirect,
 	)
 	nodeserver := nodeserver.NewNodeServer(
 		n.a.config.NodeServerConfig,
 		networkAdapter.GetContainerNetworkCred,
 		networkAdapter.GetContainerNetworkDial,
+		networkAdapter.GetContainerNetworkDomainHosts,
+		container.MarshalContainerNetworkCred,
+		container.UnmarshalContainerNetworkCred,
 	)
 
 	return nodeserver.Run(ctx)

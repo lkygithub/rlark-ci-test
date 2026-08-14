@@ -16,10 +16,12 @@ import (
 	"github.com/rlinf/rlark/apps/rlark/pkg/log"
 )
 
+// Constants used by the package.
 const (
 	ContextKeyCertMeta = "certMeta"
 )
 
+// GetCertMetaFromContext returns the certMetaFromContext.
 func GetCertMetaFromContext(ctx *gin.Context) map[string]string {
 	if meta, exists := ctx.Get(ContextKeyCertMeta); exists {
 		if certMeta, ok := meta.(map[string]string); ok {
@@ -29,6 +31,7 @@ func GetCertMetaFromContext(ctx *gin.Context) map[string]string {
 	return map[string]string{}
 }
 
+// SignRequest represents a request.
 type SignRequest struct {
 	Role     string `json:"role"`                // 证书角色，例如 "agent" 等
 	ClientID string `json:"client_id,omitempty"` // 可选的客户端 ID
@@ -36,6 +39,7 @@ type SignRequest struct {
 	KeyID    string `json:"key_id,omitempty"`    // 可选的密钥 ID
 }
 
+// SignResponse represents a response.
 type SignResponse struct {
 	CertType     string `json:"cert_type"` // 证书类型，例如 "x509" 或 "ssh"
 	SerialNumber string `json:"serial_number,omitempty"`
@@ -44,6 +48,7 @@ type SignResponse struct {
 	KeyPEM       string `json:"key_pem"`  // PEM 编码的私钥
 }
 
+// RevokeCertRequest represents a request.
 type RevokeCertRequest struct {
 	CertType     string `json:"cert_type"`                // 证书类型，例如 "x509" 或 "ssh"
 	SerialNumber string `json:"serial_number,omitempty"`  // 可选的证书序列号

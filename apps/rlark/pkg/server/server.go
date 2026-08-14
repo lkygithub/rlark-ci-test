@@ -85,6 +85,7 @@ func NewServer(config Config) *Server {
 	return s
 }
 
+// Run runs the component.
 func (s *Server) Run(ctx context.Context) error {
 	if err := s.init(ctx); err != nil {
 		return err

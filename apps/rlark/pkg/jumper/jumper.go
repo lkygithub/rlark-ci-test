@@ -280,10 +280,12 @@ func newMenuModel(ctx context.Context, resolver TargetResolver) menuModel {
 	}
 }
 
+// Init initializes the logger.
 func (m menuModel) Init() tea.Cmd {
 	return tea.Batch(m.loadTargets, m.tick())
 }
 
+// Update is an exported method.
 func (m menuModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
@@ -486,6 +488,7 @@ var (
 	errorHelpText = "r: retry  •  q: quit"
 )
 
+// View is an exported method.
 func (m menuModel) View() string {
 	switch m.selState {
 	case stateLoading:

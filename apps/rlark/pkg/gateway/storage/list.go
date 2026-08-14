@@ -10,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 )
 
+// ObjectInfo holds information.
 type ObjectInfo struct {
 	Key          string    `json:"key"`
 	Size         int64     `json:"size"`
@@ -18,6 +19,7 @@ type ObjectInfo struct {
 	ContentType  string    `json:"content_type"`
 }
 
+// ListOptions holds options.
 type ListOptions struct {
 	Prefix    string
 	MaxKeys   int
@@ -25,6 +27,7 @@ type ListOptions struct {
 	Marker    string
 }
 
+// ListResult is an exported type.
 type ListResult struct {
 	Objects        []ObjectInfo `json:"objects"`
 	CommonPrefixes []string     `json:"common_prefixes"`
@@ -33,6 +36,7 @@ type ListResult struct {
 	MaxKeys        int          `json:"max_keys"`
 }
 
+// ListObjectsWithDelimiter lists the objectsWithDelimiter.
 func (c *Client) ListObjectsWithDelimiter(options *ListOptions) (*ListResult, error) {
 	ctx := context.Background()
 	input := &s3.ListObjectsV2Input{
@@ -98,6 +102,7 @@ func (c *Client) ListObjectsWithDelimiter(options *ListOptions) (*ListResult, er
 	}, nil
 }
 
+// ListObjects lists the objects.
 func (c *Client) ListObjects(options *ListOptions) ([]ObjectInfo, error) {
 	result, err := c.ListObjectsWithDelimiter(options)
 	if err != nil {
@@ -106,10 +111,12 @@ func (c *Client) ListObjects(options *ListOptions) ([]ObjectInfo, error) {
 	return result.Objects, nil
 }
 
+// ListAllObjects lists the allObjects.
 func (c *Client) ListAllObjects() ([]ObjectInfo, error) {
 	return c.ListObjects(nil)
 }
 
+// ListObjectsByPrefix lists the objectsByPrefix.
 func (c *Client) ListObjectsByPrefix(prefix string) ([]ObjectInfo, error) {
 	options := &ListOptions{
 		Prefix: prefix,
@@ -117,6 +124,7 @@ func (c *Client) ListObjectsByPrefix(prefix string) ([]ObjectInfo, error) {
 	return c.ListObjects(options)
 }
 
+// IsObjectExist reports whether objectExist.
 func (c *Client) IsObjectExist(objectKey string) (bool, error) {
 	ctx := context.Background()
 	_, err := c.s3Client.HeadObject(ctx, &s3.HeadObjectInput{
@@ -133,7 +141,7 @@ func (c *Client) IsObjectExist(objectKey string) (bool, error) {
 	return true, nil
 }
 
-// Helper to check if error is a not-found type
+// Helper to check if error is a not-found type.
 func isNotFoundError(err error) bool {
 	if err == nil {
 		return false
@@ -143,6 +151,7 @@ func isNotFoundError(err error) bool {
 	return ok
 }
 
+// GetObjectMeta returns the objectMeta.
 func (c *Client) GetObjectMeta(objectKey string) (*ObjectInfo, error) {
 	ctx := context.Background()
 	output, err := c.s3Client.HeadObject(ctx, &s3.HeadObjectInput{
@@ -167,5 +176,5 @@ func (c *Client) GetObjectMeta(objectKey string) (*ObjectInfo, error) {
 	}, nil
 }
 
-// To suppress unused import warning
+// To suppress unused import warning.
 var _ = strconv.ParseInt

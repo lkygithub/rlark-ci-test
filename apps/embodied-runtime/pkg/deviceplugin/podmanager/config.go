@@ -6,7 +6,7 @@ import (
 )
 
 // ---------------------------------------------------------------------------
-// Config — all knobs for building a controller Pod
+// Config — all knobs for building a controller Pod.
 // ---------------------------------------------------------------------------
 
 // Config holds every configurable aspect of the controller pod. The

@@ -49,7 +49,7 @@ func podUIDFromHostsSource(mountSource string) (string, bool) {
 	return podUID, true
 }
 
-// isUUID 简单校验 UUID 格式 xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+// isUUID 简单校验 UUID 格式 xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx.
 func isUUID(s string) bool {
 	if len(s) != 36 {
 		return false

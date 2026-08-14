@@ -1,5 +1,6 @@
 package apis
 
+// SSHDirectPayload represents a payload.
 type SSHDirectPayload struct {
 	Host              string
 	Port              uint32

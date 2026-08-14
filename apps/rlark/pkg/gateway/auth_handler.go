@@ -7,11 +7,8 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/rlinf/rlark/apps/rlark/pkg/common"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-)
-
-const (
-	uiAuthSecretName = "rlark-ui-auth"
 )
 
 type loginRequest struct {
@@ -68,7 +65,7 @@ func (g *Gateway) readUIAuthSecret() (adminPW, userPW string, err error) {
 	}
 
 	ctx := context.Background()
-	secret, err := g.rawClient.CoreV1().Secrets(kcpSecretNamespace).Get(ctx, uiAuthSecretName, metav1.GetOptions{})
+	secret, err := g.rawClient.CoreV1().Secrets(common.SecretNamespace).Get(ctx, common.UIAuthSecretName, metav1.GetOptions{})
 	if err != nil {
 		return "", "", err
 	}

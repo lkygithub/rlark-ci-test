@@ -15,9 +15,10 @@ import (
 
 // pushDaemonSetReconciler watches local DaemonSets and reports status to management Task.
 type pushDaemonSetReconciler struct {
-	c *TaskController
+	c *Controller
 }
 
+// Reconcile reconciles the resource.
 func (r *pushDaemonSetReconciler) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
 	logger := log.FromContext(ctx).WithValues("daemonset", req.NamespacedName)
 

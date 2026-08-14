@@ -7,33 +7,37 @@ import (
 	"github.com/rlinf/rlark/apps/rlark/pkg/agent/controllers/base"
 )
 
-// NodeController manages node reporting from data-plane to management cluster.
-type NodeController struct {
-	base.BaseController
+// Controller manages node reporting from data-plane to management cluster.
+type Controller struct {
+	base.Controller
 }
 
-var _ base.Reconciler = (*NodeController)(nil)
+var _ base.Reconciler = (*Controller)(nil)
 
-func NewNodeController(bc base.BaseController) *NodeController {
-	nc := &NodeController{
-		BaseController: bc,
+// NewNodeController creates a new NodeController.
+func NewNodeController(bc base.Controller) *Controller {
+	nc := &Controller{
+		Controller: bc,
 	}
 	nc.C = nc
 	return nc
 }
 
-func (c *NodeController) KubernetesResource() base.KubernetesResource {
+// KubernetesResource is an exported method.
+func (c *Controller) KubernetesResource() base.KubernetesResource {
 	return base.KubernetesResource{
 		Name: "node",
 		Type: &rlarkv1alpha1.Node{},
 	}
 }
 
-func (c *NodeController) AsPullReconciler() base.KubernetesReconciler {
+// AsPullReconciler is an exported method.
+func (c *Controller) AsPullReconciler() base.KubernetesReconciler {
 	return &pullNodeReconciler{c: c}
 }
 
-func (c *NodeController) AsKubePushReconcilers() map[base.KubernetesResource]base.KubernetesReconciler {
+// AsKubePushReconcilers is an exported method.
+func (c *Controller) AsKubePushReconcilers() map[base.KubernetesResource]base.KubernetesReconciler {
 	return map[base.KubernetesResource]base.KubernetesReconciler{
 		base.KubernetesResource{
 			Name: "node-k8snode",
@@ -42,10 +46,12 @@ func (c *NodeController) AsKubePushReconcilers() map[base.KubernetesResource]bas
 	}
 }
 
-func (c *NodeController) AsDockerPushReconcilers() map[base.DockerResource]base.DockerReconciler {
+// AsDockerPushReconcilers is an exported method.
+func (c *Controller) AsDockerPushReconcilers() map[base.DockerResource]base.DockerReconciler {
 	return nil
 }
 
-func (c *NodeController) AsRawPushReconcilers() map[base.RawResource]base.RawReconciler {
+// AsRawPushReconcilers is an exported method.
+func (c *Controller) AsRawPushReconcilers() map[base.RawResource]base.RawReconciler {
 	return nil
 }

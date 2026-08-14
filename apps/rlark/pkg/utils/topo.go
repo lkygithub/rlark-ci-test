@@ -5,6 +5,7 @@ import (
 	"strings"
 )
 
+// Topo performs topological sorting.
 type Topo interface {
 	GetName() string
 	GetDependencies() []string

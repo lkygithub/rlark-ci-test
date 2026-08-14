@@ -8,6 +8,7 @@ const (
 	SyncFinalizer = "sync.rlinf.io/persist"
 )
 
+// CheckSync checks the sync.
 func CheckSync(obj client.Object) bool {
 	if anno := obj.GetAnnotations(); anno != nil {
 		if _, ok := anno["skip-sync"]; ok {

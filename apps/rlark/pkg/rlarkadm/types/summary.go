@@ -5,6 +5,7 @@ import (
 	"strings"
 )
 
+// ComponentStatus is an exported type.
 type ComponentStatus struct {
 	Name    string
 	Healthy bool
@@ -12,6 +13,7 @@ type ComponentStatus struct {
 	Address string
 }
 
+// InstallSummary summarizes results.
 type InstallSummary struct {
 	Plane               string
 	Mode                string
@@ -22,6 +24,7 @@ type InstallSummary struct {
 	UserPassword        string
 }
 
+// Print is an exported method.
 func (s *InstallSummary) Print() {
 	var b strings.Builder
 

@@ -13,7 +13,7 @@ import (
 )
 
 // ---------------------------------------------------------------------------
-// LocalManager — manages the ros-controller as a local subprocess
+// LocalManager — manages the ros-controller as a local subprocess.
 // ---------------------------------------------------------------------------
 
 // LocalManager manages the lifecycle of the ros-controller subprocess.

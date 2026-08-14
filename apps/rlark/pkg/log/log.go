@@ -42,10 +42,12 @@ func newLogger(levelStr string) logr.Logger {
 	return zapr.NewLogger(zapLogger)
 }
 
+// GetLogger returns the logger.
 func GetLogger() logr.Logger {
 	return globalLogger
 }
 
+// FromContext extracts a value from the context.
 func FromContext(ctx context.Context) logr.Logger {
 	if l, ok := ctx.Value(loggerKey{}).(logr.Logger); ok {
 		return l
@@ -53,10 +55,12 @@ func FromContext(ctx context.Context) logr.Logger {
 	return globalLogger
 }
 
+// WithLogger returns a modified value with the given logger.
 func WithLogger(ctx context.Context, l logr.Logger) context.Context {
 	return context.WithValue(ctx, loggerKey{}, l)
 }
 
+// InitLogger initializes the logger.
 func InitLogger(level string) {
 	if level == "" {
 		return

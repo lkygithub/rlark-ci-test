@@ -11,6 +11,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -19,8 +20,10 @@ import (
 
 	rlarkv1alpha1 "github.com/rlinf/rlark/api/rlark.io/v1alpha1"
 	"github.com/rlinf/rlark/apps/rlark/pkg/agent/controllers"
+	"github.com/rlinf/rlark/apps/rlark/pkg/common"
 )
 
+// Constants used by the package.
 const (
 	ManagementTaskNameAnnotation            = "rlark.io/management-task-name"
 	ManagementTaskNamespaceAnnotation       = "rlark.io/management-task-namespace"
@@ -36,9 +39,10 @@ const (
 
 // pullReconciler watches management Tasks and creates workloads on local cluster.
 type pullReconciler struct {
-	c *TaskController
+	c *Controller
 }
 
+// Reconcile reconciles the resource.
 func (r *pullReconciler) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
 	logger := log.FromContext(ctx).WithValues("task", req.NamespacedName)
 
@@ -95,6 +99,11 @@ func (r *pullReconciler) Reconcile(ctx context.Context, req reconcile.Request) (
 
 	workloadSpec := mgmtTask.Spec.Kubernetes.Workload
 	applyTemplateMutations(&workloadSpec.Template, &mgmtTask, r.c.NetworkSidecarImage)
+
+	workloadNamespace := getWorkloadNamespace(&mgmtTask)
+	if err := r.ensureImagePullSecrets(ctx, &workloadSpec.Template, workloadNamespace); err != nil {
+		logger.Error(err, "failed to ensure image pull secrets")
+	}
 
 	if err := r.ensurePVCs(ctx, &mgmtTask, workloadSpec); err != nil {
 		logger.Error(err, "failed to ensure PVCs")
@@ -461,6 +470,125 @@ func applyTemplateMutations(template *corev1.PodTemplateSpec, mgmtTask *rlarkv1a
 	ensureLabels(template, mgmtTask.Name)
 	applyNodeSelector(&template.Spec, mgmtTask.Spec.NodeSelector)
 	applyAntiAffinity(template)
+}
+
+// ensureImagePullSecrets syncs image registry secrets from the management cluster
+// to the local workload namespace and injects matching ImagePullSecrets into the template.
+func (r *pullReconciler) ensureImagePullSecrets(ctx context.Context, template *corev1.PodTemplateSpec, workloadNamespace string) error {
+	logger := log.FromContext(ctx)
+
+	// List all image registry secrets from the management cluster
+	secretList := &corev1.SecretList{}
+	if err := r.c.ManagementClient.List(ctx, secretList, &client.ListOptions{
+		LabelSelector: labels.Set{common.ImageRegistrySecretLabel: "true"}.AsSelector(),
+		Namespace:     common.SecretNamespace,
+	}); err != nil {
+		return fmt.Errorf("list image registry secrets: %w", err)
+	}
+
+	if len(secretList.Items) == 0 {
+		return nil
+	}
+
+	// Collect all image references from the template
+	imageRefs := []string{}
+	for _, c := range template.Spec.Containers {
+		if c.Image != "" {
+			imageRefs = append(imageRefs, c.Image)
+		}
+	}
+	for _, c := range template.Spec.InitContainers {
+		if c.Image != "" {
+			imageRefs = append(imageRefs, c.Image)
+		}
+	}
+
+	if len(imageRefs) == 0 {
+		return nil
+	}
+
+	// Build a map of registry prefix -> secret name
+	registryToSecret := make(map[string]string, len(secretList.Items))
+	for _, secret := range secretList.Items {
+		registry := secret.Annotations[common.ImageRegistryAnnotationRegistry]
+		if registry == "" {
+			continue
+		}
+		registryToSecret[registry] = secret.Name
+	}
+
+	// Find matching registries for our images
+	matchedSecrets := make(map[string]bool)
+	for _, image := range imageRefs {
+		for registry, secretName := range registryToSecret {
+			if strings.HasPrefix(image, registry+"/") || image == registry {
+				matchedSecrets[secretName] = true
+				break
+			}
+		}
+	}
+
+	if len(matchedSecrets) == 0 {
+		return nil
+	}
+
+	// Sync each matched secret to the local workload namespace
+	for secretName := range matchedSecrets {
+		if err := r.syncImagePullSecret(ctx, secretName, workloadNamespace); err != nil {
+			logger.Error(err, "failed to sync image pull secret", "secret", secretName, "namespace", workloadNamespace)
+			continue
+		}
+	}
+
+	// Add matched secrets to template.Spec.ImagePullSecrets (avoid duplicates)
+	existing := make(map[string]bool, len(template.Spec.ImagePullSecrets))
+	for _, ips := range template.Spec.ImagePullSecrets {
+		existing[ips.Name] = true
+	}
+	for secretName := range matchedSecrets {
+		if !existing[secretName] {
+			template.Spec.ImagePullSecrets = append(template.Spec.ImagePullSecrets, corev1.LocalObjectReference{Name: secretName})
+		}
+	}
+
+	return nil
+}
+
+// syncImagePullSecret copies a dockerconfigjson secret from the management cluster
+// to the local workload namespace.
+func (r *pullReconciler) syncImagePullSecret(ctx context.Context, secretName, destNamespace string) error {
+	logger := log.FromContext(ctx)
+
+	var srcSecret corev1.Secret
+	if err := r.c.ManagementClient.Get(ctx, types.NamespacedName{Name: secretName, Namespace: common.SecretNamespace}, &srcSecret); err != nil {
+		return fmt.Errorf("get source secret: %w", err)
+	}
+
+	var destSecret corev1.Secret
+	err := r.c.LocalKubeClient.Get(ctx, types.NamespacedName{Name: secretName, Namespace: destNamespace}, &destSecret)
+	if err == nil {
+		destSecret.Data = srcSecret.Data
+		destSecret.Type = srcSecret.Type
+		destSecret.Labels = srcSecret.Labels
+		destSecret.Annotations = srcSecret.Annotations
+		return r.c.LocalKubeClient.Update(ctx, &destSecret)
+	}
+	if !errors.IsNotFound(err) {
+		return fmt.Errorf("get local secret: %w", err)
+	}
+
+	newSecret := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        secretName,
+			Namespace:   destNamespace,
+			Labels:      srcSecret.Labels,
+			Annotations: srcSecret.Annotations,
+		},
+		Type: srcSecret.Type,
+		Data: srcSecret.Data,
+	}
+	logger.Info("syncing image pull secret to local namespace", "secret", secretName, "namespace", destNamespace)
+	return r.c.LocalKubeClient.Create(ctx, &newSecret)
 }
 
 func buildDeployment(mgmtTask *rlarkv1alpha1.Task, spec *rlarkv1alpha1.KubernetesWorkloadSpec) *appsv1.Deployment {

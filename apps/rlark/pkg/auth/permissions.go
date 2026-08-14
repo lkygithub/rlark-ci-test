@@ -9,6 +9,7 @@ import (
 
 type permissionChecker struct{}
 
+// IsAdmin reports whether admin.
 func (permissionChecker) IsAdmin(certMeta map[string]string) bool {
 	if certMeta == nil {
 		return false
@@ -16,6 +17,7 @@ func (permissionChecker) IsAdmin(certMeta map[string]string) bool {
 	return certMeta[apis.MetaPermissionAdmin] == "true"
 }
 
+// HasAgentProxyPermission reports whether agentProxyPermission exists.
 func (p permissionChecker) HasAgentProxyPermission(certMeta map[string]string, agentID string) bool {
 	if certMeta == nil {
 		return false
@@ -28,6 +30,7 @@ func (p permissionChecker) HasAgentProxyPermission(certMeta map[string]string, a
 	return slices.Contains(splitAgents, "*") || slices.Contains(splitAgents, agentID)
 }
 
+// HasDomainProxyPermission reports whether domainProxyPermission exists.
 func (p permissionChecker) HasDomainProxyPermission(certMeta map[string]string) (string, bool) {
 	if certMeta == nil {
 		return "", false
@@ -39,4 +42,5 @@ func (p permissionChecker) HasDomainProxyPermission(certMeta map[string]string) 
 	return domainID, true
 }
 
+// PermissionChecker is an exported variable.
 var PermissionChecker = &permissionChecker{}

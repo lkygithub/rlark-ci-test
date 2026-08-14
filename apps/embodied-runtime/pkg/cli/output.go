@@ -17,6 +17,7 @@ import (
 // Format represents a supported output format.
 type Format int
 
+// Supported output formats.
 const (
 	FormatTable Format = iota
 	FormatJSON

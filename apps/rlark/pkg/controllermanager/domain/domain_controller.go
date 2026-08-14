@@ -18,13 +18,13 @@ import (
 	"github.com/rlinf/rlark/apps/rlark/pkg/configs"
 )
 
-// DomainReconciler watches Domain and Pod CRs, and generates DomainPeer
+// Reconciler watches Domain and Pod CRs, and generates DomainPeer
 // (one per cluster/namespace per domain) containing the pod list.
 //
 // DomainPeer is namespaced: each cluster (represented by a namespace) has its
 // own DomainPeer per domain, named after the domain. The DomainPeer.Spec.Pods
 // field records all pods belonging to that domain in that cluster.
-type DomainReconciler struct {
+type Reconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
 
@@ -40,7 +40,7 @@ type DomainReconciler struct {
 
 // Reconcile handles a Domain reconciliation request.
 // Triggered by Domain changes or Pod CR changes (mapped to the associated domain).
-func (r *DomainReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx).WithValues("domain", req.Name)
 
 	// 1. Get Domain
@@ -65,22 +65,36 @@ func (r *DomainReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		return ctrl.Result{}, err
 	}
 
-	// 3. Generate IP Allocation Map for the domain
+	// 3. Generate IP Allocation Map for the domain.
+	// Keep the first allocation per pod key so that a pod reclaims its original
+	// IP after a restart (later duplicate records are ignored).
 	oldIPAllocMap := make(map[string]rlarkv1alpha1.DomainIPAllocation)
 	for _, ipAlloc := range domain.Status.IPAllocations {
-		oldIPAllocMap[ipAlloc.Pod] = ipAlloc
+		if _, exists := oldIPAllocMap[ipAlloc.Pod]; !exists {
+			oldIPAllocMap[ipAlloc.Pod] = ipAlloc
+		}
 	}
 
-	// 4. Group pods by namespace (each namespace = one cluster)
+	// 4. Group pods by namespace (each namespace = one cluster).
+	// Terminal pods (Succeeded/Failed) are skipped: their UID-named CRs may
+	// coexist with the recreated pod's CR, and processing both would produce
+	// duplicate entries and incorrect IP allocation.
 	podsByNamespace := make(map[string][]rlarkv1alpha1.DomainPodInfo)
 	nonAllocPodsByNamespace := make(map[string][]rlarkv1alpha1.DomainPodInfo)
+	reusedIPs := make(map[string]bool)     // IPs already reclaimed in this pass
+	reusedAlloc := make(map[string]string) // podKey -> reclaimed IP
 	for _, pod := range podList.Items {
 		if pod.Spec.Domain != domain.Name {
 			continue
 		}
+		if pod.Status.Phase == rlarkv1alpha1.PodPhaseSucceeded || pod.Status.Phase == rlarkv1alpha1.PodPhaseFailed {
+			continue
+		}
 		ns := pod.Namespace
 		podKey := ns + "/" + pod.Spec.PodNamespace + "/" + pod.Spec.PodName
-		if alloc, ok := oldIPAllocMap[podKey]; ok {
+		if alloc, ok := oldIPAllocMap[podKey]; ok && !reusedIPs[alloc.IP] {
+			reusedIPs[alloc.IP] = true
+			reusedAlloc[podKey] = alloc.IP
 			podsByNamespace[ns] = append(podsByNamespace[ns], rlarkv1alpha1.DomainPodInfo{
 				GlobalNamespace: ns,
 				Namespace:       pod.Spec.PodNamespace,
@@ -105,28 +119,39 @@ func (r *DomainReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		}
 	}
 
-	// 5. Clean up expired IP allocations (keep 128 expired IPs for potential reuse)
+	// 5. Rebuild IPAllocations: keep reused ones, drop conflicting/duplicate/expired ones
+	// (keep 128 expired IPs for potential reuse).
 	var newIPAllocations []rlarkv1alpha1.DomainIPAllocation
-	dupAllocations := make(map[string]bool)
+	seenPods := make(map[string]bool)
 	expireIPCount := len(oldIPAllocMap) - 128
 	if expireIPCount < 0 {
 		expireIPCount = 0
 	}
 	for _, ipAlloc := range domain.Status.IPAllocations {
-		if dupAllocations[ipAlloc.Pod] {
+		if seenPods[ipAlloc.Pod] {
 			continue // skip duplicate IP allocations
 		}
-		dupAllocations[ipAlloc.Pod] = true
-		if _, ok := oldIPAllocMap[ipAlloc.Pod]; ok {
-			if expireIPCount > 0 {
-				expireIPCount--
-			} else {
+		seenPods[ipAlloc.Pod] = true
+
+		if reusedIP, ok := reusedAlloc[ipAlloc.Pod]; ok {
+			// Pod was reused: keep only the allocation matching the reclaimed IP.
+			if ipAlloc.IP == reusedIP {
 				newIPAllocations = append(newIPAllocations, ipAlloc)
-				ippool.MarkAllocated(ipAlloc.IP) // prevent reallocation of retained IPs
 			}
-		} else {
-			newIPAllocations = append(newIPAllocations, ipAlloc)
+			continue
 		}
+
+		// Pod was not reused (terminal or absent). Drop if its IP was reclaimed
+		// by another pod (conflict).
+		if reusedIPs[ipAlloc.IP] {
+			continue
+		}
+		if expireIPCount > 0 {
+			expireIPCount--
+			continue
+		}
+		newIPAllocations = append(newIPAllocations, ipAlloc)
+		ippool.MarkAllocated(ipAlloc.IP) // prevent reallocation of retained IPs
 	}
 	domain.Status.IPAllocations = newIPAllocations
 
@@ -178,7 +203,7 @@ func (r *DomainReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 // SetupWithManager registers the controller with the manager.
 // It watches Domain as the primary resource and Pod as a secondary resource
 // (pod changes trigger reconciliation of the associated domain).
-func (r *DomainReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&rlarkv1alpha1.Domain{}).
 		Named("domain").
@@ -197,7 +222,7 @@ func (r *DomainReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func (r *DomainReconciler) createOrUpdateDomainPeer(
+func (r *Reconciler) createOrUpdateDomainPeer(
 	ctx context.Context, logger logr.Logger,
 	domainName, namespace string, pods []rlarkv1alpha1.DomainPodInfo,
 	signer *signer, prefixLen int,
@@ -254,7 +279,7 @@ func (r *DomainReconciler) createOrUpdateDomainPeer(
 	return nil
 }
 
-func (r *DomainReconciler) deleteDomainPeers(ctx context.Context, logger logr.Logger, domainName string) (ctrl.Result, error) {
+func (r *Reconciler) deleteDomainPeers(ctx context.Context, logger logr.Logger, domainName string) (ctrl.Result, error) {
 	var peerList rlarkv1alpha1.DomainPeerList
 	if err := r.List(ctx, &peerList); err != nil {
 		logger.Error(err, "failed to list DomainPeers")
@@ -273,7 +298,7 @@ func (r *DomainReconciler) deleteDomainPeers(ctx context.Context, logger logr.Lo
 	return ctrl.Result{}, nil
 }
 
-func (r *DomainReconciler) cleanupStaleDomainPeers(ctx context.Context, logger logr.Logger, domainName string, activeNamespaces map[string][]rlarkv1alpha1.DomainPodInfo) error {
+func (r *Reconciler) cleanupStaleDomainPeers(ctx context.Context, logger logr.Logger, domainName string, activeNamespaces map[string][]rlarkv1alpha1.DomainPodInfo) error {
 	var peerList rlarkv1alpha1.DomainPeerList
 	if err := r.List(ctx, &peerList); err != nil {
 		return err

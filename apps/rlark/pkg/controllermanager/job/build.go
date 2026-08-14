@@ -14,7 +14,7 @@ import (
 	"github.com/rlinf/rlark/apps/rlark/pkg/utils"
 )
 
-func (r *JobReconciler) resolveTaskNamespace(ctx context.Context, t *rlarkv1alpha1.JobTaskTemplate) string {
+func (r *Reconciler) resolveTaskNamespace(ctx context.Context, t *rlarkv1alpha1.JobTaskTemplate) string {
 	if len(t.NodeSelector) == 0 {
 		return "default"
 	}

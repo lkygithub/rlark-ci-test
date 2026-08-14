@@ -9,6 +9,7 @@ import (
 	rlarkv1alpha1 "github.com/rlinf/rlark/api/rlark.io/v1alpha1"
 )
 
+// Constants used by the package.
 const (
 	EventInit             = "init"
 	EventStart            = "start"

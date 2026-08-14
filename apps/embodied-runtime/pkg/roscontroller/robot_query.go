@@ -12,6 +12,8 @@ import (
 // GetRobotStatus
 // --------------------------------------------------------------------------
 
+// GetRobotStatus returns the current state and mode of the requested robot,
+// including roscore health.
 func (c *Controller) GetRobotStatus(ctx context.Context, req *pb.GetRobotStatusRequest) (*pb.GetRobotStatusResponse, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -44,6 +46,7 @@ func (c *Controller) GetRobotStatus(ctx context.Context, req *pb.GetRobotStatusR
 // ListRobots / ListModes
 // --------------------------------------------------------------------------
 
+// ListRobots returns information for all registered robots.
 func (c *Controller) ListRobots(ctx context.Context, req *pb.ListRobotsRequest) (*pb.ListRobotsResponse, error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
@@ -71,6 +74,7 @@ func (c *Controller) ListRobots(ctx context.Context, req *pb.ListRobotsRequest) 
 	return &pb.ListRobotsResponse{Robots: robots}, nil
 }
 
+// ListModes returns the modes supported by the requested robot's type.
 func (c *Controller) ListModes(ctx context.Context, req *pb.ListModesRequest) (*pb.ListModesResponse, error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
@@ -104,6 +108,8 @@ func (c *Controller) ListModes(ctx context.Context, req *pb.ListModesRequest) (*
 // GetRobotLogs
 // --------------------------------------------------------------------------
 
+// GetRobotLogs returns the trailing log lines from the robot's launch
+// process.
 func (c *Controller) GetRobotLogs(ctx context.Context, req *pb.GetRobotLogsRequest) (*pb.GetRobotLogsResponse, error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
