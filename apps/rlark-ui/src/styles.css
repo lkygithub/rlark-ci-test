@@ -362,6 +362,48 @@ button {
   flex-direction: column;
 }
 
+.platform-footer {
+  flex: 0 0 auto;
+  padding: 10px 24px 11px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  background: var(--canvas);
+  text-align: center;
+  font-size: 11px;
+  letter-spacing: 0.15px;
+}
+
+.platform-footer-links {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 11px;
+}
+
+.platform-footer-links strong {
+  color: var(--ink);
+  font-size: 12px;
+}
+
+.platform-footer-links > span {
+  color: var(--line-strong);
+}
+
+.platform-footer-links .platform-footer-maintainer {
+  color: var(--muted);
+}
+
+.platform-footer a {
+  color: var(--ink);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.platform-footer a:hover {
+  color: var(--blue);
+  text-decoration: underline;
+}
+
 .topbar {
   height: 72px;
   flex-shrink: 0;
@@ -5293,6 +5335,25 @@ tbody tr:hover {
   border-radius: 0;
 }
 
+.worker-table-scroll {
+  overflow-x: auto;
+  cursor: grab;
+  overscroll-behavior-x: contain;
+  scrollbar-gutter: stable;
+  touch-action: pan-y;
+}
+
+.worker-table-scroll.dragging {
+  cursor: grabbing;
+  user-select: none;
+}
+
+.worker-table-scroll .table-sort-button,
+.worker-table-scroll button,
+.worker-table-scroll a {
+  cursor: pointer;
+}
+
 .worker-console-table table {
   min-width: 930px;
 }
@@ -6407,20 +6468,231 @@ tbody tr:hover {
   padding: 20px 24px;
 }
 
-.terminal-modal {
-  width: 90vw;
-  max-width: 1200px;
-  height: 80vh;
-  display: flex;
-  flex-direction: column;
+.terminal-page {
+  width: 100vw;
+  height: 100vh;
+  padding: 12px;
+  box-sizing: border-box;
+  background: #101020;
 }
 
-.terminal-modal .modal-body {
+.terminal-page-panel {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid #30334d;
+  border-radius: 12px;
+  background: #1a1a2e;
+  box-shadow: 0 12px 36px rgb(0 0 0 / 25%);
+}
+
+.terminal-toolbar {
+  flex: 0 0 auto;
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 12px;
+  border-bottom: 1px solid #30334d;
+  background: #17182a;
+}
+
+.terminal-identity,
+.terminal-actions,
+.terminal-title span {
+  display: flex;
+  align-items: center;
+}
+
+.terminal-identity {
+  min-width: 0;
+  gap: 10px;
+}
+
+.terminal-app-icon {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid #3c4263;
+  border-radius: 9px;
+  color: #9dacff;
+  background: #22243b;
+}
+
+.terminal-title {
+  min-width: 0;
+}
+
+.terminal-title strong {
+  display: block;
+  overflow: hidden;
+  color: #f7f8ff;
+  font:
+    650 14px/1.35 Menlo,
+    Monaco,
+    "Courier New",
+    monospace;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.terminal-title small {
+  display: block;
+  overflow: hidden;
+  margin-bottom: 1px;
+  color: #8f96b3;
+  font-size: 10px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.terminal-title span {
+  gap: 5px;
+  margin-top: 2px;
+  color: #9da3bd;
+  font-size: 11px;
+}
+
+.terminal-worker-status {
+  border-radius: 4px;
+  padding: 1px 5px;
+  color: #d9dcf0;
+  background: #30334a;
+  font-style: normal;
+  line-height: 1.4;
+}
+
+.terminal-worker-status.running,
+.terminal-worker-status.online,
+.terminal-worker-status.succeeded {
+  color: #72e4af;
+  background: rgb(61 220 151 / 12%);
+}
+
+.terminal-worker-status.failed,
+.terminal-worker-status.offline {
+  color: #ff8797;
+  background: rgb(255 102 122 / 12%);
+}
+
+.terminal-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #f3bd45;
+}
+
+.terminal-status-dot.connected {
+  background: #3ddc97;
+}
+
+.terminal-status-dot.disconnected {
+  background: #ff667a;
+}
+
+.terminal-actions {
+  flex: 0 0 auto;
+  gap: 6px;
+}
+
+.terminal-action-button,
+.terminal-download-submit {
+  display: inline-flex;
+  height: 34px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid #3c4263;
+  border-radius: 8px;
+  color: #e7e9f5;
+  background: #22243b;
+  cursor: pointer;
+}
+
+.terminal-action-button {
+  padding: 0 11px;
+  font-size: 12px;
+}
+
+.terminal-action-button:hover,
+.terminal-action-button.active {
+  border-color: #6574dc;
+  color: #fff;
+  background: #30365d;
+}
+
+.terminal-download-bar {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid #30334d;
+  background: #151627;
+}
+
+.terminal-download-bar input {
+  min-width: 0;
+  height: 34px;
   flex: 1;
+  box-sizing: border-box;
+  border: 1px solid #3c4263;
+  border-radius: 8px;
+  outline: none;
+  padding: 0 11px;
+  color: #f1f2f8;
+  background: #1d1f34;
+  font:
+    12px Menlo,
+    Monaco,
+    "Courier New",
+    monospace;
+}
+
+.terminal-download-bar input:focus {
+  border-color: #7081f4;
+  box-shadow: 0 0 0 2px rgb(112 129 244 / 18%);
+}
+
+.terminal-download-submit {
+  min-width: 62px;
+  padding: 0 14px;
+}
+
+.terminal-download-submit:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.terminal-transfer-status {
+  flex: 0 0 auto;
+  padding: 5px 12px;
+  border-bottom: 1px solid #30334d;
+  color: #8ed0ff;
+  background: #181a2d;
+  font-size: 11px;
+}
+
+.terminal-body {
+  flex: 1;
+  min-height: 0;
   padding: 0;
   overflow: hidden;
   background: #1a1a2e;
   border-radius: 0 0 10px 10px;
+}
+
+.terminal-page-error {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  color: #f0f0fa;
+  background: #101020;
 }
 
 .terminal-container {

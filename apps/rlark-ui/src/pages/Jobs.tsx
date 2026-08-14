@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   Check,
@@ -38,7 +38,6 @@ import {
   StatusBadge,
   type SortDirection,
 } from "../components/shared";
-import { TerminalModal } from "../components/terminal";
 
 function taskResourceName(jobName: string, taskName: string) {
   return `${jobName}-${taskName.toLowerCase().replace(/\s+/g, "-")}`
@@ -577,6 +576,13 @@ export function JobDetailPage({
   const [logsError, setLogsError] = useState<string | null>(null);
   const [workerRoleFilter, setWorkerRoleFilter] = useState("All");
   const [workerPage, setWorkerPage] = useState(1);
+  const [workerSort, setWorkerSort] = useState<{
+    key: "name" | "role" | "node" | "kind" | "ip" | "createdAt" | "phase";
+    direction: SortDirection;
+  }>({ key: "name", direction: "asc" });
+  const workerTableRef = useRef<HTMLDivElement>(null);
+  const workerTableDrag = useRef({ active: false, x: 0, scrollLeft: 0 });
+  const [workerTableDragging, setWorkerTableDragging] = useState(false);
   const [logRoleFilter, setLogRoleFilter] = useState("All");
   const [logWorkerFilter, setLogWorkerFilter] = useState("All");
   const [logQuery, setLogQuery] = useState("");
@@ -772,15 +778,76 @@ export function JobDetailPage({
   const filteredWorkers = jobWorkers.filter(
     (worker) => workerRoleFilter === "All" || worker.role === workerRoleFilter,
   );
+  const toggleWorkerSort = (key: typeof workerSort.key) => {
+    setWorkerSort((current) => ({
+      key,
+      direction:
+        current.key === key && current.direction === "asc" ? "desc" : "asc",
+    }));
+    setWorkerPage(1);
+  };
+  const sortedWorkers = filteredWorkers
+    .map((worker) => ({ worker, index: jobWorkers.indexOf(worker) }))
+    .sort((left, right) => {
+      const value = ({ worker, index }: typeof left) => {
+        const pod = workerPodsByTask.get(worker.id)?.[0];
+        switch (workerSort.key) {
+          case "name":
+            return worker.name;
+          case "role":
+            return worker.role;
+          case "node":
+            return worker.node;
+          case "kind":
+            return getNodeKindLabel(worker);
+          case "ip":
+            return pod?.ip ?? "";
+          case "createdAt":
+            return formatWorkerCreatedAt(job.startedAt, index);
+          case "phase":
+            return worker.phase;
+        }
+      };
+      return compareSortValues(
+        value(left),
+        value(right),
+        workerSort.direction,
+        zh ? "zh-CN" : "en",
+      );
+    });
   const workersPerPage = 8;
   const workerPageCount = Math.max(
     1,
-    Math.ceil(filteredWorkers.length / workersPerPage),
+    Math.ceil(sortedWorkers.length / workersPerPage),
   );
-  const visibleWorkers = filteredWorkers.slice(
+  const visibleWorkers = sortedWorkers.slice(
     (workerPage - 1) * workersPerPage,
     workerPage * workersPerPage,
   );
+  const handleWorkerTablePointerDown = (
+    event: ReactPointerEvent<HTMLDivElement>,
+  ) => {
+    if (event.button !== 0 || !workerTableRef.current) return;
+    workerTableDrag.current = {
+      active: true,
+      x: event.clientX,
+      scrollLeft: workerTableRef.current.scrollLeft,
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setWorkerTableDragging(true);
+  };
+  const handleWorkerTablePointerMove = (
+    event: ReactPointerEvent<HTMLDivElement>,
+  ) => {
+    if (!workerTableDrag.current.active || !workerTableRef.current) return;
+    workerTableRef.current.scrollLeft =
+      workerTableDrag.current.scrollLeft -
+      (event.clientX - workerTableDrag.current.x);
+  };
+  const stopWorkerTableDrag = () => {
+    workerTableDrag.current.active = false;
+    setWorkerTableDragging(false);
+  };
   const logEntries = podLogs.flatMap((pod) => {
     const role =
       resourceForTask(pod.taskName)?.role ??
@@ -866,24 +933,45 @@ export function JobDetailPage({
               setWorkerPage(1);
             }}
           />
-          <div className="worker-table worker-console-table">
+          <div
+            ref={workerTableRef}
+            className={`worker-table worker-console-table worker-table-scroll${workerTableDragging ? " dragging" : ""}`}
+            onPointerDown={handleWorkerTablePointerDown}
+            onPointerMove={handleWorkerTablePointerMove}
+            onPointerUp={stopWorkerTableDrag}
+            onPointerCancel={stopWorkerTableDrag}
+          >
             <table>
               <thead>
                 <tr>
-                  <th>{zh ? "实例名称" : "Worker name"}</th>
-                  <th>{zh ? "角色" : "Role"}</th>
-                  <th>{zh ? "节点" : "Node"}</th>
-                  <th>{zh ? "节点类型" : "Node type"}</th>
-                  <th>{zh ? "实例 IP" : "Worker IP"}</th>
-                  <th>{zh ? "创建时间" : "Created"}</th>
-                  <th>{zh ? "状态" : "Status"}</th>
+                  {(
+                    [
+                      ["name", zh ? "实例名称" : "Worker name"],
+                      ["role", zh ? "角色" : "Role"],
+                      ["node", zh ? "节点" : "Node"],
+                      ["kind", zh ? "节点类型" : "Node type"],
+                      ["ip", zh ? "实例 IP" : "Worker IP"],
+                      ["createdAt", zh ? "创建时间" : "Created"],
+                      ["phase", zh ? "状态" : "Status"],
+                    ] as const
+                  ).map(([key, label]) => (
+                    <th key={key}>
+                      <SortButton
+                        label={label}
+                        active={workerSort.key === key}
+                        direction={workerSort.direction}
+                        onClick={() => toggleWorkerSort(key)}
+                      />
+                    </th>
+                  ))}
                   <th aria-label={zh ? "操作" : "Actions"} />
                 </tr>
               </thead>
               <tbody>
-                {visibleWorkers.map((worker, index) => (
+                {visibleWorkers.map(({ worker, index }) => (
                   <WorkerTableRow
                     key={worker.id}
+                    jobName={job.name}
                     worker={worker}
                     copy={c}
                     pods={workerPodsByTask.get(worker.id) ?? []}
@@ -1903,6 +1991,7 @@ function TimeSeriesCard({
 }
 
 function WorkerTableRow({
+  jobName,
   worker,
   copy: c,
   pods,
@@ -1910,6 +1999,7 @@ function WorkerTableRow({
   isHeader,
   createdAt,
 }: {
+  jobName: string;
   worker: WorkerItem;
   copy: CopyType;
   pods: PodInfo[];
@@ -1918,7 +2008,6 @@ function WorkerTableRow({
   createdAt: string;
 }) {
   const zh = c.nav.overview === "总览";
-  const [terminalOpen, setTerminalOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const sshServer = "ssh.rlark.ai";
@@ -1998,7 +2087,19 @@ function WorkerTableRow({
               <button
                 className="icon-button worker-terminal-icon"
                 disabled={!pod}
-                onClick={() => setTerminalOpen(true)}
+                onClick={() => {
+                  if (!pod) return;
+                  const params = new URLSearchParams({
+                    job: jobName,
+                    worker: pod.name,
+                    status: worker.phase,
+                  });
+                  window.open(
+                    `/terminal?${params.toString()}`,
+                    "_blank",
+                    "noopener,noreferrer",
+                  );
+                }}
                 aria-label={zh ? "打开 WebTerminal" : "Open WebTerminal"}
               >
                 <TerminalSquare size={16} />
@@ -2149,13 +2250,6 @@ function WorkerTableRow({
             </div>
           </td>
         </tr>
-      )}
-      {terminalOpen && pods.length > 0 && (
-        <TerminalModal
-          podCRName={pods[0].name}
-          podName={pods[0].podName}
-          onClose={() => setTerminalOpen(false)}
-        />
       )}
     </>
   );

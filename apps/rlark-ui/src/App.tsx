@@ -5,7 +5,8 @@ import { copy, type Lang, type Theme } from "./i18n";
 import { navItems } from "./constants";
 import type { Page } from "./types";
 import { useIsAdminPath, parseRoute } from "./utils/route";
-import { Logo, Header } from "./components/shared";
+import { Logo, Header, PlatformFooter } from "./components/shared";
+import { TerminalPage } from "./components/terminal";
 import { Overview } from "./pages/Overview";
 import { ClustersPage } from "./pages/Clusters";
 import { ClusterManagementPage } from "./pages/ClusterManagement";
@@ -29,6 +30,7 @@ type NavigateOptions = {
 
 export default function App() {
   const isAdmin = useIsAdminPath();
+  const isTerminal = window.location.pathname === "/terminal";
   const [{ page, sub }, setRoute] = useState(parseRoute);
   const [collapsed, setCollapsed] = usePersistentState(
     "rlark-sidebar-collapsed",
@@ -59,12 +61,16 @@ export default function App() {
   const pageTitle = useMemo(() => c.nav[page], [c, page]);
 
   useEffect(() => {
-    document.title = isAdmin ? "RLark 管理后台" : "RLark一站式具身平台";
+    document.title = isTerminal
+      ? "WebTerminal · RLark"
+      : isAdmin
+        ? "RLark 管理后台"
+        : "RLark具身智能云原生纳管平台";
     const favicon = document.querySelector<HTMLLinkElement>("#app-favicon");
     if (favicon) {
       favicon.href = "/favicon.png";
     }
-  }, [isAdmin]);
+  }, [isAdmin, isTerminal]);
 
   const navigate = (
     next: Page,
@@ -110,6 +116,28 @@ export default function App() {
           setUserName(name);
           setUserLoggedIn(true);
         }}
+      />
+    );
+  }
+
+  if (isTerminal) {
+    const params = new URLSearchParams(window.location.search);
+    const workerCRName = params.get("worker") ?? "";
+    const jobName = params.get("job") ?? "";
+    const workerStatus = params.get("status") ?? "";
+    if (!workerCRName) {
+      return (
+        <div className="terminal-page-error">
+          缺少 Worker 参数，无法连接终端。
+        </div>
+      );
+    }
+    return (
+      <TerminalPage
+        workerCRName={workerCRName}
+        workerName={workerCRName}
+        jobName={jobName}
+        workerStatus={workerStatus}
       />
     );
   }
@@ -303,6 +331,7 @@ export default function App() {
           />
         )}
         {page === "ssh-keys" && <SSHKeysPage copy={c} />}
+        <PlatformFooter />
       </main>
       {createOpen && (
         <CreateJobModal

@@ -1,24 +1,39 @@
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
-import { Download, TerminalSquare, Upload, X } from "lucide-react";
+import { Download, TerminalSquare, Upload } from "lucide-react";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { WebLinksAddon } from "@xterm/addon-web-links";
 import "@xterm/xterm/css/xterm.css";
 
-export function TerminalModal({
-  podCRName,
-  podName,
-  onClose,
+const workerStatusLabels: Record<string, string> = {
+  Running: "运行中",
+  Pending: "等待中",
+  Succeeded: "已完成",
+  Failed: "失败",
+  Stopped: "已停止",
+  Online: "在线",
+  Offline: "离线",
+};
+
+export function TerminalPage({
+  workerCRName,
+  workerName,
+  jobName,
+  workerStatus,
 }: {
-  podCRName: string;
-  podName: string;
-  onClose: () => void;
+  workerCRName: string;
+  workerName: string;
+  jobName: string;
+  workerStatus: string;
 }) {
   const termRef = useRef<HTMLDivElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const termRefInner = useRef<Terminal | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [transferStatus, setTransferStatus] = useState<string>("");
+  const [connectionState, setConnectionState] = useState<
+    "connecting" | "connected" | "disconnected"
+  >("connecting");
 
   useEffect(() => {
     if (!termRef.current) return;
@@ -35,10 +50,10 @@ export function TerminalModal({
     fitAddon.fit();
     termRefInner.current = term;
 
-    term.writeln(`Connecting to ${podName} ...`);
+    term.writeln(`Connecting to ${workerName} ...`);
 
     const proto = location.protocol === "https:" ? "wss:" : "ws:";
-    const wsUrl = `${proto}//${location.host}/api/v1/rlinf.io/v1alpha1/pods/${encodeURIComponent(podCRName)}/terminal`;
+    const wsUrl = `${proto}//${location.host}/api/v1/rlinf.io/v1alpha1/pods/${encodeURIComponent(workerCRName)}/terminal`;
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
     ws.binaryType = "arraybuffer";
@@ -60,6 +75,7 @@ export function TerminalModal({
     let downloadName = "";
 
     ws.onopen = () => {
+      setConnectionState("connected");
       term.writeln("\r\nConnected. Starting shell ...\r\n");
       sendResize();
     };
@@ -135,9 +151,11 @@ export function TerminalModal({
       }
     };
     ws.onerror = () => {
+      setConnectionState("disconnected");
       term.writeln("\r\n\x1b[31mWebSocket error.\x1b[0m");
     };
     ws.onclose = () => {
+      setConnectionState("disconnected");
       term.writeln("\r\n\x1b[33mConnection closed.\x1b[0m");
     };
     const encoder = new TextEncoder();
@@ -157,13 +175,7 @@ export function TerminalModal({
       term.dispose();
       termRefInner.current = null;
     };
-  }, [podCRName, podName]);
-
-  const handleClose = () => {
-    wsRef.current?.close();
-    termRefInner.current?.dispose();
-    onClose();
-  };
+  }, [workerCRName, workerName]);
 
   const handleUploadClick = () => {
     fileInputRef.current?.click();
@@ -228,84 +240,75 @@ export function TerminalModal({
   };
 
   return (
-    <div
-      className="modal-backdrop"
-      onMouseDown={(e) => e.target === e.currentTarget && handleClose()}
-    >
-      <div className="modal terminal-modal">
-        <div className="modal-head">
-          <div>
-            <span className="eyebrow">
-              <TerminalSquare size={13} />
-              WebTerminal
+    <main className="terminal-page">
+      <div className="terminal-page-panel">
+        <header className="terminal-toolbar">
+          <div className="terminal-identity">
+            <span className="terminal-app-icon">
+              <TerminalSquare size={17} />
             </span>
-            <h2>{podName}</h2>
+            <div className="terminal-title">
+              {jobName && <small>{jobName}</small>}
+              <strong>{workerName}</strong>
+              <span>
+                {workerStatus && (
+                  <em
+                    className={`terminal-worker-status ${workerStatus.toLowerCase()}`}
+                  >
+                    {workerStatusLabels[workerStatus] ?? workerStatus}
+                  </em>
+                )}
+                <i className={`terminal-status-dot ${connectionState}`} />
+                {connectionState === "connected"
+                  ? "已连接"
+                  : connectionState === "connecting"
+                    ? "连接中"
+                    : "连接已断开"}
+              </span>
+            </div>
           </div>
-          <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+          <div className="terminal-actions">
             <button
-              className="icon-button"
-              title="Upload file"
+              className="terminal-action-button"
+              title="上传文件"
               onClick={handleUploadClick}
             >
               <Upload size={16} />
+              <span>上传</span>
             </button>
             <button
-              className="icon-button"
-              title="Download file"
+              className={`terminal-action-button ${showDownloadInput ? "active" : ""}`}
+              title="下载文件"
               onClick={() => setShowDownloadInput((v) => !v)}
             >
               <Download size={16} />
-            </button>
-            <button className="icon-button" onClick={handleClose}>
-              <X size={18} />
+              <span>下载</span>
             </button>
           </div>
-        </div>
+        </header>
         {showDownloadInput && (
-          <div
-            style={{
-              display: "flex",
-              gap: 8,
-              padding: "8px 16px",
-              background: "#16162a",
-              borderBottom: "1px solid #2a2a4a",
-            }}
-          >
+          <div className="terminal-download-bar">
             <input
               type="text"
               value={dlPath}
               onChange={(e) => setDlPath(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleDownloadSubmit()}
-              placeholder="/path/to/file/in/pod"
-              style={{
-                flex: 1,
-                background: "#1a1a2e",
-                border: "1px solid #3a3a5a",
-                borderRadius: 4,
-                color: "#e0e0f0",
-                padding: "4px 8px",
-                fontSize: 13,
-              }}
+              placeholder="输入 Pod 内的文件路径，例如 /workspace/output.log"
+              autoFocus
             />
-            <button className="secondary-button" onClick={handleDownloadSubmit}>
-              Download
+            <button
+              className="terminal-download-submit"
+              onClick={handleDownloadSubmit}
+              disabled={!dlPath.trim()}
+            >
+              下载
             </button>
           </div>
         )}
         {transferStatus && (
-          <div
-            style={{
-              padding: "4px 16px",
-              background: "#1a1a2e",
-              color: "#7cc7ff",
-              fontSize: 12,
-              borderBottom: "1px solid #2a2a4a",
-            }}
-          >
-            {transferStatus}
-          </div>
+          <div className="terminal-transfer-status">{transferStatus}</div>
         )}
-        <div className="modal-body">
+        <div className="terminal-body">
           <div ref={termRef} className="terminal-container" />
           <input
             ref={fileInputRef}
@@ -315,6 +318,6 @@ export function TerminalModal({
           />
         </div>
       </div>
-    </div>
+    </main>
   );
 }
