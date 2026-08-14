@@ -17,6 +17,43 @@ import type { Phase } from "../data";
 import type { Copy, Lang, Theme } from "../i18n";
 import type { ResourceRow } from "../types";
 
+export function PlatformFooter() {
+  return (
+    <footer className="platform-footer">
+      <div className="platform-footer-links">
+        <strong>RLark Open Source</strong>
+        <span aria-hidden="true">·</span>
+        <a
+          href="https://github.com/RLinf/RLark"
+          target="_blank"
+          rel="noreferrer"
+        >
+          GitHub
+        </a>
+        <span aria-hidden="true">·</span>
+        <a
+          href="https://github.com/RLinf/RLark/wiki"
+          target="_blank"
+          rel="noreferrer"
+        >
+          Docs
+        </a>
+        <span aria-hidden="true">·</span>
+        <span className="platform-footer-maintainer">
+          Initiated &amp; Maintained by{" "}
+          <a
+            href="https://www.infinigence-ai.com/"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Infinigence AI
+          </a>
+        </span>
+      </div>
+    </footer>
+  );
+}
+
 export type SortDirection = "asc" | "desc";
 
 export function compareSortValues(

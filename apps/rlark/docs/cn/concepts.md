@@ -548,8 +548,8 @@ Web Terminal 允许用户打开任何 rlark 管理的 Pod 的终端会话，无�
 
 ### 工作原理
 
-1. 用户在 Web UI 中点击 Pod 的"终端"按钮
-2. 浏览器通过 WebSocket 连接到 Gateway 的 `GET /api/v1/rlinf.io/v1alpha1/pods/{name}/terminal`
+1. 用户在 Web UI 中点击 Pod 的“终端”按钮，会在浏览器新标签页中打开会话，因此可以同时打开多个 Pod 终端
+2. 新标签页通过 WebSocket 连接到 Gateway 的 `GET /api/v1/rlinf.io/v1alpha1/pods/{name}/terminal`
 3. Gateway 通过 Server 将 WebSocket 连接代理到 Pod 所在的 Agent
 4. Agent 打开 Pod 容器的 exec 会话，流式传输 I/O
 5. 终端会话保持到 WebSocket 关闭

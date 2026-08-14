@@ -18,7 +18,7 @@ import { StorageClassesPage, StorageClassCreatePage } from "../pages/Storage";
 import { CreateClusterPage } from "./CreateCluster";
 import { AddonsPage } from "./Addons";
 import { AdminPage } from "./AdminPage";
-import { Header, Logo } from "../components/shared";
+import { Header, Logo, PlatformFooter } from "../components/shared";
 import { useBackendMode, usePersistentState } from "../hooks";
 import { SSHKeysPage } from "../pages/SSHKeys";
 import {
@@ -508,6 +508,7 @@ export function AdminApp() {
             onCreate={() => navigate("image-registries", "create")}
           />
         )}
+        <PlatformFooter />
       </main>
     </div>
   );

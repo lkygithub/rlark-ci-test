@@ -548,8 +548,8 @@ Browser ──WebSocket──▶ Gateway ──proxy via Server──▶ Agent �
 
 ### How it works
 
-1. User clicks "Terminal" on a Pod in the Web UI
-2. Browser establishes a WebSocket connection to Gateway at `GET /api/v1/rlinf.io/v1alpha1/pods/{name}/terminal`
+1. User clicks "Terminal" on a Pod in the Web UI, opening the session in a new browser tab. Multiple Pods can therefore have active terminal tabs at the same time.
+2. The new tab establishes a WebSocket connection to Gateway at `GET /api/v1/rlinf.io/v1alpha1/pods/{name}/terminal`
 3. Gateway proxies the WebSocket connection through Server to the Pod's Agent
 4. Agent opens an exec session into the Pod's container and streams I/O
 5. The terminal session persists until the WebSocket is closed
