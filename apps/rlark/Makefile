@@ -8,7 +8,15 @@ GO_BASE_IMAGE   ?= golang:1.26-alpine
 RUNTIME_BASE_IMAGE ?= ubuntu:22.04
 GOOS    ?= linux
 GOARCH  ?= amd64
-LDFLAGS := -s -w
+
+# Build-time version injection
+VERSION    ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
+COMMIT     ?= $(shell git rev-parse HEAD 2>/dev/null || echo "unknown")
+BUILD_TIME ?= $(shell date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || echo "unknown")
+LDFLAGS    := -s -w \
+	-X github.com/rlinf/rlark/apps/rlark/pkg/version.Version=$(VERSION) \
+	-X github.com/rlinf/rlark/apps/rlark/pkg/version.Commit=$(COMMIT) \
+	-X github.com/rlinf/rlark/apps/rlark/pkg/version.BuildTime=$(BUILD_TIME)
 
 SERVER_BIN            := server
 CONTROLLER_MANAGER_BIN := controller-manager

@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/rlinf/rlark/apps/rlark/pkg/gateway"
+	"github.com/rlinf/rlark/apps/rlark/pkg/version"
 )
 
 func init() {
@@ -16,8 +17,9 @@ func init() {
 func main() {
 	config := gateway.DefaultConfig()
 	cmd := &cobra.Command{
-		Use:   "rlark-gateway",
-		Short: "Start the rlark API gateway",
+		Use:     "rlark-gateway",
+		Short:   "Start the rlark API gateway",
+		Version: version.String(),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			gw := gateway.NewGateway(config)
 			return gw.Run(cmd.Context())
