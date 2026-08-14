@@ -10,6 +10,12 @@ import {
   Info,
 } from "lucide-react";
 import type { Copy } from "../i18n";
+import { formatChinaDateTime } from "../utils/time";
+import {
+  compareSortValues,
+  SortButton,
+  type SortDirection,
+} from "../components/shared";
 
 interface SSHKeyItem {
   index: number;
@@ -31,6 +37,24 @@ export function SSHKeysPage({ copy: c }: { copy: Copy }) {
   const [adding, setAdding] = useState(false);
   const [copied, setCopied] = useState(false);
   const [copiedKey, setCopiedKey] = useState("");
+  const [sort, setSort] = useState<{
+    key: "user" | "public_key" | "added_at";
+    direction: SortDirection;
+  }>({ key: "added_at", direction: "desc" });
+  const toggleSort = (key: typeof sort.key) =>
+    setSort((current) => ({
+      key,
+      direction:
+        current.key === key && current.direction === "asc" ? "desc" : "asc",
+    }));
+  const sortedKeys = [...keys].sort((a, b) =>
+    compareSortValues(
+      a[sort.key],
+      b[sort.key],
+      sort.direction,
+      zh ? "zh-CN" : "en",
+    ),
+  );
 
   const fetchKeys = async () => {
     setLoading(true);
@@ -345,14 +369,35 @@ export function SSHKeysPage({ copy: c }: { copy: Copy }) {
           <table>
             <thead>
               <tr>
-                <th>{zh ? "用户" : "User"}</th>
-                <th>{zh ? "公钥" : "Public Key"}</th>
-                <th>{zh ? "添加时间" : "Added"}</th>
+                <th>
+                  <SortButton
+                    label={zh ? "用户" : "User"}
+                    active={sort.key === "user"}
+                    direction={sort.direction}
+                    onClick={() => toggleSort("user")}
+                  />
+                </th>
+                <th>
+                  <SortButton
+                    label={zh ? "公钥" : "Public Key"}
+                    active={sort.key === "public_key"}
+                    direction={sort.direction}
+                    onClick={() => toggleSort("public_key")}
+                  />
+                </th>
+                <th>
+                  <SortButton
+                    label={zh ? "添加时间" : "Added"}
+                    active={sort.key === "added_at"}
+                    direction={sort.direction}
+                    onClick={() => toggleSort("added_at")}
+                  />
+                </th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
-              {keys.map((k) => {
+              {sortedKeys.map((k) => {
                 const keyId = `${k.user}-${k.index}`;
                 const isCopied = copiedKey === keyId;
                 return (
@@ -398,7 +443,7 @@ export function SSHKeysPage({ copy: c }: { copy: Copy }) {
                         </button>
                       </div>
                     </td>
-                    <td className="muted">{k.added_at || "—"}</td>
+                    <td className="muted">{formatChinaDateTime(k.added_at)}</td>
                     <td>
                       <button
                         className="icon-button danger"

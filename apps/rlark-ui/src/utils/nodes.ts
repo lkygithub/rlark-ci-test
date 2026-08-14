@@ -11,6 +11,120 @@ export function getNodeCategory(node: CRDNode): NodeCategory {
   return "unknown";
 }
 
+export function getNodeLocation(node: CRDNode): string {
+  const raw = node.metadata.annotations?.["rlark.io/ip-location"];
+  if (raw) {
+    try {
+      const location = JSON.parse(raw) as {
+        city?: string;
+        province?: string;
+        country?: string;
+      };
+      const parts = [location.province, location.city].filter(
+        (value, index, values): value is string =>
+          Boolean(value) && values.indexOf(value) === index,
+      );
+      if (parts.length > 0) return parts.join(" · ");
+      if (location.country) return location.country;
+    } catch {
+      // Fall back to the legacy city label below.
+    }
+  }
+  return node.metadata.labels?.["rlark.io/city"] ?? "";
+}
+
+function resourceNumber(value?: string): number {
+  const parsed = Number.parseFloat(value ?? "0");
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function formatResourceNumber(value: number): string {
+  return Number.isInteger(value) ? String(value) : value.toFixed(1);
+}
+
+export function getNodeResourceSummary(
+  node: CRDNode,
+  zh: boolean,
+): { primary: string; secondary: string } {
+  const category = getNodeCategory(node);
+  const capacity = node.status?.capacity ?? node.status?.allocatable ?? {};
+  const allocatable = node.status?.allocatable ?? capacity;
+  const used = node.status?.used ?? {};
+  const model = node.metadata.labels?.["rlark.io/model"] ?? "";
+
+  if (category === "cloud") {
+    const total = resourceNumber(capacity["nvidia.com/gpu"]);
+    const hasUsage = Object.prototype.hasOwnProperty.call(
+      used,
+      "nvidia.com/gpu",
+    );
+    const available = Math.max(
+      0,
+      resourceNumber(allocatable["nvidia.com/gpu"]) -
+        resourceNumber(used["nvidia.com/gpu"]),
+    );
+    return {
+      primary:
+        total > 0
+          ? hasUsage
+            ? `${formatResourceNumber(total)} GPU · ${zh ? "空闲" : "free"} ${formatResourceNumber(available)}`
+            : `${formatResourceNumber(total)} GPU · ${zh ? `可分配 ${formatResourceNumber(resourceNumber(allocatable["nvidia.com/gpu"]))}` : `allocatable ${formatResourceNumber(resourceNumber(allocatable["nvidia.com/gpu"]))}`}`
+          : zh
+            ? "暂无 GPU"
+            : "No GPU",
+      secondary: model || "—",
+    };
+  }
+
+  if (category === "edge" || category === "robot") {
+    const resourceKeys = Array.from(
+      new Set([
+        ...Object.keys(capacity),
+        ...Object.keys(allocatable),
+        ...Object.keys(used),
+      ]),
+    ).filter(
+      (key) => key === "rlinf.io/device" || key.startsWith("rlinf.io/device-"),
+    );
+    const total = resourceKeys.reduce(
+      (sum, key) => sum + resourceNumber(capacity[key] ?? allocatable[key]),
+      0,
+    );
+    const available = Math.max(
+      0,
+      resourceKeys.reduce(
+        (sum, key) =>
+          sum +
+          Math.max(
+            0,
+            resourceNumber(allocatable[key] ?? capacity[key]) -
+              resourceNumber(used[key]),
+          ),
+        0,
+      ),
+    );
+    const hasUsage = resourceKeys.some((key) =>
+      Object.prototype.hasOwnProperty.call(used, key),
+    );
+    const resourceModels = resourceKeys
+      .map((key) => key.replace(/^rlinf\.io\/device-?/, ""))
+      .filter(Boolean);
+    return {
+      primary:
+        total > 0
+          ? hasUsage
+            ? `${formatResourceNumber(total)} ${zh ? "台设备" : "devices"} · ${zh ? "空闲" : "free"} ${formatResourceNumber(available)}`
+            : `${formatResourceNumber(total)} ${zh ? "台设备" : "devices"} · ${zh ? "空闲未知" : "free unknown"}`
+          : zh
+            ? "暂无设备"
+            : "No devices",
+      secondary: model || resourceModels.join(" / ") || "—",
+    };
+  }
+
+  return { primary: zh ? "暂无资源" : "No resources", secondary: model || "—" };
+}
+
 export const categoryLabels: Record<
   NodeCategory,
   { zh: string; en: string; icon: typeof CloudCog }
@@ -58,6 +172,9 @@ export function buildMockCRDNodes(): CRDNode[] {
               }
             : {}),
         },
+        annotations: {
+          "rlark.io/ip-location": JSON.stringify({ city }),
+        },
         creationTimestamp: "2026-06-29T10:00:00Z",
       },
       spec: {
@@ -83,16 +200,34 @@ export function buildMockCRDNodes(): CRDNode[] {
           cpu: "16",
           memory: "64Gi",
           "nvidia.com/gpu": node.gpu.split(" / ")[1] ?? "0",
+          ...(node.kind !== "CloudCompute"
+            ? {
+                [`rlinf.io/device-${node.model.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`]:
+                  "1",
+              }
+            : {}),
         },
         capacity: {
           cpu: "16",
           memory: "64Gi",
           "nvidia.com/gpu": node.gpu.split(" / ")[1] ?? "0",
+          ...(node.kind !== "CloudCompute"
+            ? {
+                [`rlinf.io/device-${node.model.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`]:
+                  "1",
+              }
+            : {}),
         },
         used: {
           cpu: `${node.cpu}%`,
           memory: `${node.memory}%`,
           "nvidia.com/gpu": node.gpu.split(" / ")[0] ?? "0",
+          ...(node.kind !== "CloudCompute"
+            ? {
+                [`rlinf.io/device-${node.model.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`]:
+                  node.tasks > 0 ? "1" : "0",
+              }
+            : {}),
         },
       },
     };

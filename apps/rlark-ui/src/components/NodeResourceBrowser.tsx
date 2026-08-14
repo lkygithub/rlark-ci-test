@@ -3,8 +3,20 @@ import { ChevronRight, LayoutGrid } from "lucide-react";
 import type { Phase } from "../data";
 import type { Copy } from "../i18n";
 import type { CRDNode, NodeCategory } from "../types";
-import { categoryLabels, getNodeCategory } from "../utils/nodes";
-import { PageToolbar, Pagination, StatusBadge } from "./shared";
+import {
+  categoryLabels,
+  getNodeCategory,
+  getNodeLocation,
+  getNodeResourceSummary,
+} from "../utils/nodes";
+import {
+  compareSortValues,
+  PageToolbar,
+  Pagination,
+  SortButton,
+  StatusBadge,
+  type SortDirection,
+} from "./shared";
 
 type CategoryFilter = "all" | NodeCategory;
 
@@ -31,6 +43,24 @@ export function NodeResourceBrowser({
   const [phaseFilter, setPhaseFilter] = useState<"All" | Phase>("All");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
+  const [sort, setSort] = useState<{
+    key:
+      | "name"
+      | "type"
+      | "phase"
+      | "cluster"
+      | "location"
+      | "ip"
+      | "resource"
+      | "task";
+    direction: SortDirection;
+  }>({ key: "cluster", direction: "asc" });
+  const toggleSort = (key: typeof sort.key) =>
+    setSort((current) => ({
+      key,
+      direction:
+        current.key === key && current.direction === "asc" ? "desc" : "asc",
+    }));
 
   const categoryCounts = useMemo(() => {
     const counts: Record<CategoryFilter, number> = {
@@ -46,28 +76,69 @@ export function NodeResourceBrowser({
 
   const filteredNodes = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
-    return nodes.filter((node) => {
-      const labels = node.metadata.labels ?? {};
-      const address =
-        node.status?.addresses?.find((item) => item.type === "InternalIP")
-          ?.address ??
-        node.status?.addresses?.[0]?.address ??
-        "";
-      const taskName =
-        labels["rlark.io/embodied-task-name"] ??
-        labels["rlark.io/task-name"] ??
-        "";
-      const city = labels["rlark.io/city"] ?? "";
-      const searchable =
-        `${node.metadata.name} ${node.metadata.namespace ?? ""} ${node.spec.agentType ?? ""} ${address} ${taskName} ${city}`.toLowerCase();
-      const phase = (node.status?.phase ?? "Offline") as Phase;
-      return (
-        (category === "all" || getNodeCategory(node) === category) &&
-        (phaseFilter === "All" || phase === phaseFilter) &&
-        (!normalizedQuery || searchable.includes(normalizedQuery))
-      );
-    });
-  }, [category, nodes, phaseFilter, query]);
+    return nodes
+      .filter((node) => {
+        const labels = node.metadata.labels ?? {};
+        const address =
+          node.status?.addresses?.find((item) => item.type === "InternalIP")
+            ?.address ??
+          node.status?.addresses?.[0]?.address ??
+          "";
+        const taskName =
+          labels["rlark.io/embodied-task-name"] ??
+          labels["rlark.io/task-name"] ??
+          "";
+        const location = getNodeLocation(node);
+        const searchable =
+          `${node.metadata.name} ${node.metadata.namespace ?? ""} ${node.spec.agentType ?? ""} ${address} ${taskName} ${location}`.toLowerCase();
+        const phase = (node.status?.phase ?? "Offline") as Phase;
+        return (
+          (category === "all" || getNodeCategory(node) === category) &&
+          (phaseFilter === "All" || phase === phaseFilter) &&
+          (!normalizedQuery || searchable.includes(normalizedQuery))
+        );
+      })
+      .sort((a, b) => {
+        const value = (node: CRDNode): string | number => {
+          const labels = node.metadata.labels ?? {};
+          const address =
+            node.status?.addresses?.find((item) => item.type === "InternalIP")
+              ?.address ??
+            node.status?.addresses?.[0]?.address ??
+            "";
+          const task =
+            labels["rlark.io/embodied-task-name"] ??
+            labels["rlark.io/task-name"] ??
+            "";
+          if (sort.key === "name") return node.metadata.name;
+          if (sort.key === "type") return getNodeCategory(node);
+          if (sort.key === "phase") return node.status?.phase ?? "Offline";
+          if (sort.key === "cluster")
+            return (
+              node.metadata.namespace ?? labels["rlark.io/cluster-id"] ?? ""
+            );
+          if (sort.key === "location") return getNodeLocation(node);
+          if (sort.key === "ip") return address;
+          if (sort.key === "resource")
+            return (
+              Number.parseFloat(getNodeResourceSummary(node, zh).primary) || 0
+            );
+          return task;
+        };
+        const order = compareSortValues(
+          value(a),
+          value(b),
+          sort.direction,
+          zh ? "zh-CN" : "en",
+        );
+        return (
+          order ||
+          a.metadata.name.localeCompare(b.metadata.name, zh ? "zh-CN" : "en", {
+            numeric: true,
+          })
+        );
+      });
+  }, [category, nodes, phaseFilter, query, sort, zh]);
 
   const totalPages = Math.max(1, Math.ceil(filteredNodes.length / pageSize));
   const currentPage = Math.min(page, totalPages);
@@ -158,13 +229,54 @@ export function NodeResourceBrowser({
         </div>
         <div className="node-resource-table">
           <div className="node-resource-table-head">
-            <span>{zh ? "节点名称" : "Node"}</span>
-            <span>{zh ? "类型" : "Type"}</span>
-            <span>{zh ? "状态" : "Status"}</span>
-            <span>{zh ? "所属集群" : "Cluster"}</span>
-            <span>{zh ? "节点 IP" : "Node IP"}</span>
-            <span>{zh ? "具身任务" : "Embodied task"}</span>
-            <span>{zh ? "任务名称" : "Task name"}</span>
+            <SortButton
+              label={zh ? "节点名称" : "Node"}
+              active={sort.key === "name"}
+              direction={sort.direction}
+              onClick={() => toggleSort("name")}
+            />
+            <SortButton
+              label={zh ? "类型" : "Type"}
+              active={sort.key === "type"}
+              direction={sort.direction}
+              onClick={() => toggleSort("type")}
+            />
+            <SortButton
+              label={zh ? "状态" : "Status"}
+              active={sort.key === "phase"}
+              direction={sort.direction}
+              onClick={() => toggleSort("phase")}
+            />
+            <SortButton
+              label={zh ? "所属集群" : "Cluster"}
+              active={sort.key === "cluster"}
+              direction={sort.direction}
+              onClick={() => toggleSort("cluster")}
+            />
+            <SortButton
+              label={zh ? "物理位置" : "Location"}
+              active={sort.key === "location"}
+              direction={sort.direction}
+              onClick={() => toggleSort("location")}
+            />
+            <SortButton
+              label={zh ? "节点 IP" : "Node IP"}
+              active={sort.key === "ip"}
+              direction={sort.direction}
+              onClick={() => toggleSort("ip")}
+            />
+            <SortButton
+              label={zh ? "资源与空闲" : "Resources"}
+              active={sort.key === "resource"}
+              direction={sort.direction}
+              onClick={() => toggleSort("resource")}
+            />
+            <SortButton
+              label={zh ? "任务" : "Task"}
+              active={sort.key === "task"}
+              direction={sort.direction}
+              onClick={() => toggleSort("task")}
+            />
             <span />
           </div>
           <div className="node-resource-table-body">
@@ -189,6 +301,8 @@ export function NodeResourceBrowser({
               const hasEmbodiedTask =
                 labels["rlark.io/embodied-task"] === "true" ||
                 Boolean(taskName);
+              const location = getNodeLocation(node) || "—";
+              const resource = getNodeResourceSummary(node, zh);
               return (
                 <button
                   type="button"
@@ -215,20 +329,22 @@ export function NodeResourceBrowser({
                   <span className="node-row-meta" title={cluster}>
                     {cluster}
                   </span>
+                  <span className="node-row-location" title={location}>
+                    {location}
+                  </span>
                   <code className="node-row-ip">{address}</code>
                   <span
-                    className={`embodied-task-state ${hasEmbodiedTask ? "active" : "idle"}`}
+                    className="node-row-resource"
+                    title={`${resource.primary} ${resource.secondary}`}
                   >
-                    {hasEmbodiedTask
-                      ? zh
-                        ? "运行中"
-                        : "Running"
-                      : zh
-                        ? "无"
-                        : "None"}
+                    <strong>{resource.primary}</strong>
+                    <small>{resource.secondary}</small>
                   </span>
                   <span className="node-row-task" title={taskName}>
-                    {taskName || "—"}
+                    <i
+                      className={`embodied-task-dot ${hasEmbodiedTask ? "active" : "idle"}`}
+                    />
+                    {taskName || (zh ? "无" : "None")}
                   </span>
                   <ChevronRight size={15} className="node-row-chevron" />
                 </button>

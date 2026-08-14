@@ -13,7 +13,14 @@ import type { Copy } from "../i18n";
 import type { ClusterSummary, CRDNode, NodeCategory } from "../types";
 import { useAutoRefresh } from "../hooks";
 import { getNodeCategory } from "../utils/nodes";
-import { MetricCard, PageToolbar, Pagination } from "../components/shared";
+import {
+  compareSortValues,
+  MetricCard,
+  PageToolbar,
+  Pagination,
+  SortButton,
+  type SortDirection,
+} from "../components/shared";
 import { NodeResourceBrowser } from "../components/NodeResourceBrowser";
 
 type ClusterPhaseFilter = "All" | "Online" | "Degraded" | "Offline";
@@ -178,6 +185,23 @@ export function ClusterManagementPage({
   const [phaseFilter, setPhaseFilter] = useState<ClusterPhaseFilter>("All");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
+  const [sort, setSort] = useState<{
+    key:
+      | "name"
+      | "type"
+      | "totalNodes"
+      | "onlineNodes"
+      | "offlineNodes"
+      | "rate"
+      | "phase";
+    direction: SortDirection;
+  }>({ key: "name", direction: "asc" });
+  const toggleSort = (key: typeof sort.key) =>
+    setSort((current) => ({
+      key,
+      direction:
+        current.key === key && current.direction === "asc" ? "desc" : "asc",
+    }));
 
   const fetchClusters = async (isInitial = true) => {
     if (isInitial) setLoading(true);
@@ -247,15 +271,30 @@ export function ClusterManagementPage({
 
   const filteredClusters = useMemo(() => {
     const normalized = query.trim().toLowerCase();
-    return clusters.filter((cluster) => {
-      const searchable =
-        `${cluster.name} ${cluster.id} ${cluster.type} ${cluster.region} ${cluster.location}`.toLowerCase();
-      return (
-        (!normalized || searchable.includes(normalized)) &&
-        (phaseFilter === "All" || cluster.phase === phaseFilter)
-      );
-    });
-  }, [clusters, phaseFilter, query]);
+    return clusters
+      .filter((cluster) => {
+        const searchable =
+          `${cluster.name} ${cluster.id} ${cluster.type} ${cluster.region} ${cluster.location}`.toLowerCase();
+        return (
+          (!normalized || searchable.includes(normalized)) &&
+          (phaseFilter === "All" || cluster.phase === phaseFilter)
+        );
+      })
+      .sort((a, b) => {
+        const value = (cluster: ClusterSummary) =>
+          sort.key === "rate"
+            ? cluster.totalNodes
+              ? cluster.onlineNodes / cluster.totalNodes
+              : 0
+            : cluster[sort.key];
+        return compareSortValues(
+          value(a),
+          value(b),
+          sort.direction,
+          zh ? "zh-CN" : "en",
+        );
+      });
+  }, [clusters, phaseFilter, query, sort, zh]);
 
   const totalPages = Math.max(1, Math.ceil(filteredClusters.length / pageSize));
   const currentPage = Math.min(page, totalPages);
@@ -289,9 +328,6 @@ export function ClusterManagementPage({
               {zh ? "集群详情" : "Cluster detail"}
             </span>
           </div>
-          <button className="secondary-button" onClick={() => fetchClusters()}>
-            <RefreshCw size={16} /> {c.common.refresh}
-          </button>
         </div>
 
         <section className="panel cluster-detail-hero">
@@ -451,13 +487,48 @@ export function ClusterManagementPage({
       />
       <section className="panel cluster-management-table-panel">
         <div className="cluster-management-table-head">
-          <span>{zh ? "集群名称" : "Cluster"}</span>
-          <span>{zh ? "类型" : "Type"}</span>
-          <span>{zh ? "节点数" : "Nodes"}</span>
-          <span>{zh ? "在线" : "Online"}</span>
-          <span>{zh ? "离线" : "Offline"}</span>
-          <span>{zh ? "在线率" : "Rate"}</span>
-          <span>{zh ? "状态" : "Status"}</span>
+          <SortButton
+            label={zh ? "集群名称" : "Cluster"}
+            active={sort.key === "name"}
+            direction={sort.direction}
+            onClick={() => toggleSort("name")}
+          />
+          <SortButton
+            label={zh ? "类型" : "Type"}
+            active={sort.key === "type"}
+            direction={sort.direction}
+            onClick={() => toggleSort("type")}
+          />
+          <SortButton
+            label={zh ? "节点数" : "Nodes"}
+            active={sort.key === "totalNodes"}
+            direction={sort.direction}
+            onClick={() => toggleSort("totalNodes")}
+          />
+          <SortButton
+            label={zh ? "在线" : "Online"}
+            active={sort.key === "onlineNodes"}
+            direction={sort.direction}
+            onClick={() => toggleSort("onlineNodes")}
+          />
+          <SortButton
+            label={zh ? "离线" : "Offline"}
+            active={sort.key === "offlineNodes"}
+            direction={sort.direction}
+            onClick={() => toggleSort("offlineNodes")}
+          />
+          <SortButton
+            label={zh ? "在线率" : "Rate"}
+            active={sort.key === "rate"}
+            direction={sort.direction}
+            onClick={() => toggleSort("rate")}
+          />
+          <SortButton
+            label={zh ? "状态" : "Status"}
+            active={sort.key === "phase"}
+            direction={sort.direction}
+            onClick={() => toggleSort("phase")}
+          />
           <span />
         </div>
         <div className="cluster-management-table-body">

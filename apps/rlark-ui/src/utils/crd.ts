@@ -7,15 +7,17 @@ export function crdToJob(crd: CRDJob): Job {
     tasks[0]?.kubernetes?.workload?.template.spec.containers?.[0];
   const phase = (crd.status?.phase ?? "Pending") as Phase;
   const allTaskStatuses = crd.status?.tasks ?? [];
-  const totalReplicas = tasks.reduce(
-    (sum, t) => sum + (t.kubernetes?.workload?.replicas ?? 1),
-    0,
-  );
   const runningTasks = allTaskStatuses.filter(
     (t) => t.phase === "Running",
   ).length;
   const headerTask = tasks.find((t) => t.head) ?? tasks[0];
   const roles = tasks.map((t) => t.name);
+  const roleCount = new Set(tasks.map((task) => task.role).filter(Boolean))
+    .size;
+  const displayName =
+    crd.metadata.annotations?.["rlark.io/display-name"] ??
+    crd.metadata.labels?.["rlark.io/display-name"] ??
+    crd.metadata.name;
   const resources = tasks.map((t) => {
     const c = t.kubernetes?.workload?.template.spec.containers?.[0];
     const res = c?.resources?.requests ?? {};
@@ -106,6 +108,7 @@ export function crdToJob(crd: CRDJob): Job {
   return {
     id: crd.metadata.name,
     name: crd.metadata.name,
+    displayName,
     type: mapRoleToJobType(tasks),
     phase,
     owner: "",
@@ -117,6 +120,9 @@ export function crdToJob(crd: CRDJob): Job {
     workers: tasks.length,
     runningWorkers: runningTasks,
     startedAt: crd.metadata.creationTimestamp ?? "—",
+    submittedAt: crd.metadata.creationTimestamp ?? "—",
+    stoppedAt: crd.status?.endTime ?? "—",
+    roleCount,
     duration: "—",
     progress:
       phase === "Succeeded"

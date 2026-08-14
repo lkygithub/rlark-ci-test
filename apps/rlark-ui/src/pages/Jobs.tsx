@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   Check,
   ChevronRight,
@@ -29,7 +29,15 @@ import type { Copy as CopyType } from "../i18n";
 import type { CRDJob } from "../types";
 import { useAutoRefresh } from "../hooks";
 import { crdToJob } from "../utils/crd";
-import { PageToolbar, Pagination, StatusBadge } from "../components/shared";
+import { formatChinaDateTime } from "../utils/time";
+import {
+  compareSortValues,
+  PageToolbar,
+  Pagination,
+  SortButton,
+  StatusBadge,
+  type SortDirection,
+} from "../components/shared";
 import { TerminalModal } from "../components/terminal";
 
 function taskResourceName(jobName: string, taskName: string) {
@@ -53,7 +61,9 @@ async function copyText(value: string) {
   textarea.style.position = "fixed";
   textarea.style.opacity = "0";
   document.body.appendChild(textarea);
+  textarea.focus({ preventScroll: true });
   textarea.select();
+  textarea.setSelectionRange(0, value.length);
   const copied = document.execCommand("copy");
   textarea.remove();
   return copied;
@@ -84,6 +94,23 @@ export function JobsPage({
   const [error, setError] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
+  const [sort, setSort] = useState<{
+    key:
+      | "id"
+      | "type"
+      | "phase"
+      | "workers"
+      | "roleCount"
+      | "submittedAt"
+      | "stoppedAt";
+    direction: SortDirection;
+  }>({ key: "submittedAt", direction: "desc" });
+  const toggleSort = (key: typeof sort.key) =>
+    setSort((current) => ({
+      key,
+      direction:
+        current.key === key && current.direction === "asc" ? "desc" : "asc",
+    }));
 
   const fetchJobs = async (isInitial = true) => {
     if (isInitial) setLoading(true);
@@ -141,15 +168,31 @@ export function JobsPage({
 
   const allJobs = realJobs;
   const filtered = allJobs.filter((j) => {
-    const queryHit = `${j.name} ${j.type} ${j.target}`
+    const queryHit = `${j.id} ${j.displayName} ${j.type}`
       .toLowerCase()
       .includes(query.toLowerCase());
     const phaseHit = phaseFilter === "All" || j.phase === phaseFilter;
     return queryHit && phaseHit;
   });
-  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const sortedJobs = useMemo(
+    () =>
+      [...filtered].sort((a, b) => {
+        const value = (job: Job) => {
+          if (sort.key === "workers") return job.progress;
+          return job[sort.key];
+        };
+        return compareSortValues(
+          value(a),
+          value(b),
+          sort.direction,
+          zh ? "zh-CN" : "en",
+        );
+      }),
+    [filtered, sort, zh],
+  );
+  const totalPages = Math.max(1, Math.ceil(sortedJobs.length / pageSize));
   const currentPage = Math.min(page, totalPages);
-  const pagedJobs = filtered.slice(
+  const pagedJobs = sortedJobs.slice(
     (currentPage - 1) * pageSize,
     currentPage * pageSize,
   );
@@ -216,13 +259,62 @@ export function JobsPage({
         <table>
           <thead>
             <tr>
-              <th>{zh ? "任务名称" : "Name"}</th>
-              <th>{zh ? "任务类型" : "Type"}</th>
-              <th>{zh ? "状态" : "Status"}</th>
-              <th>Worker</th>
-              <th>Header</th>
-              <th>{zh ? "集群/目标" : "Target"}</th>
-              <th>{zh ? "耗时" : "Duration"}</th>
+              <th>
+                <SortButton
+                  label={zh ? "任务 ID" : "Job ID"}
+                  active={sort.key === "id"}
+                  direction={sort.direction}
+                  onClick={() => toggleSort("id")}
+                />
+              </th>
+              <th>
+                <SortButton
+                  label={zh ? "任务类型" : "Type"}
+                  active={sort.key === "type"}
+                  direction={sort.direction}
+                  onClick={() => toggleSort("type")}
+                />
+              </th>
+              <th>
+                <SortButton
+                  label={zh ? "状态" : "Status"}
+                  active={sort.key === "phase"}
+                  direction={sort.direction}
+                  onClick={() => toggleSort("phase")}
+                />
+              </th>
+              <th>
+                <SortButton
+                  label="Worker"
+                  active={sort.key === "workers"}
+                  direction={sort.direction}
+                  onClick={() => toggleSort("workers")}
+                />
+              </th>
+              <th>
+                <SortButton
+                  label={zh ? "角色数量" : "Roles"}
+                  active={sort.key === "roleCount"}
+                  direction={sort.direction}
+                  onClick={() => toggleSort("roleCount")}
+                />
+              </th>
+              <th>
+                <SortButton
+                  label={zh ? "创建时间" : "Created"}
+                  active={sort.key === "submittedAt"}
+                  direction={sort.direction}
+                  onClick={() => toggleSort("submittedAt")}
+                />
+              </th>
+              <th>
+                <SortButton
+                  label={zh ? "停止时间" : "Stopped"}
+                  active={sort.key === "stoppedAt"}
+                  direction={sort.direction}
+                  onClick={() => toggleSort("stoppedAt")}
+                />
+              </th>
               <th>{zh ? "操作" : "Actions"}</th>
             </tr>
           </thead>
@@ -253,10 +345,12 @@ export function JobsPage({
                 <td>
                   <button
                     className="link-cell"
-                    onClick={() => onSelect(job.name)}
+                    onClick={() => onSelect(job.id)}
                   >
-                    <strong>{job.name}</strong>
-                    <small>{job.id}</small>
+                    <strong>{job.id}</strong>
+                    {job.displayName !== job.id && (
+                      <small>{job.displayName}</small>
+                    )}
                   </button>
                 </td>
                 <td>
@@ -273,18 +367,9 @@ export function JobsPage({
                     {job.runningWorkers}/{job.workers}
                   </span>
                 </td>
-                <td>
-                  <code className="inline-code">{job.headerWorker}</code>
-                </td>
-                <td>
-                  <span className="table-primary">
-                    <span>
-                      <strong>{job.target}</strong>
-                      <small>{job.cluster}</small>
-                    </span>
-                  </span>
-                </td>
-                <td>{job.duration}</td>
+                <td>{job.roleCount}</td>
+                <td>{formatTaskTime(job.submittedAt)}</td>
+                <td>{formatTaskTime(job.stoppedAt)}</td>
                 <td>
                   <JobActionMenu
                     job={job}
@@ -1555,28 +1640,14 @@ function RoleRuntimeDataTable({
 }
 
 function formatTaskTime(value: string) {
-  if (!value || value === "—") return "—";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString([], {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return formatChinaDateTime(value);
 }
 
 function formatWorkerCreatedAt(startedAt: string, index: number) {
   const date = new Date(startedAt);
   if (Number.isNaN(date.getTime())) return startedAt || "—";
   date.setSeconds(date.getSeconds() + index * 12);
-  return date.toLocaleString([], {
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return formatChinaDateTime(date.toISOString());
 }
 
 function getNodeKindLabel(worker: WorkerItem) {
