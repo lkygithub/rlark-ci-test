@@ -124,7 +124,20 @@ func (s *Server) runPeerTunnel(ctx context.Context) error {
 			return
 		}
 		ip, peerID, peerToken := fields[0], fields[1], fields[2]
+		if ip == "" {
+			return
+		}
 		url := fmt.Sprintf("ws://127.0.0.1:%d/api/peer/%s", s.config.UnsafeHTTPPort, ip)
+		// identity 变更（例如对端重启后 peerID 更新）时，先移除旧 peer 条目，
+		// 避免旧 peer.start goroutine 与 s.peers 条目永久泄漏。
+		if prev, ok := leaseMap[name]; ok {
+			if prevFields := strings.Split(prev, "/"); len(prevFields) == 3 {
+				if oldPeerID := prevFields[1]; oldPeerID != peerID {
+					s.dialerFactory.RemovePeer(oldPeerID)
+					logger.Info("Removed stale peer", "peerID", oldPeerID, "lease", name)
+				}
+			}
+		}
 		s.dialerFactory.AddPeer(url, peerID, peerToken)
 		leaseMap[name] = identity
 		metrics.SetPeerConnections(len(leaseMap))
