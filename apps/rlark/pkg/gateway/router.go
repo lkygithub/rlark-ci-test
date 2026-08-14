@@ -104,6 +104,13 @@ func (g *Gateway) RegisterRoutes(r gin.IRouter) {
 		imageRegistries.DELETE("/:name", g.handleDeleteImageRegistry)
 	}
 
+	// System Config APIs
+	systemConfig := r.Group("/api/v1/system-config")
+	{
+		systemConfig.GET("", g.handleGetSystemConfig)
+		systemConfig.PUT("", g.handleUpdateSystemConfig)
+	}
+
 	// Storage APIs
 	storage := r.Group("/api/v1/storage")
 	{
