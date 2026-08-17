@@ -41,11 +41,17 @@ func (r *pushNodeReconciler) Reconcile(ctx context.Context, req reconcile.Reques
 		return reconcile.Result{RequeueAfter: HeartbeatInterval}, nil
 	}
 
-	desiredNode := r.buildRLarkNodeFromK8sNode(&k8sNode)
+	var podList corev1.PodList
+	if err := r.c.LocalKubeClient.List(ctx, &podList); err != nil {
+		logger.Error(err, "failed to list local Pods for node resource usage")
+		return reconcile.Result{RequeueAfter: HeartbeatInterval}, err
+	}
+
+	desiredNode := r.buildRLarkNodeFromK8sNode(&k8sNode, podList.Items)
 	return r.updateManagementNode(ctx, logger, desiredNode)
 }
 
-func (r *pushNodeReconciler) buildRLarkNodeFromK8sNode(k8sNode *corev1.Node) *rlarkv1alpha1.Node {
+func (r *pushNodeReconciler) buildRLarkNodeFromK8sNode(k8sNode *corev1.Node, pods []corev1.Pod) *rlarkv1alpha1.Node {
 	labels := make(map[string]string)
 	for k, v := range k8sNode.Labels {
 		labels[k] = v
@@ -72,10 +78,12 @@ func (r *pushNodeReconciler) buildRLarkNodeFromK8sNode(k8sNode *corev1.Node) *rl
 			Unschedulable: k8sNode.Spec.Unschedulable,
 		},
 		Status: rlarkv1alpha1.NodeStatus{
-			Phase:       r.getPhase(k8sNode),
-			Capacity:    k8sNode.Status.Capacity,
-			Allocatable: k8sNode.Status.Allocatable,
-			Addresses:   k8sNode.Status.Addresses,
+			Phase:        r.getPhase(k8sNode),
+			DiskPressure: diskPressure(k8sNode),
+			Capacity:     k8sNode.Status.Capacity,
+			Allocatable:  k8sNode.Status.Allocatable,
+			Used:         requestedResourcesForNode(k8sNode.Name, pods),
+			Addresses:    k8sNode.Status.Addresses,
 			NodeInfo: rlarkv1alpha1.NodeInfo{
 				Architecture:    k8sNode.Status.NodeInfo.Architecture,
 				KernelVersion:   k8sNode.Status.NodeInfo.KernelVersion,
@@ -83,6 +91,72 @@ func (r *pushNodeReconciler) buildRLarkNodeFromK8sNode(k8sNode *corev1.Node) *rl
 				AgentVersion:    AgentVersion,
 			},
 		},
+	}
+}
+
+func diskPressure(node *corev1.Node) *bool {
+	for _, condition := range node.Status.Conditions {
+		if condition.Type != corev1.NodeDiskPressure {
+			continue
+		}
+		switch condition.Status {
+		case corev1.ConditionTrue:
+			pressure := true
+			return &pressure
+		case corev1.ConditionFalse:
+			pressure := false
+			return &pressure
+		default:
+			return nil
+		}
+	}
+	return nil
+}
+
+// requestedResourcesForNode reports resources reserved by active Pods. Kubernetes
+// does not expose actual node usage on the Node object; summed Pod requests are
+// the stable, scheduler-relevant value available without a metrics-server.
+func requestedResourcesForNode(nodeName string, pods []corev1.Pod) corev1.ResourceList {
+	used := corev1.ResourceList{}
+	for i := range pods {
+		pod := &pods[i]
+		if pod.Spec.NodeName != nodeName || pod.Status.Phase == corev1.PodSucceeded || pod.Status.Phase == corev1.PodFailed {
+			continue
+		}
+
+		podRequests := corev1.ResourceList{}
+		for _, container := range pod.Spec.Containers {
+			addResourceList(podRequests, container.Resources.Requests)
+		}
+
+		// Init containers run sequentially, so their contribution is the maximum
+		// request for each resource rather than the sum of all init containers.
+		initMaximum := corev1.ResourceList{}
+		for _, container := range pod.Spec.InitContainers {
+			for name, quantity := range container.Resources.Requests {
+				current := initMaximum[name]
+				if quantity.Cmp(current) > 0 {
+					initMaximum[name] = quantity.DeepCopy()
+				}
+			}
+		}
+		for name, quantity := range initMaximum {
+			current := podRequests[name]
+			if quantity.Cmp(current) > 0 {
+				podRequests[name] = quantity.DeepCopy()
+			}
+		}
+		addResourceList(podRequests, pod.Spec.Overhead)
+		addResourceList(used, podRequests)
+	}
+	return used
+}
+
+func addResourceList(target, values corev1.ResourceList) {
+	for name, quantity := range values {
+		current := target[name]
+		current.Add(quantity)
+		target[name] = current
 	}
 }
 

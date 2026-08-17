@@ -42,7 +42,7 @@ The frontend uses exactly one data mode so pages never mix mock and backend data
 - Tasks：任务类型、角色、节点和状态
 - Nodes：节点默认按集群和节点名称排序，展示物理位置、GPU/具身设备总量、空闲量与型号；从总览地图点击城市可直接进入对应位置筛选结果
 - Cluster detail：集群详情中的节点表与 Nodes 使用相同的位置、资源数量、空闲状态和型号口径
-- Node metadata：容量与可分配量由 Agent 从 Kubernetes Node 自动上报；位置使用 `rlark.io/ip-location` 注解，节点/GPU/具身型号使用 `rlark.io/model` 标签。未上报实时使用量时，界面会明确显示“空闲未知”
+- Node metadata：容量与可分配量由 Agent 从 Kubernetes Node 自动上报；Agent 将活跃 Pod 的资源请求汇总为 `status.used`。节点详情会同时列出 CPU、内存、GPU 以及所有 `rlinf.io/device*` 端侧设备资源，并分别展示总量、已请求量和可分配量。内存统一显示为 GB。位置使用 `rlark.io/ip-location` 注解，节点/GPU/具身型号使用 `rlark.io/model` 标签。GPU 扩展资源即使缺少节点分类标签也会被识别
 - Jobs：列表直接展示并支持复制 Kubernetes `metadata.name` 任务 ID；仅在配置 `rlark.io/display-name` 时补充显示名称，并展示去重节点数、创建时间和停止时间
 - Lists：集群、节点、任务、工作流、存储和 SSH 公钥主列表支持点击表头切换升序与降序；分页基于排序后的完整筛选结果
 - Time：创建时间、停止时间等统一转换为中国标准时间（`Asia/Shanghai`），格式为 `YYYY-MM-DD HH:mm:ss`
@@ -59,13 +59,14 @@ kubectl label node <node> rlark.io/node-category=cloud rlark.io/model='NVIDIA H8
 kubectl annotate jobs.rlinf.io <job> rlark.io/display-name='策略训练任务' --overwrite
 ```
 
-设备数量不应手工标注：GPU 容量由 NVIDIA Device Plugin 注册，具身设备容量由 embodied-runtime Device Plugin 以 `rlinf.io/device` 或 `rlinf.io/device-<model>` 资源注册。实时空闲量需要 Agent/后端提供 `status.used` 后才能精确展示。
+设备数量不应手工标注：GPU 容量由 NVIDIA Device Plugin 注册，具身设备容量由 embodied-runtime Device Plugin 以 `rlinf.io/device` 或 `rlinf.io/device-<model>` 资源注册。`status.used` 表示活跃 Pod 声明的资源请求量，不等同于 metrics-server 提供的实时硬件利用率。
 
-Administrators may add business metadata on the data-plane Kubernetes cluster with the same labels and annotations shown above. Device counts must come from the NVIDIA or embodied-runtime Device Plugin rather than manual labels. Exact free capacity is only shown when the Agent/backend reports `status.used`.
+Administrators may add business metadata on the data-plane Kubernetes cluster with the same labels and annotations shown above. Device counts must come from the NVIDIA or embodied-runtime Device Plugin rather than manual labels. The Agent reports active Pod requests as `status.used`; this is scheduler reservation data, not live hardware utilization from metrics-server. Node details list CPU, memory, GPU, and every `rlinf.io/device*` resource with total, requested, and allocatable quantities. Memory quantities are displayed in GB, and GPU extended resources are recognized even when the RLark node-category label is absent.
 
 The primary Cluster, Node, Job, Workflow, Storage, and SSH Key lists support ascending and descending sorting by clicking their column headers. Sorting is applied before pagination.
 
 Job IDs use the Kubernetes resource `metadata.name` and can be copied directly. User-facing timestamps use China Standard Time (`Asia/Shanghai`) in `YYYY-MM-DD HH:mm:ss` format. The overview emphasizes embodied clusters, embodied nodes, unique device models, and running/total jobs.
+
 - API Reference：后端资源 API 演示
 
 数据集中维护在 `src/data.ts`，后续可替换为真实 API Client。

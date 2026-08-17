@@ -371,7 +371,6 @@ export function NodeDetailPanel({
   onNewLabelValue: (v: string) => void;
 }) {
   const { zh, c } = ctx;
-  const phase = (node.status?.phase ?? "Offline") as Phase;
   const isEditing = ctx.editingNode === node.metadata.name;
   const labels = node.metadata.labels ?? {};
   const adminInsight = (
@@ -425,7 +424,7 @@ export function NodeDetailPanel({
         </div>
       </div>
 
-      <NodeDetailReal node={node} copy={c} hideLabels />
+      <NodeDetailReal node={node} copy={c} />
 
       <section className="admin-node-labels node-insight-section">
         <div className="node-insight-section-head">

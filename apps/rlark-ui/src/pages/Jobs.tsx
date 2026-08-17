@@ -7,6 +7,7 @@ import {
   Download,
   ExternalLink,
   KeyRound,
+  LoaderCircle,
   MoreVertical,
   Network,
   Pencil,
@@ -43,6 +44,18 @@ function taskResourceName(jobName: string, taskName: string) {
   return `${jobName}-${taskName.toLowerCase().replace(/\s+/g, "-")}`
     .toLowerCase()
     .replace(/\s+/g, "-");
+}
+
+function effectiveJobPhase(job: Job, workerPhases?: string[]): Phase {
+  if (job.stopped || job.phase === "Stopped") return "Stopped";
+  const phases = (
+    workerPhases ?? job.taskStatuses.map((task) => task.phase)
+  ).filter(Boolean);
+  if (phases.length === 0 || job.phase !== "Running") return job.phase;
+  if (phases.some((phase) => phase === "Failed")) return "Failed";
+  if (phases.every((phase) => phase === "Succeeded")) return "Succeeded";
+  if (!phases.some((phase) => phase === "Running")) return "Pending";
+  return "Running";
 }
 
 async function copyText(value: string) {
@@ -170,7 +183,8 @@ export function JobsPage({
     const queryHit = `${j.id} ${j.displayName} ${j.type}`
       .toLowerCase()
       .includes(query.toLowerCase());
-    const phaseHit = phaseFilter === "All" || j.phase === phaseFilter;
+    const phaseHit =
+      phaseFilter === "All" || effectiveJobPhase(j) === phaseFilter;
     return queryHit && phaseHit;
   });
   const sortedJobs = useMemo(
@@ -178,6 +192,7 @@ export function JobsPage({
       [...filtered].sort((a, b) => {
         const value = (job: Job) => {
           if (sort.key === "workers") return job.progress;
+          if (sort.key === "phase") return effectiveJobPhase(job);
           return job[sort.key];
         };
         return compareSortValues(
@@ -356,7 +371,7 @@ export function JobsPage({
                   <span className="role-chip">{c.jobType[job.type]}</span>
                 </td>
                 <td>
-                  <StatusBadge phase={job.phase} copy={c} />
+                  <StatusBadge phase={effectiveJobPhase(job)} copy={c} />
                 </td>
                 <td>
                   <span className="inline-progress">
@@ -730,11 +745,10 @@ export function JobDetailPage({
               ts.observedNodes?.join(", ") ??
               "—",
             phase: (ts.phase || "Pending") as Phase,
-            cpu: Math.min(96, 38 + i * 9 + (ts.phase === "Running" ? 12 : 0)),
-            memory: Math.min(92, 42 + i * 7 + (ts.phase === "Running" ? 8 : 0)),
+            cpu: job.resources.find((item) => item.role === ts.name)?.cpu ?? "",
+            memory:
+              job.resources.find((item) => item.role === ts.name)?.memory ?? "",
             gpu: job.resources.find((item) => item.role === ts.name)?.gpu,
-            latency: i % 2 === 0 ? `${42 + i * 7} ms` : undefined,
-            fps: i % 2 === 1 ? 24 + i * 3 : undefined,
             logs: ts.message
               ? [ts.message]
               : [
@@ -760,17 +774,9 @@ export function JobDetailPage({
             role,
             node: pod.node || "—",
             phase: (pod.phase || "Pending") as Phase,
-            cpu: Math.min(
-              96,
-              38 + (index % 6) * 9 + (pod.phase === "Running" ? 12 : 0),
-            ),
-            memory: Math.min(
-              92,
-              42 + (index % 6) * 7 + (pod.phase === "Running" ? 8 : 0),
-            ),
+            cpu: resource?.cpu ?? "",
+            memory: resource?.memory ?? "",
             gpu: resource?.gpu,
-            latency: index % 2 === 0 ? `${42 + (index % 5) * 7} ms` : undefined,
-            fps: index % 2 === 1 ? 24 + (index % 5) * 3 : undefined,
             logs: pod.message
               ? [pod.message]
               : [
@@ -783,6 +789,10 @@ export function JobDetailPage({
   const runningWorkerCount = jobWorkers.filter(
     (worker) => worker.phase === "Running",
   ).length;
+  const displayPhase = effectiveJobPhase(
+    job,
+    jobWorkers.map((worker) => worker.phase),
+  );
   const workerPodsByTask = new Map<string, PodInfo[]>();
   for (const worker of jobWorkers) {
     workerPodsByTask.set(
@@ -924,6 +934,7 @@ export function JobDetailPage({
         onBack={onBack}
         runningWorkerCount={runningWorkerCount}
         totalWorkers={jobWorkers.length || job.workers}
+        displayPhase={displayPhase}
         tensorBoardProxy={tensorBoardProxy}
         onClone={onClone}
       />
@@ -1050,7 +1061,22 @@ export function JobDetailPage({
             </div>
           </div>
           {logsLoading ? (
-            <code>{zh ? "加载日志中…" : "Loading logs…"}</code>
+            <div className="log-loading-state" role="status" aria-live="polite">
+              <span className="log-loading-icon">
+                <LoaderCircle size={20} />
+              </span>
+              <div>
+                <strong>
+                  {zh ? "正在连接 Worker 日志" : "Connecting to worker logs"}
+                </strong>
+                <small>
+                  {zh
+                    ? "正在汇总各实例的最新输出…"
+                    : "Collecting the latest output from each instance…"}
+                </small>
+              </div>
+              <i className="log-loading-shimmer" aria-hidden="true" />
+            </div>
           ) : logsError ? (
             <code className="log-error">{logsError}</code>
           ) : podLogs.length === 0 ? (
@@ -1185,6 +1211,7 @@ function JobPublicOverview({
   onBack,
   runningWorkerCount,
   totalWorkers,
+  displayPhase,
   tensorBoardProxy,
   onClone,
 }: {
@@ -1193,6 +1220,7 @@ function JobPublicOverview({
   onBack: () => void;
   runningWorkerCount: number;
   totalWorkers: number;
+  displayPhase: Phase;
   tensorBoardProxy?: string;
   onClone: () => void;
 }) {
@@ -1221,15 +1249,23 @@ function JobPublicOverview({
           </p>
         </div>
         <div className="job-detail-summary-status">
-          <StatusBadge phase={job.phase} copy={c} />
+          <StatusBadge phase={displayPhase} copy={c} />
           <small>
             {job.stopped
               ? zh
                 ? "任务已终止"
                 : "Job stopped"
-              : zh
-                ? "任务保持活跃"
-                : "Job active"}
+              : displayPhase === "Pending"
+                ? zh
+                  ? "Worker 正在等待调度或启动"
+                  : "Workers are waiting to schedule or start"
+                : displayPhase === "Succeeded"
+                  ? zh
+                    ? "所有 Worker 已完成"
+                    : "All workers completed"
+                  : zh
+                    ? "任务保持活跃"
+                    : "Job active"}
           </small>
           <button
             className="secondary-button job-detail-clone-button"
@@ -1768,8 +1804,7 @@ function formatWorkerCreatedAt(startedAt: string, index: number) {
 
 function getNodeKindLabel(worker: WorkerItem) {
   const value = `${worker.node} ${worker.role}`.toLowerCase();
-  if (value.includes("robot") || value.includes("environment"))
-    return "具身真机";
+  if (value.includes("robot")) return "具身真机";
   if (value.includes("edge") || value.includes("camera")) return "具身算力";
   return "云算力";
 }
@@ -2074,7 +2109,14 @@ function WorkerTableRow({
               <small>
                 {isHeader
                   ? "Header Worker"
-                  : `${worker.latency ?? `${worker.fps ?? "-"} fps`}`}
+                  : [
+                      worker.cpu ? `CPU ${worker.cpu}` : "",
+                      worker.gpu && worker.gpu !== "0"
+                        ? `GPU ${worker.gpu}`
+                        : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" · ") || (zh ? "未申请资源" : "No requests")}
               </small>
             </span>
           </span>
@@ -2218,15 +2260,25 @@ function WorkerTableRow({
                   <strong>{worker.node}</strong>
                 </div>
                 <div>
-                  <span>CPU / {zh ? "内存" : "Memory"}</span>
+                  <span>{zh ? "申请 CPU" : "CPU request"}</span>
                   <strong>
-                    {worker.cpu}% / {worker.memory}%
+                    {worker.cpu || (zh ? "未申请" : "Not requested")}
                   </strong>
                 </div>
                 <div>
-                  <span>{zh ? "通信状态" : "Runtime"}</span>
+                  <span>{zh ? "申请内存" : "Memory request"}</span>
                   <strong>
-                    {worker.latency ?? `${worker.fps ?? "-"} fps`}
+                    {worker.memory || (zh ? "未申请" : "Not requested")}
+                  </strong>
+                </div>
+                <div>
+                  <span>{zh ? "申请 GPU" : "GPU request"}</span>
+                  <strong>
+                    {worker.gpu && worker.gpu !== "0"
+                      ? worker.gpu
+                      : zh
+                        ? "未申请"
+                        : "Not requested"}
                   </strong>
                 </div>
               </div>
