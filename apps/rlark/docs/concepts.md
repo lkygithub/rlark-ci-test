@@ -133,6 +133,10 @@ status:
 - **Label Management**: Control plane can push labels to Nodes; Agent's Pull controller syncs them to local k8s Nodes
 - **Taint Management**: Control node schedulability via the `unschedulable` field
 
+Workspace node totals and cluster-detail node lists include usable Workers labeled `rlark.io/node-category=cloud`, `edge`, or `robot`. Legacy unlabeled Nodes that explicitly advertise GPU or embodied-device resources are also shown as Workers. Nodes carrying a Kubernetes `master` or `control-plane` role label remain visible only in the administration workspace and are not counted or shown as workload Workers in the business workspace.
+
+CPU, memory, and GPU usage in Node details is aggregated from the Kubernetes `resources.requests` of running Workers. It represents scheduler-reserved resources, not real-time hardware utilization from metrics-server. The detail page also lists every Worker on the Node with its Job, role, IP, resource requests, and runtime phase.
+
 ## 5. Node Cordon/Uncordon
 
 Node scheduling can be controlled via the `unschedulable` field.
@@ -553,6 +557,9 @@ Browser ──WebSocket──▶ Gateway ──proxy via Server──▶ Agent �
 3. Gateway proxies the WebSocket connection through Server to the Pod's Agent
 4. Agent opens an exec session into the Pod's container and streams I/O
 5. The terminal session persists until the WebSocket is closed
+
+The Web Terminal supports interactive full-screen programs such as Vim on macOS Safari. Printable keys and terminal control keys are forwarded directly while browser shortcuts and IME composition remain handled by the browser.
+When the shell exits (for example, after `exit`), the proxy chain forwards a normal WebSocket close frame. The UI reports the process exit code when it is non-zero, while transport failures remain distinguishable from process exit.
 
 ## 18. Pod HTTP Proxy
 

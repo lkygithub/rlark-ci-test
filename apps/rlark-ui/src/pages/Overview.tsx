@@ -58,7 +58,6 @@ export function Overview({
   }, 15000);
 
   const displayNodes = realNodes;
-  const cloudClusters = realClusters.filter((x) => x.type === "Cloud");
   const embodiedClusters = realClusters.filter((x) => x.type === "Embodied");
   const runningJobs = realJobs.filter((x) => x.phase === "Running").length;
   const gpuModelList = Array.from(
@@ -158,7 +157,7 @@ export function Overview({
           tone="mint"
           label={isZh ? "具身节点数量" : "Embodied nodes"}
           value={`${embodiedNodeCount}`}
-          note={isZh ? "算力节点与真机" : "Compute nodes and robots"}
+          note={isZh ? "端算力与具身 Worker" : "Edge and embodied workers"}
           onClick={() => navigate("clusters-nodes")}
         />
         <MetricCard

@@ -24,6 +24,7 @@ const categoryOrder: NodeCategory[] = ["cloud", "edge", "robot", "unknown"];
 
 export function NodeResourceBrowser({
   nodes,
+  nodeWorkloads = {},
   copy: c,
   onSelectNode,
   onRefresh,
@@ -31,6 +32,7 @@ export function NodeResourceBrowser({
   initialQuery = "",
 }: {
   nodes: CRDNode[];
+  nodeWorkloads?: Record<string, { jobs: string[]; workers: number }>;
   copy: Copy;
   onSelectNode: (name: string) => void;
   onRefresh?: () => void;
@@ -78,16 +80,14 @@ export function NodeResourceBrowser({
     const normalizedQuery = query.trim().toLowerCase();
     return nodes
       .filter((node) => {
-        const labels = node.metadata.labels ?? {};
         const address =
           node.status?.addresses?.find((item) => item.type === "InternalIP")
             ?.address ??
           node.status?.addresses?.[0]?.address ??
           "";
-        const taskName =
-          labels["rlark.io/embodied-task-name"] ??
-          labels["rlark.io/task-name"] ??
-          "";
+        const taskName = (nodeWorkloads[node.metadata.name]?.jobs ?? []).join(
+          " ",
+        );
         const location = getNodeLocation(node);
         const searchable =
           `${node.metadata.name} ${node.metadata.namespace ?? ""} ${node.spec.agentType ?? ""} ${address} ${taskName} ${location}`.toLowerCase();
@@ -106,10 +106,7 @@ export function NodeResourceBrowser({
               ?.address ??
             node.status?.addresses?.[0]?.address ??
             "";
-          const task =
-            labels["rlark.io/embodied-task-name"] ??
-            labels["rlark.io/task-name"] ??
-            "";
+          const workload = nodeWorkloads[node.metadata.name];
           if (sort.key === "name") return node.metadata.name;
           if (sort.key === "type") return getNodeCategory(node);
           if (sort.key === "phase") return node.status?.phase ?? "Offline";
@@ -123,7 +120,7 @@ export function NodeResourceBrowser({
             return (
               Number.parseFloat(getNodeResourceSummary(node, zh).primary) || 0
             );
-          return task;
+          return workload?.jobs.length ?? 0;
         };
         const order = compareSortValues(
           value(a),
@@ -138,7 +135,7 @@ export function NodeResourceBrowser({
           })
         );
       });
-  }, [category, nodes, phaseFilter, query, sort, zh]);
+  }, [category, nodeWorkloads, nodes, phaseFilter, query, sort, zh]);
 
   const totalPages = Math.max(1, Math.ceil(filteredNodes.length / pageSize));
   const currentPage = Math.min(page, totalPages);
@@ -294,13 +291,16 @@ export function NodeResourceBrowser({
                 )?.address ??
                 node.status?.addresses?.[0]?.address ??
                 "—";
-              const taskName =
-                labels["rlark.io/embodied-task-name"] ??
-                labels["rlark.io/task-name"] ??
-                "";
-              const hasEmbodiedTask =
-                labels["rlark.io/embodied-task"] === "true" ||
-                Boolean(taskName);
+              const workload = nodeWorkloads[node.metadata.name];
+              const jobCount = workload?.jobs.length ?? 0;
+              const workerCount = workload?.workers ?? 0;
+              const taskSummary = jobCount
+                ? zh
+                  ? `${jobCount} 个任务 · ${workerCount} 个 Worker`
+                  : `${jobCount} jobs · ${workerCount} workers`
+                : zh
+                  ? "无"
+                  : "None";
               const location = getNodeLocation(node) || "—";
               const resource = getNodeResourceSummary(node, zh);
               return (
@@ -340,11 +340,14 @@ export function NodeResourceBrowser({
                     <strong>{resource.primary}</strong>
                     <small>{resource.secondary}</small>
                   </span>
-                  <span className="node-row-task" title={taskName}>
+                  <span
+                    className="node-row-task"
+                    title={workload?.jobs.join("、") ?? ""}
+                  >
                     <i
-                      className={`embodied-task-dot ${hasEmbodiedTask ? "active" : "idle"}`}
+                      className={`embodied-task-dot ${jobCount ? "active" : "idle"}`}
                     />
-                    {taskName || (zh ? "无" : "None")}
+                    {taskSummary}
                   </span>
                   <ChevronRight size={15} className="node-row-chevron" />
                 </button>

@@ -256,6 +256,7 @@ export default function App() {
         {page === "clusters-management" && (
           <ClusterManagementPage
             copy={c}
+            workerOnly
             selectedClusterID={sub}
             onSelectCluster={(id?: string) =>
               navigate("clusters-management", id, { replace: !id })
