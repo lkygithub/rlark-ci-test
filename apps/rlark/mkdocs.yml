@@ -28,6 +28,9 @@ theme:
 plugins:
   - search
 
+extra_javascript:
+  - javascripts/fix-nav.js
+
 nav:
   - Home: index.md
   - Quick Start: quickstart.md
