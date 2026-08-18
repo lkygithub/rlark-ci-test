@@ -66,6 +66,7 @@ Administrators may add business metadata on the data-plane Kubernetes cluster wi
 The primary Cluster, Node, Job, Workflow, Storage, and SSH Key lists support ascending and descending sorting by clicking their column headers. Sorting is applied before pagination.
 
 Job IDs use the Kubernetes resource `metadata.name` and can be copied directly. User-facing timestamps use China Standard Time (`Asia/Shanghai`) in `YYYY-MM-DD HH:mm:ss` format. The overview emphasizes embodied clusters, embodied nodes, unique device models, and running/total jobs.
+
 - API Reference：后端资源 API 演示
 
 数据集中维护在 `src/data.ts`，后续可替换为真实 API Client。
