@@ -1,4 +1,4 @@
-site_name: rlark
+site_name: RLark
 site_description: Reinforcement Learning Infrastructure for Embodied and Agentic AI
 site_url: !ENV READTHEDOCS_CANONICAL_URL
 repo_url: https://github.com/RLinf/RLark
@@ -21,7 +21,6 @@ theme:
         icon: material/brightness-4
         name: Switch to light mode
   features:
-    - navigation.instant
     - navigation.tracking
     - navigation.indexes
     - toc.follow
