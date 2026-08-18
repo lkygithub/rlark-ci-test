@@ -97,7 +97,7 @@ Agent 部署在每个数据面集群中，有两种运行模式：
 | 模式        | 组件           | 职责                                                              |
 | --------- | ------------ | --------------------------------------------------------------- |
 | `cluster` | clusterAgent | 资源同步：Pull 控制器（管理面 CR → 本地 k8s 资源）+ Push 控制器（本地 k8s 状态 → 管理面 CR） |
-| `node`    | nodeAgent    | 网络路由：运行 NodeServer，处理跨集群 Pod 流量转发                               |
+| `node`    | nodeAgent    | 网络路由：运行 NodeServer，处理跨集群 Pod 流量转发；镜像预拉取：将分发到节点的任务镜像预拉取到节点容器运行时（containerd/docker） |
 
 **clusterAgent 控制器**：
 
