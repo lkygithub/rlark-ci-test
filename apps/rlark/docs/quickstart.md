@@ -76,7 +76,7 @@ After deployment, launch the Web UI:
 cd apps/rlark-ui && npm install && npm run dev
 ```
 
-Open `http://localhost:5173`. See the [Web UI Guide](web-ui-guide.md) for details.
+Open `http://localhost:5173`. See the [Web UI Guide](ui-behavior.md) for details.
 
 ## Create a Training Job (curl)
 

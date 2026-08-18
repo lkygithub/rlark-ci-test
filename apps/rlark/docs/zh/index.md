@@ -41,21 +41,11 @@ hide:
 ## 快速开始
 
 ```bash
-# 1. 编译
-git clone https://github.com/RLinf/RLark
-cd RLark && make build
-
-# 2. 启动控制面（Docker Compose）
-docker compose -f apps/rlark/docs/examples/docker-compose.yml up -d
-
-# 3. 启动数据面（kind 集群）
-kind create cluster --name rlark-data
-
-# 4. 一键部署所有组件
+# 一键部署：控制面（Docker Compose）+ 2 个 kind 集群 + 跨集群网络验证
 bash apps/rlark/docs/examples/quickstart.sh
 ```
 
-详见 [快速开始指南](quickstart.md)。
+详见 [快速开始指南](quickstart.md) 了解前置依赖和详细说明。
 
 ## 使用 Web 控制台
 

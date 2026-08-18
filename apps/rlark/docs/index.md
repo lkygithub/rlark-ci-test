@@ -41,21 +41,11 @@ Manage cross-cluster embodied intelligence workloads natively with Kubernetes, f
 ## Quick Start
 
 ```bash
-# 1. Build
-git clone https://github.com/RLinf/RLark
-cd RLark && make build
-
-# 2. Start control plane (Docker Compose)
-docker compose -f apps/rlark/docs/examples/docker-compose.yml up -d
-
-# 3. Start data plane (kind cluster)
-kind create cluster --name rlark-data
-
-# 4. One-click deploy all components
+# One-click deploy: control plane (Docker Compose) + 2 kind clusters + cross-cluster network test
 bash apps/rlark/docs/examples/quickstart.sh
 ```
 
-See the [Quick Start Guide](quickstart.md) for detailed instructions.
+See the [Quick Start Guide](quickstart.md) for prerequisite requirements and detailed instructions.
 
 ## Try the Web Console
 

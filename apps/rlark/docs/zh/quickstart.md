@@ -48,7 +48,7 @@ USE_LOCAL_REGISTRY=true bash apps/rlark/docs/examples/quickstart.sh
 cd apps/rlark-ui && npm install && npm run dev
 ```
 
-浏览器访问 `http://localhost:5173`，详细使用说明见 [Web UI 使用指南](web-ui-guide.md)。
+浏览器访问 `http://localhost:5173`，详细使用说明见 [Web UI 使用指南](ui-behavior.md)。
 
 ## 创建第一个训练任务（curl）
 
