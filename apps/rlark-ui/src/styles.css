@@ -1219,6 +1219,148 @@ button {
   background: #9a9ab0;
 }
 
+.status-with-info {
+  position: relative;
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.status-info {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  cursor: help;
+  color: #bd7424;
+  margin-top: -2px;
+}
+
+.status-info-tooltip {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  right: 0;
+  min-width: 220px;
+  max-width: 320px;
+  background: #1f2430;
+  color: #fff;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.5;
+  white-space: normal;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s;
+  z-index: 999;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.status-info-tooltip::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  right: 10px;
+  border: 5px solid transparent;
+  border-top-color: #1f2430;
+}
+
+/* Flipped-below variant: the arrow is moved to the top edge of the tooltip.
+   Position itself is handled by inline style (position: fixed) set from JS
+   in PullProgressInfo, so only the arrow needs to be flipped here. */
+.status-info-tooltip.status-info-tooltip-below::after {
+  top: auto;
+  bottom: 100%;
+  border-top-color: transparent;
+  border-bottom-color: #1f2430;
+}
+
+.status-info:hover .status-info-tooltip,
+.status-info:focus .status-info-tooltip {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.status-info-tooltip .pull-entry {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  padding-top: 6px;
+}
+
+.status-info-tooltip .pull-entry:first-of-type {
+  border-top: none;
+  padding-top: 0;
+}
+
+.status-info-tooltip .pull-entry code {
+  font-size: 10px;
+  color: #9fd0ff;
+  word-break: break-all;
+}
+
+.status-info-tooltip .pull-detail {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 10px;
+}
+
+.status-info-tooltip .pull-status {
+  color: #ffd479;
+}
+
+/* Section heading for the "Node Events" block when both pull progress and
+   events are rendered. Mirrors .pull-entry's top border so the events
+   section reads as a sibling group. */
+.status-info-tooltip .status-info-tooltip-section {
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  padding-top: 6px;
+  margin-top: 2px;
+}
+
+/* First section heading (Image Pull Progress) has no preceding border. */
+.status-info-tooltip > strong:first-child {
+  border-top: none;
+  padding-top: 0;
+  margin-top: 0;
+}
+
+.status-info-tooltip .event-entry .event-chip {
+  display: inline-block;
+  align-self: flex-start;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.status-info-tooltip .event-entry .event-chip.event-warning {
+  background: rgba(244, 95, 95, 0.18);
+  color: #ffb3b3;
+}
+
+.status-info-tooltip .event-entry .event-chip.event-normal {
+  background: rgba(80, 200, 120, 0.16);
+  color: #9be3ad;
+}
+
+.status-info-tooltip .event-entry .event-object {
+  font-size: 10px;
+  color: #9fd0ff;
+  word-break: break-all;
+}
+
+.status-info-tooltip .event-entry .event-message {
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 10px;
+  word-break: break-word;
+}
+
 .progress-cell {
   display: grid;
   grid-template-columns: 1fr 32px;
@@ -4151,7 +4293,9 @@ tbody tr:hover {
 .worker-table {
   border: 1px solid var(--line);
   border-radius: 18px;
-  overflow: hidden;
+  /* overflow: hidden removed so the PullProgressInfo tooltip can extend
+     above the table when a Pending worker sits in the first row. Corner
+     rounding is preserved via per-cell border-radius below. */
 }
 
 .worker-primary-panel .worker-table {
@@ -4196,6 +4340,34 @@ tbody tr:hover {
   font-size: 11px;
   font-weight: 800;
   white-space: nowrap;
+}
+
+/* Round the corner cells to keep the rounded border look without overflow:
+   hidden, which would clip the worker-row pull-progress tooltip. */
+.worker-table thead th:first-child {
+  border-top-left-radius: 18px;
+}
+.worker-table thead th:last-child {
+  border-top-right-radius: 18px;
+}
+.worker-table tbody tr:last-child td:first-child {
+  border-bottom-left-radius: 18px;
+}
+.worker-table tbody tr:last-child td:last-child {
+  border-bottom-right-radius: 18px;
+}
+
+/* Move the hover background from <tr> to <td> so the per-cell border-radius
+   clips the hover fill at the corners. Excludes .pod-detail-row to preserve
+   its surface-2 background. */
+.worker-table tbody tr:hover {
+  background: transparent;
+}
+.worker-table tbody tr:not(.pod-detail-row):hover > td {
+  background: #fbfdff;
+}
+.theme-dark .worker-table tbody tr:not(.pod-detail-row):hover > td {
+  background: rgba(255, 255, 255, 0.035);
 }
 
 .pod-detail-row td {
@@ -5530,7 +5702,7 @@ tbody tr:hover {
   position: absolute;
   right: 0;
   bottom: calc(100% + 7px);
-  z-index: 20;
+  z-index: 999;
   width: max-content;
   max-width: 180px;
   padding: 6px 8px;
@@ -9502,6 +9674,98 @@ input[type="radio"]:disabled {
 .node-task-link-icon {
   flex: none;
   color: var(--green);
+}
+
+/* Node image pull progress list (NodeDetailReal). */
+.node-pull-progress-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.node-pull-progress-entry {
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--canvas);
+}
+
+.node-pull-progress-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.node-pull-image {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--blue);
+  font-size: 11px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.node-pull-status {
+  flex: none;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--line-strong);
+  color: var(--ink);
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.node-pull-status.chip-pulling {
+  background: rgba(54, 201, 143, 0.16);
+  color: var(--green);
+}
+
+.node-pull-status.chip-completed {
+  background: rgba(63, 140, 255, 0.16);
+  color: var(--blue);
+}
+
+.node-pull-status.chip-failed {
+  background: rgba(229, 99, 99, 0.16);
+  color: var(--red, #e56363);
+}
+
+.node-pull-progress-bar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 18px;
+  margin: 9px 0 6px;
+}
+
+.node-pull-progress-bar > i {
+  position: absolute;
+  inset: 6px 0;
+  display: block;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--blue), var(--blue-2));
+  transition: width 0.18s ease;
+}
+
+.node-pull-progress-bar > b {
+  position: relative;
+  z-index: 1;
+  padding-left: 8px;
+  color: var(--ink);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.node-pull-progress-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 10px;
 }
 
 .node-info-list {

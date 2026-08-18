@@ -97,7 +97,7 @@ Agent is deployed in each data plane cluster with two operating modes:
 | Mode      | Component    | Responsibility                                                                                                                   |
 | --------- | ------------ | -------------------------------------------------------------------------------------------------------------------------------- |
 | `cluster` | clusterAgent | Resource sync: Pull controllers (control plane CR → local k8s resources) + Push controllers (local k8s state → control plane CR) |
-| `node`    | nodeAgent    | Network routing: Runs NodeServer, handles cross-cluster Pod traffic forwarding                                                   |
+| `node`    | nodeAgent    | Network routing: Runs NodeServer, handles cross-cluster Pod traffic forwarding; Image pre-pull: pre-pulls dispatched task images into the node container runtime (containerd/docker) |
 
 **clusterAgent Controllers**:
 
