@@ -40,6 +40,38 @@ nav:
   - Deployment Guide: deployment.md
   - API Reference: api/reference.md
   - API Examples: api/examples.md
+  - Storage API: storage-api.md
+  - Overview:
+    - Capabilities: overview/capabilities.md
+  - User Guide:
+    - Overview: user-guide/index.md
+    - Clusters & Nodes: user-guide/clusters-nodes.md
+    - Jobs: user-guide/jobs.md
+    - SSH Keys: user-guide/ssh-keys.md
+    - Storage: user-guide/storage.md
+    - Workflows: user-guide/workflows.md
+  - Admin Guide:
+    - Overview: admin-guide/index.md
+    - Agent: admin-guide/agent.md
+    - Control Plane: admin-guide/control-plane.md
+    - Data Plane: admin-guide/data-plane.md
+    - Embodied Runtime: admin-guide/embodied-runtime.md
+    - Network Security: admin-guide/network-security.md
+    - Nodes: admin-guide/nodes.md
+    - Operations: admin-guide/operations.md
+  - Developer Guide:
+    - Overview: developer-guide/index.md
+    - Contributing: developer-guide/contributing.md
+    - Debugging: developer-guide/debugging.md
+    - Device Integration: developer-guide/device-integration.md
+    - Local Development: developer-guide/local-development.md
+    - Project Layout: developer-guide/project-layout.md
+  - Reference:
+    - Overview: reference/index.md
+    - Changelog: reference/changelog.md
+    - CLI: reference/cli.md
+    - Configuration: reference/configuration.md
+    - CRD: reference/crd.md
   - 中文:
     - 首页: zh/index.md
     - 快速开始: zh/quickstart.md
@@ -49,6 +81,38 @@ nav:
     - 部署指南: zh/deployment.md
     - API 参考: zh/api/reference.md
     - API 示例: zh/api/examples.md
+    - Storage API: zh/storage-api.md
+    - 概览:
+      - 能力: zh/overview/capabilities.md
+    - 用户指南:
+      - 概览: zh/user-guide/index.md
+      - 集群与节点: zh/user-guide/clusters-nodes.md
+      - 任务: zh/user-guide/jobs.md
+      - SSH 密钥: zh/user-guide/ssh-keys.md
+      - 存储: zh/user-guide/storage.md
+      - 工作流: zh/user-guide/workflows.md
+    - 管理指南:
+      - 概览: zh/admin-guide/index.md
+      - Agent: zh/admin-guide/agent.md
+      - 控制平面: zh/admin-guide/control-plane.md
+      - 数据平面: zh/admin-guide/data-plane.md
+      - 具身运行时: zh/admin-guide/embodied-runtime.md
+      - 网络安全: zh/admin-guide/network-security.md
+      - 节点: zh/admin-guide/nodes.md
+      - 运维: zh/admin-guide/operations.md
+    - 开发者指南:
+      - 概览: zh/developer-guide/index.md
+      - 贡献: zh/developer-guide/contributing.md
+      - 调试: zh/developer-guide/debugging.md
+      - 设备集成: zh/developer-guide/device-integration.md
+      - 本地开发: zh/developer-guide/local-development.md
+      - 项目结构: zh/developer-guide/project-layout.md
+    - 参考:
+      - 概览: zh/reference/index.md
+      - 更新日志: zh/reference/changelog.md
+      - CLI: zh/reference/cli.md
+      - 配置: zh/reference/configuration.md
+      - CRD: zh/reference/crd.md
 
 markdown_extensions:
   - admonition
