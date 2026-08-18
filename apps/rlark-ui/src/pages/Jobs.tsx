@@ -13,6 +13,7 @@ import {
   Pencil,
   Play,
   Plus,
+  RotateCcw,
   Square,
   Search,
   TerminalSquare,
@@ -89,14 +90,16 @@ export function JobsPage({
   onCreate,
   onClone,
   onEdit,
+  adminMode = false,
 }: {
   copy: CopyType;
   isMockMode: boolean;
   selectedName: string;
   onSelect: (name?: string) => void;
-  onCreate: () => void;
-  onClone: (job: Job) => void;
-  onEdit: (job: Job) => void;
+  onCreate?: () => void;
+  onClone?: (job: Job) => void;
+  onEdit?: (job: Job) => void;
+  adminMode?: boolean;
 }) {
   const zh = c.nav.overview === "总览";
   const [query, setQuery] = useState("");
@@ -178,6 +181,39 @@ export function JobsPage({
     }
   };
 
+  const handleRestart = async (job: Job) => {
+    if (
+      !confirm(
+        zh
+          ? `确定重新启动任务 "${job.name}" 吗？`
+          : `Restart job "${job.name}"?`,
+      )
+    )
+      return;
+    try {
+      const resp = await fetch(`/api/v1/rlinf.io/v1alpha1/jobs/${job.name}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/merge-patch+json" },
+        body: JSON.stringify({
+          metadata: {
+            annotations: { "rlark.io/restarted-at": new Date().toISOString() },
+          },
+          spec: { stopped: false },
+        }),
+      });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      setRealJobs((prev) =>
+        prev.map((item) =>
+          item.id === job.id
+            ? { ...item, stopped: false, phase: "Pending" as Phase }
+            : item,
+        ),
+      );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  };
+
   const allJobs = realJobs;
   const filtered = allJobs.filter((j) => {
     const queryHit = `${j.id} ${j.displayName} ${j.type}`
@@ -228,7 +264,19 @@ export function JobsPage({
         copy={c}
         isMockMode={isMockMode}
         onBack={() => onSelect(undefined)}
-        onClone={() => onClone(selected)}
+        onClone={adminMode ? undefined : () => onClone?.(selected)}
+        adminActions={
+          adminMode
+            ? {
+                onStop: () => handleToggleStop(selected),
+                onRestart: () => handleRestart(selected),
+                onDelete: async () => {
+                  await handleDelete(selected);
+                  onSelect(undefined);
+                },
+              }
+            : undefined
+        }
       />
     );
   }
@@ -237,14 +285,30 @@ export function JobsPage({
     <div className="page-content resource-page jobs-list-page">
       <div className="section-heading">
         <div>
-          <span className="eyebrow">{c.jobs.eyebrow}</span>
-          <h2>{c.jobs.title}</h2>
-          <p>{c.jobs.desc}</p>
+          <span className="eyebrow">
+            {adminMode
+              ? zh
+                ? "ADMIN / JOBS"
+                : "ADMIN / JOBS"
+              : c.jobs.eyebrow}
+          </span>
+          <h2>
+            {adminMode ? (zh ? "任务管理" : "Job management") : c.jobs.title}
+          </h2>
+          <p>
+            {adminMode
+              ? zh
+                ? "查看全平台任务状态，并执行停止、重启和删除等管理操作。"
+                : "Review platform jobs and perform stop, restart, and delete operations."
+              : c.jobs.desc}
+          </p>
         </div>
-        <button className="primary-button" onClick={onCreate}>
-          <Plus size={17} />
-          {c.common.createJob}
-        </button>
+        {!adminMode && (
+          <button className="primary-button" onClick={onCreate}>
+            <Plus size={17} />
+            {c.common.createJob}
+          </button>
+        )}
       </div>
       <PageToolbar
         placeholder={c.jobs.search}
@@ -346,10 +410,12 @@ export function JobsPage({
                         ? "创建强化学习、数据采集、评测或自定义任务。"
                         : "Create an RL, data collection, evaluation, or custom job."}
                     </small>
-                    <button className="secondary-button" onClick={onCreate}>
-                      <Plus size={15} />
-                      {c.common.createJob}
-                    </button>
+                    {!adminMode && (
+                      <button className="secondary-button" onClick={onCreate}>
+                        <Plus size={15} />
+                        {c.common.createJob}
+                      </button>
+                    )}
                   </div>
                 </td>
               </tr>
@@ -385,14 +451,24 @@ export function JobsPage({
                 <td>{formatTaskTime(job.submittedAt)}</td>
                 <td>{formatTaskTime(job.stoppedAt)}</td>
                 <td>
-                  <JobActionMenu
-                    job={job}
-                    zh={zh}
-                    onEdit={() => onEdit(job)}
-                    onClone={() => onClone(job)}
-                    onDelete={() => handleDelete(job)}
-                    onToggleStop={() => handleToggleStop(job)}
-                  />
+                  {adminMode ? (
+                    <AdminJobActions
+                      job={job}
+                      zh={zh}
+                      onStop={() => handleToggleStop(job)}
+                      onRestart={() => handleRestart(job)}
+                      onDelete={() => handleDelete(job)}
+                    />
+                  ) : (
+                    <JobActionMenu
+                      job={job}
+                      zh={zh}
+                      onEdit={() => onEdit?.(job)}
+                      onClone={() => onClone?.(job)}
+                      onDelete={() => handleDelete(job)}
+                      onToggleStop={() => handleToggleStop(job)}
+                    />
+                  )}
                 </td>
               </tr>
             ))}
@@ -557,18 +633,73 @@ function JobActionMenu({
   );
 }
 
+function AdminJobActions({
+  job,
+  zh,
+  onStop,
+  onRestart,
+  onDelete,
+}: {
+  job: Job;
+  zh: boolean;
+  onStop: () => void;
+  onRestart: () => void;
+  onDelete: () => void;
+}) {
+  const canStop =
+    !job.stopped && !["Stopped", "Succeeded", "Failed"].includes(job.phase);
+
+  return (
+    <div className="row-actions admin-job-actions">
+      {canStop ? (
+        <button
+          className="icon-button"
+          onClick={onStop}
+          title={zh ? "停止任务" : "Stop job"}
+          aria-label={zh ? `停止任务 ${job.name}` : `Stop ${job.name}`}
+        >
+          <Square size={15} />
+        </button>
+      ) : (
+        <button
+          className="icon-button"
+          onClick={onRestart}
+          title={zh ? "重启任务" : "Restart job"}
+          aria-label={zh ? `重启任务 ${job.name}` : `Restart ${job.name}`}
+        >
+          <RotateCcw size={15} />
+        </button>
+      )}
+      <button
+        className="icon-button danger"
+        onClick={onDelete}
+        title={zh ? "删除任务" : "Delete job"}
+        aria-label={zh ? `删除任务 ${job.name}` : `Delete ${job.name}`}
+      >
+        <Trash2 size={15} />
+      </button>
+    </div>
+  );
+}
+
 export function JobDetailPage({
   job,
   copy: c,
   isMockMode,
   onBack,
   onClone,
+  adminActions,
 }: {
   job: Job;
   copy: CopyType;
   isMockMode: boolean;
   onBack: () => void;
-  onClone: () => void;
+  onClone?: () => void;
+  adminActions?: {
+    onStop: () => void;
+    onRestart: () => void;
+    onDelete: () => void;
+  };
 }) {
   const zh = c.nav.overview === "总览";
   const [activeTab, setActiveTab] = useState<"workers" | "logs" | "metrics">(
@@ -937,6 +1068,7 @@ export function JobDetailPage({
         displayPhase={displayPhase}
         tensorBoardProxy={tensorBoardProxy}
         onClone={onClone}
+        adminActions={adminActions}
       />
       <div className="sub-tabs">
         {tabs.map((tab) => (
@@ -1214,6 +1346,7 @@ function JobPublicOverview({
   displayPhase,
   tensorBoardProxy,
   onClone,
+  adminActions,
 }: {
   job: Job;
   copy: CopyType;
@@ -1222,7 +1355,12 @@ function JobPublicOverview({
   totalWorkers: number;
   displayPhase: Phase;
   tensorBoardProxy?: string;
-  onClone: () => void;
+  onClone?: () => void;
+  adminActions?: {
+    onStop: () => void;
+    onRestart: () => void;
+    onDelete: () => void;
+  };
 }) {
   const zh = c.nav.overview === "总览";
   const baseConfigRows = [
@@ -1267,13 +1405,45 @@ function JobPublicOverview({
                     ? "任务保持活跃"
                     : "Job active"}
           </small>
-          <button
-            className="secondary-button job-detail-clone-button"
-            onClick={onClone}
-          >
-            <Copy size={15} />
-            {zh ? "复制任务" : "Clone job"}
-          </button>
+          {adminActions ? (
+            <div className="admin-job-detail-actions">
+              {!job.stopped &&
+              !["Stopped", "Succeeded", "Failed"].includes(job.phase) ? (
+                <button
+                  className="secondary-button"
+                  onClick={adminActions.onStop}
+                >
+                  <Square size={15} />
+                  {zh ? "停止任务" : "Stop job"}
+                </button>
+              ) : (
+                <button
+                  className="secondary-button"
+                  onClick={adminActions.onRestart}
+                >
+                  <RotateCcw size={15} />
+                  {zh ? "重启任务" : "Restart job"}
+                </button>
+              )}
+              <button
+                className="secondary-button danger"
+                onClick={adminActions.onDelete}
+              >
+                <Trash2 size={15} />
+                {zh ? "删除任务" : "Delete job"}
+              </button>
+            </div>
+          ) : (
+            onClone && (
+              <button
+                className="secondary-button job-detail-clone-button"
+                onClick={onClone}
+              >
+                <Copy size={15} />
+                {zh ? "复制任务" : "Clone job"}
+              </button>
+            )
+          )}
         </div>
       </div>
 

@@ -133,7 +133,18 @@ status:
 - **Label Management**: Control plane can push labels to Nodes; Agent's Pull controller syncs them to local k8s Nodes
 - **Taint Management**: Control node schedulability via the `unschedulable` field
 
-Workspace node totals and cluster-detail node lists include usable Workers labeled `rlark.io/node-category=cloud`, `edge`, or `robot`. Legacy unlabeled Nodes that explicitly advertise GPU or embodied-device resources are also shown as Workers. Nodes carrying a Kubernetes `master` or `control-plane` role label remain visible only in the administration workspace and are not counted or shown as workload Workers in the business workspace.
+### Administrator Metadata
+
+Administrators can select multiple Nodes in the Admin UI and apply metadata used by both the admin and workspace resource views:
+
+- `rlark.io/city` annotation: administrator-managed physical location
+- `rlark.io/node-category-{cloud,edge,robot}=true` labels: one or more Node categories
+- `rlark.io/gpu-model` annotation: GPU model for cloud compute Nodes
+- `rlark.io/device-model` annotation: embodied device model for edge compute and robot Nodes
+
+These business fields are stored on the KCP Node CR and are preserved when the Agent refreshes Kubernetes-discovered state. The batch editor shows common current values, marks mixed selections, and changes only properties explicitly enabled by the administrator; clearing an enabled property removes it. The Admin UI also supports selecting all filtered Nodes, clearing the selection, and batch cordon/uncordon. A Node may belong to multiple categories and carry both GPU and embodied-device models.
+
+Workspace node totals and cluster-detail node lists include usable Workers carrying an RLark category label. Legacy `rlark.io/node-category` values and unlabeled Nodes that explicitly advertise GPU or embodied-device resources remain supported. Nodes carrying a Kubernetes `master` or `control-plane` role label remain visible only in the administration workspace and are not counted or shown as workload Workers in the business workspace.
 
 CPU, memory, and GPU usage in Node details is aggregated from the Kubernetes `resources.requests` of running Workers. It represents scheduler-reserved resources, not real-time hardware utilization from metrics-server. The detail page also lists every Worker on the Node with its Job, role, IP, resource requests, and runtime phase.
 

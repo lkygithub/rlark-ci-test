@@ -11,7 +11,13 @@ import {
 import type { Copy } from "../i18n";
 import type { ClusterSummary, CRDNode, NodeCategory } from "../types";
 import { useAutoRefresh } from "../hooks";
-import { getNodeCategory, isBusinessWorkerNode } from "../utils/nodes";
+import {
+  getNodeCategories,
+  getNodeDeviceModel,
+  getNodeGPUModel,
+  hasNodeCategory,
+  isBusinessWorkerNode,
+} from "../utils/nodes";
 import {
   compareSortValues,
   MetricCard,
@@ -51,7 +57,9 @@ function aggregateClusters(
         robot: 0,
         unknown: 0,
       };
-      clusterNodes.forEach((node) => categories[getNodeCategory(node)]++);
+      clusterNodes.forEach((node) =>
+        getNodeCategories(node).forEach((category) => categories[category]++),
+      );
       const inferredType =
         categories.cloud > 0 && categories.edge === 0 && categories.robot === 0
           ? "Cloud"
@@ -76,8 +84,12 @@ function aggregateClusters(
       const models = (category: NodeCategory) => [
         ...new Set(
           clusterNodes
-            .filter((node) => getNodeCategory(node) === category)
-            .map((node) => node.metadata.labels?.["rlark.io/model"])
+            .filter((node) => hasNodeCategory(node, category))
+            .map((node) =>
+              category === "cloud"
+                ? getNodeGPUModel(node)
+                : getNodeDeviceModel(node),
+            )
             .filter((value): value is string => Boolean(value)),
         ),
       ];
@@ -265,7 +277,31 @@ export function ClusterManagementPage({
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const body = await response.json();
         const detail = body.data as ClusterSummary & { nodes?: CRDNode[] };
-        setDetailNodes(detail.nodes ?? []);
+        const fullNodes = resolvedNodes.filter(
+          (node) => clusterIDForNode(node) === selectedClusterID,
+        );
+        const fullNodeByKey = new Map(
+          fullNodes.map((node) => [
+            `${node.metadata.namespace ?? ""}/${node.metadata.name}`,
+            node,
+          ]),
+        );
+        const enrichedDetailNodes = (detail.nodes ?? []).map((node) => {
+          const fullNode = fullNodeByKey.get(
+            `${node.metadata.namespace ?? ""}/${node.metadata.name}`,
+          );
+          return fullNode
+            ? {
+                ...node,
+                metadata: {
+                  ...node.metadata,
+                  labels: fullNode.metadata.labels,
+                  annotations: fullNode.metadata.annotations,
+                },
+              }
+            : node;
+        });
+        setDetailNodes(fullNodes.length > 0 ? fullNodes : enrichedDetailNodes);
         if (!resolvedClusters.some((cluster) => cluster.id === detail.id)) {
           resolvedClusters = [detail, ...resolvedClusters];
         }
