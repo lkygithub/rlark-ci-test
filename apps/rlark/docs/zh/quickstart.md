@@ -42,7 +42,13 @@ USE_LOCAL_REGISTRY=true bash apps/rlark/docs/examples/quickstart.sh
 
 ## 快速体验：Web UI
 
-部署完成后，访问 [https://rlark-docs.pages.dev/](https://rlark-docs.pages.dev/) 了解如何使用控制台查看资源、提交训练任务和管理存储。
+本地调试时，启动 Web UI：
+
+```bash
+cd apps/rlark-ui && npm install && npm run dev
+```
+
+浏览器访问 `http://localhost:5173`。完整使用说明见 [https://rlark-docs.pages.dev/](https://rlark-docs.pages.dev/)。
 
 ## 创建第一个训练任务（curl）
 

@@ -41,7 +41,13 @@ The script automates these steps with log output:
 
 ## Quick Experience: Web UI
 
-After deployment, access the Web UI documentation at [https://rlark-docs.pages.dev/](https://rlark-docs.pages.dev/) to learn how to navigate the console, submit training jobs, and manage resources.
+For local development, launch the Web UI locally:
+
+```bash
+cd apps/rlark-ui && npm install && npm run dev
+```
+
+Open `http://localhost:5173`. For the full Web Console guide, see [https://rlark-docs.pages.dev/](https://rlark-docs.pages.dev/).
 
 ## Create a Training Job (curl)
 
