@@ -37,35 +37,6 @@ The script automates these steps with log output:
 | 8 | Generate Agent certificate via gateway API |
 | 9 | Deploy Agent (with RBAC, hostNetwork, hostPID, NodeServer socket) |
 | 10 | Verify deployment |
-
-## Architecture
-
-```
-Docker Compose (control plane + infrastructure):
-  ├── kcp                     :6443 — control API server
-  ├── postgresql              :5432 — business data (SSH keys, certs, users)
-  ├── rlark-server            :8443 — Agent WebSocket tunnel, cert signing
-  │                           :2222 — SSH server (cross-cluster network)
-  ├── rlark-gateway           :8080 — User-facing REST API
-  └── rlark-controller-manager      — Job→Task, Domain→DomainPeer, IP allocation
-
-kind cluster (rlark-data):
-  └── rlark-agent — Pull/Push controllers, NodeServer, network-sidecar injection
-```
-
-### Component Roles
-
-| Type | Component | Role |
-|------|-----------|------|
-| Control Plane | kcp | Lightweight K8s API server, stores all CRDs |
-| Control Plane | postgresql | Business data (SSH keys, users, certificates) |
-| Control Plane | server | Agent WebSocket tunnel, TLS/SSH cert signing, K8s API proxy |
-| Control Plane | controller-manager | Job→Task conversion, Domain→DomainPeer, IP allocation |
-| Control Plane | gateway | User-facing REST API |
-| Data Plane | agent (cluster) | Pull/Push controllers, sync Workload to local cluster |
-| Data Plane | agent (node) | NodeServer, cross-cluster network routing |
-| Data Plane | network-sidecar | Injected into Pod, TUN+gVisor intercepts egress traffic |
-
 > **Note:** For production, control plane components should run in a separate management cluster. The quickstart deploys them in Docker Compose alongside kcp for simplicity.
 
 ## Quick Experience: Web UI

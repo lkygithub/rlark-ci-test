@@ -130,50 +130,6 @@ kubectl --kubeconfig ~/.rlark/kind-kubeconfig get deployment -A | grep hello-wor
 kubectl --kubeconfig ~/.rlark/kind-kubeconfig get pods -A | grep hello-world
 ```
 
-## 部署架构
-
-脚本部署了以下组件：
-
-```mermaid
-graph TB
-    subgraph Docker["Docker Compose（控制面 + 基础设施）"]
-        registry["local-registry<br/>:5555"]
-        kcp["kcp<br/>:6443<br/>控制面 API"]
-        pg["PostgreSQL<br/>:5432<br/>业务数据"]
-        server["rlark-server<br/>:8443 HTTPS / :2222 SSH<br/>Agent 隧道 · 证书签发"]
-        gateway["rlark-gateway<br/>:8080<br/>REST API"]
-        cm["rlark-controller-manager<br/>Job→Task · Domain→DomainPeer<br/>IP 分配"]
-    end
-
-    subgraph kind1["kind: rlark-data-1"]
-        agent1["rlark-agent<br/>cluster + node agent<br/>Task→Pod · 状态同步"]
-    end
-
-    subgraph kind2["kind: rlark-data-2"]
-        agent2["rlark-agent<br/>cluster + node agent<br/>Task→Pod · 状态同步"]
-    end
-
-    kcp --> server
-    server --> gateway
-    server --> cm
-    agent1 -->|"mTLS (8443)"| server
-    agent2 -->|"mTLS (8443)"| server
-    gateway -->|"kubeconfig"| kcp
-    cm -->|"kubeconfig"| kcp
-    pg --> server
-    agent1 -->|"拉取镜像"| registry
-    agent2 -->|"拉取镜像"| registry
-```
-
-| 组件 | 部署位置 | 职责 |
-|------|---------|------|
-| kcp | Docker Compose | 轻量 Kubernetes API Server，存储所有 CRD |
-| PostgreSQL | Docker Compose | 业务数据（SSH key、用户、证书） |
-| rlark-server | Docker Compose | Agent WebSocket 隧道、证书签发、SSH、K8s API 代理 |
-| rlark-gateway | Docker Compose | 用户 REST API 网关 |
-| rlark-controller-manager | Docker Compose | Job→Task 转换、Domain→DomainPeer 创建、IP 分配 |
-| rlark-agent | kind 集群 | Pull/Push 控制器，同步 Workload 到本地集群 |
-
 ## 清理
 
 ```bash
