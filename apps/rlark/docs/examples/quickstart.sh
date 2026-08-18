@@ -21,6 +21,18 @@ err()  { echo -e "\033[1;31m[$(date +%H:%M:%S)] ✗\033[0m $*"; exit 1; }
 IMAGE="localhost:5555/rlark:latest"
 
 # =============================================================================
+# Cleanup previous run
+# =============================================================================
+log "Cleaning up previous run (if any)..."
+docker compose -f "$SCRIPT_DIR/docker-compose.yml" down -v 2>/dev/null || true
+for i in $(seq 1 $CLUSTER_COUNT); do
+  kind delete cluster --name "rlark-data-$i" 2>/dev/null || true
+done
+docker rm -f local-registry 2>/dev/null || true
+rm -rf /tmp/rlark /tmp/kind-kubeconfig-* /tmp/kind-config.yaml /tmp/Dockerfile.rlark /tmp/rlark-bin 2>/dev/null || true
+ok "Cleanup complete"
+
+# =============================================================================
 # Step 0: Prerequisites
 # =============================================================================
 log "Step 0: Checking prerequisites..."
@@ -53,11 +65,15 @@ ok "Local registry: localhost:5555 (IP: $REGISTRY_IP)"
 log "Step 3: Building and pushing Docker images..."
 
 cd "$PROJECT_ROOT/apps/rlark"
-GOOS=linux CGO_ENABLED=0 go build -o /tmp/rlark-bin/server ./cmd/server/
-GOOS=linux CGO_ENABLED=0 go build -o /tmp/rlark-bin/agent ./cmd/agent/
-GOOS=linux CGO_ENABLED=0 go build -o /tmp/rlark-bin/controller-manager ./cmd/controller-manager/
-GOOS=linux CGO_ENABLED=0 go build -o /tmp/rlark-bin/gateway ./cmd/gateway/
-GOOS=linux CGO_ENABLED=0 go build -o /tmp/rlark-bin/network-sidecar ./cmd/network-sidecar/
+mkdir -p /tmp/rlark-bin
+
+# Build all 5 binaries in parallel
+GOOS=linux CGO_ENABLED=0 go build -o /tmp/rlark-bin/server ./cmd/server/ &
+GOOS=linux CGO_ENABLED=0 go build -o /tmp/rlark-bin/agent ./cmd/agent/ &
+GOOS=linux CGO_ENABLED=0 go build -o /tmp/rlark-bin/controller-manager ./cmd/controller-manager/ &
+GOOS=linux CGO_ENABLED=0 go build -o /tmp/rlark-bin/gateway ./cmd/gateway/ &
+GOOS=linux CGO_ENABLED=0 go build -o /tmp/rlark-bin/network-sidecar ./cmd/network-sidecar/ &
+wait
 
 cat > /tmp/Dockerfile.rlark <<'DOCKERFILE'
 FROM scratch
@@ -106,12 +122,14 @@ fi
 # =============================================================================
 log "Step 5: Starting kcp and PostgreSQL..."
 docker compose -f "$SCRIPT_DIR/docker-compose.yml" up -d kcp postgresql
-sleep 10
-for i in $(seq 1 30); do
-  docker compose -f "$SCRIPT_DIR/docker-compose.yml" ps --status running | grep -q kcp && break
+log "Waiting for kcp to be healthy..."
+for i in $(seq 1 60); do
+  if docker inspect kcp --format='{{.State.Health.Status}}' 2>/dev/null | grep -q healthy; then
+    break
+  fi
   sleep 2
 done
-docker compose -f "$SCRIPT_DIR/docker-compose.yml" ps --status running | grep -q kcp || err "kcp failed to start"
+docker inspect kcp --format='{{.State.Health.Status}}' 2>/dev/null | grep -q healthy || err "kcp failed to start"
 ok "kcp and PostgreSQL are running"
 
 # =============================================================================
@@ -180,7 +198,7 @@ EOF
 # Install CRDs: regenerate with maxDescLen=0 to fit kcp's 256KB annotation limit,
 # then install from /tmp to avoid modifying committed CRD files.
 log "Regenerating CRDs for kcp (maxDescLen=0)..."
-$(go env GOPATH)/bin/controller-gen crd:maxDescLen=0 \
+$(go env GOPATH)/bin/controller-gen crd:maxDescLen=0,allowDangerousTypes=true \
   paths="$PROJECT_ROOT/api/rlark.io/..." \
   output:crd:artifacts:config=/tmp/rlark/crds
 kubectl --kubeconfig /tmp/rlark/admin.kubeconfig --context root-shard \
@@ -190,12 +208,16 @@ kubectl --kubeconfig /tmp/rlark/admin.kubeconfig --context root-shard \
 # random credentials and must not reuse these ephemeral values.
 ADMIN_PASSWORD=$(python3 -c 'import secrets; print(secrets.token_hex(8))')
 USER_PASSWORD=$(python3 -c 'import secrets; print(secrets.token_hex(8))')
-kubectl --kubeconfig /tmp/rlark/admin.kubeconfig --context root \
+kubectl --kubeconfig /tmp/rlark/admin.kubeconfig --context root-shard \
+  create namespace default --dry-run=client -o yaml 2>/dev/null | \
+  kubectl --kubeconfig /tmp/rlark/admin.kubeconfig --context root-shard apply --validate=false -f - 2>/dev/null || true
+kubectl --kubeconfig /tmp/rlark/admin.kubeconfig --context root-shard \
+  delete secret rlark-ui-auth -n default --ignore-not-found 2>/dev/null || true
+kubectl --kubeconfig /tmp/rlark/admin.kubeconfig --context root-shard \
   create secret generic rlark-ui-auth -n default \
   --from-literal="admin-password=$ADMIN_PASSWORD" \
   --from-literal="user-password=$USER_PASSWORD" \
-  --dry-run=client -o yaml \
-  | kubectl --kubeconfig /tmp/rlark/admin.kubeconfig --context root apply -f -
+  --validate=false
 ok "kubeconfig, DB config, CRDs, and UI credentials ready"
 
 # =============================================================================
@@ -224,7 +246,13 @@ if ! curl -s -o /dev/null -w "%{http_code}" "http://localhost:8080/api/v1/rlinf.
   DB_CONFIG=/tmp/rlark/db-config.yaml \
   IMAGE="$IMAGE" \
   docker compose -f "$SCRIPT_DIR/docker-compose.yml" up -d --force-recreate rlark-gateway rlark-controller-manager
-  sleep 10
+  sleep 15
+  for i in $(seq 1 30); do
+    if curl -s -o /dev/null -w "%{http_code}" "http://localhost:8080/api/v1/rlinf.io/v1alpha1/nodes" 2>/dev/null | grep -q "200"; then
+      break
+    fi
+    sleep 2
+  done
 fi
 
 ok "Control plane is running"
@@ -245,13 +273,20 @@ KEOF
 
 COMPOSE_NETWORK=$(docker inspect kcp -f '{{range $k,$v := .NetworkSettings.Networks}}{{$k}}{{end}}')
 
+# Create kind clusters in parallel
 for i in $(seq 1 $CLUSTER_COUNT); do
   CLUSTER_NAME="rlark-data-$i"
   if kind get clusters 2>/dev/null | grep -q "$CLUSTER_NAME"; then
     warn "Cluster '$CLUSTER_NAME' already exists"
   else
-    kind create cluster --name "$CLUSTER_NAME" --image "$KIND_IMAGE" --config /tmp/kind-config.yaml
+    kind create cluster --name "$CLUSTER_NAME" --image "$KIND_IMAGE" --config /tmp/kind-config.yaml &
   fi
+done
+wait
+
+# Extract kubeconfigs and connect networks
+for i in $(seq 1 $CLUSTER_COUNT); do
+  CLUSTER_NAME="rlark-data-$i"
   kind get kubeconfig --name "$CLUSTER_NAME" > "/tmp/kind-kubeconfig-$i"
   docker network connect "$COMPOSE_NETWORK" "${CLUSTER_NAME}-control-plane" 2>/dev/null || true
 done
@@ -269,22 +304,27 @@ ok "All $CLUSTER_COUNT kind cluster(s) ready"
 # =============================================================================
 log "Step 9: Deploying Agents..."
 
+# Request agent certificates sequentially (to avoid gateway race conditions)
 for i in $(seq 1 $CLUSTER_COUNT); do
-  KC="/tmp/kind-kubeconfig-$i"
   CID="agent-my-cluster-$i"
-
-  kubectl --kubeconfig "$KC" create namespace rlark-system 2>/dev/null || true
-  kubectl --kubeconfig "$KC" create configmap kcp-kubeconfig \
-    -n rlark-system --from-file=kubeconfig.yaml=/tmp/rlark/kcp-kubeconfig.yaml \
-    --dry-run=client -o yaml | kubectl --kubeconfig "$KC" apply -f -
-
-  # Get agent certificate
   curl -s -X POST "http://localhost:8080/api/v1/certificates/agent" \
     -H "Content-Type: application/json" \
     -d "{\"cluster_id\":\"${CID}\"}" > "/tmp/rlark/agent-cert-$i.json"
   jq -r .ca_cert "/tmp/rlark/agent-cert-$i.json" > "/tmp/rlark/ca-$i.pem"
   jq -r .agent_cert "/tmp/rlark/agent-cert-$i.json" > "/tmp/rlark/cert-$i.pem"
   jq -r .agent_key "/tmp/rlark/agent-cert-$i.json" > "/tmp/rlark/key-$i.pem"
+done
+
+# Deploy agents in parallel
+deploy_agent() {
+  local i=$1
+  local KC="/tmp/kind-kubeconfig-$i"
+  local CID="agent-my-cluster-$i"
+
+  kubectl --kubeconfig "$KC" create namespace rlark-system 2>/dev/null || true
+  kubectl --kubeconfig "$KC" create configmap kcp-kubeconfig \
+    -n rlark-system --from-file=kubeconfig.yaml=/tmp/rlark/kcp-kubeconfig.yaml \
+    --dry-run=client -o yaml | kubectl --kubeconfig "$KC" apply -f -
 
   kubectl --kubeconfig "$KC" create secret generic agent-certs -n rlark-system \
     --from-file=ca-cert.pem="/tmp/rlark/ca-$i.pem" \
@@ -292,14 +332,25 @@ for i in $(seq 1 $CLUSTER_COUNT); do
     --from-file=key.pem="/tmp/rlark/key-$i.pem" \
     --dry-run=client -o yaml | kubectl --kubeconfig "$KC" apply -f -
 
-  # Apply RBAC and Agent deployment
   kubectl --kubeconfig "$KC" apply -f "$SCRIPT_DIR/agent-rbac.yaml"
   sed "s|\${IMAGE}|$IMAGE|g" "$SCRIPT_DIR/agent-deploy.yaml" | kubectl --kubeconfig "$KC" apply -f -
 
   kubectl --kubeconfig "$KC" wait --for=condition=Ready \
-    pods -n rlark-system -l app=rlark-agent --timeout=120s 2>/dev/null || warn "Agent $i not ready"
-  ok "Agent $i deployed"
+    pods -n rlark-system -l app=rlark-agent --timeout=120s 2>/dev/null || \
+    echo -e "\033[1;33m[$(date +%H:%M:%S)] !\033[0m Agent $i not ready"
+
+  NODE_NAME=$(kubectl --kubeconfig "$KC" get nodes -o jsonpath='{.items[0].metadata.name}')
+  kubectl --kubeconfig "$KC" label node "$NODE_NAME" "rlark.io/cluster-id=rlark-${CID}" --overwrite 2>/dev/null || true
+
+  echo -e "\033[1;32m[$(date +%H:%M:%S)] ✓\033[0m Agent $i deployed"
+}
+export -f deploy_agent
+export SCRIPT_DIR IMAGE
+
+for i in $(seq 1 $CLUSTER_COUNT); do
+  deploy_agent "$i" &
 done
+wait
 
 # =============================================================================
 # Step 10: Verify nodes
@@ -354,9 +405,10 @@ EOF
   log "Waiting for Task pods..."
   sleep 30
   kubectl --kubeconfig /tmp/kind-kubeconfig-1 wait --for=condition=Ready \
-    pods -n rlark-system -l app=cross-cluster-ping-server --timeout=120s 2>/dev/null || warn "Server pod not ready"
+    pods -n rlark-system -l app=cross-cluster-ping-server --timeout=120s 2>/dev/null || warn "Server pod not ready" &
   kubectl --kubeconfig /tmp/kind-kubeconfig-2 wait --for=condition=Ready \
-    pods -n rlark-system -l app=cross-cluster-ping-client --timeout=120s 2>/dev/null || warn "Client pod not ready"
+    pods -n rlark-system -l app=cross-cluster-ping-client --timeout=120s 2>/dev/null || warn "Client pod not ready" &
+  wait
 
   ok "Cross-cluster test resources created"
 

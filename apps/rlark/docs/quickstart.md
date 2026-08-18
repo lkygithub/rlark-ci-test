@@ -30,16 +30,18 @@ The script automates these steps with log output:
 | Step | Description |
 |------|-------------|
 | 0 | Check prerequisites (docker, kind, kubectl, jq, python3) |
-| 1 | Create runtime directories (`~/.rlark/certs`, `/tmp/rlark`) |
-| 2 | Build Docker image (all 5 binaries: server, gateway, controller-manager, agent, network-sidecar) |
-| 3 | Start kcp and PostgreSQL (Docker Compose) |
-| 4 | Configure kubeconfig (fix CA cert, generate DB config, install CRDs) |
-| 5 | Start control plane: server, gateway, controller-manager (Docker Compose) |
-| 6 | Create kind cluster `rlark-data` and connect to Docker network |
-| 7 | Create ConfigMaps and Secrets in kind |
-| 8 | Generate Agent certificate via gateway API |
-| 9 | Deploy Agent (with RBAC, hostNetwork, hostPID, NodeServer socket) |
-| 10 | Verify deployment |
+| 1 | Create runtime directory (`/tmp/rlark`) |
+| 2 | Start local Docker registry (`localhost:5555`) |
+| 3 | Build all 5 binaries, create Docker image, push to local registry; pull and push busybox |
+| 4 | Ensure kind node image is available |
+| 5 | Start kcp and PostgreSQL (Docker Compose) |
+| 6 | Configure kubeconfig (fix CA cert, generate DB config, install CRDs, create UI auth secret) |
+| 7 | Start control plane: server, gateway, controller-manager (Docker Compose) |
+| 8 | Create kind clusters (`rlark-data-1`, `rlark-data-2` by default) and connect to Docker network |
+| 9 | Deploy Agents: create namespace, ConfigMap, issue certificate, create Secret, apply RBAC and Agent Deployment |
+| 10 | Verify node registration |
+| 11 | (if 2+ clusters) Create cross-cluster test resources (Workspace, Domain, Job) |
+| 12 | (if 2+ clusters) Verify cross-cluster network connectivity |
 > **Note:** For production, control plane components should run in a separate management cluster. The quickstart deploys them in Docker Compose alongside kcp for simplicity.
 
 ## 2. Sign in to the Administrator Console
@@ -101,7 +103,7 @@ rlarkadm install -f my-data-plane.yaml
 
 `agent-cert.json` contains a private key. Protect it as a secret, delete it safely after installation, and never commit it or paste it into an issue.
 
-The local script already creates the `rlark-data` kind cluster, issues an Agent certificate, and installs the Agent and RBAC.
+The local script already creates kind clusters (`rlark-data-1`, `rlark-data-2` by default), issues Agent certificates, and installs the Agent and RBAC.
 
 ## 4. Verify the Cluster and Nodes
 
@@ -238,17 +240,17 @@ Client Pod (cluster-2)                    Server Pod (cluster-1)
 
 ```bash
 # Get server Domain IP from sidecar logs
-SERVER_DOMAIN_IP=$(kubectl --kubeconfig ~/.rlark/kind-kubeconfig-1 logs -n rlark-system \
+SERVER_DOMAIN_IP=$(kubectl --kubeconfig /tmp/kind-kubeconfig-1 logs -n rlark-system \
   deploy/cross-cluster-ping-server -c rlark-network-sidecar \
   | grep "Retrieved pod IP" | grep -o '"ip":"[^"]*"' | cut -d'"' -f4)
 
 # Cross-cluster test via pod name (no error output)
-kubectl --kubeconfig ~/.rlark/kind-kubeconfig-2 exec -n rlark-system \
+kubectl --kubeconfig /tmp/kind-kubeconfig-2 exec -n rlark-system \
   deploy/cross-cluster-ping-client -- \
   sh -c "echo 'GET / HTTP/1.0\r\n\r\n' | timeout 5 nc \$SERVER_DOMAIN_IP 8000"
 
 # Or use wget (requires Content-Length + Connection: close in server response)
-kubectl --kubeconfig ~/.rlark/kind-kubeconfig-2 exec -n rlark-system \
+kubectl --kubeconfig /tmp/kind-kubeconfig-2 exec -n rlark-system \
   deploy/cross-cluster-ping-client -- \
   wget -q -O - -T 3 http://<pod-name>.rlark-domain:8000
 ```
@@ -257,8 +259,10 @@ kubectl --kubeconfig ~/.rlark/kind-kubeconfig-2 exec -n rlark-system \
 
 ```bash
 docker compose -f apps/rlark/docs/examples/docker-compose.yml down
-kind delete cluster --name rlark-data
-rm -rf ~/.rlark
+kind delete cluster --name rlark-data-1
+kind delete cluster --name rlark-data-2
+docker rm -f local-registry
+rm -rf /tmp/rlark /tmp/kind-kubeconfig-*
 ```
 
 ## Next Steps

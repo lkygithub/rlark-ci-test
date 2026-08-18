@@ -1,4 +1,4 @@
-site_name: rlark
+site_name: RLark
 site_description: Reinforcement Learning Infrastructure for Embodied and Agentic AI
 repo_url: https://github.com/RLinf/RLark
 edit_uri: edit/main/apps/rlark/docs/
@@ -51,6 +51,7 @@ nav:
     - 快速开始: zh/quickstart.md
     - 平台使用指南:
       - 使用指南概览: zh/user-guide/index.md
+      - 控制台访问与导航: zh/user-guide/console.md
       - 集群与节点: zh/user-guide/clusters-nodes.md
       - 任务: zh/user-guide/jobs.md
       - 工作流: zh/user-guide/workflows.md
@@ -92,6 +93,7 @@ nav:
     - Quick Start: quickstart.md
     - Platform User Guide:
       - User Guide Overview: user-guide/index.md
+      - Console Access and Navigation: user-guide/console.md
       - Clusters and Nodes: user-guide/clusters-nodes.md
       - Jobs: user-guide/jobs.md
       - Workflows: user-guide/workflows.md

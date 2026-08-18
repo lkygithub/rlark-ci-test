@@ -1,13 +1,40 @@
 # Clusters and Nodes
 
-The **Clusters** page summarizes onboarded data planes and their usable Worker nodes. The **Nodes** page provides resource type, schedulability, health, location, GPU or embodied-device model, running Workers, and capacity information.
+## Browsing Clusters
 
-Control-plane-only and other non-Worker nodes are not schedulable workload capacity. Contact an administrator when a cluster is offline, a node is cordoned, or required metadata is missing.
+- Clusters page lists all onboarded data planes
+- Search and filter by: name, ID, type, region, location, status
+- Columns: cluster name, type, node count, online/offline status, online rate
+- Auto-refresh every 10 seconds
 
-## Using the UI
+![Cluster list](../images/ui/first-login-cluster-list.png)
 
-Platform Console → Clusters or Nodes. Filter by type, state, and location; open a resource to inspect capacity, health, and running Workers.
+## Inspecting a Cluster
 
-## API equivalent
+- Click a cluster to open its detail page
+- Check cluster status: total nodes, online rate, offline nodes, running jobs
+- Resource composition: cloud compute, edge compute, real robots
+- Node resource area supports filtering and search
 
-Query Cluster and Node resources. See the [API Reference](../api/reference.md) for fields and filters.
+![Cluster detail](../images/ui/first-login-cluster-detail.png)
+
+## Finding and Filtering Nodes
+
+- Filter by node type using `rlark.io/node-category` label: cloud, edge, robot, other
+- Filter by status and keyword search
+- List auto-refreshes every 10 seconds
+- Embodied task status labels on nodes
+
+## Inspecting Node Resources
+
+- Click a node to open its detail page
+- Check scheduling status: schedulable / cordoned
+- Node info: type, access mode, OS, architecture, agent version
+- Resource usage: CPU, memory, GPU
+- Associated jobs running on the node
+
+![Node detail](../images/ui/first-login-node-detail.png)
+
+## API Equivalent
+
+Query Cluster and Node resources. See [API Reference](../api/reference.md) for fields and filters.

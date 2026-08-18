@@ -13,6 +13,7 @@
 | kind | >= 0.20 | 运行本地 k8s 数据面集群 |
 | kubectl | >= 1.28 | 与集群交互 |
 | jq | >= 1.6 | 解析 JSON 响应 |
+| python3 | >= 3.8 | 处理 kubeconfig |
 
 ## 1. 部署控制面
 
@@ -29,17 +30,18 @@ USE_LOCAL_REGISTRY=true bash apps/rlark/docs/examples/quickstart.sh
 | 步骤 | 说明 |
 |------|------|
 | 0 | 检查前置依赖（docker, kind, kubectl, jq, python3） |
-| 1 | 创建运行时目录 `~/.rlark/certs` |
-| 2 | 启动 kcp 和 PostgreSQL（Docker Compose） |
-| 3 | 配置 kubeconfig 并安装 CRD 到 kcp |
-| 4 | 创建 kind 集群 `rlark-data` |
-| 5 | 将 kcp 和 PostgreSQL 接入 kind Docker 网络 |
-| 6 | 准备镜像（Docker Hub 或本地构建） |
-| 7 | 创建 ConfigMap（kubeconfig + DB 配置） |
-| 8 | 部署控制面组件（Server、Controller-Manager、Gateway） |
-| 9 | 生成 Agent 证书 |
-| 10 | 部署 Agent（含 RBAC） |
-| 11 | 验证部署状态 |
+| 1 | 创建运行时目录 `/tmp/rlark` |
+| 2 | 启动本地 Docker Registry（`localhost:5555`） |
+| 3 | 编译 5 个二进制文件，构建 Docker 镜像并推送到本地 Registry；拉取并推送 busybox |
+| 4 | 确保 kind 节点镜像可用 |
+| 5 | 启动 kcp 和 PostgreSQL（Docker Compose） |
+| 6 | 配置 kubeconfig（修正 CA 证书，生成 DB 配置，安装 CRD，创建 UI 认证 Secret） |
+| 7 | 启动控制面组件：Server、Gateway、Controller-Manager（Docker Compose） |
+| 8 | 创建 kind 集群（默认 `rlark-data-1`、`rlark-data-2`）并接入 Docker 网络 |
+| 9 | 部署 Agent：创建命名空间、ConfigMap、签发证书、创建 Secret、应用 RBAC 和 Agent Deployment |
+| 10 | 验证节点注册 |
+| 11 | （2 个及以上集群时）创建跨集群测试资源（Workspace、Domain、Job） |
+| 12 | （2 个及以上集群时）验证跨集群网络连通性 |
 
 部署完成后，脚本输出 4 个 Running Pod 和注册的 Node。
 
@@ -102,7 +104,7 @@ rlarkadm install -f my-data-plane.yaml
 
 `agent-cert.json` 包含私钥，必须按敏感凭据保护，安装完成后安全删除，不要提交到 Git 或粘贴到 Issue。
 
-本地一键脚本已经自动创建 `rlark-data` kind 集群、签发 Agent 证书并完成 Agent 与 RBAC 部署，可直接进入下一步。
+本地一键脚本已经自动创建 `rlark-data-1`、`rlark-data-2` kind 集群、签发 Agent 证书并完成 Agent 与 RBAC 部署，可直接进入下一步。
 
 ## 4. 验证集群和节点
 
@@ -202,10 +204,14 @@ curl --fail-with-body \
 docker compose -f apps/rlark/docs/examples/docker-compose.yml down
 
 # 删除 kind 集群
-kind delete cluster --name rlark-data
+kind delete cluster --name rlark-data-1
+kind delete cluster --name rlark-data-2
+
+# 删除本地 Registry
+docker rm -f local-registry
 
 # 清理运行时文件
-rm -rf ~/.rlark
+rm -rf /tmp/rlark /tmp/kind-kubeconfig-*
 ```
 
 ## 下一步
