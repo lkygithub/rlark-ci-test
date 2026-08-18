@@ -5,7 +5,6 @@ edit_uri: edit/main/apps/rlark/docs/
 
 theme:
   name: material
-  logo: images/logo.jpg
   palette:
     - scheme: default
       primary: deep purple

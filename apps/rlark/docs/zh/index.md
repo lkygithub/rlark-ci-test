@@ -5,7 +5,7 @@ hide:
 ---
 
 <div align="center">
-  <img src="../images/logo.jpg" alt="RLark Logo" width="400" />
+  <img src="../images/logo-zh.png" alt="RLark Logo" width="400" />
 </div>
 
 <div align="center" markdown>
