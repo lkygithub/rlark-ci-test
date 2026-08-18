@@ -1,8 +1,4 @@
 ---
-hide:
-  - navigation
-  - toc
----
 
 <div align="center">
   <img src="images/logo-en.png" alt="RLark Logo" width="400" />
@@ -15,8 +11,8 @@ hide:
 </div>
 
 <div align="center" markdown>
-  <a href="https://rlark.readthedocs.io/en/latest/"><img src="https://img.shields.io/badge/English%20Docs-blue?logo=readthedocs&style=flat-square" alt="English Docs" /></a>
-  <a href="https://rlark.readthedocs.io/en/latest/cn/README/"><img src="https://img.shields.io/badge/中文文档-red?logo=readthedocs&style=flat-square" alt="中文文档" /></a>
+  <a href="./"><img src="https://img.shields.io/badge/English%20Docs-blue?logo=readthedocs&style=flat-square" alt="English Docs" /></a>
+  <a href="zh/"><img src="https://img.shields.io/badge/中文文档-red?logo=readthedocs&style=flat-square" alt="中文文档" /></a>
 </div>
 
 <h1 align="center">
