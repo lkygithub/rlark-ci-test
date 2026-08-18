@@ -23,7 +23,6 @@ theme:
   features:
     - navigation.instant
     - navigation.tracking
-    - navigation.expand
     - navigation.indexes
     - toc.follow
     - content.code.copy
@@ -36,6 +35,13 @@ extra_javascript:
 
 nav:
   - Home: index.md
+  - Quick Start: quickstart.md
+  - Web Console: ui-behavior.md
+  - Core Concepts: concepts.md
+  - Architecture: architecture.md
+  - Deployment Guide: deployment.md
+  - API Reference: api/reference.md
+  - API Examples: api/examples.md
   - 中文:
     - 首页: zh/index.md
     - 快速开始: zh/quickstart.md
@@ -45,14 +51,6 @@ nav:
     - 部署指南: zh/deployment.md
     - API 参考: zh/api/reference.md
     - API 示例: zh/api/examples.md
-  - English:
-    - Quick Start: quickstart.md
-    - Web Console: ui-behavior.md
-    - Core Concepts: concepts.md
-    - Architecture: architecture.md
-    - Deployment Guide: deployment.md
-    - API Reference: api/reference.md
-    - API Examples: api/examples.md
 
 markdown_extensions:
   - admonition
