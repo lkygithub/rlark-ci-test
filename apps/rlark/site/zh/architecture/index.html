@@ -1,0 +1,1903 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Reinforcement Learning Infrastructure for Embodied and Agentic AI">
+      
+      
+      
+      
+        <link rel="prev" href="../concepts/">
+      
+      
+        <link rel="next" href="../deployment/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>架构设计 - RLark</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="deep-purple" data-md-color-accent="purple">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#_1" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="RLark" class="md-header__button md-logo" aria-label="RLark" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            RLark
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              架构设计
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="deep-purple" data-md-color-accent="purple"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="deep-purple" data-md-color-accent="purple"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/RLinf/RLark" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="RLark" class="md-nav__button md-logo" aria-label="RLark" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    RLark
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/RLinf/RLark" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ui-behavior/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Web Console
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core Concepts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Examples
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" checked>
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    中文
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_9" id="__nav_9_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    中文
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    快速开始
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ui-behavior/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Web 控制台
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../concepts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    核心概念
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    架构设计
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    架构设计
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. 设计目标
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. 总体架构
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. 控制面组件
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. 控制面组件">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 Server
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-gateway" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 Gateway
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-controller-manager" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.3 Controller-Manager
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. 数据面组件
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. 数据面组件">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-agent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 Agent
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-network-sidecar" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 Network Sidecar
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#43-nodeserver" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.3 NodeServer
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#44-containernetworkadapter" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.4 ContainerNetworkAdapter
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#45-sshdialer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.5 SSHDialer
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#46-embodied-runtime" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.6 Embodied Runtime
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-pod" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. 跨集群 Pod 网络数据流
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. 安全体系
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. 安全体系">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 证书层次
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 权限模型
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#63-ssh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.3 用户 SSH 登录流程
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-crd" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. CRD 资源模型
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. 关键设计决策
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="8. 关键设计决策">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#81-kcp-k8s-api-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.1 为什么用 kcp 而不是原生 k8s API Server？
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#82-ssh-vpn" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.2 为什么用 SSH 隧道而不是 VPN？
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#83-tun-gvisor-iptablescni" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.3 为什么用 TUN + gVisor 而不是 iptables/CNI？
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    部署指南
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API 参考
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API 示例
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. 设计目标
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. 总体架构
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. 控制面组件
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. 控制面组件">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 Server
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-gateway" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 Gateway
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-controller-manager" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.3 Controller-Manager
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. 数据面组件
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. 数据面组件">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-agent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 Agent
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-network-sidecar" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 Network Sidecar
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#43-nodeserver" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.3 NodeServer
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#44-containernetworkadapter" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.4 ContainerNetworkAdapter
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#45-sshdialer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.5 SSHDialer
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#46-embodied-runtime" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.6 Embodied Runtime
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-pod" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. 跨集群 Pod 网络数据流
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. 安全体系
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. 安全体系">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 证书层次
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 权限模型
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#63-ssh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.3 用户 SSH 登录流程
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-crd" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. CRD 资源模型
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. 关键设计决策
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="8. 关键设计决策">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#81-kcp-k8s-api-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.1 为什么用 kcp 而不是原生 k8s API Server？
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#82-ssh-vpn" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.2 为什么用 SSH 隧道而不是 VPN？
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#83-tun-gvisor-iptablescni" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.3 为什么用 TUN + gVisor 而不是 iptables/CNI？
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="_1">技术架构<a class="headerlink" href="#_1" title="Permanent link">&para;</a></h1>
+<h2 id="1">1. 设计目标<a class="headerlink" href="#1" title="Permanent link">&para;</a></h2>
+<p>rlark 是一个面向跨集群具身智能场景的云原生纳管平台，核心设计目标：</p>
+<ol>
+<li><strong>云端到端侧的工作负载编排</strong>：从云端 GPU 训练（RL/LLM）到端侧部署（机械臂、传感器、摄像头），统一的声明式抽象覆盖具身智能全链路</li>
+<li><strong>多运行时数据面</strong>：原生支持 Kubernetes、Docker、Raw 三种运行时 — GPU 集群运行 k8s 承载大规模训练，端侧设备运行 k8s 或 Docker/Raw 实现轻量级具身部署（Docker/Raw 运行时：代码框架已就绪，运行时实现尚为 TODO）</li>
+<li><strong>跨集群资源池化</strong>：将分布在不同地域的 GPU 集群和端侧设备统一管理，形成逻辑上的单一资源池</li>
+<li><strong>Pod 间直接网络通信</strong>：具身智能场景中训练进程与端侧机器人之间需要实时通信，要求跨集群 Pod 能够直接建立 TCP 连接</li>
+<li><strong>安全隔离</strong>：多租户下的具身智能任务需要网络隔离，不同团队/项目的设备和数据不能互相访问</li>
+</ol>
+<h2 id="2">2. 总体架构<a class="headerlink" href="#2" title="Permanent link">&para;</a></h2>
+<p>rlark 采用<strong>控制面—数据面</strong>分离架构，控制面基于 kcp（Kubernetes Control Plane）运行，数据面 Agent 部署在每个 GPU 集群或端侧设备中，支持 k8s、Docker 和 Raw 三种运行时。<strong>embodied-runtime</strong>（Device Plugin + Controllers）以 DaemonSet 形式运行在每个数据面节点上，管理机械臂（ROS 1/2）和摄像头硬件，将其作为 Kubernetes 设备资源暴露。</p>
+<p><img alt="系统架构" src="../../images/architecture.svg" /></p>
+<h2 id="3">3. 控制面组件<a class="headerlink" href="#3" title="Permanent link">&para;</a></h2>
+<h3 id="31-server">3.1 Server<a class="headerlink" href="#31-server" title="Permanent link">&para;</a></h3>
+<p>Server 是控制面核心，负责所有 Agent 和外部客户端的连接管理。</p>
+<p><strong>关键职责</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>功能</th>
+<th>实现</th>
+<th>关键文件</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Agent 隧道管理</td>
+<td>基于 remotedialer 的反向代理，Agent 主动连接 Server 建立 WebSocket 隧道</td>
+<td><a href="../../pkg/server/handle_proxy.go">handle_proxy.go</a></td>
+</tr>
+<tr>
+<td>证书签发</td>
+<td>X.509 和 SSH 证书的签发/吊销，支持 agent/domain/ssh-guest 等角色</td>
+<td><a href="../../pkg/server/sign.go">sign.go</a></td>
+</tr>
+<tr>
+<td>SSH 服务</td>
+<td>用户 SSH 登录认证（证书 + 公钥两阶段），direct-tcpip 通道转发</td>
+<td><a href="../../pkg/server/ssh_server.go">ssh_server.go</a></td>
+</tr>
+<tr>
+<td>Peer 互联</td>
+<td>Server 间 Peer-to-Peer 连接，支持多 Server 高可用</td>
+<td><a href="../../pkg/server/peer_manager.go">peer_manager.go</a></td>
+</tr>
+<tr>
+<td>K8s 代理</td>
+<td>将 K8s API 请求通过 Agent 隧道转发到数据面集群</td>
+<td><a href="../../pkg/server/kube_proxy.go">kube_proxy.go</a></td>
+</tr>
+<tr>
+<td>Pod 缓存</td>
+<td>基于 Informer 的内存 Pod 缓存，用于 SSH 快速查找目标 Pod</td>
+<td><a href="../../pkg/server/caches/pod_cache.go">caches/pod_cache.go</a></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Agent 连接生命周期</strong>：</p>
+<div class="highlight"><pre><span></span><code>sequenceDiagram
+    participant A as Agent
+    participant S as Server
+
+    Note over A: 启动
+    A-&gt;&gt;S: 1. 使用客户端证书建立 HTTPS WebSocket 连接
+    S-&gt;&gt;S: 2. handleProxyConnect 验证证书
+    S-&gt;&gt;S: 3. registerAgent() 创建 RBAC&lt;br/&gt;(ClusterRole + ClusterRoleBinding)
+    S-&gt;&gt;S: 4. AgentBroadcaster 广播 Agent 存在
+    Note over A,S: 5. 隧道建立完成，控制面可访问 Agent 本地服务
+</code></pre></div>
+<h3 id="32-gateway">3.2 Gateway<a class="headerlink" href="#32-gateway" title="Permanent link">&para;</a></h3>
+<p>Gateway 是面向用户的 HTTP API 网关，提供 RESTful 接口。</p>
+<p><strong>关键职责</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>功能</th>
+<th>路由</th>
+<th>文件</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CRD CRUD</td>
+<td><code>GET/POST/PUT/PATCH/DELETE /api/v1/rlinf.io/v1alpha1/{resource}</code></td>
+<td><a href="../../pkg/gateway/router.go">router.go</a></td>
+</tr>
+<tr>
+<td>证书管理</td>
+<td><code>POST /api/v1/certificates/agent</code></td>
+<td><a href="../../pkg/gateway/cert_handler.go">cert_handler.go</a></td>
+</tr>
+<tr>
+<td>SSH 密钥</td>
+<td><code>GET/POST/DELETE /api/v1/ssh-user-keys</code></td>
+<td><a href="../../pkg/gateway/suk_handler.go">suk_handler.go</a></td>
+</tr>
+<tr>
+<td>Pod 日志</td>
+<td><code>GET /api/v1/.../jobs/:name/logs</code></td>
+<td><a href="../../pkg/gateway/job_logs.go">job_logs.go</a></td>
+</tr>
+<tr>
+<td>监控指标</td>
+<td>Prometheus middleware</td>
+<td><a href="../../pkg/gateway/metrics.go">metrics.go</a></td>
+</tr>
+</tbody>
+</table>
+<h3 id="33-controller-manager">3.3 Controller-Manager<a class="headerlink" href="#33-controller-manager" title="Permanent link">&para;</a></h3>
+<p>Controller-Manager 运行在控制面，负责协调高层资源的生命周期。</p>
+<p><strong>控制器列表</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>控制器</th>
+<th>职责</th>
+<th>关键文件</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Job Controller</td>
+<td>将 Job 拆分为 Task，驱动状态机 (Pending→Running→Succeeded/Failed)</td>
+<td><a href="../../pkg/controllermanager/job/">job/</a></td>
+</tr>
+<tr>
+<td>Domain Controller</td>
+<td>管理 Domain CRD，分配 IP 子网，签发 DomainPeer 证书</td>
+<td><a href="../../pkg/controllermanager/domain/">domain/</a></td>
+</tr>
+<tr>
+<td>Task Controller</td>
+<td>监听 Task 状态，同步到对应的 Job</td>
+<td><a href="../../pkg/controllermanager/task/">task/</a></td>
+</tr>
+<tr>
+<td>Node Controller</td>
+<td>监听 Node 注册/离线事件</td>
+<td><a href="../../pkg/controllermanager/node/">node/</a></td>
+</tr>
+<tr>
+<td>Workflow Controller</td>
+<td>DAG 编排，按依赖顺序调度 Job</td>
+<td><a href="../../pkg/controllermanager/workflow/">workflow/</a></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Job 状态机</strong>：</p>
+<div class="highlight"><pre><span></span><code>stateDiagram-v2
+    [*] --&gt; Pending : init
+    Pending --&gt; Running : tasks-running
+    Running --&gt; Failed : any-task-failed
+    Running --&gt; Succeeded : all-tasks-succeeded
+    Failed --&gt; [*]
+    Succeeded --&gt; [*]
+</code></pre></div>
+<h2 id="4">4. 数据面组件<a class="headerlink" href="#4" title="Permanent link">&para;</a></h2>
+<h3 id="41-agent">4.1 Agent<a class="headerlink" href="#41-agent" title="Permanent link">&para;</a></h3>
+<p>Agent 部署在每个数据面集群中，有两种运行模式：</p>
+<table>
+<thead>
+<tr>
+<th>模式</th>
+<th>组件</th>
+<th>职责</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>cluster</code></td>
+<td>clusterAgent</td>
+<td>资源同步：Pull 控制器（管理面 CR → 本地 k8s 资源）+ Push 控制器（本地 k8s 状态 → 管理面 CR）</td>
+</tr>
+<tr>
+<td><code>node</code></td>
+<td>nodeAgent</td>
+<td>网络路由：运行 NodeServer，处理跨集群 Pod 流量转发</td>
+</tr>
+</tbody>
+</table>
+<p><strong>clusterAgent 控制器</strong>：</p>
+<div class="highlight"><pre><span></span><code>graph LR
+    subgraph mgmt[&quot;管理面 (kcp)&quot;]
+        task[Task CR]
+        node[Node CR]
+        pod[Pod CR]
+    end
+
+    subgraph local[&quot;本地集群 (kind/k8s)&quot;]
+        deploy[Deployment]
+        k8snode[K8s Node]
+        k8spod[K8s Pod]
+    end
+
+    task --&gt;|Pull Controller| deploy
+    node --&gt;|Push Controller| k8snode
+    pod --&gt;|Push Controller| k8spod
+</code></pre></div>
+<p><strong>Pull 控制器</strong>（以 Task 为例）：</p>
+<ol>
+<li>监听管理面 Task CR 的创建/更新/删除（带 finalizer 保护）</li>
+<li>根据 Task.Spec 构建对应的 K8s 资源（Deployment/DaemonSet/StatefulSet）</li>
+<li>检测 ResourceVersion 变化决定是否需要更新已有 workload</li>
+<li>自动注入 Network Sidecar 容器和 Ray 初始化脚本</li>
+<li>删除时通过 finalizer 清理本地资源后移除 finalizer</li>
+</ol>
+<p><strong>Push 控制器</strong>：</p>
+<ol>
+<li>监听本地 K8s 资源变化（Pod 创建/删除/状态变更）</li>
+<li>将状态同步到管理面对应的 Pod CR</li>
+<li>Node 信息（地址、容量、GPU 数量）定期上报</li>
+</ol>
+<h3 id="42-network-sidecar">4.2 Network Sidecar<a class="headerlink" href="#42-network-sidecar" title="Permanent link">&para;</a></h3>
+<p>Sidecar 以容器形式注入到每个训练 Pod 中，实现跨集群 Pod 间网络通信。</p>
+<p><strong>关键文件</strong>：<a href="../../pkg/network/sidecar/server.go">sidecar/server.go</a></p>
+<p><strong>双重角色</strong>：</p>
+<div class="highlight"><pre><span></span><code>graph LR
+    subgraph outbound[&quot;对外（出站）&quot;]
+        o1[Pod 进程] --&gt; o2[TUN 设备] --&gt; o3[gVisor 协议栈] --&gt; o4[Unix socket] --&gt; o5[NodeServer] --&gt; o6[SSH 隧道] --&gt; o7[目标 Pod]
+    end
+
+    subgraph inbound[&quot;对内（入站）&quot;]
+        i1[远程 NodeServer] --&gt;|TCP| i2[Proxy :5700] --&gt; i3[目标 Pod 内进程]
+    end
+</code></pre></div>
+<p><strong>启动流程</strong>：</p>
+<ol>
+<li>通过 NodeServer 的 <code>/get_ip</code> 端点获取本 Pod 的虚拟 IP 和子网前缀</li>
+<li>启动 Proxy 监听（<code>:5700</code>），接收其他 Pod 的转发连接</li>
+<li>创建 TUN 设备 + gVisor 协议栈，拦截 Pod 出站流量</li>
+<li>出站流量通过 Unix socket 发送给 NodeServer 路由</li>
+</ol>
+<h3 id="43-nodeserver">4.3 NodeServer<a class="headerlink" href="#43-nodeserver" title="Permanent link">&para;</a></h3>
+<p>NodeServer 运行在每个节点上（由 nodeAgent 管理），负责节点级网络路由。</p>
+<p><strong>关键文件</strong>：<a href="../../pkg/network/nodeserver/server.go">nodeserver/server.go</a></p>
+<p><strong>核心功能</strong>：</p>
+<ul>
+<li>接收 Sidecar 的 Unix socket 连接，解析目标地址</li>
+<li>调用 <code>ContainerNetworkAdapter</code> 查找目标 Pod 在所有 DomainPeer 中的位置</li>
+<li>同集群：直接 TCP 连接目标 Pod 的 Proxy</li>
+<li>跨集群：通过 SSH 隧道连接 Server，再由 Server 转发到目标 Agent 的 NodeServer</li>
+</ul>
+<h3 id="44-containernetworkadapter">4.4 ContainerNetworkAdapter<a class="headerlink" href="#44-containernetworkadapter" title="Permanent link">&para;</a></h3>
+<p><strong>关键文件</strong>：<a href="../../pkg/agent/container/network.go">container/network.go</a></p>
+<p><strong>路由决策</strong>：</p>
+<div class="highlight"><pre><span></span><code><span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">a</span><span class="w"> </span><span class="o">*</span><span class="nx">containerNetworkAdapter</span><span class="p">)</span><span class="w"> </span><span class="nx">GetContainerNetworkDial</span><span class="p">(</span><span class="o">...</span><span class="p">)</span><span class="w"> </span><span class="p">(</span><span class="nx">utils</span><span class="p">.</span><span class="nx">Dial</span><span class="p">,</span><span class="w"> </span><span class="kt">error</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// 1. 同集群 → 直接 TCP 连接目标 Pod 的 Proxy</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">targetPod</span><span class="p">.</span><span class="nx">GlobalNamespace</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nx">a</span><span class="p">.</span><span class="nx">globalNamespace</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="nx">dialer</span><span class="p">.</span><span class="nx">DialContext</span><span class="p">(</span><span class="s">&quot;tcp&quot;</span><span class="p">,</span><span class="w"> </span><span class="nx">targetPod</span><span class="p">.</span><span class="nx">LocalIP</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="s">&quot;:57&quot;</span><span class="p">)</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="c1">// 2. 跨集群 → SSH 隧道</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">a</span><span class="p">.</span><span class="nx">sshDialer</span><span class="p">.</span><span class="nx">DialContext</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span><span class="w"> </span><span class="nx">domainID</span><span class="p">,</span><span class="w"> </span><span class="nx">sshAddr</span><span class="p">,</span><span class="w"> </span><span class="nx">cert</span><span class="p">,</span><span class="w"> </span><span class="nx">key</span><span class="p">,</span><span class="w"> </span><span class="nx">target</span><span class="p">)</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="45-sshdialer">4.5 SSHDialer<a class="headerlink" href="#45-sshdialer" title="Permanent link">&para;</a></h3>
+<p><strong>关键文件</strong>：<a href="../../pkg/agent/container/ssh_dialer.go">container/ssh_dialer.go</a></p>
+<p>按 Domain 维护的 SSH 连接池，设计要点：</p>
+<ul>
+<li>每个 Domain 至多一个 SSH 连接（ssh.Client 多路复用）</li>
+<li>连接断开时自动重连，重连期间并发请求等待而非各自新建</li>
+<li>重连失败指数退避（1s → 2s → 4s → ... → 30s）</li>
+<li>后台 GC 关闭空闲超时连接（默认 10 分钟）</li>
+<li>线程安全，正常路径读锁无阻塞</li>
+</ul>
+<h3 id="46-embodied-runtime">4.6 Embodied Runtime<a class="headerlink" href="#46-embodied-runtime" title="Permanent link">&para;</a></h3>
+<p><strong>embodied-runtime</strong> 是部署在每个数据面节点上的 DaemonSet 组件，管理机械臂（ROS 1/2）和摄像头硬件。它与 Agent 集成，将物理设备作为 Kubernetes 设备资源（<code>rlinf.io/device</code>）暴露，使训练 Task 可以像申请 GPU 一样申请机械臂和摄像头。</p>
+<p><strong>关键文件</strong>：<a href="../../../embodied-runtime/">apps/embodied-runtime/</a></p>
+<p><strong>组件概览</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>组件</th>
+<th>职责</th>
+<th>关键文件</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Device Plugin</td>
+<td>向 kubelet 注册 <code>rlinf.io/device</code>；检测节点本地硬件；向 Task Pod 注入 socket 和 CLI 二进制</td>
+<td><a href="../../../../embodied-runtime/pkg/deviceplugin/plugin.go">plugin.go</a></td>
+</tr>
+<tr>
+<td>Mutating Webhook</td>
+<td>自动向申请 <code>rlinf.io/device</code> 的 Pod 注入 <code>devinit</code> init 容器；管理 CA 证书和 serving 证书</td>
+<td><a href="../../../../embodied-runtime/pkg/deviceplugin/webhook.go">webhook.go</a></td>
+</tr>
+<tr>
+<td>ros-controller</td>
+<td>管理 ROS 1（<code>roscore</code> + <code>roslaunch</code>）机器人生命周期；通过 Unix socket 暴露 gRPC API</td>
+<td><a href="../../../../embodied-runtime/pkg/roscontroller/">roscontroller/</a></td>
+</tr>
+<tr>
+<td>ros2-controller</td>
+<td>管理 ROS 2 机器人生命周期；通过 Unix socket 暴露 gRPC API</td>
+<td><a href="../../../../embodied-runtime/pkg/ros2controller/">ros2controller/</a></td>
+</tr>
+<tr>
+<td>camera-controller</td>
+<td>管理摄像头（V4L2 / RTSP / RealSense）生命周期；ffmpeg 转码；通过 Unix socket 暴露 gRPC API</td>
+<td><a href="../../../../embodied-runtime/pkg/cameracontroller/">cameracontroller/</a></td>
+</tr>
+<tr>
+<td>CLI（rosctr / camctr）</td>
+<td>挂载到 Task Pod 中的命令行工具，用于直接控制机器人/摄像头</td>
+<td><a href="../../../../embodied-runtime/cmd/rosctr/">cmd/rosctr/</a></td>
+</tr>
+</tbody>
+</table>
+<p><strong>设备生命周期</strong>：</p>
+<ol>
+<li>Device Plugin 检测硬件（V4L2 摄像头、机器人控制器）并向 kubelet 注册</li>
+<li>Task Pod 在 spec 中申请 <code>rlinf.io/device</code> 资源</li>
+<li><strong>Mutating Webhook</strong> 拦截 Pod 创建请求，自动注入 <code>devinit</code> init 容器（申请同一资源），执行 <code>devinit setup</code> 在 Pod 网络命名空间中创建 macvlan</li>
+<li>Allocate 时，Device Plugin 将 Unix socket 和 CLI 二进制注入 Pod</li>
+<li>任务容器通过 gRPC over Unix socket 与 ros-controller / camera-controller 通信</li>
+<li>Pod 终止时，Device Plugin 清理并归还设备到资源池</li>
+</ol>
+<h2 id="5-pod">5. 跨集群 Pod 网络数据流<a class="headerlink" href="#5-pod" title="Permanent link">&para;</a></h2>
+<p>以 Pod A（集群北京）访问 Pod B（集群上海）为例：</p>
+<div class="highlight"><pre><span></span><code>sequenceDiagram
+    participant PA as Pod A 进程
+    participant SA as Sidecar A
+    participant NS as NodeServer A
+    participant CNA as ContainerNetworkAdapter
+    participant SD as SSHDialer
+    participant SRV as Server
+    participant NB as NodeServer B
+    participant SB as Sidecar Proxy B
+    participant PB as Pod B 进程
+
+    PA-&gt;&gt;SA: TCP → 10.0.0.5:8080 (Pod B 虚拟 IP)
+    SA-&gt;&gt;SA: TUN 设备拦截
+    SA-&gt;&gt;SA: gVisor 协议栈处理 TCP SYN
+    SA-&gt;&gt;NS: Unix socket
+    NS-&gt;&gt;CNA: 查询目标 Pod 位置
+    CNA-&gt;&gt;CNA: 检查 DomainPeer&lt;br/&gt;&quot;10.0.0.5 → agent-shanghai&quot;
+    alt 同集群
+        CNA--&gt;&gt;NS: 直接 TCP 连接
+    else 跨集群
+        CNA-&gt;&gt;SD: 建立 SSH 隧道
+        SD-&gt;&gt;SRV: SSH direct-tcpip 通道
+        SRV-&gt;&gt;SRV: 验证证书角色: domain&lt;br/&gt;权限检查: checkHostInDomain()
+        SRV-&gt;&gt;NS: Agent B 隧道
+    end
+    NS-&gt;&gt;SB: TCP → 10.0.0.5:5700
+    SB-&gt;&gt;PB: 连接真实进程 10.0.0.5:8080
+    Note over PA,PB: 双向数据转发 (PipeConnections)
+</code></pre></div>
+<h2 id="6">6. 安全体系<a class="headerlink" href="#6" title="Permanent link">&para;</a></h2>
+<h3 id="61">6.1 证书层次<a class="headerlink" href="#61" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>graph TD
+    ca[CA 根证书]
+    ca --&gt; agent[Agent 证书&lt;br/&gt;X.509&lt;br/&gt;数据面接入]
+    ca --&gt; domain[Domain 证书&lt;br/&gt;X.509&lt;br/&gt;跨集群通信]
+    ca --&gt; ssh[SSH-Guest 证书&lt;br/&gt;SSH&lt;br/&gt;用户 SSH 登录]
+</code></pre></div>
+<h3 id="62">6.2 权限模型<a class="headerlink" href="#62" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>证书角色</th>
+<th>权限</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>agent</code></td>
+<td>接入 Server 隧道，代理 K8s API 请求</td>
+</tr>
+<tr>
+<td><code>domain</code></td>
+<td>访问同 Domain 下的 Pod，建立跨集群网络连接</td>
+</tr>
+<tr>
+<td><code>ssh-guest</code></td>
+<td>通过 SSH 登录到有权限的 Pod</td>
+</tr>
+<tr>
+<td><code>admin</code></td>
+<td>签发/吊销证书，Kubernetes impersonation</td>
+</tr>
+</tbody>
+</table>
+<h3 id="63-ssh">6.3 用户 SSH 登录流程<a class="headerlink" href="#63-ssh" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>sequenceDiagram
+    participant Admin as 管理员
+    participant GW as Gateway
+    participant User as 用户
+    participant S as Server
+    participant DB as PostgreSQL
+    participant Agent as Agent
+
+    Admin-&gt;&gt;GW: POST /api/v1/ssh-user-keys&lt;br/&gt;{user, public_key}
+    GW-&gt;&gt;DB: 存储公钥
+
+    User-&gt;&gt;S: ssh user@server -p 2222
+    S-&gt;&gt;S: 第一阶段：证书认证 (CertChecker)
+    S-&gt;&gt;S: 第二阶段：UserKeyFallback
+    S-&gt;&gt;DB: 查询用户公钥列表
+    DB--&gt;&gt;S: 返回公钥
+    S-&gt;&gt;S: 匹配客户端公钥 → 认证成功
+    S-&gt;&gt;S: 临时签发 ssh-guest 证书
+
+    User-&gt;&gt;S: ssh -L 8080:pod-name:8080&lt;br/&gt;(direct-tcpip 通道)
+    S-&gt;&gt;S: PodCache 查找 Pod 所在 Agent
+    S-&gt;&gt;Agent: 通过隧道转发到 Pod
+</code></pre></div>
+<h2 id="7-crd">7. CRD 资源模型<a class="headerlink" href="#7-crd" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>flowchart LR
+    wf[&quot;Workflow&lt;br/&gt;&lt;i&gt;Cluster&lt;/i&gt;&quot;]
+    job[&quot;Job&lt;br/&gt;&lt;i&gt;Cluster&lt;/i&gt;&quot;]
+    task[&quot;Task&lt;br/&gt;&lt;i&gt;Namespaced&lt;/i&gt;&quot;]
+    node[&quot;Node&lt;br/&gt;&lt;i&gt;Namespaced&lt;/i&gt;&quot;]
+    domain[&quot;Domain&lt;br/&gt;&lt;i&gt;Cluster&lt;/i&gt;&quot;]
+    dp[&quot;DomainPeer&lt;br/&gt;&lt;i&gt;Namespaced&lt;/i&gt;&quot;]
+
+    wf --&gt;|&quot;1:N&quot;| job
+    job --&gt;|&quot;1:N&quot;| task
+    task --&gt;|&quot;NodeSelector&quot;| node
+    task --&gt;|&quot;所属 Domain&quot;| domain
+    domain --&gt;|&quot;1:N&quot;| dp
+</code></pre></div>
+<h2 id="8">8. 关键设计决策<a class="headerlink" href="#8" title="Permanent link">&para;</a></h2>
+<h3 id="81-kcp-k8s-api-server">8.1 为什么用 kcp 而不是原生 k8s API Server？<a class="headerlink" href="#81-kcp-k8s-api-server" title="Permanent link">&para;</a></h3>
+<p>kcp 相比原生 k8s API Server 更加轻量，可以脱离完整的 Kubernetes 集群独立部署，降低了控制面的资源开销和运维复杂度。同时 kcp 原生的逻辑集群（logical cluster）概念与 rlark 的 Domain 概念天然契合，为未来多租户场景预留了扩展性。</p>
+<h3 id="82-ssh-vpn">8.2 为什么用 SSH 隧道而不是 VPN？<a class="headerlink" href="#82-ssh-vpn" title="Permanent link">&para;</a></h3>
+<p>VPN 方案需要开放底层网络，在异构集群环境下配置复杂。SSH 隧道方案：</p>
+<ul>
+<li>基于 TCP，无需修改网络基础设施</li>
+<li>利用 SSH 证书实现细粒度权限控制（每个 Domain 独立证书）</li>
+<li>连接复用（ssh.Client 多路复用），减少握手开销</li>
+<li>天然支持用户认证（SSH 公钥登录）</li>
+</ul>
+<h3 id="83-tun-gvisor-iptablescni">8.3 为什么用 TUN + gVisor 而不是 iptables/CNI？<a class="headerlink" href="#83-tun-gvisor-iptablescni" title="Permanent link">&para;</a></h3>
+<p>iptables/CNI 方案需要修改节点网络配置，权限要求高。TUN + gVisor 方案：</p>
+<ul>
+<li>运行在用户态，gVisor 协议栈支持 TCP/UDP/ICMP 完整协议族（注：创建 TUN 设备需要 privileged 权限）</li>
+<li>gVisor 协议栈支持 TCP/UDP/ICMP 完整协议族</li>
+<li>可以作为 Sidecar 容器注入，与业务容器解耦</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.sections", "navigation.tracking", "navigation.indexes", "toc.follow", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+        <script src="../../javascripts/fix-nav.js"></script>
+      
+    
+  </body>
+</html>

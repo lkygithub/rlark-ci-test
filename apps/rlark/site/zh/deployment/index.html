@@ -1,0 +1,3087 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Reinforcement Learning Infrastructure for Embodied and Agentic AI">
+      
+      
+      
+      
+        <link rel="prev" href="../architecture/">
+      
+      
+        <link rel="next" href="../api/reference/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>部署指南 - RLark</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="deep-purple" data-md-color-accent="purple">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#_1" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="RLark" class="md-header__button md-logo" aria-label="RLark" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            RLark
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              部署指南
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="deep-purple" data-md-color-accent="purple"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="deep-purple" data-md-color-accent="purple"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/RLinf/RLark" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="RLark" class="md-nav__button md-logo" aria-label="RLark" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    RLark
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/RLinf/RLark" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ui-behavior/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Web Console
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core Concepts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Examples
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" checked>
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    中文
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_9" id="__nav_9_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    中文
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    快速开始
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ui-behavior/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Web 控制台
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../concepts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    核心概念
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    架构设计
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    部署指南
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    部署指南
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. 部署架构
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-rlarkadm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. 部署工具：rlarkadm
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. 部署工具：rlarkadm">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        配置文件结构
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-kubernetes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Kubernetes 部署
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Kubernetes 部署">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 控制面部署
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 数据面部署
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-docker-compose" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Docker Compose 部署（开发环境）
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. 组件配置
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. 组件配置">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 Server
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-controller-manager" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 Controller-Manager
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#53-gateway" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.3 Gateway
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#54-agent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.4 Agent
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#55" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.5 环境模式
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#56-agent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.6 Agent 运行模式
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-addon" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Addon 配置
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Addon 配置">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-addon" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 Addon 目录结构
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62-addon" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 安装 Addon
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#63-addon" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.3 管理 Addon
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. 存储配置
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. 存储配置">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#71" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.1 控制面存储
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#72" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.2 存储类型
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. 网络要求
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="8. 网络要求">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#81" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.1 端口暴露
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#82" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.2 网络拓扑
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. 证书管理
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="9. 证书管理">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#91" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.1 证书类型
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#92-agent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.2 签发 Agent 证书
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#93-ui" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.3 UI 认证
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. 高可用部署
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="10. 高可用部署">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#101" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.1 多副本部署
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#102-etcd" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.2 外部 etcd
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#103-postgresql" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.3 外部 PostgreSQL
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. 监控与运维
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="11. 监控与运维">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#111-prometheus" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.1 Prometheus 指标
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#112" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.2 日志
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#113" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.3 健康检查
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#12" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12. 升级
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#13" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13. 故障排查
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="13. 故障排查">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#agent-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Agent 无法连接 Server
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        训练任务无法启动
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        跨集群网络不通
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#14" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14. 真机设备纳管
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="14. 真机设备纳管">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#141" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14.1 架构概览
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#142" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14.2 纳管流程
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#143" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14.3 设备元数据
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#144-job" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14.4 编写使用真机设备的 Job
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#145" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14.5 设备资源类型
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API 参考
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API 示例
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. 部署架构
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-rlarkadm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. 部署工具：rlarkadm
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. 部署工具：rlarkadm">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        配置文件结构
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-kubernetes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Kubernetes 部署
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Kubernetes 部署">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 控制面部署
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 数据面部署
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-docker-compose" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Docker Compose 部署（开发环境）
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. 组件配置
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. 组件配置">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 Server
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-controller-manager" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 Controller-Manager
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#53-gateway" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.3 Gateway
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#54-agent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.4 Agent
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#55" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.5 环境模式
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#56-agent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.6 Agent 运行模式
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-addon" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Addon 配置
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Addon 配置">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-addon" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 Addon 目录结构
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62-addon" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 安装 Addon
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#63-addon" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.3 管理 Addon
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. 存储配置
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. 存储配置">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#71" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.1 控制面存储
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#72" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.2 存储类型
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. 网络要求
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="8. 网络要求">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#81" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.1 端口暴露
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#82" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.2 网络拓扑
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. 证书管理
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="9. 证书管理">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#91" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.1 证书类型
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#92-agent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.2 签发 Agent 证书
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#93-ui" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.3 UI 认证
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. 高可用部署
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="10. 高可用部署">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#101" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.1 多副本部署
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#102-etcd" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.2 外部 etcd
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#103-postgresql" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.3 外部 PostgreSQL
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. 监控与运维
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="11. 监控与运维">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#111-prometheus" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.1 Prometheus 指标
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#112" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.2 日志
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#113" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.3 健康检查
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#12" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12. 升级
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#13" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13. 故障排查
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="13. 故障排查">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#agent-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Agent 无法连接 Server
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        训练任务无法启动
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        跨集群网络不通
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#14" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14. 真机设备纳管
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="14. 真机设备纳管">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#141" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14.1 架构概览
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#142" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14.2 纳管流程
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#143" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14.3 设备元数据
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#144-job" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14.4 编写使用真机设备的 Job
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#145" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14.5 设备资源类型
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="_1">部署指南<a class="headerlink" href="#_1" title="Permanent link">&para;</a></h1>
+<h2 id="1">1. 部署架构<a class="headerlink" href="#1" title="Permanent link">&para;</a></h2>
+<p>rlark 支持三种部署方式，适用于不同场景：</p>
+<table>
+<thead>
+<tr>
+<th>方式</th>
+<th>复杂度</th>
+<th>适用场景</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Docker Compose</td>
+<td>低</td>
+<td>本地开发、单机测试</td>
+</tr>
+<tr>
+<td>Kubernetes</td>
+<td>中</td>
+<td>生产环境、集群部署</td>
+</tr>
+<tr>
+<td>Raw Binary</td>
+<td>高</td>
+<td>极简部署、嵌入式场景</td>
+</tr>
+</tbody>
+</table>
+<h2 id="2-rlarkadm">2. 部署工具：rlarkadm<a class="headerlink" href="#2-rlarkadm" title="Permanent link">&para;</a></h2>
+<p><code>rlarkadm</code> 是 rlark 的部署 CLI，统一管理控制面和数据面的安装、卸载和健康检查。</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># 安装</span>
+rlarkadm<span class="w"> </span>install<span class="w"> </span>-f<span class="w"> </span>&lt;配置文件&gt;
+
+<span class="c1"># 卸载</span>
+rlarkadm<span class="w"> </span>uninstall<span class="w"> </span>-f<span class="w"> </span>&lt;配置文件&gt;
+
+<span class="c1"># 健康检查</span>
+rlarkadm<span class="w"> </span>health<span class="w"> </span>-f<span class="w"> </span>&lt;配置文件&gt;
+</code></pre></div>
+<h3 id="_2">配置文件结构<a class="headerlink" href="#_2" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rlark.io/v1alpha1</span>
+<span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">DeployConfig</span>
+<span class="nt">plane</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">control</span><span class="w">              </span><span class="c1"># control | data</span>
+
+<span class="c1"># 控制面配置</span>
+<span class="nt">kubernetes</span><span class="p">:</span><span class="w">                 </span><span class="c1"># 部署到 K8s 集群</span>
+<span class="w">  </span><span class="nt">kubeconfig</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/path/to/kubeconfig</span>
+<span class="w">  </span><span class="c1"># 镜像配置</span>
+<span class="w">  </span><span class="nt">gateway-image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rlark-gateway:latest</span>
+<span class="w">  </span><span class="nt">controller-manager-image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rlark-controller-manager:latest</span>
+<span class="w">  </span><span class="nt">server-image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rlark-server:latest</span>
+<span class="w">  </span><span class="nt">kcp-image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">kcp:v0.30.0</span>
+<span class="w">  </span><span class="nt">postgresql-image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">postgres:15</span>
+<span class="w">  </span><span class="nt">ui-image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rlark-ui:latest</span>
+<span class="w">  </span><span class="c1"># 存储配置</span>
+<span class="w">  </span><span class="nt">storage</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pvc</span><span class="w">               </span><span class="c1"># emptyDir | hostPath | pvc</span>
+<span class="w">    </span><span class="nt">storage-class</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;&quot;</span>
+<span class="w">    </span><span class="nt">size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10Gi</span>
+<span class="w">    </span><span class="nt">node-selector</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">kubernetes.io/hostname</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dev-worker</span>
+
+<span class="c1"># 数据面配置</span>
+<span class="nt">plane</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">data</span>
+<span class="nt">cert</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">ca-cert</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">    </span><span class="no">-----BEGIN CERTIFICATE-----</span>
+<span class="w">    </span><span class="no">...</span>
+<span class="w">    </span><span class="no">-----END CERTIFICATE-----</span>
+<span class="w">  </span><span class="nt">agent-cert</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">    </span><span class="no">-----BEGIN CERTIFICATE-----</span>
+<span class="w">    </span><span class="no">...</span>
+<span class="w">    </span><span class="no">-----END CERTIFICATE-----</span>
+<span class="w">  </span><span class="nt">agent-key</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">    </span><span class="no">-----BEGIN PRIVATE KEY-----</span>
+<span class="w">    </span><span class="no">...</span>
+<span class="w">    </span><span class="no">-----END PRIVATE KEY-----</span>
+<span class="nt">kubernetes</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">kubeconfig</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/path/to/data-kubeconfig</span>
+<span class="w">  </span><span class="nt">agent-image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rlark-agent:latest</span>
+<span class="w">  </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rlark:latest</span>
+</code></pre></div>
+<h2 id="3-kubernetes">3. Kubernetes 部署<a class="headerlink" href="#3-kubernetes" title="Permanent link">&para;</a></h2>
+<h3 id="31">3.1 控制面部署<a class="headerlink" href="#31" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># 1. 准备配置文件</span>
+cp<span class="w"> </span>apps/rlark/docs/examples/deploy-control-plane.yaml<span class="w"> </span>my-deploy.yaml
+
+<span class="c1"># 2. 修改镜像地址和 kubeconfig</span>
+<span class="c1"># 3. 执行安装</span>
+rlarkadm<span class="w"> </span>install<span class="w"> </span>-f<span class="w"> </span>my-deploy.yaml
+
+<span class="c1"># 4. 验证</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-n<span class="w"> </span>rlark-system
+</code></pre></div>
+<p>控制面部署的组件：</p>
+<table>
+<thead>
+<tr>
+<th>组件</th>
+<th>副本数</th>
+<th>端口</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>kcp</td>
+<td>1</td>
+<td>6443</td>
+<td>API Server</td>
+</tr>
+<tr>
+<td>etcd</td>
+<td>1</td>
+<td>2379</td>
+<td>kcp 数据存储（可选外置）</td>
+</tr>
+<tr>
+<td>postgresql</td>
+<td>1</td>
+<td>5432</td>
+<td>rlark 数据存储</td>
+</tr>
+<tr>
+<td>server</td>
+<td>1</td>
+<td>8443, 2222</td>
+<td>HTTPS + SSH</td>
+</tr>
+<tr>
+<td>controller-manager</td>
+<td>1</td>
+<td>-</td>
+<td>控制面控制器</td>
+</tr>
+<tr>
+<td>gateway</td>
+<td>1</td>
+<td>8080</td>
+<td>API Gateway</td>
+</tr>
+<tr>
+<td>ui</td>
+<td>1</td>
+<td>80</td>
+<td>Web 管理界面</td>
+</tr>
+</tbody>
+</table>
+<h3 id="32">3.2 数据面部署<a class="headerlink" href="#32" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># 1. 从控制面获取证书（通过 Gateway API 或手动签发）</span>
+<span class="c1"># 2. 填写配置文件</span>
+cp<span class="w"> </span>apps/rlark/docs/examples/deploy-data-plane.yaml<span class="w"> </span>my-data.yaml
+
+<span class="c1"># 3. 执行安装</span>
+rlarkadm<span class="w"> </span>install<span class="w"> </span>-f<span class="w"> </span>my-data.yaml
+
+<span class="c1"># 4. 验证</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-n<span class="w"> </span>rlark-system
+</code></pre></div>
+<p>数据面部署的组件：</p>
+<table>
+<thead>
+<tr>
+<th>组件</th>
+<th>副本数</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>agent</td>
+<td>DaemonSet</td>
+<td>cluster + node 模式</td>
+</tr>
+<tr>
+<td>network-sidecar</td>
+<td>Pod 注入</td>
+<td>自动注入到训练 Pod</td>
+</tr>
+</tbody>
+</table>
+<h2 id="4-docker-compose">4. Docker Compose 部署（开发环境）<a class="headerlink" href="#4-docker-compose" title="Permanent link">&para;</a></h2>
+<p>适用于本地开发和测试：</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># docker-compose.yml</span>
+<span class="nt">services</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">kcp</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">kcp:v0.30.0</span>
+<span class="w">    </span><span class="nt">command</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;start&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;--root-directory&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;/data/kcp&quot;</span><span class="p p-Indicator">]</span>
+<span class="w">    </span><span class="nt">ports</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;6443:6443&quot;</span>
+<span class="w">    </span><span class="nt">volumes</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">kcp-data:/data</span>
+
+<span class="w">  </span><span class="nt">postgresql</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">postgres:15</span>
+<span class="w">    </span><span class="nt">environment</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">POSTGRES_DB</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rlark</span>
+<span class="w">      </span><span class="nt">POSTGRES_USER</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rlark</span>
+<span class="w">      </span><span class="nt">POSTGRES_PASSWORD</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">CHANGE_ME</span>
+<span class="w">    </span><span class="nt">ports</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;5432:5432&quot;</span>
+<span class="w">    </span><span class="nt">volumes</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pg-data:/var/lib/postgresql/data</span>
+
+<span class="nt">volumes</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">kcp-data</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">pg-data</span><span class="p">:</span>
+</code></pre></div>
+<h2 id="5">5. 组件配置<a class="headerlink" href="#5" title="Permanent link">&para;</a></h2>
+<h3 id="51-server">5.1 Server<a class="headerlink" href="#51-server" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>参数</th>
+<th>默认值</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--kubeconfig</code></td>
+<td><code>""</code></td>
+<td>控制面 kubeconfig</td>
+</tr>
+<tr>
+<td><code>--https-port</code></td>
+<td><code>8443</code></td>
+<td>HTTPS 服务端口</td>
+</tr>
+<tr>
+<td><code>--ssh-port</code></td>
+<td><code>2222</code></td>
+<td>SSH 服务端口</td>
+</tr>
+<tr>
+<td><code>--db-config</code></td>
+<td><code>""</code></td>
+<td>数据库配置文件路径</td>
+</tr>
+<tr>
+<td><code>--ca-cert</code></td>
+<td><code>""</code></td>
+<td>CA 证书路径</td>
+</tr>
+<tr>
+<td><code>--ca-key</code></td>
+<td><code>""</code></td>
+<td>CA 私钥路径</td>
+</tr>
+<tr>
+<td><code>--auto-sign-tls-ca-cert</code></td>
+<td><code>false</code></td>
+<td>自动使用 CA 签署 TLS 证书</td>
+</tr>
+<tr>
+<td><code>--tls-domains</code></td>
+<td><code>""</code></td>
+<td>自动证书生成的 TLS 域名列表</td>
+</tr>
+</tbody>
+</table>
+<h3 id="52-controller-manager">5.2 Controller-Manager<a class="headerlink" href="#52-controller-manager" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>参数</th>
+<th>默认值</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--kubeconfig</code></td>
+<td><code>""</code></td>
+<td>控制面 kubeconfig</td>
+</tr>
+<tr>
+<td><code>--server-address</code></td>
+<td><code>""</code></td>
+<td>Server 地址（用于证书签发）</td>
+</tr>
+<tr>
+<td><code>--leader-elect</code></td>
+<td><code>true</code></td>
+<td>是否启用 Leader 选举</td>
+</tr>
+</tbody>
+</table>
+<h3 id="53-gateway">5.3 Gateway<a class="headerlink" href="#53-gateway" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>参数</th>
+<th>默认值</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--kubeconfig</code></td>
+<td><code>""</code></td>
+<td>控制面 kubeconfig</td>
+</tr>
+<tr>
+<td><code>--addr</code></td>
+<td><code>:8080</code></td>
+<td>HTTP 服务地址</td>
+</tr>
+<tr>
+<td><code>--db-config</code></td>
+<td><code>""</code></td>
+<td>数据库配置文件路径</td>
+</tr>
+<tr>
+<td><code>--server-address</code></td>
+<td><code>""</code></td>
+<td>控制面 Server 地址，用于证书签发</td>
+</tr>
+</tbody>
+</table>
+<h3 id="54-agent">5.4 Agent<a class="headerlink" href="#54-agent" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>参数</th>
+<th>默认值</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--kubeconfig</code></td>
+<td><code>""</code></td>
+<td>数据面 kubeconfig</td>
+</tr>
+<tr>
+<td><code>--server-address</code></td>
+<td><code>""</code></td>
+<td>控制面 Server 地址</td>
+</tr>
+<tr>
+<td><code>--client-cert</code></td>
+<td><code>""</code></td>
+<td>Agent 证书路径</td>
+</tr>
+<tr>
+<td><code>--client-key</code></td>
+<td><code>""</code></td>
+<td>Agent 私钥路径</td>
+</tr>
+<tr>
+<td><code>--ca-cert</code></td>
+<td><code>""</code></td>
+<td>CA 证书路径</td>
+</tr>
+<tr>
+<td><code>--mode</code></td>
+<td><code>both</code></td>
+<td>运行模式：<code>cluster</code> / <code>node</code> / <code>both</code></td>
+</tr>
+<tr>
+<td><code>--rlark-server-ssh-address</code></td>
+<td><code>""</code></td>
+<td>Server SSH 地址（跨集群网络）</td>
+</tr>
+<tr>
+<td><code>--rlark-server-ssh-host-key</code></td>
+<td><code>""</code></td>
+<td>Server SSH 主机密钥</td>
+</tr>
+<tr>
+<td><code>--agent-type</code></td>
+<td><code>auto</code></td>
+<td>Agent 类型：<code>kubernetes</code> / <code>docker</code> / <code>raw</code>（根据 env 模式自动检测）</td>
+</tr>
+<tr>
+<td><code>--leader-election</code></td>
+<td><code>true</code></td>
+<td>启用 Leader 选举（副本数=1 时自动禁用）</td>
+</tr>
+<tr>
+<td><code>--image</code></td>
+<td><code>""</code></td>
+<td>RLark 容器镜像（网络 Sidecar、SSH server 等）</td>
+</tr>
+<tr>
+<td><code>--in-cluster</code></td>
+<td><code>false</code></td>
+<td>使用集群内 Kubernetes 配置（K8s 模式下自动设置）</td>
+</tr>
+<tr>
+<td><code>--insecure-skip-tls-verify</code></td>
+<td><code>false</code></td>
+<td>跳过 TLS 证书验证</td>
+</tr>
+</tbody>
+</table>
+<h3 id="55">5.5 环境模式<a class="headerlink" href="#55" title="Permanent link">&para;</a></h3>
+<p>rlark 支持三种部署环境模式，在 DeployConfig YAML 中配置：</p>
+<table>
+<thead>
+<tr>
+<th>模式</th>
+<th>说明</th>
+<th>适用场景</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>kubernetes</code></td>
+<td>部署到 K8s 集群</td>
+<td>生产环境、GPU 集群</td>
+</tr>
+<tr>
+<td><code>docker</code></td>
+<td>通过 Docker API 管理（TODO）</td>
+<td>端侧设备、单机部署</td>
+</tr>
+<tr>
+<td><code>raw</code></td>
+<td>下载 artifact 直接执行（TODO）</td>
+<td>裸金属、嵌入式设备</td>
+</tr>
+</tbody>
+</table>
+<p>配置文件中需指定且仅指定 <code>kubernetes</code>、<code>docker</code>、<code>raw</code> 中的一个环境块。</p>
+<h3 id="56-agent">5.6 Agent 运行模式<a class="headerlink" href="#56-agent" title="Permanent link">&para;</a></h3>
+<p>Agent 通过 <code>--mode</code> 支持三种运行模式：</p>
+<table>
+<thead>
+<tr>
+<th>模式</th>
+<th>说明</th>
+<th>部署形式</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>cluster</code></td>
+<td>集群级工作负载管理</td>
+<td>Deployment（agent）</td>
+</tr>
+<tr>
+<td><code>node</code></td>
+<td>节点级网络操作</td>
+<td>DaemonSet（agent-node）</td>
+</tr>
+<tr>
+<td><code>both</code></td>
+<td>同时运行 cluster 和 node 控制器</td>
+<td>合并模式</td>
+</tr>
+</tbody>
+</table>
+<p>当 <code>--mode=node</code> 时，Agent 以 DaemonSet 形式在每个节点上运行，负责建立跨集群网络的 SSH 隧道。</p>
+<h2 id="6-addon">6. Addon 配置<a class="headerlink" href="#6-addon" title="Permanent link">&para;</a></h2>
+<p>rlark 支持跨数据面集群的声明式 Addon 管理。Addon 定义在 addon 目录（<code>../pkg/addons/catalog/</code>）中，通过 Addon API 安装。</p>
+<h3 id="61-addon">6.1 Addon 目录结构<a class="headerlink" href="#61-addon" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>pkg/addons/catalog/
+├── embodied-runtime-device-plugin/
+│   ├── addon.yaml          # Addon 元数据（名称、版本、描述、可配置参数）
+│   └── manifests/
+│       ├── daemonset.yaml  # 含模板值的 K8s DaemonSet
+│       ├── configmap-template.yaml  # ConfigMap 模板（camera/ROS 控制器配置）
+│       ├── headless-services.yaml   # Camera/ROS 控制器的 Headless Service
+│       └── rbac.yaml       # ClusterRole + ClusterRoleBinding
+└── csi-driver-rclone/
+    ├── addon.yaml          # Addon 元数据（名称、版本、类别：storage）
+    └── manifests/
+        ├── controller.yaml  # CSI Controller Deployment
+        ├── node.yaml        # CSI Node DaemonSet
+        ├── configmap.yaml   # RClone 配置
+        ├── csidriver.yaml   # CSIDriver 资源
+        └── rbac.yaml        # RBAC 权限
+</code></pre></div>
+<p><code>embodied-runtime-device-plugin</code> 的关键可配置参数：</p>
+<table>
+<thead>
+<tr>
+<th>参数</th>
+<th>说明</th>
+<th>默认值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>image</code></td>
+<td>设备插件容器镜像</td>
+<td><code>rlark/embodied-device-plugin:0.1.0</code></td>
+</tr>
+<tr>
+<td><code>rendererImage</code></td>
+<td>节点级配置渲染 initContainer 镜像（yq）</td>
+<td><code>yq:4.53.2</code></td>
+</tr>
+<tr>
+<td><code>cameraImage</code></td>
+<td>Camera 控制器容器镜像</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>rosImage</code></td>
+<td>ROS 控制器容器镜像</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>nodeSelector</code></td>
+<td>DaemonSet 调度的节点选择器</td>
+<td><code>nvidia.com/gpu=true</code></td>
+</tr>
+<tr>
+<td><code>robotTolerationKey</code></td>
+<td>机器人节点的容忍度键</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<p>该 Addon 还会部署两个 Headless Service（<code>camera-controller-headless</code> 和 <code>ros-controller-headless</code>），用于集群内基于 DNS 的稳定发现 camera 和 ROS 控制器。</p>
+<p><code>csi-driver-rclone</code> 的关键可配置参数：</p>
+<table>
+<thead>
+<tr>
+<th>参数</th>
+<th>说明</th>
+<th>默认值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>rcloneImage</code></td>
+<td>RClone CSI 驱动容器镜像</td>
+<td><code>csi-driver-rclone:v0.2.0</code></td>
+</tr>
+<tr>
+<td><code>csiProvisionerImage</code></td>
+<td>CSI Provisioner sidecar 镜像</td>
+<td><code>csi-provisioner:v6.2.0</code></td>
+</tr>
+<tr>
+<td><code>livenessProbeImage</code></td>
+<td>Liveness Probe sidecar 镜像</td>
+<td><code>livenessprobe:v2.18.0</code></td>
+</tr>
+<tr>
+<td><code>nodeDriverRegistrarImage</code></td>
+<td>Node Driver Registrar sidecar 镜像</td>
+<td><code>csi-node-driver-registrar:v2.16.0</code></td>
+</tr>
+<tr>
+<td><code>driverName</code></td>
+<td>CSI 驱动注册名称</td>
+<td><code>rclone.csi.veloxpack.io</code></td>
+</tr>
+<tr>
+<td><code>controllerReplicas</code></td>
+<td>Controller Deployment 副本数</td>
+<td><code>1</code></td>
+</tr>
+<tr>
+<td><code>controllerLogLevel</code></td>
+<td>Controller 日志级别 (0-10)</td>
+<td><code>5</code></td>
+</tr>
+<tr>
+<td><code>nodeLogLevel</code></td>
+<td>Node DaemonSet 日志级别 (0-10)</td>
+<td><code>5</code></td>
+</tr>
+</tbody>
+</table>
+<p>RClone CSI 驱动支持通过 RClone 动态配置远程存储（S3、GCS、Azure Blob 等）支持的 PersistentVolume。</p>
+<h3 id="62-addon">6.2 安装 Addon<a class="headerlink" href="#62-addon" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># 向指定集群安装 Addon</span>
+curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span><span class="s2">&quot;http://localhost:8080/api/v1/clusters/agent-beijing/addons&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{</span>
+<span class="s1">    &quot;addonName&quot;: &quot;embodied-runtime-device-plugin&quot;,</span>
+<span class="s1">    &quot;version&quot;: &quot;0.1.0&quot;,</span>
+<span class="s1">    &quot;values&quot;: {</span>
+<span class="s1">      &quot;image&quot;: &quot;rlark/embodied-device-plugin:0.1.0&quot;</span>
+<span class="s1">    }</span>
+<span class="s1">  }&#39;</span>
+</code></pre></div>
+<h3 id="63-addon">6.3 管理 Addon<a class="headerlink" href="#63-addon" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># 列出目录中的可用 Addon</span>
+curl<span class="w"> </span><span class="s2">&quot;http://localhost:8080/api/v1/addons&quot;</span>
+
+<span class="c1"># 列出所有集群已安装的 Addon</span>
+curl<span class="w"> </span><span class="s2">&quot;http://localhost:8080/api/v1/installed-addons&quot;</span>
+
+<span class="c1"># 列出指定集群的 Addon</span>
+curl<span class="w"> </span><span class="s2">&quot;http://localhost:8080/api/v1/clusters/agent-beijing/addons&quot;</span>
+
+<span class="c1"># 获取 Addon 详情</span>
+curl<span class="w"> </span><span class="s2">&quot;http://localhost:8080/api/v1/clusters/agent-beijing/addons/embodied-device-plugin&quot;</span>
+
+<span class="c1"># 更新 Addon 配置</span>
+curl<span class="w"> </span>-X<span class="w"> </span>PUT<span class="w"> </span><span class="s2">&quot;http://localhost:8080/api/v1/clusters/agent-beijing/addons/embodied-device-plugin&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{</span>
+<span class="s1">    &quot;values&quot;: {</span>
+<span class="s1">      &quot;image&quot;: &quot;rlark/embodied-device-plugin:0.2.0&quot;</span>
+<span class="s1">    }</span>
+<span class="s1">  }&#39;</span>
+
+<span class="c1"># 卸载 Addon</span>
+curl<span class="w"> </span>-X<span class="w"> </span>DELETE<span class="w"> </span><span class="s2">&quot;http://localhost:8080/api/v1/clusters/agent-beijing/addons/embodied-device-plugin&quot;</span>
+</code></pre></div>
+<h2 id="7">7. 存储配置<a class="headerlink" href="#7" title="Permanent link">&para;</a></h2>
+<h3 id="71">7.1 控制面存储<a class="headerlink" href="#71" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>组件</th>
+<th>数据内容</th>
+<th>推荐大小</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>kcp</td>
+<td>所有 CRD 对象</td>
+<td>10Gi</td>
+</tr>
+<tr>
+<td>etcd</td>
+<td>kcp 元数据</td>
+<td>8Gi</td>
+</tr>
+<tr>
+<td>postgresql</td>
+<td>SSH 密钥、用户数据</td>
+<td>30Gi</td>
+</tr>
+</tbody>
+</table>
+<h3 id="72">7.2 存储类型<a class="headerlink" href="#72" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>类型</th>
+<th>说明</th>
+<th>适用场景</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>emptyDir</code></td>
+<td>临时存储，Pod 删除后丢失</td>
+<td>测试环境</td>
+</tr>
+<tr>
+<td><code>hostPath</code></td>
+<td>节点本地路径</td>
+<td>单节点部署</td>
+</tr>
+<tr>
+<td><code>pvc</code></td>
+<td>持久化卷</td>
+<td>生产环境</td>
+</tr>
+</tbody>
+</table>
+<h2 id="8">8. 网络要求<a class="headerlink" href="#8" title="Permanent link">&para;</a></h2>
+<h3 id="81">8.1 端口暴露<a class="headerlink" href="#81" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>组件</th>
+<th>端口</th>
+<th>协议</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Gateway</td>
+<td>8080</td>
+<td>HTTP</td>
+<td>用户 API 访问</td>
+</tr>
+<tr>
+<td>Server</td>
+<td>8443</td>
+<td>HTTPS</td>
+<td>Agent 隧道连接</td>
+</tr>
+<tr>
+<td>Server</td>
+<td>2222</td>
+<td>TCP</td>
+<td>SSH 用户登录</td>
+</tr>
+<tr>
+<td>kcp</td>
+<td>6443</td>
+<td>HTTPS</td>
+<td>控制面 API</td>
+</tr>
+</tbody>
+</table>
+<h3 id="82">8.2 网络拓扑<a class="headerlink" href="#82" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>Internet / 用户网络
+    │
+    ├──▶ Gateway (:8080) ── REST API
+    └──▶ Server (:2222)  ── SSH 登录
+         Server (:8443)  ◀── Agent WebSocket (出方向)
+</code></pre></div>
+<p>Agent 通过<strong>出方向</strong> WebSocket 连接 Server，无需暴露数据面端口。</p>
+<h2 id="9">9. 证书管理<a class="headerlink" href="#9" title="Permanent link">&para;</a></h2>
+<h3 id="91">9.1 证书类型<a class="headerlink" href="#91" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>证书</th>
+<th>用途</th>
+<th>签发方式</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CA 证书</td>
+<td>根证书，签发其他证书</td>
+<td>部署时生成</td>
+</tr>
+<tr>
+<td>Agent 证书</td>
+<td>Agent 接入控制面</td>
+<td>管理员通过 Gateway API 签发</td>
+</tr>
+<tr>
+<td>Domain 证书</td>
+<td>跨集群 Pod 通信</td>
+<td>Controller-Manager 自动签发</td>
+</tr>
+<tr>
+<td>SSH 证书</td>
+<td>用户 SSH 登录</td>
+<td>Server 在用户认证时临时签发</td>
+</tr>
+</tbody>
+</table>
+<h3 id="92-agent">9.2 签发 Agent 证书<a class="headerlink" href="#92-agent" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span><span class="s2">&quot;http://localhost:8080/api/v1/certificates/agent&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;agentID&quot;: &quot;agent-beijing&quot;}&#39;</span>
+</code></pre></div>
+<p>返回证书和私钥，部署到数据面 Agent 的配置中。</p>
+<h3 id="93-ui">9.3 UI 认证<a class="headerlink" href="#93-ui" title="Permanent link">&para;</a></h3>
+<p>部署时，<code>rlarkadm</code> 会在 kcp 集群的 <code>default</code> 命名空间自动创建 <code>rlark-ui-auth</code> Secret，包含随机生成的 admin 和 user 角色密码：</p>
+<table>
+<thead>
+<tr>
+<th>键</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>admin-password</code></td>
+<td>管理员角色密码（16 位随机字符）</td>
+</tr>
+<tr>
+<td><code>user-password</code></td>
+<td>用户角色密码（16 位随机字符）</td>
+</tr>
+</tbody>
+</table>
+<p>密码会在安装摘要中显示。Web UI 通过 <code>POST /api/v1/auth/login</code> 进行认证。</p>
+<h2 id="10">10. 高可用部署<a class="headerlink" href="#10" title="Permanent link">&para;</a></h2>
+<h3 id="101">10.1 多副本部署<a class="headerlink" href="#101" title="Permanent link">&para;</a></h3>
+<p>生产环境建议的组件副本数：</p>
+<table>
+<thead>
+<tr>
+<th>组件</th>
+<th>副本数</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Gateway</td>
+<td>2+</td>
+<td>无状态，可水平扩展</td>
+</tr>
+<tr>
+<td>Server</td>
+<td>2+</td>
+<td>通过 Peer Manager 互联</td>
+</tr>
+<tr>
+<td>Controller-Manager</td>
+<td>1</td>
+<td>Leader 选举，主备模式</td>
+</tr>
+<tr>
+<td>kcp</td>
+<td>1</td>
+<td>单实例（可配合外部 etcd 集群）</td>
+</tr>
+<tr>
+<td>etcd</td>
+<td>3</td>
+<td>奇数节点 Raft 集群</td>
+</tr>
+<tr>
+<td>postgresql</td>
+<td>1</td>
+<td>主备复制</td>
+</tr>
+</tbody>
+</table>
+<h3 id="102-etcd">10.2 外部 etcd<a class="headerlink" href="#102-etcd" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nt">kubernetes</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">etcd</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">address</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https://my-etcd.example.com:2379</span>
+<span class="w">    </span><span class="c1"># 不部署内置 etcd</span>
+</code></pre></div>
+<h3 id="103-postgresql">10.3 外部 PostgreSQL<a class="headerlink" href="#103-postgresql" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nt">db</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">host</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pg-primary.example.com</span>
+<span class="w">  </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5432</span>
+<span class="w">  </span><span class="nt">database</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rlark</span>
+<span class="w">  </span><span class="nt">user</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rlark</span>
+<span class="w">  </span><span class="nt">password</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">CHANGE_ME</span>
+</code></pre></div>
+<h2 id="11">11. 监控与运维<a class="headerlink" href="#11" title="Permanent link">&para;</a></h2>
+<h3 id="111-prometheus">11.1 Prometheus 指标<a class="headerlink" href="#111-prometheus" title="Permanent link">&para;</a></h3>
+<p>Gateway 和 Server 暴露 Prometheus 指标：</p>
+<ul>
+<li><code>rlark_gateway_requests_total</code>：Gateway 请求总数</li>
+<li><code>rlark_gateway_request_duration_seconds</code>：请求延迟</li>
+<li><code>rlark_proxy_requests_total</code>：Server 代理请求总数</li>
+<li><code>rlark_peer_connections</code>：当前 Peer 连接数</li>
+<li><code>rlark_ssh_connections_total</code>：SSH 连接总数</li>
+</ul>
+<h3 id="112">11.2 日志<a class="headerlink" href="#112" title="Permanent link">&para;</a></h3>
+<p>使用结构化日志（zap），通过 <code>LOG_LEVEL</code> 环境变量控制日志级别：</p>
+<div class="highlight"><pre><span></span><code><span class="nv">LOG_LEVEL</span><span class="o">=</span>debug<span class="w"> </span>./bin/server<span class="w"> </span>--kubeconfig<span class="w"> </span>...
+</code></pre></div>
+<h3 id="113">11.3 健康检查<a class="headerlink" href="#113" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># 检查控制面</span>
+rlarkadm<span class="w"> </span>health<span class="w"> </span>-f<span class="w"> </span>deploy-control-plane.yaml
+
+<span class="c1"># 检查数据面</span>
+rlarkadm<span class="w"> </span>health<span class="w"> </span>-f<span class="w"> </span>deploy-data-plane.yaml
+</code></pre></div>
+<h2 id="12">12. 升级<a class="headerlink" href="#12" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="c1"># 1. 更新镜像版本</span>
+<span class="c1"># 2. 滚动更新（Kubernetes 原生支持）</span>
+kubectl<span class="w"> </span>rollout<span class="w"> </span>restart<span class="w"> </span>deployment<span class="w"> </span>-n<span class="w"> </span>rlark-system
+
+<span class="c1"># 3. 验证</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-n<span class="w"> </span>rlark-system
+</code></pre></div>
+<h2 id="13">13. 故障排查<a class="headerlink" href="#13" title="Permanent link">&para;</a></h2>
+<h3 id="agent-server">Agent 无法连接 Server<a class="headerlink" href="#agent-server" title="Permanent link">&para;</a></h3>
+<ol>
+<li>检查 Agent 证书是否有效（未过期、由正确 CA 签发）</li>
+<li>检查网络连通性：<code>curl -k https://&lt;server&gt;:8443</code></li>
+<li>检查 Server 日志：<code>kubectl logs -n rlark-system deployment/server</code></li>
+</ol>
+<h3 id="_3">训练任务无法启动<a class="headerlink" href="#_3" title="Permanent link">&para;</a></h3>
+<ol>
+<li>检查 Node 是否有足够资源：<code>kubectl get nodes -n rlark-system</code></li>
+<li>检查 Task 状态：查询对应 Task CR</li>
+<li>检查 Agent 日志：<code>kubectl logs -n rlark-system daemonset/agent</code></li>
+</ol>
+<h3 id="_4">跨集群网络不通<a class="headerlink" href="#_4" title="Permanent link">&para;</a></h3>
+<ol>
+<li>检查 DomainPeer 是否已创建</li>
+<li>检查 Domain 证书是否签发成功</li>
+<li>检查 network-sidecar 是否注入到 Pod 中</li>
+</ol>
+<h2 id="14">14. 真机设备纳管<a class="headerlink" href="#14" title="Permanent link">&para;</a></h2>
+<p>rlark 支持纳管带有 GPU 或具身设备（摄像头、机械臂等）的真实物理节点。</p>
+<h3 id="141">14.1 架构概览<a class="headerlink" href="#141" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>┌──────────────────────────────────────────────┐
+│  控制面 (kcp)                                 │
+│  ┌──────────────────────────────────────┐     │
+│  │  Node CR  ←  Agent 上报节点信息       │     │
+│  │  Addon CR ←  管理员声明式安装插件     │     │
+│  └──────────────────────────────────────┘     │
+└──────────────────────────────────────────────┘
+                      │
+                      ▼
+┌──────────────────────────────────────────────┐
+│  数据面 (真机集群)                            │
+│  ┌──────────────────────────────────────┐     │
+│  │  rlark-agent (DaemonSet)             │     │
+│  │  ├─ 上报 GPU 型号/数量               │     │
+│  │  ├─ 上报具身设备型号/数量             │     │
+│  │  └─ 管理 Addon 安装                  │     │
+│  ├──────────────────────────────────────┤     │
+│  │  embodied-runtime Device Plugin      │     │
+│  │  ├─ 自动发现摄像头 (V4L2)            │     │
+│  │  ├─ 控制 ROS/ROS2 进程               │     │
+│  │  └─ 注入设备到训练 Pod               │     │
+│  ├──────────────────────────────────────┤     │
+│  │  NVIDIA Device Plugin (GPU 节点)     │     │
+│  │  └─ 上报 GPU 资源                    │     │
+│  └──────────────────────────────────────┘     │
+└──────────────────────────────────────────────┘
+</code></pre></div>
+<h3 id="142">14.2 纳管流程<a class="headerlink" href="#142" title="Permanent link">&para;</a></h3>
+<p><strong>Step 1：在真机上加入集群</strong></p>
+<div class="highlight"><pre><span></span><code><span class="c1"># 在每台真机上安装 containerd/kubelet，加入集群</span>
+<span class="c1"># 给节点打上标签，标识设备类型</span>
+kubectl<span class="w"> </span>label<span class="w"> </span>node<span class="w"> </span>robot-01<span class="w"> </span>rlark.io/node-category<span class="o">=</span>robot
+kubectl<span class="w"> </span>label<span class="w"> </span>node<span class="w"> </span>gpu-node-01<span class="w"> </span>rlark.io/node-category<span class="o">=</span>cloud<span class="w"> </span>rlark.io/model<span class="o">=</span><span class="s1">&#39;NVIDIA H800&#39;</span>
+</code></pre></div>
+<p><strong>Step 2：安装 NVIDIA Device Plugin（GPU 节点）</strong></p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> </span>https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/main/deployments/static/nvidia-device-plugin.yml
+</code></pre></div>
+<p><strong>Step 3：安装 embodied-runtime Device Plugin（具身设备节点）</strong></p>
+<p>通过 rlark Addon 机制声明式安装：</p>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span><span class="s2">&quot;http://localhost:8080/api/v1/clusters/agent-beijing/addons&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{</span>
+<span class="s1">    &quot;addonName&quot;: &quot;embodied-runtime-device-plugin&quot;,</span>
+<span class="s1">    &quot;version&quot;: &quot;0.1.0&quot;,</span>
+<span class="s1">    &quot;values&quot;: {</span>
+<span class="s1">      &quot;nodeSelector&quot;: &quot;rlark.io/node-category=robot&quot;</span>
+<span class="s1">    }</span>
+<span class="s1">  }&#39;</span>
+</code></pre></div>
+<p><strong>Step 4：验证设备注册</strong></p>
+<div class="highlight"><pre><span></span><code><span class="c1"># 查看节点设备信息</span>
+kubectl<span class="w"> </span>describe<span class="w"> </span>node<span class="w"> </span>robot-01<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>rlinf.io/device
+
+<span class="c1"># 在 Web UI 的 Nodes 页面查看设备型号和空闲量</span>
+</code></pre></div>
+<h3 id="143">14.3 设备元数据<a class="headerlink" href="#143" title="Permanent link">&para;</a></h3>
+<p>管理员可以补充节点位置和设备型号元数据，这些信息会显示在 Web UI 中：</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># 节点位置</span>
+kubectl<span class="w"> </span>annotate<span class="w"> </span>node<span class="w"> </span>robot-01<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>rlark.io/ip-location<span class="o">=</span><span class="s1">&#39;{&quot;province&quot;:&quot;上海市&quot;,&quot;city&quot;:&quot;上海市&quot;}&#39;</span><span class="w"> </span>--overwrite
+
+<span class="c1"># 节点型号</span>
+kubectl<span class="w"> </span>label<span class="w"> </span>node<span class="w"> </span>robot-01<span class="w"> </span>rlark.io/model<span class="o">=</span><span class="s1">&#39;NVIDIA H800&#39;</span><span class="w"> </span>--overwrite
+</code></pre></div>
+<blockquote>
+<p>具身设备类型和数量由 Device Plugin 自动上报，无需手动标注。</p>
+</blockquote>
+<h3 id="144-job">14.4 编写使用真机设备的 Job<a class="headerlink" href="#144-job" title="Permanent link">&para;</a></h3>
+<p>在 Job 的 Task 中通过 <code>nodeSelector</code> 和 <code>resources</code> 指定设备需求：</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;tasks&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span>
+<span class="w">    </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;robot-trainer&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;nodeSelector&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;rlark.io/cluster-id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;rlark-agent-beijing&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;rlark.io/node-category&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;robot&quot;</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">    </span><span class="nt">&quot;kubernetes&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;workload&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;template&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">          </span><span class="nt">&quot;spec&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="nt">&quot;containers&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span>
+<span class="w">              </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;trainer&quot;</span><span class="p">,</span>
+<span class="w">              </span><span class="nt">&quot;image&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;my-training-image:latest&quot;</span><span class="p">,</span>
+<span class="w">              </span><span class="nt">&quot;resources&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">                </span><span class="nt">&quot;limits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">                  </span><span class="nt">&quot;rlinf.io/device&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;1&quot;</span><span class="p">,</span>
+<span class="w">                  </span><span class="nt">&quot;rlinf.io/device-camera&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;1&quot;</span>
+<span class="w">                </span><span class="p">}</span>
+<span class="w">              </span><span class="p">}</span>
+<span class="w">            </span><span class="p">}]</span>
+<span class="w">          </span><span class="p">}</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">      </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">}]</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="145">14.5 设备资源类型<a class="headerlink" href="#145" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>设备</th>
+<th>资源名</th>
+<th>上报方式</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>NVIDIA GPU</td>
+<td><code>nvidia.com/gpu</code></td>
+<td>NVIDIA Device Plugin</td>
+</tr>
+<tr>
+<td>摄像头</td>
+<td><code>rlinf.io/device-camera</code></td>
+<td>embodied-runtime Device Plugin</td>
+</tr>
+<tr>
+<td>ROS 控制器</td>
+<td><code>rlinf.io/device-ros</code></td>
+<td>embodied-runtime Device Plugin</td>
+</tr>
+<tr>
+<td>ROS2 控制器</td>
+<td><code>rlinf.io/device-ros2</code></td>
+<td>embodied-runtime Device Plugin</td>
+</tr>
+<tr>
+<td>通用具身设备</td>
+<td><code>rlinf.io/device-&lt;model&gt;</code></td>
+<td>embodied-runtime Device Plugin</td>
+</tr>
+</tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.sections", "navigation.tracking", "navigation.indexes", "toc.follow", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+        <script src="../../javascripts/fix-nav.js"></script>
+      
+    
+  </body>
+</html>

@@ -1,0 +1,3298 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Reinforcement Learning Infrastructure for Embodied and Agentic AI">
+      
+      
+      
+      
+        <link rel="prev" href="../ui-behavior/">
+      
+      
+        <link rel="next" href="../architecture/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Core Concepts - RLark</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="deep-purple" data-md-color-accent="purple">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#core-concepts" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="RLark" class="md-header__button md-logo" aria-label="RLark" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            RLark
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Core Concepts
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="deep-purple" data-md-color-accent="purple"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="deep-purple" data-md-color-accent="purple"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/RLinf/RLark" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="RLark" class="md-nav__button md-logo" aria-label="RLark" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    RLark
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/RLinf/RLark" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ui-behavior/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Web Console
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core Concepts
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core Concepts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-resource-hierarchy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Resource Hierarchy
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-domain" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Domain
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Domain">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#concept" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Concept
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-properties" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Properties
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#design-intent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Design Intent
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-domainpeer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. DomainPeer
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. DomainPeer">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#concept_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Concept
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-properties_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Properties
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Usage
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-node" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Node
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Node">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#concept_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Concept
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-properties_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Properties
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#usage_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Usage
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#administrator-metadata" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Administrator Metadata
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-node-cordonuncordon" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Node Cordon/Uncordon
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Node Cordon/Uncordon">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#concept_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Concept
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#usage_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Usage
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-job" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Job
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Job">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#concept_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Concept
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-properties_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Properties
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#state-machine" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        State Machine
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#relationship-with-task" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Relationship with Task
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-job-stopstart" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Job Stop/Start
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. Job Stop/Start">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#concept_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Concept
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#how-it-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How it works
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-features" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Features
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-task" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Task
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="8. Task">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#concept_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Concept
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-properties_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Properties
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#task-roles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Task Roles
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#agent-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Agent Types
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Workflow
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="9. Workflow">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#concept_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Concept
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-properties_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Properties
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#typical-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Typical Pipeline
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#state-machine_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        State Machine
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-pod" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Pod
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="10. Pod">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#concept_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Concept
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#usage_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Usage
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-resource-relationship-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. Resource Relationship Summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#12-naming-conventions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12. Naming Conventions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#13-ray-cluster-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13. Ray Cluster Integration
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#14-object-storage-pvcs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14. Object Storage &amp; PVCs
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="14. Object Storage &amp; PVCs">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#concept_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Concept
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#how-it-works_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How it works
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#15-user-authentication" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        15. User Authentication
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="15. User Authentication">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#roles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Roles
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#authentication-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Authentication Flow
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#16-addon-component-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        16. Addon (Component Management)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="16. Addon (Component Management)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#concept_10" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Concept
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#addon-lifecycle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Addon Lifecycle
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#addon-phase" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Addon Phase
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-embodied-runtime-device-plugin" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example: Embodied Runtime Device Plugin
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-properties_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Properties
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#17-web-terminal" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        17. Web Terminal
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="17. Web Terminal">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#concept_11" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Concept
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Architecture
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#how-it-works_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How it works
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#18-pod-http-proxy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        18. Pod HTTP Proxy
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="18. Pod HTTP Proxy">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#concept_12" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Concept
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#architecture_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Architecture
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#how-it-works_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How it works
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-features_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Features
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#19-tensorboard-proxy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        19. TensorBoard Proxy
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="19. TensorBoard Proxy">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#concept_13" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Concept
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#architecture_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Architecture
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#how-it-works_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How it works
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-features_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Features
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#20-ssh-key-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        20. SSH Key Management
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="20. SSH Key Management">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#concept_14" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Concept
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        API
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-features_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Features
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Examples
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../zh/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    中文
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_9" id="__nav_9_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    中文
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../zh/quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    快速开始
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../zh/ui-behavior/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Web 控制台
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../zh/concepts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    核心概念
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../zh/architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    架构设计
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../zh/deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    部署指南
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../zh/api/reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API 参考
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../zh/api/examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API 示例
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-resource-hierarchy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Resource Hierarchy
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-domain" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Domain
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Domain">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#concept" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Concept
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-properties" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Properties
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#design-intent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Design Intent
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-domainpeer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. DomainPeer
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. DomainPeer">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#concept_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Concept
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-properties_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Properties
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Usage
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-node" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Node
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Node">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#concept_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Concept
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-properties_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Properties
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#usage_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Usage
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#administrator-metadata" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Administrator Metadata
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-node-cordonuncordon" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Node Cordon/Uncordon
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Node Cordon/Uncordon">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#concept_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Concept
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#usage_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Usage
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-job" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Job
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Job">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#concept_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Concept
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-properties_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Properties
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#state-machine" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        State Machine
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#relationship-with-task" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Relationship with Task
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-job-stopstart" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Job Stop/Start
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. Job Stop/Start">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#concept_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Concept
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#how-it-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How it works
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-features" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Features
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-task" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Task
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="8. Task">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#concept_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Concept
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-properties_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Properties
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#task-roles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Task Roles
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#agent-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Agent Types
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Workflow
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="9. Workflow">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#concept_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Concept
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-properties_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Properties
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#typical-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Typical Pipeline
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#state-machine_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        State Machine
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-pod" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Pod
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="10. Pod">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#concept_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Concept
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#usage_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Usage
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-resource-relationship-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. Resource Relationship Summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#12-naming-conventions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12. Naming Conventions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#13-ray-cluster-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13. Ray Cluster Integration
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#14-object-storage-pvcs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14. Object Storage &amp; PVCs
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="14. Object Storage &amp; PVCs">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#concept_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Concept
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#how-it-works_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How it works
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#15-user-authentication" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        15. User Authentication
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="15. User Authentication">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#roles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Roles
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#authentication-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Authentication Flow
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#16-addon-component-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        16. Addon (Component Management)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="16. Addon (Component Management)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#concept_10" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Concept
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#addon-lifecycle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Addon Lifecycle
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#addon-phase" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Addon Phase
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-embodied-runtime-device-plugin" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example: Embodied Runtime Device Plugin
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-properties_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Properties
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#17-web-terminal" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        17. Web Terminal
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="17. Web Terminal">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#concept_11" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Concept
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Architecture
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#how-it-works_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How it works
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#18-pod-http-proxy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        18. Pod HTTP Proxy
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="18. Pod HTTP Proxy">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#concept_12" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Concept
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#architecture_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Architecture
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#how-it-works_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How it works
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-features_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Features
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#19-tensorboard-proxy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        19. TensorBoard Proxy
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="19. TensorBoard Proxy">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#concept_13" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Concept
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#architecture_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Architecture
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#how-it-works_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How it works
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-features_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Features
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#20-ssh-key-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        20. SSH Key Management
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="20. SSH Key Management">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#concept_14" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Concept
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        API
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-features_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Features
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="core-concepts">Core Concepts<a class="headerlink" href="#core-concepts" title="Permanent link">&para;</a></h1>
+<h2 id="1-resource-hierarchy">1. Resource Hierarchy<a class="headerlink" href="#1-resource-hierarchy" title="Permanent link">&para;</a></h2>
+<p>rlark uses a multi-layer resource abstraction, from underlying infrastructure to top-level embodied AI workloads:</p>
+<div class="highlight"><pre><span></span><code>Workflow  ──── Workflow (DAG orchestration of multiple Jobs)
+  │
+  └── Job  ──── Training Job (a complete embodied AI task)
+        │
+        └── Task  ──── Task Unit (Actor/Rollout/Env roles)
+              │
+              └── K8s Workload / Docker Container  ──── Underlying runtime
+                    │
+                    └── Pod / Container  ──── Actual running workload
+</code></pre></div>
+<p><strong>Embodied AI Scenario</strong>: A typical pipeline involves GPU clusters training a policy model, edge devices (robot arms, sensors) executing the policy in physical environments, and data flowing back to training — all orchestrated through the same platform.</p>
+<h2 id="2-domain">2. Domain<a class="headerlink" href="#2-domain" title="Permanent link">&para;</a></h2>
+<p>Domain is the fundamental unit of <strong>network isolation</strong> and <strong>security boundary</strong> in rlark.</p>
+<h3 id="concept">Concept<a class="headerlink" href="#concept" title="Permanent link">&para;</a></h3>
+<p>A Domain represents a logical training network. Pods within the same Domain can communicate directly via virtual IPs, while different Domains are completely isolated.</p>
+<h3 id="key-properties">Key Properties<a class="headerlink" href="#key-properties" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rlinf.io/v1alpha1</span>
+<span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Domain</span>
+<span class="nt">metadata</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ppo-experiment-1</span>
+<span class="nt">spec</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">cidr</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;10.0.1.0/24&quot;</span><span class="w">    </span><span class="c1"># IP subnet for this Domain</span>
+<span class="nt">status</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">ipAllocations</span><span class="p">:</span><span class="w">          </span><span class="c1"># List of allocated IPs</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">ip</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;10.0.1.1&quot;</span>
+<span class="w">      </span><span class="nt">task</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;actor-head&quot;</span>
+<span class="w">      </span><span class="nt">job</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;ppo-cartpole-v1&quot;</span>
+</code></pre></div>
+<h3 id="design-intent">Design Intent<a class="headerlink" href="#design-intent" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Network Isolation</strong>: Different embodied AI tasks (e.g., Team A's robot manipulation experiment and Team B's navigation experiment) are assigned to different Domains without interference</li>
+<li><strong>IP Management</strong>: The Domain Controller in Controller-Manager allocates IP subnets and assigns unique IPs to each workload</li>
+<li><strong>Certificate Granularity</strong>: Each Domain has an independent X.509 certificate for cross-cluster communication authentication</li>
+</ul>
+<h2 id="3-domainpeer">3. DomainPeer<a class="headerlink" href="#3-domainpeer" title="Permanent link">&para;</a></h2>
+<p>DomainPeer is the <strong>view of a Domain within a specific data plane cluster</strong>, automatically created by the Domain Controller.</p>
+<h3 id="concept_1">Concept<a class="headerlink" href="#concept_1" title="Permanent link">&para;</a></h3>
+<p>Each Domain has one corresponding DomainPeer object in each data plane cluster, containing the set of all Pods in that Domain within that cluster.</p>
+<h3 id="key-properties_1">Key Properties<a class="headerlink" href="#key-properties_1" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rlinf.io/v1alpha1</span>
+<span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">DomainPeer</span>
+<span class="nt">metadata</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ppo-experiment-1</span>
+<span class="w">  </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">agent-beijing</span><span class="w">    </span><span class="c1"># This Agent&#39;s workspace</span>
+<span class="nt">spec</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">cert</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;-----BEGIN</span><span class="nv"> </span><span class="s">CERTIFICATE-----...&quot;</span><span class="w">  </span><span class="c1"># Domain certificate</span>
+<span class="w">  </span><span class="nt">key</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;-----BEGIN</span><span class="nv"> </span><span class="s">PRIVATE</span><span class="nv"> </span><span class="s">KEY-----...&quot;</span><span class="w">   </span><span class="c1"># Domain private key</span>
+<span class="w">  </span><span class="nt">prefixLen</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">24</span>
+<span class="w">  </span><span class="nt">pods</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;actor-head-0&quot;</span>
+<span class="w">      </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;default&quot;</span>
+<span class="w">      </span><span class="nt">uid</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;abc-123&quot;</span>
+<span class="w">      </span><span class="nt">ip</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;10.0.1.1&quot;</span><span class="w">           </span><span class="c1"># Domain virtual IP</span>
+<span class="w">      </span><span class="nt">localIP</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;172.17.0.5&quot;</span><span class="w">    </span><span class="c1"># Actual Pod IP (within k8s cluster)</span>
+<span class="w">      </span><span class="nt">node</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;node-01&quot;</span>
+<span class="w">      </span><span class="nt">globalNamespace</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;agent-beijing&quot;</span>
+</code></pre></div>
+<h3 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Routing Table</strong>: NodeServer uses DomainPeer to locate target Pod's cluster and actual IP</li>
+<li><strong>Certificate Distribution</strong>: DomainPeer carries the Domain's certificate and private key; Agent uses it to establish cross-cluster SSH tunnels</li>
+<li><strong>Auto-Update</strong>: Domain Controller automatically updates DomainPeer's pods list on Pod create/delete</li>
+</ul>
+<h2 id="4-node">4. Node<a class="headerlink" href="#4-node" title="Permanent link">&para;</a></h2>
+<p>Node represents a <strong>physical/virtual compute node</strong> in a data plane cluster.</p>
+<h3 id="concept_2">Concept<a class="headerlink" href="#concept_2" title="Permanent link">&para;</a></h3>
+<p>Node is automatically reported by the Agent's Push controller, reflecting the node's actual state (addresses, resource capacity, GPU count, etc.).</p>
+<h3 id="key-properties_2">Key Properties<a class="headerlink" href="#key-properties_2" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rlinf.io/v1alpha1</span>
+<span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Node</span>
+<span class="nt">metadata</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu-node-01</span>
+<span class="w">  </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">agent-beijing</span>
+<span class="w">  </span><span class="nt">labels</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">nvidia.com/gpu</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;true&quot;</span>
+<span class="nt">spec</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">agentType</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Kubernetes</span>
+<span class="w">  </span><span class="nt">unschedulable</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="nt">status</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">phase</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Online</span>
+<span class="w">  </span><span class="nt">addresses</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">InternalIP</span>
+<span class="w">      </span><span class="nt">address</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;10.0.1.23&quot;</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Hostname</span>
+<span class="w">      </span><span class="nt">address</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;gpu-node-01&quot;</span>
+<span class="w">  </span><span class="nt">capacity</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">cpu</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;32&quot;</span>
+<span class="w">    </span><span class="nt">memory</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;128Gi&quot;</span>
+<span class="w">    </span><span class="nt">nvidia.com/gpu</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;8&quot;</span>
+<span class="w">  </span><span class="nt">allocatable</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">cpu</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;30&quot;</span>
+<span class="w">    </span><span class="nt">memory</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;120Gi&quot;</span>
+<span class="w">    </span><span class="nt">nvidia.com/gpu</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;8&quot;</span>
+<span class="w">  </span><span class="nt">nodeInfo</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">architecture</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">amd64</span>
+<span class="w">    </span><span class="nt">operatingSystem</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">linux</span>
+<span class="w">    </span><span class="nt">kernelVersion</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;5.15.0-91-generic&quot;</span>
+<span class="w">    </span><span class="nt">agentVersion</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;0.1.0&quot;</span>
+</code></pre></div>
+<h3 id="usage_1">Usage<a class="headerlink" href="#usage_1" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Resource Awareness</strong>: Control plane makes scheduling decisions based on Node resource state (via NodeSelector)</li>
+<li><strong>Label Management</strong>: Control plane can push labels to Nodes; Agent's Pull controller syncs them to local k8s Nodes</li>
+<li><strong>Taint Management</strong>: Control node schedulability via the <code>unschedulable</code> field</li>
+</ul>
+<h3 id="administrator-metadata">Administrator Metadata<a class="headerlink" href="#administrator-metadata" title="Permanent link">&para;</a></h3>
+<p>Administrators can select multiple Nodes in the Admin UI and apply metadata used by both the admin and workspace resource views:</p>
+<ul>
+<li><code>rlark.io/city</code> annotation: administrator-managed physical location</li>
+<li><code>rlark.io/node-category-{cloud,edge,robot}=true</code> labels: one or more Node categories</li>
+<li><code>rlark.io/gpu-model</code> annotation: GPU model for cloud compute Nodes</li>
+<li><code>rlark.io/device-model</code> annotation: embodied device model for edge compute and robot Nodes</li>
+</ul>
+<p>These business fields are stored on the KCP Node CR and are preserved when the Agent refreshes Kubernetes-discovered state. The batch editor shows common current values, marks mixed selections, and changes only properties explicitly enabled by the administrator; clearing an enabled property removes it. The Admin UI also supports selecting all filtered Nodes, clearing the selection, and batch cordon/uncordon. A Node may belong to multiple categories and carry both GPU and embodied-device models.</p>
+<p>Workspace node totals and cluster-detail node lists include usable Workers carrying an RLark category label. Legacy <code>rlark.io/node-category</code> values and unlabeled Nodes that explicitly advertise GPU or embodied-device resources remain supported. Nodes carrying a Kubernetes <code>master</code> or <code>control-plane</code> role label remain visible only in the administration workspace and are not counted or shown as workload Workers in the business workspace.</p>
+<p>CPU, memory, and GPU usage in Node details is aggregated from the Kubernetes <code>resources.requests</code> of running Workers. It represents scheduler-reserved resources, not real-time hardware utilization from metrics-server. The detail page also lists every Worker on the Node with its Job, role, IP, resource requests, and runtime phase.</p>
+<h2 id="5-node-cordonuncordon">5. Node Cordon/Uncordon<a class="headerlink" href="#5-node-cordonuncordon" title="Permanent link">&para;</a></h2>
+<p>Node scheduling can be controlled via the <code>unschedulable</code> field.</p>
+<h3 id="concept_3">Concept<a class="headerlink" href="#concept_3" title="Permanent link">&para;</a></h3>
+<p>Setting <code>spec.unschedulable: true</code> marks a node as unschedulable, preventing new workloads from being assigned to it. This is equivalent to Kubernetes <code>kubectl cordon</code>.</p>
+<h3 id="usage_2">Usage<a class="headerlink" href="#usage_2" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># PATCH to toggle unschedulable</span>
+curl<span class="w"> </span>-X<span class="w"> </span>PATCH<span class="w"> </span><span class="s2">&quot;http://localhost:8080/api/v1/rlinf.io/v1alpha1/nodes/gpu-node-01?namespace=default&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/merge-patch+json&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{ &quot;spec&quot;: { &quot;unschedulable&quot;: true } }&#39;</span>
+</code></pre></div>
+<p>The Web UI provides a Cordon/Uncordon button for each node in the node list.</p>
+<h2 id="6-job">6. Job<a class="headerlink" href="#6-job" title="Permanent link">&para;</a></h2>
+<p>Job is the <strong>core resource directly operated by users</strong>, representing a complete RL training task.</p>
+<h3 id="concept_4">Concept<a class="headerlink" href="#concept_4" title="Permanent link">&para;</a></h3>
+<p>A Job contains multiple Task templates, each representing a role in training (e.g., Actor, Rollout, Env). The Controller-Manager's Job Controller creates and manages Tasks based on templates.</p>
+<h3 id="key-properties_3">Key Properties<a class="headerlink" href="#key-properties_3" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rlinf.io/v1alpha1</span>
+<span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Job</span>
+<span class="nt">metadata</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ppo-cartpole-v1</span>
+<span class="w">  </span><span class="nt">labels</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">framework</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ppo</span>
+<span class="w">    </span><span class="nt">env</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cartpole</span>
+<span class="nt">spec</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">domain</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ppo-experiment-1</span><span class="w">    </span><span class="c1"># Owning Domain</span>
+<span class="w">  </span><span class="nt">tasks</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">actor-head</span>
+<span class="w">      </span><span class="nt">head</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">               </span><span class="c1"># Whether this is the head node</span>
+<span class="w">      </span><span class="nt">role</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Actor</span><span class="w">              </span><span class="c1"># Role: Actor/Rollout/Env</span>
+<span class="w">      </span><span class="nt">agentType</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Kubernetes</span><span class="w">    </span><span class="c1"># Agent type: Kubernetes/Docker/Raw</span>
+<span class="w">      </span><span class="nt">nodeSelector</span><span class="p">:</span><span class="w">            </span><span class="c1"># Node selector</span>
+<span class="w">        </span><span class="nt">nvidia.com/gpu</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;true&quot;</span>
+<span class="w">      </span><span class="nt">kubernetes</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">workload</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Deployment</span><span class="w">     </span><span class="c1"># Workload type</span>
+<span class="w">          </span><span class="nt">replicas</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+<span class="w">          </span><span class="nt">template</span><span class="p">:</span>
+<span class="w">            </span><span class="nt">spec</span><span class="p">:</span>
+<span class="w">              </span><span class="nt">containers</span><span class="p">:</span>
+<span class="w">                </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">trainer</span>
+<span class="w">                  </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pytorch/pytorch:2.3.0</span>
+<span class="w">                  </span><span class="nt">resources</span><span class="p">:</span>
+<span class="w">                    </span><span class="nt">limits</span><span class="p">:</span>
+<span class="w">                      </span><span class="nt">nvidia.com/gpu</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;1&quot;</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rollout</span>
+<span class="w">      </span><span class="nt">role</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Rollout</span>
+<span class="w">      </span><span class="nt">agentType</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Kubernetes</span>
+<span class="w">      </span><span class="nt">kubernetes</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">workload</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">StatefulSet</span>
+<span class="w">          </span><span class="nt">replicas</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
+<span class="w">          </span><span class="nt">template</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">...</span>
+<span class="nt">status</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">phase</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Running</span><span class="w">               </span><span class="c1"># Pending/Running/Succeeded/Failed</span>
+<span class="w">  </span><span class="nt">startTime</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;2026-06-25T03:20:00Z&quot;</span>
+<span class="w">  </span><span class="nt">tasks</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">actor-head</span>
+<span class="w">      </span><span class="nt">phase</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Running</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rollout</span>
+<span class="w">      </span><span class="nt">phase</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Running</span>
+</code></pre></div>
+<h3 id="state-machine">State Machine<a class="headerlink" href="#state-machine" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>(empty) ──init──▶ Pending ──tasks-running──▶ Running
+                              │                  │
+                              │ any-task-failed  │ all-tasks-succeeded
+                              ▼                  ▼
+                          Failed            Succeeded
+</code></pre></div>
+<h3 id="relationship-with-task">Relationship with Task<a class="headerlink" href="#relationship-with-task" title="Permanent link">&para;</a></h3>
+<p>After Job Controller reconciliation:
+- Each Task template generates a Task CR named <code>&lt;job-name&gt;-&lt;task-name&gt;</code>
+- Tasks have the label <code>rlinf.io/job=&lt;job-name&gt;</code> for querying
+- Tasks set OwnerReference to Job; deleting a Job cascades to delete Tasks</p>
+<h2 id="7-job-stopstart">7. Job Stop/Start<a class="headerlink" href="#7-job-stopstart" title="Permanent link">&para;</a></h2>
+<p>Jobs can be stopped and restarted via the <code>stopped</code> field in the Job spec, providing manual lifecycle control over running workloads.</p>
+<h3 id="concept_5">Concept<a class="headerlink" href="#concept_5" title="Permanent link">&para;</a></h3>
+<p>Setting <code>spec.stopped: true</code> on a Job causes the Job controller to stop all associated workloads (Pods, Deployments, StatefulSets) without deleting the Job resource. Setting it back to <code>false</code> (or removing the field) restarts the workloads.</p>
+<h3 id="how-it-works">How it works<a class="headerlink" href="#how-it-works" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>Stop</strong>: When <code>spec.stopped</code> is set to <code>true</code>, the Job controller detects the change and deletes the underlying Kubernetes workloads (Deployments/StatefulSets) while keeping the Job CR.</li>
+<li><strong>Restart</strong>: When <code>spec.stopped</code> is removed or set to <code>false</code>, the Job controller recreates the workloads from the Task templates.</li>
+<li><strong>State preservation</strong>: The Job's phase and status fields are preserved during stop/restart cycles.</li>
+</ol>
+<h3 id="key-features">Key Features<a class="headerlink" href="#key-features" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Non-destructive</strong>: Stopping a Job does not delete the Job CR or its Tasks</li>
+<li><strong>Persistent state</strong>: PVCs and other persistent resources are not affected by stopping</li>
+<li><strong>Web UI integration</strong>: The Web UI provides one-click Stop/Start buttons in the Job list</li>
+</ul>
+<h2 id="8-task">8. Task<a class="headerlink" href="#8-task" title="Permanent link">&para;</a></h2>
+<p>Task is the <strong>execution unit</strong> of a Job, automatically created by the Job Controller. <strong>Users should not create Tasks directly</strong>.</p>
+<h3 id="concept_6">Concept<a class="headerlink" href="#concept_6" title="Permanent link">&para;</a></h3>
+<p>Each Task represents a concrete "training role instance". Agent's Pull controller watches for Tasks and creates corresponding K8s workloads.</p>
+<h3 id="key-properties_4">Key Properties<a class="headerlink" href="#key-properties_4" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rlinf.io/v1alpha1</span>
+<span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Task</span>
+<span class="nt">metadata</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ppo-cartpole-v1-actor-head</span>
+<span class="w">  </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">agent-beijing</span>
+<span class="w">  </span><span class="nt">labels</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">rlinf.io/job</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ppo-cartpole-v1</span>
+<span class="nt">spec</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">role</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Actor</span>
+<span class="w">  </span><span class="nt">agentType</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Kubernetes</span>
+<span class="w">  </span><span class="nt">domain</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ppo-experiment-1</span>
+<span class="w">  </span><span class="nt">nodeSelector</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">nvidia.com/gpu</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;true&quot;</span>
+<span class="w">  </span><span class="nt">kubernetes</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">workload</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Deployment</span>
+<span class="w">      </span><span class="nt">replicas</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+<span class="w">      </span><span class="nt">template</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">default</span>
+<span class="w">        </span><span class="nt">spec</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">containers</span><span class="p">:</span>
+<span class="w">            </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">trainer</span>
+<span class="w">              </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pytorch/pytorch:2.3.0</span>
+<span class="nt">status</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">phase</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Running</span>
+<span class="w">  </span><span class="nt">observedNodes</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;gpu-node-01&quot;</span><span class="p p-Indicator">]</span>
+<span class="w">  </span><span class="nt">startTime</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;2026-06-25T03:20:30Z&quot;</span>
+<span class="w">  </span><span class="nt">conditions</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Ready</span>
+<span class="w">      </span><span class="nt">status</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;True&quot;</span>
+<span class="w">      </span><span class="nt">reason</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">PodRunning</span>
+</code></pre></div>
+<h3 id="task-roles">Task Roles<a class="headerlink" href="#task-roles" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Role</th>
+<th>Description</th>
+<th>Typical Use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Actor</code></td>
+<td>Execute policy inference, generate training data</td>
+<td>PPO Actor process</td>
+</tr>
+<tr>
+<td><code>Rollout</code></td>
+<td>Environment interaction, collect trajectories</td>
+<td>Game environment simulator</td>
+</tr>
+<tr>
+<td><code>Env</code></td>
+<td>Environment/auxiliary service</td>
+<td>Data preprocessing, parameter server</td>
+</tr>
+</tbody>
+</table>
+<h3 id="agent-types">Agent Types<a class="headerlink" href="#agent-types" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Description</th>
+<th>Use Case</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Kubernetes</code></td>
+<td>Create K8s native workloads (Deployment/DaemonSet/StatefulSet)</td>
+<td>GPU clusters for large-scale training</td>
+</tr>
+<tr>
+<td><code>Docker</code></td>
+<td>Manage containers via Docker API (TODO)</td>
+<td>Edge devices (robot arm, sensor, camera)</td>
+</tr>
+<tr>
+<td><code>Raw</code></td>
+<td>Download artifact and execute binary directly (TODO)</td>
+<td>Bare metal servers, embedded devices</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Embodied AI Mapping</strong>:</p>
+<div class="highlight"><pre><span></span><code>graph LR
+    subgraph Cloud[&quot;Cloud (k8s)&quot;]
+        Training[&quot;Training (GPU)&quot;]
+        Rollout[&quot;Rollout (Env)&quot;]
+    end
+    subgraph Edge[&quot;Edge (k8s / Docker / Raw)&quot;]
+        Robot[&quot;Robot Arm (Inference)&quot;]
+        Camera[&quot;Camera (Sensor)&quot;]
+    end
+    Training --&gt;|&quot;grad&quot;| Robot
+    Training &lt;--&gt;|&quot;data&quot;| Robot
+    Rollout --&gt;|&quot;ctrl&quot;| Camera
+    Rollout &lt;--&gt;|&quot;obs&quot;| Camera
+</code></pre></div>
+<h2 id="9-workflow">9. Workflow<a class="headerlink" href="#9-workflow" title="Permanent link">&para;</a></h2>
+<p>Workflow is <strong>DAG orchestration of multiple Jobs</strong>, supporting training pipelines with dependencies.</p>
+<h3 id="concept_7">Concept<a class="headerlink" href="#concept_7" title="Permanent link">&para;</a></h3>
+<p>A Workflow contains multiple Job templates, each declaring upstream dependencies via <code>dependencies</code>. The Workflow Controller schedules Jobs in topological order: upstream Jobs must succeed before dependent Jobs can start.</p>
+<h3 id="key-properties_5">Key Properties<a class="headerlink" href="#key-properties_5" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rlinf.io/v1alpha1</span>
+<span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Workflow</span>
+<span class="nt">metadata</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">training-pipeline-v1</span>
+<span class="nt">spec</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">jobTemplates</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">prepare-data</span>
+<span class="w">      </span><span class="nt">dependencies</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[]</span><span class="w">            </span><span class="c1"># No dependencies, start immediately</span>
+<span class="w">      </span><span class="nt">spec</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">tasks</span><span class="p">:</span>
+<span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">prep</span>
+<span class="w">            </span><span class="nt">role</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Env</span>
+<span class="w">            </span><span class="nt">agentType</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Kubernetes</span>
+<span class="w">            </span><span class="nt">kubernetes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">...</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">train</span>
+<span class="w">      </span><span class="nt">dependencies</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;prepare-data&quot;</span><span class="p p-Indicator">]</span><span class="w">  </span><span class="c1"># Start after prepare-data succeeds</span>
+<span class="w">      </span><span class="nt">spec</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">tasks</span><span class="p">:</span>
+<span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">actor-head</span>
+<span class="w">            </span><span class="nt">head</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">            </span><span class="nt">role</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Actor</span>
+<span class="w">            </span><span class="nt">agentType</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Kubernetes</span>
+<span class="w">            </span><span class="nt">kubernetes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">...</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">evaluate</span>
+<span class="w">      </span><span class="nt">dependencies</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;train&quot;</span><span class="p p-Indicator">]</span>
+<span class="w">      </span><span class="nt">spec</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">tasks</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">...</span>
+</code></pre></div>
+<h3 id="typical-pipeline">Typical Pipeline<a class="headerlink" href="#typical-pipeline" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>Data Preparation ──▶ Model Training ──▶ Model Evaluation
+    prepare             train             evaluate
+</code></pre></div>
+<h3 id="state-machine_1">State Machine<a class="headerlink" href="#state-machine_1" title="Permanent link">&para;</a></h3>
+<p>Similar to Job, Workflow state is determined by the aggregate of its Jobs' states:
+- All Jobs succeed → Workflow Succeeded
+- Any Job fails → Workflow Failed</p>
+<h2 id="10-pod">10. Pod<a class="headerlink" href="#10-pod" title="Permanent link">&para;</a></h2>
+<p>Pod CR is the <strong>control plane mirror</strong> of data plane Pods, reported by the Agent's Push controller.</p>
+<h3 id="concept_8">Concept<a class="headerlink" href="#concept_8" title="Permanent link">&para;</a></h3>
+<p>When a Pod is created in the data plane cluster, the Agent's Pod Push controller reports the Pod info to the control plane, creating a corresponding Pod CR. Pod CR contains Pod identification info (name, owning Task) and runtime status (IP, node, phase).</p>
+<h3 id="usage_3">Usage<a class="headerlink" href="#usage_3" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Status Tracking</strong>: Control plane understands underlying Pod real-time status via Pod CR</li>
+<li><strong>SSH Lookup</strong>: Server's PodCache quickly locates Pod's Agent based on Pod CR</li>
+<li><strong>Log Queries</strong>: Gateway finds Pod's Agent via Pod CR and forwards log requests</li>
+</ul>
+<h2 id="11-resource-relationship-summary">11. Resource Relationship Summary<a class="headerlink" href="#11-resource-relationship-summary" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>graph TD
+    wf[&quot;Workflow&lt;br/&gt;(Cluster scoped)&lt;br/&gt;DAG Pipeline&quot;] --&gt;|&quot;1:N&quot;| job[&quot;Job&lt;br/&gt;(Cluster scoped)&lt;br/&gt;Training Job&quot;]
+    job --&gt;|&quot;1:N&quot;| task[&quot;Task&lt;br/&gt;(Namespaced: agent-{id})&lt;br/&gt;Exec Unit&quot;]
+    task --&gt;|&quot;1:1 (K8s workload)&quot;| workload[&quot;Deployment /&lt;br/&gt;DaemonSet /&lt;br/&gt;StatefulSet&lt;br/&gt;(Local k8s cluster)&quot;]
+    workload --&gt;|&quot;1:N&quot;| pod[&quot;Pod + Sidecar&lt;br/&gt;Agent Push reports → Pod CR&quot;]
+    domain[&quot;Domain&lt;br/&gt;(Cluster scoped)&lt;br/&gt;Network Isolation&quot;] --&gt;|&quot;1:N (one per cluster)&quot;| dp[&quot;DomainPeer&lt;br/&gt;(Namespaced: agent-{id})&lt;br/&gt;Pod Routing Table&quot;]
+    node[&quot;Node&lt;br/&gt;(Namespaced)&lt;br/&gt;Compute Node&quot;]
+</code></pre></div>
+<h2 id="12-naming-conventions">12. Naming Conventions<a class="headerlink" href="#12-naming-conventions" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Namespace Prefix</th>
+<th>Meaning</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>agent-</code></td>
+<td>Agent workspace</td>
+<td><code>agent-beijing-01</code></td>
+</tr>
+<tr>
+<td><code>rlark-system</code></td>
+<td>Default namespace created by Agent</td>
+<td><code>rlark-system</code></td>
+</tr>
+<tr>
+<td>Label <code>rlinf.io/job</code></td>
+<td>Pod/Task's owning Job</td>
+<td><code>rlinf.io/job=ppo-cartpole-v1</code></td>
+</tr>
+<tr>
+<td>Annotation <code>rlinf.io/ray-role</code></td>
+<td>Ray cluster role</td>
+<td><code>head</code> / <code>worker</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="13-ray-cluster-integration">13. Ray Cluster Integration<a class="headerlink" href="#13-ray-cluster-integration" title="Permanent link">&para;</a></h2>
+<p>rlark supports declarative Ray cluster creation via Task annotations:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">annotations</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">rlinf.io/ray-role</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;head&quot;</span><span class="w">          </span><span class="c1"># head | worker</span>
+<span class="w">  </span><span class="nt">rlinf.io/ray-total-nodes</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;5&quot;</span><span class="w">     </span><span class="c1"># head only</span>
+<span class="w">  </span><span class="nt">rlinf.io/ray-head-task-name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;actor-head&quot;</span><span class="w">  </span><span class="c1"># worker only</span>
+</code></pre></div>
+<p><strong>Auto-initialization process</strong>:</p>
+<ol>
+<li>Agent's Pull controller detects Ray annotations</li>
+<li>Creates ConfigMap mounting init scripts (<code>ray_head.sh</code> / <code>ray_worker.sh</code> / <code>ray_check.py</code>)</li>
+<li>Modifies container startup command to <code>bash ray_head.sh</code> (or <code>ray_worker.sh</code>)</li>
+<li>Injects environment variables (<code>RLARK_RAY_PORT</code>, <code>RLARK_HEAD_ADDRESS</code>, etc.)</li>
+<li>Head node creates a Service (exposing 6379/8265/8080)</li>
+<li>Worker nodes wait for Head to be ready, then join the cluster</li>
+</ol>
+<h2 id="14-object-storage-pvcs">14. Object Storage &amp; PVCs<a class="headerlink" href="#14-object-storage-pvcs" title="Permanent link">&para;</a></h2>
+<p>rlark supports mounting persistent volumes to training tasks via <code>pvcStorageMap</code> in the Task specification.</p>
+<h3 id="concept_9">Concept<a class="headerlink" href="#concept_9" title="Permanent link">&para;</a></h3>
+<p>When a Task specifies <code>pvcStorageMap</code>, the Agent's Pull controller automatically creates PVCs with the specified StorageClass before creating the workload, and cleans them up when the task is deleted.</p>
+<h3 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nt">kubernetes</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">workload</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">pvcStorageMap</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">my-data-pvc</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;ceph-rbd&quot;</span><span class="w">    </span><span class="c1"># PVC name → StorageClass name</span>
+</code></pre></div>
+<h3 id="how-it-works_1">How it works<a class="headerlink" href="#how-it-works_1" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Agent queries StorageClasses via <code>GET /api/v1/storage/storageclass?clusters=&lt;agent-id&gt;</code></li>
+<li>When creating a workload, Agent calls <code>ensurePVCs</code> to create PVCs with the specified StorageClass</li>
+<li>PVCs are created in the target namespace, scoped to the task</li>
+<li>On task deletion, PVCs are cleaned up automatically</li>
+</ol>
+<h2 id="15-user-authentication">15. User Authentication<a class="headerlink" href="#15-user-authentication" title="Permanent link">&para;</a></h2>
+<p>rlark provides a simple role-based authentication system for the Web UI.</p>
+<h3 id="roles">Roles<a class="headerlink" href="#roles" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Role</th>
+<th>Permissions</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>admin</code></td>
+<td>Full access: create/manage jobs, nodes, domains, workflows</td>
+</tr>
+<tr>
+<td><code>user</code></td>
+<td>Read-only access: view jobs, nodes, and system status</td>
+</tr>
+</tbody>
+</table>
+<h3 id="authentication-flow">Authentication Flow<a class="headerlink" href="#authentication-flow" title="Permanent link">&para;</a></h3>
+<ol>
+<li>During deployment, <code>rlarkadm</code> generates random passwords and stores them in a KCP Secret (<code>rlark-ui-auth</code>)</li>
+<li>Web UI sends <code>POST /api/v1/auth/login</code> with username and password</li>
+<li>Gateway validates against the KCP Secret and returns the role</li>
+<li>Frontend stores the authentication result in <code>sessionStorage</code></li>
+</ol>
+<h2 id="16-addon-component-management">16. Addon (Component Management)<a class="headerlink" href="#16-addon-component-management" title="Permanent link">&para;</a></h2>
+<p>Addon is rlark's component management system, allowing users to install, configure, and manage third-party components (device plugins, monitoring agents, etc.) across multiple data plane clusters.</p>
+<h3 id="concept_10">Concept<a class="headerlink" href="#concept_10" title="Permanent link">&para;</a></h3>
+<p>Addons are managed through three layers:</p>
+<ol>
+<li><strong>Addon Catalog</strong> (<code>/api/v1/addons</code>) — A curated list of available addons (e.g., <code>embodied-runtime-device-plugin</code>). Each addon includes Kubernetes manifests (DaemonSet, ConfigMap, RBAC) and configurable values.</li>
+<li><strong>Addon CRD</strong> (<code>rlinf.io/v1alpha1/Addon</code>) — A Kubernetes-style CR representing an installed addon instance in a specific data plane cluster. The Spec specifies the addon name, version, and configuration values.</li>
+<li><strong>Addon Controller</strong> (<code>../pkg/agent/controllers/addon/pull.go</code>) — The Agent's Pull controller watches Addon CRs, renders the addon manifests with the configured values, and applies them to the local Kubernetes cluster.</li>
+</ol>
+<h3 id="addon-lifecycle">Addon Lifecycle<a class="headerlink" href="#addon-lifecycle" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>Catalog Item ──install──▶ Addon CR ──pull──▶ Agent applies manifests
+                            │
+                            ├── UPDATE values ──▶ Agent re-applies
+                            └── DELETE ──▶ Agent removes manifests
+</code></pre></div>
+<h3 id="addon-phase">Addon Phase<a class="headerlink" href="#addon-phase" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>Pending ──▶ Installing ──▶ Ready
+                │
+                └──▶ Failed
+                     │
+                     └──▶ Upgrading ──▶ Ready
+</code></pre></div>
+<h3 id="example-embodied-runtime-device-plugin">Example: Embodied Runtime Device Plugin<a class="headerlink" href="#example-embodied-runtime-device-plugin" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rlinf.io/v1alpha1</span>
+<span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Addon</span>
+<span class="nt">metadata</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">embodied-device-plugin</span>
+<span class="w">  </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">agent-beijing</span>
+<span class="nt">spec</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">addonName</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">embodied-runtime-device-plugin</span>
+<span class="w">  </span><span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;0.1.0&quot;</span>
+<span class="w">  </span><span class="nt">values</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;rlark/embodied-device-plugin:0.1.0&quot;</span>
+<span class="w">    </span><span class="nt">nodeSelector</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;nvidia.com/gpu=true&quot;</span>
+<span class="nt">status</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">phase</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Ready</span>
+<span class="w">  </span><span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;0.1.0&quot;</span>
+</code></pre></div>
+<h3 id="key-properties_6">Key Properties<a class="headerlink" href="#key-properties_6" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Multi-cluster</strong>: Each data plane cluster can have different addons installed</li>
+<li><strong>Configurable</strong>: Addon values can be customized per cluster via <code>spec.values</code></li>
+<li><strong>Versioned</strong>: Addons support version upgrades via <code>spec.version</code></li>
+<li><strong>Auto-apply</strong>: Agent's Pull controller automatically applies manifests when Addon CR is created or updated</li>
+<li><strong>Mutating Webhook</strong>: The Device Plugin includes a mutating admission webhook that auto-injects a <code>devinit</code> init container into Pods requesting <code>rlinf.io/device</code>, creating macvlans in the Pod's network namespace without manual configuration</li>
+</ul>
+<h2 id="17-web-terminal">17. Web Terminal<a class="headerlink" href="#17-web-terminal" title="Permanent link">&para;</a></h2>
+<p>Web Terminal provides interactive Pod terminal access directly from the Web UI.</p>
+<h3 id="concept_11">Concept<a class="headerlink" href="#concept_11" title="Permanent link">&para;</a></h3>
+<p>The Web Terminal allows users to open a terminal session into any Pod managed by rlark, without needing to SSH into the underlying node or install kubectl locally.</p>
+<h3 id="architecture">Architecture<a class="headerlink" href="#architecture" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>Browser ──WebSocket──▶ Gateway ──proxy via Server──▶ Agent ──exec──▶ Pod
+</code></pre></div>
+<h3 id="how-it-works_2">How it works<a class="headerlink" href="#how-it-works_2" title="Permanent link">&para;</a></h3>
+<ol>
+<li>User clicks "Terminal" on a Pod in the Web UI, opening the session in a new browser tab. Multiple Pods can therefore have active terminal tabs at the same time.</li>
+<li>The new tab establishes a WebSocket connection to Gateway at <code>GET /api/v1/rlinf.io/v1alpha1/pods/{name}/terminal</code></li>
+<li>Gateway proxies the WebSocket connection through Server to the Pod's Agent</li>
+<li>Agent opens an exec session into the Pod's container and streams I/O</li>
+<li>The terminal session persists until the WebSocket is closed</li>
+</ol>
+<p>The Web Terminal supports interactive full-screen programs such as Vim on macOS Safari. Printable keys and terminal control keys are forwarded directly while browser shortcuts and IME composition remain handled by the browser.
+When the shell exits (for example, after <code>exit</code>), the proxy chain forwards a normal WebSocket close frame. The UI reports the process exit code when it is non-zero, while transport failures remain distinguishable from process exit.</p>
+<h2 id="18-pod-http-proxy">18. Pod HTTP Proxy<a class="headerlink" href="#18-pod-http-proxy" title="Permanent link">&para;</a></h2>
+<p>Pod HTTP Proxy allows direct HTTP access to Pods managed by rlark through the Server → Agent proxy chain.</p>
+<h3 id="concept_12">Concept<a class="headerlink" href="#concept_12" title="Permanent link">&para;</a></h3>
+<p>The Pod HTTP Proxy enables users to send HTTP requests to specific Pods without needing to know the Pod's real IP address or establish SSH tunnels. The Server resolves the Pod's location via the pod cache and proxies the request through the Agent's local HTTP server.</p>
+<h3 id="architecture_1">Architecture<a class="headerlink" href="#architecture_1" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>Client ──HTTP──▶ Gateway ──proxy via Server──▶ Agent ──reverse proxy──▶ Pod (http://&lt;podIP&gt;:&lt;port&gt;/&lt;path&gt;)
+</code></pre></div>
+<h3 id="how-it-works_3">How it works<a class="headerlink" href="#how-it-works_3" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Client sends <code>ANY /api/podproxy/{podName}:{port}/*path</code> or <code>ANY /api/taskproxy/{taskName}:{port}/*path</code> to Gateway</li>
+<li>Gateway forwards the request to Server</li>
+<li>Server looks up the Pod in the pod cache (by Pod name or Task name) to get the Pod's real IP and Agent ID</li>
+<li>Server constructs a reverse proxy to the target Agent, targeting <code>0.0.0.0:1</code> (Agent's local server)</li>
+<li>Agent receives the request at <code>/api/proxy/http://&lt;podIP&gt;:&lt;port&gt;/&lt;path&gt;</code> and reverse-proxies to the Pod</li>
+<li>The response flows back through the same chain</li>
+</ol>
+<h3 id="key-features_1">Key Features<a class="headerlink" href="#key-features_1" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>No direct Pod IP needed</strong>: Users only need the Pod name or Task name and port</li>
+<li><strong>Dual resolution</strong>: Proxy by Pod name (<code>/api/podproxy/</code>) or Task name (<code>/api/taskproxy/</code>)</li>
+<li><strong>Certificate-based access control</strong>: Access is gated by the client certificate's permissions</li>
+<li><strong>Transparent proxy</strong>: All HTTP methods (GET, POST, PUT, DELETE, etc.) are supported</li>
+</ul>
+<h2 id="19-tensorboard-proxy">19. TensorBoard Proxy<a class="headerlink" href="#19-tensorboard-proxy" title="Permanent link">&para;</a></h2>
+<p>TensorBoard Proxy provides a web-based visualization dashboard for training metrics (loss curves, scalar summaries, histograms, etc.) directly from the rlark Web UI, without needing to expose TensorBoard ports externally.</p>
+<h3 id="concept_13">Concept<a class="headerlink" href="#concept_13" title="Permanent link">&para;</a></h3>
+<p>When a training Task runs TensorBoard (listening on port 6006), rlark automatically proxies the TensorBoard UI through the Gateway. Users can open TensorBoard from the Web UI by clicking a link, and the browser accesses it via the Gateway proxy.</p>
+<h3 id="architecture_2">Architecture<a class="headerlink" href="#architecture_2" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>Browser ──HTTP──▶ Gateway ──proxy to Server──▶ Server ──podproxy──▶ Agent ──▶ Pod:6006 (TensorBoard)
+</code></pre></div>
+<h3 id="how-it-works_4">How it works<a class="headerlink" href="#how-it-works_4" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Agent's Ray init script starts TensorBoard alongside the Ray head process</li>
+<li>Gateway injects a <code>tensorBoardProxy</code> field into Task status responses, pointing to the proxy URL</li>
+<li>User clicks the TensorBoard link in the Web UI</li>
+<li>Browser sends a request to <code>GET /api/v1/rlinf.io/v1alpha1/tasks/{name}/tensorboard/</code></li>
+<li>Gateway resolves the Task's Pod via the KCP API and proxies the request to the Server's Pod Proxy</li>
+<li>Gateway rewrites HTML/CSS responses to ensure all asset paths (fonts, JS, API calls) work through the proxy prefix</li>
+<li>TensorBoard UI renders in the browser as if it were accessed directly</li>
+</ol>
+<h3 id="key-features_2">Key Features<a class="headerlink" href="#key-features_2" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>No port exposure</strong>: TensorBoard port 6006 stays internal to the Pod</li>
+<li><strong>Automatic proxy injection</strong>: Task listing/GET responses include the <code>tensorBoardProxy</code> URL</li>
+<li><strong>HTML rewriting</strong>: Proxied TensorBoard pages are rewritten so all relative and absolute paths work correctly</li>
+<li><strong>Ray integration</strong>: TensorBoard auto-starts for Ray tasks with the appropriate configuration</li>
+</ul>
+<h2 id="20-ssh-key-management">20. SSH Key Management<a class="headerlink" href="#20-ssh-key-management" title="Permanent link">&para;</a></h2>
+<p>SSH Key Management allows users to upload their SSH public keys through the API or Web UI, enabling passwordless SSH login to Pods without sharing certificates.</p>
+<h3 id="concept_14">Concept<a class="headerlink" href="#concept_14" title="Permanent link">&para;</a></h3>
+<p>Each user can upload one or more SSH public keys. These keys are stored in a Kubernetes Secret (<code>rlark-ssh-user-keys</code>) in the control plane namespace. When a Pod is created, the Agent injects the user's public keys into the Pod's <code>authorized_keys</code> file, allowing SSH access without a password.</p>
+<h3 id="api">API<a class="headerlink" href="#api" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>GET /api/v1/ssh-user-keys</code> — list all SSH keys (optionally filtered by user)</li>
+<li><code>POST /api/v1/ssh-user-keys</code> — add a new SSH public key for a user</li>
+<li><code>DELETE /api/v1/ssh-user-keys/:id</code> — delete a key by index</li>
+</ul>
+<h3 id="key-features_3">Key Features<a class="headerlink" href="#key-features_3" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Web UI management</strong>: A dedicated SSH Keys page in the Web UI for viewing and managing keys</li>
+<li><strong>Per-task key injection</strong>: Individual Jobs and Tasks can specify an <code>sshPublicKey</code> field, which takes precedence over centrally managed keys for that specific workload</li>
+<li><strong>Conflict detection</strong>: Duplicate keys are detected and rejected with a 409 response</li>
+<li><strong>Retry on conflict</strong>: The API automatically retries on write conflicts (up to 5 attempts)</li>
+<li><strong>Key validation</strong>: Public keys are validated using <code>golang.org/x/crypto/ssh</code> before storage</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.tracking", "navigation.indexes", "toc.follow", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+        <script src="../javascripts/fix-nav.js"></script>
+      
+    
+  </body>
+</html>

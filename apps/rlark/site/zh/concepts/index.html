@@ -1,0 +1,3300 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Reinforcement Learning Infrastructure for Embodied and Agentic AI">
+      
+      
+      
+      
+        <link rel="prev" href="../ui-behavior/">
+      
+      
+        <link rel="next" href="../architecture/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>核心概念 - RLark</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="deep-purple" data-md-color-accent="purple">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#_1" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="RLark" class="md-header__button md-logo" aria-label="RLark" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            RLark
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              核心概念
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="deep-purple" data-md-color-accent="purple"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="deep-purple" data-md-color-accent="purple"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/RLinf/RLark" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="RLark" class="md-nav__button md-logo" aria-label="RLark" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    RLark
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/RLinf/RLark" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ui-behavior/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Web Console
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core Concepts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Examples
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" checked>
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    中文
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_9" id="__nav_9_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    中文
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    快速开始
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ui-behavior/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Web 控制台
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    核心概念
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    核心概念
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. 资源层次
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-domain" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Domain（安全域）
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Domain（安全域）">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        概念
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        关键属性
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        设计意图
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-domainpeer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. DomainPeer（域对等体）
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. DomainPeer（域对等体）">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        概念
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        关键属性
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        用途
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-node" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Node（计算节点）
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Node（计算节点）">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        概念
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        关键属性
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_10" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        用途
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_11" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        管理员标注
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-node-cordonuncordon" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Node 调度控制（Cordon/Uncordon）
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Node 调度控制（Cordon/Uncordon）">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_12" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        概念
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_13" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        使用方式
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-job" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Job（训练作业）
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Job（训练作业）">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_14" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        概念
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_15" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        关键属性
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_16" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        状态机
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#task" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        与 Task 的关系
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-job" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Job 停止/启动
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. Job 停止/启动">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_17" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        概念
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_18" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        工作原理
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_19" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        关键特性
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-task" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Task（任务单元）
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="8. Task（任务单元）">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_20" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        概念
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_21" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        关键属性
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_22" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        任务角色
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_23" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        接入形态
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Workflow（工作流）
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="9. Workflow（工作流）">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_24" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        概念
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_25" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        关键属性
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_26" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        典型流水线
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_27" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        状态机
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-pod" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Pod（容器实例）
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="10. Pod（容器实例）">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_28" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        概念
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_29" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        用途
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. 资源关系总结
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#12" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12. 命名约定
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#13-ray" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13. Ray 集群集成
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#14-pvc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14. 对象存储与 PVC
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="14. 对象存储与 PVC">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_30" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        概念
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_31" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        配置方式
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_32" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        工作流程
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#15" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        15. 用户认证
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="15. 用户认证">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_33" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        角色
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_34" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        认证流程
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#16-addon" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        16. Addon（组件管理）
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="16. Addon（组件管理）">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_35" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        概念
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#addon" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Addon 生命周期
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#addon_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Addon 状态
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_36" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        示例：具身运行时设备插件
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_37" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        关键特性
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#17-web-terminalweb" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        17. Web Terminal（Web 终端）
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="17. Web Terminal（Web 终端）">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_38" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        概念
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_39" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        架构
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_40" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        工作原理
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#18-pod-http-proxypod-http" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        18. Pod HTTP Proxy（Pod HTTP 代理）
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="18. Pod HTTP Proxy（Pod HTTP 代理）">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_41" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        概念
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_42" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        架构
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_43" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        工作原理
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_44" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        关键特性
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#19-tensorboard-proxytensorboard" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        19. TensorBoard Proxy（TensorBoard 代理）
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="19. TensorBoard Proxy（TensorBoard 代理）">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_45" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        概念
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_46" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        架构
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_47" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        工作原理
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_48" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        关键特性
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#20-ssh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        20. SSH 密钥管理
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="20. SSH 密钥管理">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_49" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        概念
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        API
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_50" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        关键特性
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    架构设计
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    部署指南
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API 参考
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API 示例
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. 资源层次
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-domain" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Domain（安全域）
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Domain（安全域）">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        概念
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        关键属性
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        设计意图
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-domainpeer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. DomainPeer（域对等体）
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. DomainPeer（域对等体）">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        概念
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        关键属性
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        用途
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-node" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Node（计算节点）
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Node（计算节点）">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        概念
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        关键属性
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_10" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        用途
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_11" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        管理员标注
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-node-cordonuncordon" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Node 调度控制（Cordon/Uncordon）
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Node 调度控制（Cordon/Uncordon）">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_12" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        概念
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_13" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        使用方式
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-job" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Job（训练作业）
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Job（训练作业）">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_14" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        概念
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_15" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        关键属性
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_16" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        状态机
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#task" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        与 Task 的关系
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-job" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Job 停止/启动
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. Job 停止/启动">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_17" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        概念
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_18" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        工作原理
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_19" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        关键特性
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-task" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Task（任务单元）
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="8. Task（任务单元）">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_20" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        概念
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_21" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        关键属性
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_22" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        任务角色
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_23" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        接入形态
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Workflow（工作流）
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="9. Workflow（工作流）">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_24" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        概念
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_25" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        关键属性
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_26" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        典型流水线
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_27" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        状态机
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-pod" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Pod（容器实例）
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="10. Pod（容器实例）">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_28" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        概念
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_29" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        用途
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. 资源关系总结
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#12" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12. 命名约定
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#13-ray" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13. Ray 集群集成
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#14-pvc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14. 对象存储与 PVC
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="14. 对象存储与 PVC">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_30" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        概念
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_31" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        配置方式
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_32" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        工作流程
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#15" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        15. 用户认证
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="15. 用户认证">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_33" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        角色
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_34" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        认证流程
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#16-addon" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        16. Addon（组件管理）
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="16. Addon（组件管理）">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_35" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        概念
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#addon" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Addon 生命周期
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#addon_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Addon 状态
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_36" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        示例：具身运行时设备插件
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_37" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        关键特性
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#17-web-terminalweb" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        17. Web Terminal（Web 终端）
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="17. Web Terminal（Web 终端）">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_38" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        概念
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_39" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        架构
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_40" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        工作原理
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#18-pod-http-proxypod-http" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        18. Pod HTTP Proxy（Pod HTTP 代理）
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="18. Pod HTTP Proxy（Pod HTTP 代理）">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_41" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        概念
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_42" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        架构
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_43" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        工作原理
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_44" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        关键特性
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#19-tensorboard-proxytensorboard" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        19. TensorBoard Proxy（TensorBoard 代理）
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="19. TensorBoard Proxy（TensorBoard 代理）">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_45" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        概念
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_46" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        架构
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_47" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        工作原理
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_48" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        关键特性
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#20-ssh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        20. SSH 密钥管理
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="20. SSH 密钥管理">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_49" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        概念
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        API
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_50" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        关键特性
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="_1">核心概念<a class="headerlink" href="#_1" title="Permanent link">&para;</a></h1>
+<h2 id="1">1. 资源层次<a class="headerlink" href="#1" title="Permanent link">&para;</a></h2>
+<p>rlark 采用多层资源抽象，从底层基础设施到上层具身智能工作负载逐层封装：</p>
+<div class="highlight"><pre><span></span><code>Workflow  ──── 工作流（DAG 编排多个 Job）
+  │
+  └── Job  ──── 训练作业（一个完整的具身智能任务）
+        │
+        └── Task  ──── 任务单元（Actor/Rollout/Env 等角色）
+              │
+              └── K8s Workload / Docker Container  ──── 底层运行时
+                    │
+                    └── Pod / Container  ──── 实际运行的工作负载
+</code></pre></div>
+<p><strong>具身智能场景</strong>：典型流水线包括 GPU 集群训练策略模型、端侧设备（机械臂、传感器）在物理环境中执行策略、数据回流到训练 —— 全链路通过同一平台编排。</p>
+<h2 id="2-domain">2. Domain（安全域）<a class="headerlink" href="#2-domain" title="Permanent link">&para;</a></h2>
+<p>Domain 是 rlark 中<strong>网络隔离</strong>和<strong>安全边界</strong>的基本单位。</p>
+<h3 id="_2">概念<a class="headerlink" href="#_2" title="Permanent link">&para;</a></h3>
+<p>一个 Domain 代表一个逻辑上的训练网络，同一 Domain 内的 Pod 可以通过虚拟 IP 直接通信，不同 Domain 之间完全隔离。</p>
+<h3 id="_3">关键属性<a class="headerlink" href="#_3" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rlinf.io/v1alpha1</span>
+<span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Domain</span>
+<span class="nt">metadata</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ppo-experiment-1</span>
+<span class="nt">spec</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">cidr</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;10.0.1.0/24&quot;</span><span class="w">    </span><span class="c1"># 该 Domain 的 IP 子网</span>
+<span class="nt">status</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">ipAllocations</span><span class="p">:</span><span class="w">          </span><span class="c1"># 已分配的 IP 列表</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">ip</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;10.0.1.1&quot;</span>
+<span class="w">      </span><span class="nt">task</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;actor-head&quot;</span>
+<span class="w">      </span><span class="nt">job</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;ppo-cartpole-v1&quot;</span>
+</code></pre></div>
+<h3 id="_4">设计意图<a class="headerlink" href="#_4" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>网络隔离</strong>：不同具身智能任务（如团队 A 的机械臂操作实验和团队 B 的导航实验）分配到不同 Domain，互不干扰</li>
+<li><strong>IP 管理</strong>：Controller-Manager 的 Domain Controller 负责分配 IP 子网，并为每个工作负载分配唯一 IP</li>
+<li><strong>证书粒度</strong>：每个 Domain 有独立的 X.509 证书，跨集群通信时携带 Domain 证书做身份认证</li>
+</ul>
+<h2 id="3-domainpeer">3. DomainPeer（域对等体）<a class="headerlink" href="#3-domainpeer" title="Permanent link">&para;</a></h2>
+<p>DomainPeer 是 Domain 在<strong>某个数据面集群中的视图</strong>，由 Domain Controller 自动创建。</p>
+<h3 id="_5">概念<a class="headerlink" href="#_5" title="Permanent link">&para;</a></h3>
+<p>每个 Domain 在每个数据面集群中有一个对应的 DomainPeer 对象，包含该 Domain 在该集群中所有 Pod 的集合。</p>
+<h3 id="_6">关键属性<a class="headerlink" href="#_6" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rlinf.io/v1alpha1</span>
+<span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">DomainPeer</span>
+<span class="nt">metadata</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ppo-experiment-1</span>
+<span class="w">  </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">agent-beijing</span><span class="w">    </span><span class="c1"># 该 Agent 的 workspace</span>
+<span class="nt">spec</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">cert</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;-----BEGIN</span><span class="nv"> </span><span class="s">CERTIFICATE-----...&quot;</span><span class="w">  </span><span class="c1"># Domain 证书</span>
+<span class="w">  </span><span class="nt">key</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;-----BEGIN</span><span class="nv"> </span><span class="s">PRIVATE</span><span class="nv"> </span><span class="s">KEY-----...&quot;</span><span class="w">   </span><span class="c1"># Domain 私钥</span>
+<span class="w">  </span><span class="nt">prefixLen</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">24</span>
+<span class="w">  </span><span class="nt">pods</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;actor-head-0&quot;</span>
+<span class="w">      </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;default&quot;</span>
+<span class="w">      </span><span class="nt">uid</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;abc-123&quot;</span>
+<span class="w">      </span><span class="nt">ip</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;10.0.1.1&quot;</span><span class="w">           </span><span class="c1"># Domain 虚拟 IP</span>
+<span class="w">      </span><span class="nt">localIP</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;172.17.0.5&quot;</span><span class="w">    </span><span class="c1"># 实际 Pod IP（k8s 集群内）</span>
+<span class="w">      </span><span class="nt">node</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;node-01&quot;</span>
+<span class="w">      </span><span class="nt">globalNamespace</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;agent-beijing&quot;</span>
+</code></pre></div>
+<h3 id="_7">用途<a class="headerlink" href="#_7" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>路由表</strong>：NodeServer 通过 DomainPeer 查找目标 Pod 所在集群和实际 IP</li>
+<li><strong>证书分发</strong>：DomainPeer 携带 Domain 的证书和私钥，Agent 通过它建立跨集群 SSH 隧道</li>
+<li><strong>自动更新</strong>：Pod 创建/删除时，Domain Controller 自动更新 DomainPeer 的 pods 列表</li>
+</ul>
+<h2 id="4-node">4. Node（计算节点）<a class="headerlink" href="#4-node" title="Permanent link">&para;</a></h2>
+<p>Node 代表数据面集群中的一个<strong>物理/虚拟计算节点</strong>。</p>
+<h3 id="_8">概念<a class="headerlink" href="#_8" title="Permanent link">&para;</a></h3>
+<p>Node 由 Agent 的 Push 控制器自动上报，反映节点的实际状态（地址、资源容量、GPU 数量等）。</p>
+<h3 id="_9">关键属性<a class="headerlink" href="#_9" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rlinf.io/v1alpha1</span>
+<span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Node</span>
+<span class="nt">metadata</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu-node-01</span>
+<span class="w">  </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">agent-beijing</span>
+<span class="w">  </span><span class="nt">labels</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">nvidia.com/gpu</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;true&quot;</span>
+<span class="nt">spec</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">agentType</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Kubernetes</span>
+<span class="w">  </span><span class="nt">unschedulable</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="nt">status</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">phase</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Online</span>
+<span class="w">  </span><span class="nt">addresses</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">InternalIP</span>
+<span class="w">      </span><span class="nt">address</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;10.0.1.23&quot;</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Hostname</span>
+<span class="w">      </span><span class="nt">address</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;gpu-node-01&quot;</span>
+<span class="w">  </span><span class="nt">capacity</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">cpu</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;32&quot;</span>
+<span class="w">    </span><span class="nt">memory</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;128Gi&quot;</span>
+<span class="w">    </span><span class="nt">nvidia.com/gpu</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;8&quot;</span>
+<span class="w">  </span><span class="nt">allocatable</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">cpu</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;30&quot;</span>
+<span class="w">    </span><span class="nt">memory</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;120Gi&quot;</span>
+<span class="w">    </span><span class="nt">nvidia.com/gpu</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;8&quot;</span>
+<span class="w">  </span><span class="nt">nodeInfo</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">architecture</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">amd64</span>
+<span class="w">    </span><span class="nt">operatingSystem</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">linux</span>
+<span class="w">    </span><span class="nt">kernelVersion</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;5.15.0-91-generic&quot;</span>
+<span class="w">    </span><span class="nt">agentVersion</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;0.1.0&quot;</span>
+</code></pre></div>
+<h3 id="_10">用途<a class="headerlink" href="#_10" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>资源感知</strong>：控制面根据 Node 的资源状态做调度决策（通过 NodeSelector）</li>
+<li><strong>标签管理</strong>：控制面可下发标签到 Node，Agent 的 Pull 控制器同步到本地 k8s Node</li>
+<li><strong>污点管理</strong>：通过 <code>unschedulable</code> 字段控制节点是否可调度</li>
+</ul>
+<h3 id="_11">管理员标注<a class="headerlink" href="#_11" title="Permanent link">&para;</a></h3>
+<p>管理员可在管理端多选 Node 并批量设置由管理端和业务端共同使用的元数据：</p>
+<ul>
+<li><code>rlark.io/city</code> Annotation：管理员维护的物理位置</li>
+<li><code>rlark.io/node-category-{cloud,edge,robot}=true</code> Label：一个或多个节点分类</li>
+<li><code>rlark.io/gpu-model</code> Annotation：云算力节点的 GPU 型号</li>
+<li><code>rlark.io/device-model</code> Annotation：端算力和端真机节点的具身设备型号</li>
+</ul>
+<p>这些业务字段存储在 KCP Node CR 上，Agent 刷新 Kubernetes 自动发现状态时会保留它们。批量编辑器会带入共同的当前值、标识多值选择，并且只修改管理员明确启用的属性；清空已启用属性表示删除该值。管理端同时支持全选筛选结果、取消全选及批量 Cordon/Uncordon。一个节点可同时属于多个分类，并同时具有 GPU 和具身设备型号。</p>
+<p>业务平台的节点总数和集群详情节点列表包含带有 RLark 分类 Label 的可用 Worker；旧版 <code>rlark.io/node-category</code> 值及明确上报 GPU 或具身设备资源的未标注节点仍兼容展示。带有 Kubernetes <code>master</code> 或 <code>control-plane</code> 角色标签的节点仍只在管理平台中展示，不作为业务任务 Worker 统计和展示。</p>
+<p>节点详情中的 CPU、内存和 GPU 占用量按运行 Worker 的 Kubernetes <code>resources.requests</code> 汇总，反映调度器已预留资源，不代表 metrics-server 的实时硬件利用率。详情页同时列出该节点上的 Worker、所属 Job、角色、IP、资源申请和运行状态。</p>
+<h2 id="5-node-cordonuncordon">5. Node 调度控制（Cordon/Uncordon）<a class="headerlink" href="#5-node-cordonuncordon" title="Permanent link">&para;</a></h2>
+<p>通过 <code>unschedulable</code> 字段控制节点是否可调度。</p>
+<h3 id="_12">概念<a class="headerlink" href="#_12" title="Permanent link">&para;</a></h3>
+<p>设置 <code>spec.unschedulable: true</code> 将节点标记为不可调度，阻止新工作负载分配到该节点，等同于 Kubernetes 的 <code>kubectl cordon</code>。</p>
+<h3 id="_13">使用方式<a class="headerlink" href="#_13" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># PATCH 切换不可调度状态</span>
+curl<span class="w"> </span>-X<span class="w"> </span>PATCH<span class="w"> </span><span class="s2">&quot;http://localhost:8080/api/v1/rlinf.io/v1alpha1/nodes/gpu-node-01?namespace=default&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/merge-patch+json&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{ &quot;spec&quot;: { &quot;unschedulable&quot;: true } }&#39;</span>
+</code></pre></div>
+<p>Web UI 在节点列表中为每个节点提供 Cordon/Uncordon 按钮。</p>
+<h2 id="6-job">6. Job（训练作业）<a class="headerlink" href="#6-job" title="Permanent link">&para;</a></h2>
+<p>Job 是用户<strong>直接操作的核心资源</strong>，代表一个完整的 RL 训练任务。</p>
+<h3 id="_14">概念<a class="headerlink" href="#_14" title="Permanent link">&para;</a></h3>
+<p>一个 Job 包含多个 Task 模板，每个 Task 代表训练中的一个角色（如 Actor、Rollout、Env）。Controller-Manager 的 Job Controller 根据模板创建和管理 Task。</p>
+<h3 id="_15">关键属性<a class="headerlink" href="#_15" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rlinf.io/v1alpha1</span>
+<span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Job</span>
+<span class="nt">metadata</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ppo-cartpole-v1</span>
+<span class="w">  </span><span class="nt">labels</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">framework</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ppo</span>
+<span class="w">    </span><span class="nt">env</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cartpole</span>
+<span class="nt">spec</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">domain</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ppo-experiment-1</span><span class="w">    </span><span class="c1"># 所属 Domain</span>
+<span class="w">  </span><span class="nt">tasks</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">actor-head</span>
+<span class="w">      </span><span class="nt">head</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">               </span><span class="c1"># 是否为主节点</span>
+<span class="w">      </span><span class="nt">role</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Actor</span><span class="w">              </span><span class="c1"># 角色：Actor/Rollout/Env</span>
+<span class="w">      </span><span class="nt">agentType</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Kubernetes</span><span class="w">    </span><span class="c1"># 接入形态：Kubernetes/Docker/Raw</span>
+<span class="w">      </span><span class="nt">nodeSelector</span><span class="p">:</span><span class="w">            </span><span class="c1"># 节点选择器</span>
+<span class="w">        </span><span class="nt">nvidia.com/gpu</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;true&quot;</span>
+<span class="w">      </span><span class="nt">kubernetes</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">workload</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Deployment</span><span class="w">     </span><span class="c1"># 工作负载类型</span>
+<span class="w">          </span><span class="nt">replicas</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+<span class="w">          </span><span class="nt">template</span><span class="p">:</span>
+<span class="w">            </span><span class="nt">spec</span><span class="p">:</span>
+<span class="w">              </span><span class="nt">containers</span><span class="p">:</span>
+<span class="w">                </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">trainer</span>
+<span class="w">                  </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pytorch/pytorch:2.3.0</span>
+<span class="w">                  </span><span class="nt">resources</span><span class="p">:</span>
+<span class="w">                    </span><span class="nt">limits</span><span class="p">:</span>
+<span class="w">                      </span><span class="nt">nvidia.com/gpu</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;1&quot;</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rollout</span>
+<span class="w">      </span><span class="nt">role</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Rollout</span>
+<span class="w">      </span><span class="nt">agentType</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Kubernetes</span>
+<span class="w">      </span><span class="nt">kubernetes</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">workload</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">StatefulSet</span>
+<span class="w">          </span><span class="nt">replicas</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
+<span class="w">          </span><span class="nt">template</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">...</span>
+<span class="nt">status</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">phase</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Running</span><span class="w">               </span><span class="c1"># Pending/Running/Succeeded/Failed</span>
+<span class="w">  </span><span class="nt">startTime</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;2026-06-25T03:20:00Z&quot;</span>
+<span class="w">  </span><span class="nt">tasks</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">actor-head</span>
+<span class="w">      </span><span class="nt">phase</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Running</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rollout</span>
+<span class="w">      </span><span class="nt">phase</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Running</span>
+</code></pre></div>
+<h3 id="_16">状态机<a class="headerlink" href="#_16" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>(空) ──init──▶ Pending ──tasks-running──▶ Running
+                              │                  │
+                              │ any-task-failed  │ all-tasks-succeeded
+                              ▼                  ▼
+                          Failed            Succeeded
+</code></pre></div>
+<h3 id="task">与 Task 的关系<a class="headerlink" href="#task" title="Permanent link">&para;</a></h3>
+<p>Job Controller 调谐完成后：
+- 每个 Task 模板生成一个 Task CR，名称为 <code>&lt;job-name&gt;-&lt;task-name&gt;</code>
+- Task 带有 <code>rlinf.io/job=&lt;job-name&gt;</code> 标签，可据此查询
+- Task 设置 OwnerReference 指向 Job，删除 Job 时级联删除 Task</p>
+<h2 id="7-job">7. Job 停止/启动<a class="headerlink" href="#7-job" title="Permanent link">&para;</a></h2>
+<p>通过 Job spec 中的 <code>stopped</code> 字段，可以停止和重启 Job，提供对运行中工作负载的手动生命周期控制。</p>
+<h3 id="_17">概念<a class="headerlink" href="#_17" title="Permanent link">&para;</a></h3>
+<p>将 <code>spec.stopped: true</code> 设置为 Job 会通知 Job 控制器停止所有关联的工作负载（Pod、Deployment、StatefulSet），但不删除 Job 资源。将其设置回 <code>false</code>（或移除该字段）会重新启动工作负载。</p>
+<h3 id="_18">工作原理<a class="headerlink" href="#_18" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>停止</strong>：当 <code>spec.stopped</code> 设置为 <code>true</code> 时，Job 控制器检测到变化并删除底层 Kubernetes 工作负载（Deployment/StatefulSet），同时保留 Job CR</li>
+<li><strong>重启</strong>：当 <code>spec.stopped</code> 被移除或设置为 <code>false</code> 时，Job 控制器根据 Task 模板重新创建工作负载</li>
+<li><strong>状态保留</strong>：Job 的 phase 和 status 字段在停止/重启周期中保持不变</li>
+</ol>
+<h3 id="_19">关键特性<a class="headerlink" href="#_19" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>非破坏性</strong>：停止 Job 不会删除 Job CR 或其 Task</li>
+<li><strong>持久化状态</strong>：PVC 和其他持久化资源不受停止影响</li>
+<li><strong>Web UI 集成</strong>：Web UI 在 Job 列表中提供一键停止/启动按钮</li>
+</ul>
+<h2 id="8-task">8. Task（任务单元）<a class="headerlink" href="#8-task" title="Permanent link">&para;</a></h2>
+<p>Task 是 Job 的<strong>执行单元</strong>，由 Job Controller 自动创建，<strong>用户不应直接创建 Task</strong>。</p>
+<h3 id="_20">概念<a class="headerlink" href="#_20" title="Permanent link">&para;</a></h3>
+<p>每个 Task 代表一个具体的"训练角色实例"，Agent 的 Pull 控制器监听到 Task 后，创建对应的 K8s 工作负载。</p>
+<h3 id="_21">关键属性<a class="headerlink" href="#_21" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rlinf.io/v1alpha1</span>
+<span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Task</span>
+<span class="nt">metadata</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ppo-cartpole-v1-actor-head</span>
+<span class="w">  </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">agent-beijing</span>
+<span class="w">  </span><span class="nt">labels</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">rlinf.io/job</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ppo-cartpole-v1</span>
+<span class="nt">spec</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">role</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Actor</span>
+<span class="w">  </span><span class="nt">agentType</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Kubernetes</span>
+<span class="w">  </span><span class="nt">domain</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ppo-experiment-1</span>
+<span class="w">  </span><span class="nt">nodeSelector</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">nvidia.com/gpu</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;true&quot;</span>
+<span class="w">  </span><span class="nt">kubernetes</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">workload</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Deployment</span>
+<span class="w">      </span><span class="nt">replicas</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+<span class="w">      </span><span class="nt">template</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">default</span>
+<span class="w">        </span><span class="nt">spec</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">containers</span><span class="p">:</span>
+<span class="w">            </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">trainer</span>
+<span class="w">              </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pytorch/pytorch:2.3.0</span>
+<span class="nt">status</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">phase</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Running</span>
+<span class="w">  </span><span class="nt">observedNodes</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;gpu-node-01&quot;</span><span class="p p-Indicator">]</span>
+<span class="w">  </span><span class="nt">startTime</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;2026-06-25T03:20:30Z&quot;</span>
+<span class="w">  </span><span class="nt">conditions</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Ready</span>
+<span class="w">      </span><span class="nt">status</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;True&quot;</span>
+<span class="w">      </span><span class="nt">reason</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">PodRunning</span>
+</code></pre></div>
+<h3 id="_22">任务角色<a class="headerlink" href="#_22" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>角色</th>
+<th>说明</th>
+<th>典型用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Actor</code></td>
+<td>执行策略推理，生成训练数据</td>
+<td>PPO 的 Actor 进程</td>
+</tr>
+<tr>
+<td><code>Rollout</code></td>
+<td>环境交互，收集轨迹</td>
+<td>游戏环境模拟器</td>
+</tr>
+<tr>
+<td><code>Env</code></td>
+<td>环境/辅助服务</td>
+<td>数据预处理、参数服务器</td>
+</tr>
+</tbody>
+</table>
+<h3 id="_23">接入形态<a class="headerlink" href="#_23" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>形态</th>
+<th>说明</th>
+<th>适用场景</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Kubernetes</code></td>
+<td>创建 K8s 原生工作负载（Deployment/DaemonSet/StatefulSet）</td>
+<td>GPU 集群大规模训练</td>
+</tr>
+<tr>
+<td><code>Docker</code></td>
+<td>通过 Docker API 管理容器（TODO）</td>
+<td>端侧设备（机械臂、传感器、摄像头）</td>
+</tr>
+<tr>
+<td><code>Raw</code></td>
+<td>下载 artifact 后直接执行二进制（TODO）</td>
+<td>裸金属服务器、嵌入式设备</td>
+</tr>
+</tbody>
+</table>
+<p><strong>具身智能场景映射</strong>：</p>
+<div class="highlight"><pre><span></span><code>graph LR
+    subgraph Cloud[&quot;云端 (k8s)&quot;]
+        Training[&quot;训练 (GPU)&quot;]
+        Env[&quot;环境模拟 (Env)&quot;]
+    end
+    subgraph Edge[&quot;端侧 (k8s / Docker / Raw)&quot;]
+        Robot[&quot;机械臂 (推理)&quot;]
+        Camera[&quot;摄像头 (传感器)&quot;]
+    end
+    Training --&gt;|&quot;梯度&quot;| Robot
+    Training &lt;--&gt;|&quot;数据&quot;| Robot
+    Env --&gt;|&quot;控制&quot;| Camera
+    Env &lt;--&gt;|&quot;观测&quot;| Camera
+</code></pre></div>
+<h2 id="9-workflow">9. Workflow（工作流）<a class="headerlink" href="#9-workflow" title="Permanent link">&para;</a></h2>
+<p>Workflow 是<strong>多 Job 的 DAG 编排</strong>，支持有依赖关系的训练流水线。</p>
+<h3 id="_24">概念<a class="headerlink" href="#_24" title="Permanent link">&para;</a></h3>
+<p>一个 Workflow 包含多个 Job 模板，每个模板可通过 <code>dependencies</code> 声明前置依赖。Workflow Controller 按拓扑顺序调度 Job：前置 Job 成功后，依赖它的 Job 才能启动。</p>
+<h3 id="_25">关键属性<a class="headerlink" href="#_25" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rlinf.io/v1alpha1</span>
+<span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Workflow</span>
+<span class="nt">metadata</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">training-pipeline-v1</span>
+<span class="nt">spec</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">jobTemplates</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">prepare-data</span>
+<span class="w">      </span><span class="nt">dependencies</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[]</span><span class="w">            </span><span class="c1"># 无依赖，立即启动</span>
+<span class="w">      </span><span class="nt">spec</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">tasks</span><span class="p">:</span>
+<span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">prep</span>
+<span class="w">            </span><span class="nt">role</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Env</span>
+<span class="w">            </span><span class="nt">agentType</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Kubernetes</span>
+<span class="w">            </span><span class="nt">kubernetes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">...</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">train</span>
+<span class="w">      </span><span class="nt">dependencies</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;prepare-data&quot;</span><span class="p p-Indicator">]</span><span class="w">  </span><span class="c1"># 等 prepare-data 成功后才启动</span>
+<span class="w">      </span><span class="nt">spec</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">tasks</span><span class="p">:</span>
+<span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">actor-head</span>
+<span class="w">            </span><span class="nt">head</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">            </span><span class="nt">role</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Actor</span>
+<span class="w">            </span><span class="nt">agentType</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Kubernetes</span>
+<span class="w">            </span><span class="nt">kubernetes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">...</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">evaluate</span>
+<span class="w">      </span><span class="nt">dependencies</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;train&quot;</span><span class="p p-Indicator">]</span>
+<span class="w">      </span><span class="nt">spec</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">tasks</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">...</span>
+</code></pre></div>
+<h3 id="_26">典型流水线<a class="headerlink" href="#_26" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>数据准备 ──▶ 模型训练 ──▶ 模型评估
+ prepare      train       evaluate
+</code></pre></div>
+<h3 id="_27">状态机<a class="headerlink" href="#_27" title="Permanent link">&para;</a></h3>
+<p>与 Job 类似，Workflow 的状态由各 Job 的状态汇总决定：
+- 所有 Job 成功 → Workflow Succeeded
+- 任一 Job 失败 → Workflow Failed</p>
+<h2 id="10-pod">10. Pod（容器实例）<a class="headerlink" href="#10-pod" title="Permanent link">&para;</a></h2>
+<p>Pod CR 是数据面 Pod 的<strong>控制面镜像</strong>，由 Agent 的 Push 控制器上报。</p>
+<h3 id="_28">概念<a class="headerlink" href="#_28" title="Permanent link">&para;</a></h3>
+<p>当数据面集群中创建了 Pod 后，Agent 的 Pod Push 控制器会将 Pod 信息上报到控制面，创建对应的 Pod CR。Pod CR 包含 Pod 的标识信息（名称、所属 Task）和运行状态（IP、节点、阶段）。</p>
+<h3 id="_29">用途<a class="headerlink" href="#_29" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>状态追踪</strong>：控制面通过 Pod CR 了解底层 Pod 的实时状态</li>
+<li><strong>SSH 查找</strong>：Server 的 PodCache 基于 Pod CR 快速定位 Pod 所在 Agent</li>
+<li><strong>日志查询</strong>：Gateway 通过 Pod CR 找到 Pod 所在 Agent，转发日志请求</li>
+</ul>
+<h2 id="11">11. 资源关系总结<a class="headerlink" href="#11" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>graph TD
+    wf[&quot;Workflow&lt;br/&gt;(Cluster scoped)&lt;br/&gt;DAG 编排&quot;] --&gt;|&quot;1:N&quot;| job[&quot;Job&lt;br/&gt;(Cluster scoped)&lt;br/&gt;训练任务定义&quot;]
+    job --&gt;|&quot;1:N&quot;| task[&quot;Task&lt;br/&gt;(Namespaced: agent-{id})&lt;br/&gt;任务执行单元&quot;]
+    task --&gt;|&quot;1:1 (K8s workload)&quot;| workload[&quot;Deployment /&lt;br/&gt;DaemonSet /&lt;br/&gt;StatefulSet&lt;br/&gt;(本地 k8s 集群)&quot;]
+    workload --&gt;|&quot;1:N&quot;| pod[&quot;Pod + Sidecar&lt;br/&gt;Agent Push 上报 → Pod CR&quot;]
+    domain[&quot;Domain&lt;br/&gt;(Cluster scoped)&lt;br/&gt;网络隔离&quot;] --&gt;|&quot;1:N (每个集群一个)&quot;| dp[&quot;DomainPeer&lt;br/&gt;(Namespaced: agent-{id})&lt;br/&gt;Pod 路由表&quot;]
+    node[&quot;Node&lt;br/&gt;(Namespaced)&lt;br/&gt;计算节点信息&quot;]
+</code></pre></div>
+<h2 id="12">12. 命名约定<a class="headerlink" href="#12" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>命名空间前缀</th>
+<th>含义</th>
+<th>示例</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>agent-</code></td>
+<td>Agent 的 workspace</td>
+<td><code>agent-beijing-01</code></td>
+</tr>
+<tr>
+<td><code>rlark-system</code></td>
+<td>Agent 创建的默认 namespace</td>
+<td><code>rlark-system</code></td>
+</tr>
+<tr>
+<td>Label <code>rlinf.io/job</code></td>
+<td>Pod/Task 所属 Job</td>
+<td><code>rlinf.io/job=ppo-cartpole-v1</code></td>
+</tr>
+<tr>
+<td>Annotation <code>rlinf.io/ray-role</code></td>
+<td>Ray 集群角色</td>
+<td><code>head</code> / <code>worker</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="13-ray">13. Ray 集群集成<a class="headerlink" href="#13-ray" title="Permanent link">&para;</a></h2>
+<p>rlark 支持通过 Task 注解声明式创建 Ray 集群：</p>
+<div class="highlight"><pre><span></span><code><span class="nt">annotations</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">rlinf.io/ray-role</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;head&quot;</span><span class="w">          </span><span class="c1"># head | worker</span>
+<span class="w">  </span><span class="nt">rlinf.io/ray-total-nodes</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;5&quot;</span><span class="w">     </span><span class="c1"># 仅 head 需要</span>
+<span class="w">  </span><span class="nt">rlinf.io/ray-head-task-name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;actor-head&quot;</span><span class="w">  </span><span class="c1"># 仅 worker 需要</span>
+</code></pre></div>
+<p><strong>自动初始化流程</strong>：</p>
+<ol>
+<li>Agent 的 Pull 控制器检测到 Ray 注解</li>
+<li>创建 ConfigMap 挂载初始化脚本（<code>ray_head.sh</code> / <code>ray_worker.sh</code> / <code>ray_check.py</code>）</li>
+<li>修改容器启动命令为 <code>bash ray_head.sh</code>（或 <code>ray_worker.sh</code>）</li>
+<li>注入环境变量（<code>RLARK_RAY_PORT</code>、<code>RLARK_HEAD_ADDRESS</code> 等）</li>
+<li>Head 节点创建 Service（暴露 6379/8265/8080 端口）</li>
+<li>Worker 节点等待 Head 就绪后加入集群</li>
+</ol>
+<h2 id="14-pvc">14. 对象存储与 PVC<a class="headerlink" href="#14-pvc" title="Permanent link">&para;</a></h2>
+<p>rlark 支持通过 Task 的 <code>pvcStorageMap</code> 为训练任务挂载持久化存储卷。</p>
+<h3 id="_30">概念<a class="headerlink" href="#_30" title="Permanent link">&para;</a></h3>
+<p>当 Task 指定 <code>pvcStorageMap</code> 时，Agent 的 Pull 控制器在创建工作负载前自动创建指定 StorageClass 的 PVC，并在任务删除时自动清理。</p>
+<h3 id="_31">配置方式<a class="headerlink" href="#_31" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nt">kubernetes</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">workload</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">pvcStorageMap</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">my-data-pvc</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;ceph-rbd&quot;</span><span class="w">    </span><span class="c1"># PVC 名称 → StorageClass 名称</span>
+</code></pre></div>
+<h3 id="_32">工作流程<a class="headerlink" href="#_32" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Agent 通过 <code>GET /api/v1/storage/storageclass?clusters=&lt;agent-id&gt;</code> 查询可用 StorageClass</li>
+<li>创建工作负载时，Agent 调用 <code>ensurePVCs</code> 创建指定 StorageClass 的 PVC</li>
+<li>PVC 创建在目标命名空间中，作用域为当前 Task</li>
+<li>任务删除时，PVC 自动清理</li>
+</ol>
+<h2 id="15">15. 用户认证<a class="headerlink" href="#15" title="Permanent link">&para;</a></h2>
+<p>rlark 为 Web UI 提供简单的基于角色的认证系统。</p>
+<h3 id="_33">角色<a class="headerlink" href="#_33" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>角色</th>
+<th>权限</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>admin</code></td>
+<td>完全访问：创建/管理 Job、Node、Domain、Workflow</td>
+</tr>
+<tr>
+<td><code>user</code></td>
+<td>只读访问：查看 Job、Node 和系统状态</td>
+</tr>
+</tbody>
+</table>
+<h3 id="_34">认证流程<a class="headerlink" href="#_34" title="Permanent link">&para;</a></h3>
+<ol>
+<li>部署时，<code>rlarkadm</code> 生成随机密码并存储在 KCP Secret（<code>rlark-ui-auth</code>）中</li>
+<li>Web UI 发送 <code>POST /api/v1/auth/login</code> 携带用户名和密码</li>
+<li>Gateway 对比 KCP Secret 中的凭据，返回角色</li>
+<li>前端将认证结果存储在 <code>sessionStorage</code> 中</li>
+</ol>
+<h2 id="16-addon">16. Addon（组件管理）<a class="headerlink" href="#16-addon" title="Permanent link">&para;</a></h2>
+<p>Addon 是 rlark 的组件管理系统，允许用户在多个数据面集群中安装、配置和管理第三方组件（设备插件、监控代理等）。</p>
+<h3 id="_35">概念<a class="headerlink" href="#_35" title="Permanent link">&para;</a></h3>
+<p>Addon 通过三个层次进行管理：</p>
+<ol>
+<li><strong>Addon 目录</strong>（<code>/api/v1/addons</code>）— 精选的可用 Addon 列表（如 <code>embodied-runtime-device-plugin</code>）。每个 Addon 包含 Kubernetes 清单（DaemonSet、ConfigMap、RBAC）和可配置的值。</li>
+<li><strong>Addon CRD</strong>（<code>rlinf.io/v1alpha1/Addon</code>）— 代表在特定数据面集群中安装的 Addon 实例的 Kubernetes 风格 CR。Spec 指定 Addon 名称、版本和配置值。</li>
+<li><strong>Addon 控制器</strong>（<code>../pkg/agent/controllers/addon/pull.go</code>）— Agent 的 Pull 控制器监听 Addon CR，使用配置的值渲染 Addon 清单，并应用到本地 Kubernetes 集群。</li>
+</ol>
+<h3 id="addon">Addon 生命周期<a class="headerlink" href="#addon" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>目录项 ──安装──▶ Addon CR ──pull──▶ Agent 应用清单
+                    │
+                    ├── 更新 values ──▶ Agent 重新应用
+                    └── 删除 ──▶ Agent 移除清单
+</code></pre></div>
+<h3 id="addon_1">Addon 状态<a class="headerlink" href="#addon_1" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>Pending ──▶ Installing ──▶ Ready
+                │
+                └──▶ Failed
+                      │
+                      └──▶ Upgrading ──▶ Ready
+</code></pre></div>
+<h3 id="_36">示例：具身运行时设备插件<a class="headerlink" href="#_36" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rlinf.io/v1alpha1</span>
+<span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Addon</span>
+<span class="nt">metadata</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">embodied-device-plugin</span>
+<span class="w">  </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">agent-beijing</span>
+<span class="nt">spec</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">addonName</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">embodied-runtime-device-plugin</span>
+<span class="w">  </span><span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;0.1.0&quot;</span>
+<span class="w">  </span><span class="nt">values</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;rlark/embodied-device-plugin:0.1.0&quot;</span>
+<span class="w">    </span><span class="nt">nodeSelector</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;nvidia.com/gpu=true&quot;</span>
+<span class="nt">status</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">phase</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Ready</span>
+<span class="w">  </span><span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;0.1.0&quot;</span>
+</code></pre></div>
+<h3 id="_37">关键特性<a class="headerlink" href="#_37" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>多集群</strong>：每个数据面集群可以安装不同的 Addon</li>
+<li><strong>可配置</strong>：Addon 的值可通过 <code>spec.values</code> 按集群自定义</li>
+<li><strong>版本化</strong>：Addon 支持通过 <code>spec.version</code> 进行版本升级</li>
+<li><strong>自动应用</strong>：Agent 的 Pull 控制器在 Addon CR 创建或更新时自动应用清单</li>
+<li><strong>Mutating Webhook</strong>：Device Plugin 内置 mutating admission webhook，自动向申请 <code>rlinf.io/device</code> 的 Pod 注入 <code>devinit</code> init 容器，在 Pod 网络命名空间中创建 macvlan，无需手动配置</li>
+</ul>
+<h2 id="17-web-terminalweb">17. Web Terminal（Web 终端）<a class="headerlink" href="#17-web-terminalweb" title="Permanent link">&para;</a></h2>
+<p>Web Terminal 提供从 Web UI 直接交互式访问 Pod 终端的能力。</p>
+<h3 id="_38">概念<a class="headerlink" href="#_38" title="Permanent link">&para;</a></h3>
+<p>Web Terminal 允许用户打开任何 rlark 管理的 Pod 的终端会话，无需 SSH 到底层节点或本地安装 kubectl。</p>
+<h3 id="_39">架构<a class="headerlink" href="#_39" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>浏览器 ──WebSocket──▶ Gateway ──通过 Server 代理──▶ Agent ──exec──▶ Pod
+</code></pre></div>
+<h3 id="_40">工作原理<a class="headerlink" href="#_40" title="Permanent link">&para;</a></h3>
+<ol>
+<li>用户在 Web UI 中点击 Pod 的“终端”按钮，会在浏览器新标签页中打开会话，因此可以同时打开多个 Pod 终端</li>
+<li>新标签页通过 WebSocket 连接到 Gateway 的 <code>GET /api/v1/rlinf.io/v1alpha1/pods/{name}/terminal</code></li>
+<li>Gateway 通过 Server 将 WebSocket 连接代理到 Pod 所在的 Agent</li>
+<li>Agent 打开 Pod 容器的 exec 会话，流式传输 I/O</li>
+<li>终端会话保持到 WebSocket 关闭</li>
+</ol>
+<p>Web Terminal 支持在 macOS Safari 中使用 Vim 等交互式全屏程序。可打印字符和终端控制键会直接传给终端，同时保留浏览器快捷键及输入法组合输入的正常行为。
+Shell 退出（例如执行 <code>exit</code>）时，代理链会转发 WebSocket 正常关闭帧；非零退出状态会在页面保留退出码，传输故障则与进程退出明确区分。</p>
+<h2 id="18-pod-http-proxypod-http">18. Pod HTTP Proxy（Pod HTTP 代理）<a class="headerlink" href="#18-pod-http-proxypod-http" title="Permanent link">&para;</a></h2>
+<p>Pod HTTP Proxy 允许通过 Server → Agent 代理链直接向 rlark 管理的 Pod 发送 HTTP 请求。</p>
+<h3 id="_41">概念<a class="headerlink" href="#_41" title="Permanent link">&para;</a></h3>
+<p>Pod HTTP Proxy 使用户无需知道 Pod 的真实 IP 地址或建立 SSH 隧道即可向特定 Pod 发送 HTTP 请求。Server 通过 Pod 缓存解析 Pod 位置，并通过 Agent 的本地 HTTP 服务器代理请求。</p>
+<h3 id="_42">架构<a class="headerlink" href="#_42" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>客户端 ──HTTP──▶ Gateway ──通过 Server 代理──▶ Agent ──反向代理──▶ Pod (http://&lt;podIP&gt;:&lt;port&gt;/&lt;path&gt;)
+</code></pre></div>
+<h3 id="_43">工作原理<a class="headerlink" href="#_43" title="Permanent link">&para;</a></h3>
+<ol>
+<li>客户端向 Gateway 发送 <code>ANY /api/podproxy/{podName}:{port}/*path</code> 或 <code>ANY /api/taskproxy/{taskName}:{port}/*path</code></li>
+<li>Gateway 将请求转发到 Server</li>
+<li>Server 在 Pod 缓存中查找 Pod（通过 Pod 名称或 Task 名称），获取 Pod 的真实 IP 和 Agent ID</li>
+<li>Server 构造到目标 Agent 的反向代理，目标为 <code>0.0.0.0:1</code>（Agent 的本地服务器）</li>
+<li>Agent 收到 <code>/api/proxy/http://&lt;podIP&gt;:&lt;port&gt;/&lt;path&gt;</code> 请求，反向代理到 Pod</li>
+<li>响应通过相同链路返回</li>
+</ol>
+<h3 id="_44">关键特性<a class="headerlink" href="#_44" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>无需 Pod IP</strong>：用户只需 Pod 名称或 Task 名称和端口</li>
+<li><strong>双重解析</strong>：支持通过 Pod 名称（<code>/api/podproxy/</code>）或 Task 名称（<code>/api/taskproxy/</code>）代理</li>
+<li><strong>基于证书的访问控制</strong>：访问权限由客户端证书的权限决定</li>
+<li><strong>透明代理</strong>：支持所有 HTTP 方法（GET、POST、PUT、DELETE 等）</li>
+</ul>
+<h2 id="19-tensorboard-proxytensorboard">19. TensorBoard Proxy（TensorBoard 代理）<a class="headerlink" href="#19-tensorboard-proxytensorboard" title="Permanent link">&para;</a></h2>
+<p>TensorBoard Proxy 提供基于 Web 的训练指标可视化仪表板（损失曲线、标量摘要、直方图等），可直接从 rlark Web UI 访问，无需对外暴露 TensorBoard 端口。</p>
+<h3 id="_45">概念<a class="headerlink" href="#_45" title="Permanent link">&para;</a></h3>
+<p>当训练 Task 运行 TensorBoard（监听端口 6006）时，rlark 通过 Gateway 自动代理 TensorBoard UI。用户可以在 Web UI 中点击链接打开 TensorBoard，浏览器通过 Gateway 代理访问。</p>
+<h3 id="_46">架构<a class="headerlink" href="#_46" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>浏览器 ──HTTP──▶ Gateway ──代理到 Server──▶ Server ──podproxy──▶ Agent ──▶ Pod:6006 (TensorBoard)
+</code></pre></div>
+<h3 id="_47">工作原理<a class="headerlink" href="#_47" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Agent 的 Ray 初始化脚本在 Ray head 进程旁启动 TensorBoard</li>
+<li>Gateway 在 Task 状态响应中注入 <code>tensorBoardProxy</code> 字段，指向代理 URL</li>
+<li>用户在 Web UI 中点击 TensorBoard 链接</li>
+<li>浏览器发送请求到 <code>GET /api/v1/rlinf.io/v1alpha1/tasks/{name}/tensorboard/</code></li>
+<li>Gateway 通过 KCP API 解析 Task 对应的 Pod，并将请求代理到 Server 的 Pod Proxy</li>
+<li>Gateway 重写 HTML/CSS 响应，确保所有资源路径（字体、JS、API 调用）通过代理前缀正常工作</li>
+<li>TensorBoard UI 在浏览器中渲染，如同直接访问</li>
+</ol>
+<h3 id="_48">关键特性<a class="headerlink" href="#_48" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>无需端口暴露</strong>：TensorBoard 的 6006 端口保持在 Pod 内部</li>
+<li><strong>自动代理注入</strong>：Task 列表/详情响应自动包含 <code>tensorBoardProxy</code> URL</li>
+<li><strong>HTML 重写</strong>：代理的 TensorBoard 页面经过重写，确保所有相对和绝对路径正确工作</li>
+<li><strong>Ray 集成</strong>：TensorBoard 随 Ray 任务自动启动，无需额外配置</li>
+</ul>
+<h2 id="20-ssh">20. SSH 密钥管理<a class="headerlink" href="#20-ssh" title="Permanent link">&para;</a></h2>
+<p>SSH 密钥管理允许用户通过 API 或 Web UI 上传 SSH 公钥，实现免密 SSH 登录 Pod，无需共享证书。</p>
+<h3 id="_49">概念<a class="headerlink" href="#_49" title="Permanent link">&para;</a></h3>
+<p>每位用户可以上传一个或多个 SSH 公钥。这些密钥存储在控制平面命名空间的 Kubernetes Secret（<code>rlark-ssh-user-keys</code>）中。当 Pod 创建时，Agent 会将用户的公钥注入到 Pod 的 <code>authorized_keys</code> 文件中，实现免密 SSH 访问。</p>
+<h3 id="api">API<a class="headerlink" href="#api" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>GET /api/v1/ssh-user-keys</code> — 列出所有 SSH 密钥（可按用户过滤）</li>
+<li><code>POST /api/v1/ssh-user-keys</code> — 为用户添加新的 SSH 公钥</li>
+<li><code>DELETE /api/v1/ssh-user-keys/:id</code> — 按索引删除密钥</li>
+</ul>
+<h3 id="_50">关键特性<a class="headerlink" href="#_50" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Web UI 管理</strong>：Web UI 中提供专用的 SSH 密钥管理页面</li>
+<li><strong>按任务注入</strong>：单个 Job 和 Task 可通过 <code>sshPublicKey</code> 字段指定密钥，对特定工作负载优先于集中管理的密钥</li>
+<li><strong>冲突检测</strong>：重复密钥会被检测并返回 409 响应</li>
+<li><strong>写入重试</strong>：API 在写入冲突时自动重试（最多 5 次）</li>
+<li><strong>密钥验证</strong>：使用 <code>golang.org/x/crypto/ssh</code> 在存储前验证公钥格式</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.sections", "navigation.tracking", "navigation.indexes", "toc.follow", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+        <script src="../../javascripts/fix-nav.js"></script>
+      
+    
+  </body>
+</html>

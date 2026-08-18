@@ -1,0 +1,1901 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Reinforcement Learning Infrastructure for Embodied and Agentic AI">
+      
+      
+      
+      
+        <link rel="prev" href="../concepts/">
+      
+      
+        <link rel="next" href="../deployment/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Architecture - RLark</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="deep-purple" data-md-color-accent="purple">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#technical-architecture" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="RLark" class="md-header__button md-logo" aria-label="RLark" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            RLark
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Architecture
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="deep-purple" data-md-color-accent="purple"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="deep-purple" data-md-color-accent="purple"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/RLinf/RLark" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="RLark" class="md-nav__button md-logo" aria-label="RLark" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    RLark
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/RLinf/RLark" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ui-behavior/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Web Console
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../concepts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core Concepts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-design-goals" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Design Goals
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-overall-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Overall Architecture
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-control-plane-components" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Control Plane Components
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Control Plane Components">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 Server
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-gateway" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 Gateway
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-controller-manager" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.3 Controller-Manager
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-data-plane-components" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Data Plane Components
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Data Plane Components">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-agent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 Agent
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-network-sidecar" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 Network Sidecar
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#43-nodeserver" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.3 NodeServer
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#44-containernetworkadapter" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.4 ContainerNetworkAdapter
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#45-sshdialer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.5 SSHDialer
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#46-embodied-runtime" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.6 Embodied Runtime
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-cross-cluster-pod-network-data-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Cross-Cluster Pod Network Data Flow
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-security-system" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Security System
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Security System">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-certificate-hierarchy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 Certificate Hierarchy
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62-permission-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 Permission Model
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#63-user-ssh-login-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.3 User SSH Login Flow
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-crd-resource-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. CRD Resource Model
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-key-design-decisions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Key Design Decisions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="8. Key Design Decisions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#81-why-kcp-instead-of-native-k8s-api-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.1 Why kcp instead of native k8s API Server?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#82-why-ssh-tunnels-instead-of-vpn" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.2 Why SSH tunnels instead of VPN?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#83-why-tun-gvisor-instead-of-iptablescni" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.3 Why TUN + gVisor instead of iptables/CNI?
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Examples
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../zh/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    中文
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_9" id="__nav_9_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    中文
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../zh/quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    快速开始
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../zh/ui-behavior/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Web 控制台
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../zh/concepts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    核心概念
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../zh/architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    架构设计
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../zh/deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    部署指南
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../zh/api/reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API 参考
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../zh/api/examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API 示例
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-design-goals" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Design Goals
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-overall-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Overall Architecture
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-control-plane-components" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Control Plane Components
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Control Plane Components">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 Server
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-gateway" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 Gateway
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-controller-manager" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.3 Controller-Manager
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-data-plane-components" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Data Plane Components
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Data Plane Components">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-agent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 Agent
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-network-sidecar" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 Network Sidecar
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#43-nodeserver" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.3 NodeServer
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#44-containernetworkadapter" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.4 ContainerNetworkAdapter
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#45-sshdialer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.5 SSHDialer
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#46-embodied-runtime" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.6 Embodied Runtime
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-cross-cluster-pod-network-data-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Cross-Cluster Pod Network Data Flow
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-security-system" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Security System
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Security System">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-certificate-hierarchy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 Certificate Hierarchy
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62-permission-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 Permission Model
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#63-user-ssh-login-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.3 User SSH Login Flow
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-crd-resource-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. CRD Resource Model
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-key-design-decisions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Key Design Decisions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="8. Key Design Decisions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#81-why-kcp-instead-of-native-k8s-api-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.1 Why kcp instead of native k8s API Server?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#82-why-ssh-tunnels-instead-of-vpn" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.2 Why SSH tunnels instead of VPN?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#83-why-tun-gvisor-instead-of-iptablescni" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.3 Why TUN + gVisor instead of iptables/CNI?
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="technical-architecture">Technical Architecture<a class="headerlink" href="#technical-architecture" title="Permanent link">&para;</a></h1>
+<h2 id="1-design-goals">1. Design Goals<a class="headerlink" href="#1-design-goals" title="Permanent link">&para;</a></h2>
+<p>rlark is an embodied intelligence cloud-native management platform for cross-cluster, multi-runtime scenarios. Core design goals:</p>
+<ol>
+<li><strong>Cloud-to-Edge workload orchestration</strong>: From cloud GPU training (RL/LLM) to edge deployment (robot arm, sensor, camera), unified declarative abstraction across the full embodied AI pipeline</li>
+<li><strong>Multi-runtime data plane</strong>: Native support for Kubernetes, Docker, and Raw runtimes — GPU clusters run k8s for large-scale training, edge devices run k8s or Docker/Raw for lightweight embodied deployment (Docker/Raw runtimes: framework in place, runtime implementation TODO)</li>
+<li><strong>Cross-cluster resource pooling</strong>: Unify GPU clusters and edge devices distributed across different regions into a single logical resource pool</li>
+<li><strong>Direct Pod-to-Pod network communication</strong>: Embodied AI workloads require real-time communication between training actors and edge robots, requiring cross-cluster Pods to establish direct TCP connections</li>
+<li><strong>Security isolation</strong>: Multi-tenant embodied AI tasks require network isolation — different teams/projects must not access each other's devices or data</li>
+</ol>
+<h2 id="2-overall-architecture">2. Overall Architecture<a class="headerlink" href="#2-overall-architecture" title="Permanent link">&para;</a></h2>
+<p>rlark uses a <strong>control plane—data plane</strong> separation architecture. The control plane runs on kcp (Kubernetes Control Plane), and data plane Agents are deployed in each GPU cluster or edge device, supporting k8s, Docker, and Raw runtimes. The <strong>embodied-runtime</strong> (Device Plugin + Controllers) runs as a DaemonSet on each data plane node to manage robot (ROS 1/2) and camera hardware, exposing them as Kubernetes device resources.</p>
+<p><img alt="System Architecture" src="../images/architecture.svg" /></p>
+<h2 id="3-control-plane-components">3. Control Plane Components<a class="headerlink" href="#3-control-plane-components" title="Permanent link">&para;</a></h2>
+<h3 id="31-server">3.1 Server<a class="headerlink" href="#31-server" title="Permanent link">&para;</a></h3>
+<p>Server is the core of the control plane, responsible for managing all Agent and external client connections.</p>
+<p><strong>Key Responsibilities</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Implementation</th>
+<th>Key File</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Agent Tunnel Management</td>
+<td>Reverse proxy based on remotedialer; Agent actively connects to Server via WebSocket</td>
+<td><a href="../../pkg/server/handle_proxy.go">handle_proxy.go</a></td>
+</tr>
+<tr>
+<td>Certificate Signing</td>
+<td>X.509 and SSH certificate issuance/revocation, supporting agent/domain/ssh-guest roles</td>
+<td><a href="../../pkg/server/sign.go">sign.go</a></td>
+</tr>
+<tr>
+<td>SSH Service</td>
+<td>Two-phase user SSH authentication (certificate + public key), direct-tcpip channel forwarding</td>
+<td><a href="../../pkg/server/ssh_server.go">ssh_server.go</a></td>
+</tr>
+<tr>
+<td>Peer Interconnection</td>
+<td>Server-to-Server P2P connections for high availability</td>
+<td><a href="../../pkg/server/peer_manager.go">peer_manager.go</a></td>
+</tr>
+<tr>
+<td>K8s Proxy</td>
+<td>Forward K8s API requests to data plane clusters via Agent tunnels</td>
+<td><a href="../../pkg/server/kube_proxy.go">kube_proxy.go</a></td>
+</tr>
+<tr>
+<td>Pod Cache</td>
+<td>In-memory Pod cache based on Informer for fast SSH Pod lookup</td>
+<td><a href="../../pkg/server/caches/pod_cache.go">caches/pod_cache.go</a></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Agent Connection Lifecycle</strong>:</p>
+<div class="highlight"><pre><span></span><code>sequenceDiagram
+    participant A as Agent
+    participant S as Server
+
+    Note over A: Startup
+    A-&gt;&gt;S: 1. Establish HTTPS WebSocket connection with client certificate
+    S-&gt;&gt;S: 2. handleProxyConnect validates certificate
+    S-&gt;&gt;S: 3. registerAgent() creates RBAC&lt;br/&gt;(ClusterRole + ClusterRoleBinding)
+    S-&gt;&gt;S: 4. AgentBroadcaster broadcasts Agent presence
+    Note over A,S: 5. Tunnel established, control plane can access Agent local services
+</code></pre></div>
+<h3 id="32-gateway">3.2 Gateway<a class="headerlink" href="#32-gateway" title="Permanent link">&para;</a></h3>
+<p>Gateway is the user-facing HTTP API gateway providing RESTful interfaces.</p>
+<p><strong>Key Responsibilities</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Route</th>
+<th>File</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CRD CRUD</td>
+<td><code>GET/POST/PUT/PATCH/DELETE /api/v1/rlinf.io/v1alpha1/{resource}</code></td>
+<td><a href="../../pkg/gateway/router.go">router.go</a></td>
+</tr>
+<tr>
+<td>Certificate Management</td>
+<td><code>POST /api/v1/certificates/agent</code></td>
+<td><a href="../../pkg/gateway/cert_handler.go">cert_handler.go</a></td>
+</tr>
+<tr>
+<td>SSH Keys</td>
+<td><code>GET/POST/DELETE /api/v1/ssh-user-keys</code></td>
+<td><a href="../../pkg/gateway/suk_handler.go">suk_handler.go</a></td>
+</tr>
+<tr>
+<td>Pod Logs</td>
+<td><code>GET /api/v1/.../jobs/:name/logs</code></td>
+<td><a href="../../pkg/gateway/job_logs.go">job_logs.go</a></td>
+</tr>
+<tr>
+<td>Prometheus Metrics</td>
+<td>Middleware</td>
+<td><a href="../../pkg/gateway/metrics.go">metrics.go</a></td>
+</tr>
+</tbody>
+</table>
+<h3 id="33-controller-manager">3.3 Controller-Manager<a class="headerlink" href="#33-controller-manager" title="Permanent link">&para;</a></h3>
+<p>Controller-Manager runs in the control plane, coordinating the lifecycle of high-level resources.</p>
+<p><strong>Controller List</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Controller</th>
+<th>Responsibility</th>
+<th>Key File</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Job Controller</td>
+<td>Split Job into Tasks, drive state machine (Pending→Running→Succeeded/Failed)</td>
+<td><a href="../../pkg/controllermanager/job/">job/</a></td>
+</tr>
+<tr>
+<td>Domain Controller</td>
+<td>Manage Domain CRD, allocate IP subnets, sign DomainPeer certificates</td>
+<td><a href="../../pkg/controllermanager/domain/">domain/</a></td>
+</tr>
+<tr>
+<td>Task Controller</td>
+<td>Watch Task status, sync to corresponding Job</td>
+<td><a href="../../pkg/controllermanager/task/">task/</a></td>
+</tr>
+<tr>
+<td>Node Controller</td>
+<td>Watch Node registration/offline events</td>
+<td><a href="../../pkg/controllermanager/node/">node/</a></td>
+</tr>
+<tr>
+<td>Workflow Controller</td>
+<td>DAG orchestration, schedule Jobs in dependency order</td>
+<td><a href="../../pkg/controllermanager/workflow/">workflow/</a></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Job State Machine</strong>:</p>
+<div class="highlight"><pre><span></span><code>stateDiagram-v2
+    [*] --&gt; Pending : init
+    Pending --&gt; Running : tasks-running
+    Running --&gt; Failed : any-task-failed
+    Running --&gt; Succeeded : all-tasks-succeeded
+    Failed --&gt; [*]
+    Succeeded --&gt; [*]
+</code></pre></div>
+<h2 id="4-data-plane-components">4. Data Plane Components<a class="headerlink" href="#4-data-plane-components" title="Permanent link">&para;</a></h2>
+<h3 id="41-agent">4.1 Agent<a class="headerlink" href="#41-agent" title="Permanent link">&para;</a></h3>
+<p>Agent is deployed in each data plane cluster with two operating modes:</p>
+<table>
+<thead>
+<tr>
+<th>Mode</th>
+<th>Component</th>
+<th>Responsibility</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>cluster</code></td>
+<td>clusterAgent</td>
+<td>Resource sync: Pull controllers (control plane CR → local k8s resources) + Push controllers (local k8s state → control plane CR)</td>
+</tr>
+<tr>
+<td><code>node</code></td>
+<td>nodeAgent</td>
+<td>Network routing: Runs NodeServer, handles cross-cluster Pod traffic forwarding</td>
+</tr>
+</tbody>
+</table>
+<p><strong>clusterAgent Controllers</strong>:</p>
+<div class="highlight"><pre><span></span><code>graph LR
+    subgraph mgmt[&quot;Control Plane (kcp)&quot;]
+        task[Task CR]
+        node[Node CR]
+        pod[Pod CR]
+    end
+
+    subgraph local[&quot;Local Cluster (kind/k8s)&quot;]
+        deploy[Deployment]
+        k8snode[K8s Node]
+        k8spod[K8s Pod]
+    end
+
+    task --&gt;|Pull Controller| deploy
+    node --&gt;|Push Controller| k8snode
+    pod --&gt;|Push Controller| k8spod
+</code></pre></div>
+<p><strong>Pull Controller</strong> (Task example):</p>
+<ol>
+<li>Watch control plane Task CR create/update/delete events (with finalizer protection)</li>
+<li>Build corresponding K8s resources (Deployment/DaemonSet/StatefulSet) from Task.Spec</li>
+<li>Detect ResourceVersion changes to decide whether to update existing workloads</li>
+<li>Auto-inject Network Sidecar container and Ray initialization scripts</li>
+<li>On deletion, clean up local resources via finalizer then remove finalizer</li>
+</ol>
+<p><strong>Push Controller</strong>:</p>
+<ol>
+<li>Watch local K8s resource changes (Pod create/delete/status changes)</li>
+<li>Sync state to corresponding control plane Pod CR</li>
+<li>Periodically report Node info (addresses, capacity, GPU count)</li>
+</ol>
+<h3 id="42-network-sidecar">4.2 Network Sidecar<a class="headerlink" href="#42-network-sidecar" title="Permanent link">&para;</a></h3>
+<p>Sidecar is injected as a container into each training Pod, enabling cross-cluster Pod-to-Pod network communication.</p>
+<p><strong>Key File</strong>: <a href="../../pkg/network/sidecar/server.go">sidecar/server.go</a></p>
+<p><strong>Dual Role</strong>:</p>
+<div class="highlight"><pre><span></span><code>graph LR
+    subgraph outbound[&quot;Outbound&quot;]
+        o1[Pod Process] --&gt; o2[TUN Device] --&gt; o3[gVisor Netstack] --&gt; o4[Unix Socket] --&gt; o5[NodeServer] --&gt; o6[SSH Tunnel] --&gt; o7[Target Pod]
+    end
+
+    subgraph inbound[&quot;Inbound&quot;]
+        i1[Remote NodeServer] --&gt;|TCP| i2[Proxy :5700] --&gt; i3[Target Pod Process]
+    end
+</code></pre></div>
+<p><strong>Startup Process</strong>:</p>
+<ol>
+<li>Obtain virtual IP and subnet prefix from NodeServer's <code>/get_ip</code> endpoint</li>
+<li>Start Proxy listener (<code>:5700</code>) to receive forwarded connections from other Pods</li>
+<li>Create TUN device + gVisor netstack to intercept Pod outbound traffic</li>
+<li>Send outbound traffic to NodeServer via Unix socket for routing</li>
+</ol>
+<h3 id="43-nodeserver">4.3 NodeServer<a class="headerlink" href="#43-nodeserver" title="Permanent link">&para;</a></h3>
+<p>NodeServer runs on each node (managed by nodeAgent), handling node-level network routing.</p>
+<p><strong>Key File</strong>: <a href="../../pkg/network/nodeserver/server.go">nodeserver/server.go</a></p>
+<p><strong>Core Functions</strong>:</p>
+<ul>
+<li>Accept Unix socket connections from Sidecar, parse target addresses</li>
+<li>Call <code>ContainerNetworkAdapter</code> to locate target Pod across all DomainPeers</li>
+<li>Same cluster: direct TCP connection to target Pod's Proxy</li>
+<li>Cross-cluster: SSH tunnel through Server, then forward to target Agent's NodeServer</li>
+</ul>
+<h3 id="44-containernetworkadapter">4.4 ContainerNetworkAdapter<a class="headerlink" href="#44-containernetworkadapter" title="Permanent link">&para;</a></h3>
+<p><strong>Key File</strong>: <a href="../../pkg/agent/container/network.go">container/network.go</a></p>
+<p><strong>Routing Decision</strong>:</p>
+<div class="highlight"><pre><span></span><code><span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">a</span><span class="w"> </span><span class="o">*</span><span class="nx">containerNetworkAdapter</span><span class="p">)</span><span class="w"> </span><span class="nx">GetContainerNetworkDial</span><span class="p">(</span><span class="o">...</span><span class="p">)</span><span class="w"> </span><span class="p">(</span><span class="nx">utils</span><span class="p">.</span><span class="nx">Dial</span><span class="p">,</span><span class="w"> </span><span class="kt">error</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// 1. Same cluster → direct TCP to target Pod&#39;s Proxy</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">targetPod</span><span class="p">.</span><span class="nx">GlobalNamespace</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nx">a</span><span class="p">.</span><span class="nx">globalNamespace</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="nx">dialer</span><span class="p">.</span><span class="nx">DialContext</span><span class="p">(</span><span class="s">&quot;tcp&quot;</span><span class="p">,</span><span class="w"> </span><span class="nx">targetPod</span><span class="p">.</span><span class="nx">LocalIP</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="s">&quot;:57&quot;</span><span class="p">)</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="c1">// 2. Cross-cluster → SSH tunnel</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">a</span><span class="p">.</span><span class="nx">sshDialer</span><span class="p">.</span><span class="nx">DialContext</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span><span class="w"> </span><span class="nx">domainID</span><span class="p">,</span><span class="w"> </span><span class="nx">sshAddr</span><span class="p">,</span><span class="w"> </span><span class="nx">cert</span><span class="p">,</span><span class="w"> </span><span class="nx">key</span><span class="p">,</span><span class="w"> </span><span class="nx">target</span><span class="p">)</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="45-sshdialer">4.5 SSHDialer<a class="headerlink" href="#45-sshdialer" title="Permanent link">&para;</a></h3>
+<p><strong>Key File</strong>: <a href="../../pkg/agent/container/ssh_dialer.go">container/ssh_dialer.go</a></p>
+<p>Per-Domain SSH connection pool. Design highlights:</p>
+<ul>
+<li>At most one SSH connection per Domain (ssh.Client multiplexing)</li>
+<li>Auto-reconnect on disconnect; concurrent requests wait during reconnection instead of creating separate connections</li>
+<li>Exponential backoff on reconnection failure (1s → 2s → 4s → ... → 30s)</li>
+<li>Background GC closes idle connections (default 10 min timeout)</li>
+<li>Thread-safe; read lock on normal path, no blocking</li>
+</ul>
+<h3 id="46-embodied-runtime">4.6 Embodied Runtime<a class="headerlink" href="#46-embodied-runtime" title="Permanent link">&para;</a></h3>
+<p>The <strong>embodied-runtime</strong> is a node-level component deployed as a DaemonSet on each data plane node, managing robot (ROS 1/2) and camera hardware. It integrates with the Agent to expose physical devices as Kubernetes device resources (<code>rlinf.io/device</code>), allowing training Tasks to request robot arms and cameras just like GPU resources.</p>
+<p><strong>Key Files</strong>: <a href="../../../embodied-runtime/">apps/embodied-runtime/</a></p>
+<p><strong>Component Overview</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Responsibility</th>
+<th>Key File</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Device Plugin</td>
+<td>Registers <code>rlinf.io/device</code> with kubelet; detects node-local hardware; injects sockets and CLI binaries into Task Pods</td>
+<td><a href="../../../../embodied-runtime/pkg/deviceplugin/plugin.go">plugin.go</a></td>
+</tr>
+<tr>
+<td>Mutating Webhook</td>
+<td>Auto-injects <code>devinit</code> init container into Pods requesting <code>rlinf.io/device</code>; manages CA certificate and serving certificate</td>
+<td><a href="../../../../embodied-runtime/pkg/deviceplugin/webhook.go">webhook.go</a></td>
+</tr>
+<tr>
+<td>ros-controller</td>
+<td>Manages ROS 1 (<code>roscore</code> + <code>roslaunch</code>) robot lifecycle; exposes gRPC API via Unix socket</td>
+<td><a href="../../../../embodied-runtime/pkg/roscontroller/">roscontroller/</a></td>
+</tr>
+<tr>
+<td>ros2-controller</td>
+<td>Manages ROS 2 robot lifecycle; exposes gRPC API via Unix socket</td>
+<td><a href="../../../../embodied-runtime/pkg/ros2controller/">ros2controller/</a></td>
+</tr>
+<tr>
+<td>camera-controller</td>
+<td>Manages camera (V4L2 / RTSP / RealSense) lifecycle; ffmpeg transcoding; exposes gRPC API via Unix socket</td>
+<td><a href="../../../../embodied-runtime/pkg/cameracontroller/">cameracontroller/</a></td>
+</tr>
+<tr>
+<td>CLI (rosctr / camctr)</td>
+<td>Command-line tools mounted into Task Pods for direct robot/camera control</td>
+<td><a href="../../../../embodied-runtime/cmd/rosctr/">cmd/rosctr/</a></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Device Lifecycle</strong>:</p>
+<ol>
+<li>Device Plugin detects hardware (V4L2 cameras, robot controllers) and registers them with kubelet</li>
+<li>Task Pod requests <code>rlinf.io/device</code> resources in its spec</li>
+<li><strong>Mutating Webhook</strong> intercepts the Pod creation and auto-injects a <code>devinit</code> init container (requesting the same resource) that runs <code>devinit setup</code> to create macvlans in the Pod's network namespace</li>
+<li>On Allocate, Device Plugin injects Unix sockets and CLI binaries into the Pod</li>
+<li>The task container communicates with ros-controller / camera-controller via gRPC over Unix sockets</li>
+<li>On Pod termination, Device Plugin cleans up and returns the device to the pool</li>
+</ol>
+<h2 id="5-cross-cluster-pod-network-data-flow">5. Cross-Cluster Pod Network Data Flow<a class="headerlink" href="#5-cross-cluster-pod-network-data-flow" title="Permanent link">&para;</a></h2>
+<p>Pod A (Cluster Beijing) accessing Pod B (Cluster Shanghai):</p>
+<div class="highlight"><pre><span></span><code>sequenceDiagram
+    participant PA as Pod A Process
+    participant SA as Sidecar A
+    participant NS as NodeServer A
+    participant CNA as ContainerNetworkAdapter
+    participant SD as SSHDialer
+    participant SRV as Server
+    participant NB as NodeServer B
+    participant SB as Sidecar Proxy B
+    participant PB as Pod B Process
+
+    PA-&gt;&gt;SA: TCP → 10.0.0.5:8080 (Pod B virtual IP)
+    SA-&gt;&gt;SA: TUN device intercepts
+    SA-&gt;&gt;SA: gVisor netstack handles TCP SYN
+    SA-&gt;&gt;NS: Unix socket
+    NS-&gt;&gt;CNA: Look up target Pod location
+    CNA-&gt;&gt;CNA: Check DomainPeer&lt;br/&gt;&quot;10.0.0.5 → agent-shanghai&quot;
+    alt Same cluster
+        CNA--&gt;&gt;NS: Direct TCP connection
+    else Cross-cluster
+        CNA-&gt;&gt;SD: Establish SSH tunnel
+        SD-&gt;&gt;SRV: SSH direct-tcpip channel
+        SRV-&gt;&gt;SRV: Verify cert role: domain&lt;br/&gt;Permission check: checkHostInDomain()
+        SRV-&gt;&gt;NS: Agent B tunnel
+    end
+    NS-&gt;&gt;SB: TCP → 10.0.0.5:5700
+    SB-&gt;&gt;PB: Connect real process 10.0.0.5:8080
+    Note over PA,PB: Bidirectional data forwarding (PipeConnections)
+</code></pre></div>
+<h2 id="6-security-system">6. Security System<a class="headerlink" href="#6-security-system" title="Permanent link">&para;</a></h2>
+<h3 id="61-certificate-hierarchy">6.1 Certificate Hierarchy<a class="headerlink" href="#61-certificate-hierarchy" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>graph TD
+    ca[CA Root Certificate]
+    ca --&gt; agent[Agent Certificate&lt;br/&gt;X.509&lt;br/&gt;Data Plane Access]
+    ca --&gt; domain[Domain Certificate&lt;br/&gt;X.509&lt;br/&gt;Cross-Cluster Communication]
+    ca --&gt; ssh[SSH-Guest Certificate&lt;br/&gt;SSH&lt;br/&gt;User SSH Login]
+</code></pre></div>
+<h3 id="62-permission-model">6.2 Permission Model<a class="headerlink" href="#62-permission-model" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Certificate Role</th>
+<th>Permissions</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>agent</code></td>
+<td>Connect to Server tunnel, proxy K8s API requests</td>
+</tr>
+<tr>
+<td><code>domain</code></td>
+<td>Access Pods in the same Domain, establish cross-cluster network connections</td>
+</tr>
+<tr>
+<td><code>ssh-guest</code></td>
+<td>SSH login to authorized Pods</td>
+</tr>
+<tr>
+<td><code>admin</code></td>
+<td>Issue/revoke certificates, Kubernetes impersonation</td>
+</tr>
+</tbody>
+</table>
+<h3 id="63-user-ssh-login-flow">6.3 User SSH Login Flow<a class="headerlink" href="#63-user-ssh-login-flow" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>sequenceDiagram
+    participant Admin as Administrator
+    participant GW as Gateway
+    participant User as User
+    participant S as Server
+    participant DB as PostgreSQL
+    participant Agent as Agent
+
+    Admin-&gt;&gt;GW: POST /api/v1/ssh-user-keys&lt;br/&gt;{user, public_key}
+    GW-&gt;&gt;DB: Store public key
+
+    User-&gt;&gt;S: ssh user@server -p 2222
+    S-&gt;&gt;S: Phase 1: Certificate auth (CertChecker)
+    S-&gt;&gt;S: Phase 2: UserKeyFallback
+    S-&gt;&gt;DB: Query user&#39;s public keys
+    DB--&gt;&gt;S: Return public keys
+    S-&gt;&gt;S: Match client public key → Auth success
+    S-&gt;&gt;S: Issue temporary ssh-guest certificate
+
+    User-&gt;&gt;S: ssh -L 8080:pod-name:8080&lt;br/&gt;(direct-tcpip channel)
+    S-&gt;&gt;S: PodCache lookup for Pod&#39;s Agent
+    S-&gt;&gt;Agent: Forward via tunnel to Pod
+</code></pre></div>
+<h2 id="7-crd-resource-model">7. CRD Resource Model<a class="headerlink" href="#7-crd-resource-model" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>flowchart LR
+    wf[&quot;Workflow&lt;br/&gt;&lt;i&gt;Cluster&lt;/i&gt;&quot;]
+    job[&quot;Job&lt;br/&gt;&lt;i&gt;Cluster&lt;/i&gt;&quot;]
+    task[&quot;Task&lt;br/&gt;&lt;i&gt;Namespaced&lt;/i&gt;&quot;]
+    node[&quot;Node&lt;br/&gt;&lt;i&gt;Namespaced&lt;/i&gt;&quot;]
+    domain[&quot;Domain&lt;br/&gt;&lt;i&gt;Cluster&lt;/i&gt;&quot;]
+    dp[&quot;DomainPeer&lt;br/&gt;&lt;i&gt;Namespaced&lt;/i&gt;&quot;]
+
+    wf --&gt;|&quot;1:N&quot;| job
+    job --&gt;|&quot;1:N&quot;| task
+    task --&gt;|&quot;NodeSelector&quot;| node
+    task --&gt;|&quot;belongs to&quot;| domain
+    domain --&gt;|&quot;1:N&quot;| dp
+</code></pre></div>
+<h2 id="8-key-design-decisions">8. Key Design Decisions<a class="headerlink" href="#8-key-design-decisions" title="Permanent link">&para;</a></h2>
+<h3 id="81-why-kcp-instead-of-native-k8s-api-server">8.1 Why kcp instead of native k8s API Server?<a class="headerlink" href="#81-why-kcp-instead-of-native-k8s-api-server" title="Permanent link">&para;</a></h3>
+<p>kcp is more lightweight than a native k8s API Server and can run independently without a full Kubernetes cluster, reducing the control plane's resource overhead and operational complexity. Additionally, kcp's native logical cluster concept aligns naturally with rlark's Domain concept, leaving room for future multi-tenant scenarios.</p>
+<h3 id="82-why-ssh-tunnels-instead-of-vpn">8.2 Why SSH tunnels instead of VPN?<a class="headerlink" href="#82-why-ssh-tunnels-instead-of-vpn" title="Permanent link">&para;</a></h3>
+<p>VPN solutions require opening the underlying network, which is complex in heterogeneous cluster environments. SSH tunnel approach:</p>
+<ul>
+<li>TCP-based, no network infrastructure changes needed</li>
+<li>Fine-grained permission control via SSH certificates (one certificate per Domain)</li>
+<li>Connection multiplexing (ssh.Client multiplexing) reduces handshake overhead</li>
+<li>Native support for user authentication (SSH public key login)</li>
+</ul>
+<h3 id="83-why-tun-gvisor-instead-of-iptablescni">8.3 Why TUN + gVisor instead of iptables/CNI?<a class="headerlink" href="#83-why-tun-gvisor-instead-of-iptablescni" title="Permanent link">&para;</a></h3>
+<p>iptables/CNI solutions require modifying node network configuration with high privilege requirements. TUN + gVisor approach:</p>
+<ul>
+<li>Runs in userspace; gVisor netstack supports full TCP/UDP/ICMP protocol family (note: creating TUN devices requires privileged access)</li>
+<li>gVisor netstack supports full TCP/UDP/ICMP protocol family</li>
+<li>Can be injected as a Sidecar container, decoupled from business containers</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.tracking", "navigation.indexes", "toc.follow", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+        <script src="../javascripts/fix-nav.js"></script>
+      
+    
+  </body>
+</html>

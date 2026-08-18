@@ -59,6 +59,11 @@ type KubernetesEnv struct {
 	KCP                    *ComponentConfig `yaml:"kcp,omitempty"`
 	Etcd                   *EtcdConfig      `yaml:"etcd,omitempty"`
 	Postgresql             *ComponentConfig `yaml:"postgresql,omitempty"`
+	// ContainerdSocket is the host path to the containerd socket used by the
+	// node-agent for image pre-pull progress monitoring. Defaults to
+	// /run/containerd/containerd.sock when empty. Set this for non-standard
+	// runtimes such as k3s (/run/k3s/containerd/containerd.sock).
+	ContainerdSocket string `yaml:"containerd-socket,omitempty"`
 }
 
 // ComponentConfig holds configuration options.

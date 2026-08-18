@@ -1,0 +1,2804 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Reinforcement Learning Infrastructure for Embodied and Agentic AI">
+      
+      
+      
+      
+        <link rel="prev" href="../architecture/">
+      
+      
+        <link rel="next" href="../api/reference/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Deployment Guide - RLark</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="deep-purple" data-md-color-accent="purple">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#deployment-guide" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="RLark" class="md-header__button md-logo" aria-label="RLark" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            RLark
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Deployment Guide
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="deep-purple" data-md-color-accent="purple"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="deep-purple" data-md-color-accent="purple"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/RLinf/RLark" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="RLark" class="md-nav__button md-logo" aria-label="RLark" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    RLark
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/RLinf/RLark" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ui-behavior/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Web Console
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../concepts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core Concepts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment Guide
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-deployment-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Deployment Architecture
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-deployment-tool-rlarkadm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Deployment Tool: rlarkadm
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Deployment Tool: rlarkadm">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#configuration-file-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration File Structure
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-kubernetes-deployment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Kubernetes Deployment
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Kubernetes Deployment">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-control-plane-deployment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 Control Plane Deployment
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-data-plane-deployment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 Data Plane Deployment
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-docker-compose-deployment-development" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Docker Compose Deployment (Development)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-component-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Component Configuration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Component Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 Server
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-controller-manager" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 Controller-Manager
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#53-gateway" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.3 Gateway
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#54-agent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.4 Agent
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#55-env-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.5 Env Mode
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#56-agent-modes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.6 Agent Modes
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-addon-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Addon Configuration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Addon Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-addon-catalog-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 Addon Catalog Structure
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62-installing-an-addon" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 Installing an Addon
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#63-managing-addons" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.3 Managing Addons
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-storage-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Storage Configuration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. Storage Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#71-control-plane-storage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.1 Control Plane Storage
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#72-storage-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.2 Storage Types
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-network-requirements" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Network Requirements
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="8. Network Requirements">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#81-port-exposure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.1 Port Exposure
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#82-network-topology" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.2 Network Topology
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-certificate-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Certificate Management
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="9. Certificate Management">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#91-certificate-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.1 Certificate Types
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#92-issuing-agent-certificates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.2 Issuing Agent Certificates
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#93-ui-authentication" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.3 UI Authentication
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-high-availability" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. High Availability
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="10. High Availability">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#101-multi-replica-deployment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.1 Multi-Replica Deployment
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#102-external-etcd" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.2 External etcd
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#103-external-postgresql" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.3 External PostgreSQL
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-monitoring-operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. Monitoring &amp; Operations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="11. Monitoring &amp; Operations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#111-prometheus-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.1 Prometheus Metrics
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#112-logging" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.2 Logging
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#113-health-checks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.3 Health Checks
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#12-upgrades" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12. Upgrades
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#13-troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13. Troubleshooting
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="13. Troubleshooting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#agent-cannot-connect-to-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Agent Cannot Connect to Server
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#training-job-cannot-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Training Job Cannot Start
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cross-cluster-network-not-working" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cross-Cluster Network Not Working
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Examples
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../zh/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    中文
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_9" id="__nav_9_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    中文
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../zh/quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    快速开始
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../zh/ui-behavior/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Web 控制台
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../zh/concepts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    核心概念
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../zh/architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    架构设计
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../zh/deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    部署指南
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../zh/api/reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API 参考
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../zh/api/examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API 示例
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-deployment-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Deployment Architecture
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-deployment-tool-rlarkadm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Deployment Tool: rlarkadm
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Deployment Tool: rlarkadm">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#configuration-file-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration File Structure
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-kubernetes-deployment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Kubernetes Deployment
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Kubernetes Deployment">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-control-plane-deployment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 Control Plane Deployment
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-data-plane-deployment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 Data Plane Deployment
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-docker-compose-deployment-development" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Docker Compose Deployment (Development)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-component-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Component Configuration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Component Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 Server
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-controller-manager" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 Controller-Manager
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#53-gateway" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.3 Gateway
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#54-agent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.4 Agent
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#55-env-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.5 Env Mode
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#56-agent-modes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.6 Agent Modes
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-addon-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Addon Configuration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Addon Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-addon-catalog-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 Addon Catalog Structure
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62-installing-an-addon" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 Installing an Addon
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#63-managing-addons" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.3 Managing Addons
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-storage-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Storage Configuration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. Storage Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#71-control-plane-storage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.1 Control Plane Storage
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#72-storage-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.2 Storage Types
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-network-requirements" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Network Requirements
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="8. Network Requirements">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#81-port-exposure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.1 Port Exposure
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#82-network-topology" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.2 Network Topology
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-certificate-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Certificate Management
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="9. Certificate Management">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#91-certificate-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.1 Certificate Types
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#92-issuing-agent-certificates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.2 Issuing Agent Certificates
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#93-ui-authentication" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.3 UI Authentication
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-high-availability" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. High Availability
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="10. High Availability">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#101-multi-replica-deployment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.1 Multi-Replica Deployment
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#102-external-etcd" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.2 External etcd
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#103-external-postgresql" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.3 External PostgreSQL
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-monitoring-operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. Monitoring &amp; Operations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="11. Monitoring &amp; Operations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#111-prometheus-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.1 Prometheus Metrics
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#112-logging" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.2 Logging
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#113-health-checks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.3 Health Checks
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#12-upgrades" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12. Upgrades
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#13-troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13. Troubleshooting
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="13. Troubleshooting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#agent-cannot-connect-to-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Agent Cannot Connect to Server
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#training-job-cannot-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Training Job Cannot Start
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cross-cluster-network-not-working" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cross-Cluster Network Not Working
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="deployment-guide">Deployment Guide<a class="headerlink" href="#deployment-guide" title="Permanent link">&para;</a></h1>
+<h2 id="1-deployment-architecture">1. Deployment Architecture<a class="headerlink" href="#1-deployment-architecture" title="Permanent link">&para;</a></h2>
+<p>rlark supports three deployment modes for different scenarios:</p>
+<table>
+<thead>
+<tr>
+<th>Mode</th>
+<th>Complexity</th>
+<th>Use Case</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Docker Compose</td>
+<td>Low</td>
+<td>Local development, single-machine testing</td>
+</tr>
+<tr>
+<td>Kubernetes</td>
+<td>Medium</td>
+<td>Production, cluster deployment</td>
+</tr>
+<tr>
+<td>Raw Binary</td>
+<td>High</td>
+<td>Minimal deployment, embedded scenarios</td>
+</tr>
+</tbody>
+</table>
+<h2 id="2-deployment-tool-rlarkadm">2. Deployment Tool: rlarkadm<a class="headerlink" href="#2-deployment-tool-rlarkadm" title="Permanent link">&para;</a></h2>
+<p><code>rlarkadm</code> is rlark's deployment CLI, unifying installation, uninstallation, and health checks for both control and data planes.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Install</span>
+rlarkadm<span class="w"> </span>install<span class="w"> </span>-f<span class="w"> </span>&lt;config-file&gt;
+
+<span class="c1"># Uninstall</span>
+rlarkadm<span class="w"> </span>uninstall<span class="w"> </span>-f<span class="w"> </span>&lt;config-file&gt;
+
+<span class="c1"># Health check</span>
+rlarkadm<span class="w"> </span>health<span class="w"> </span>-f<span class="w"> </span>&lt;config-file&gt;
+</code></pre></div>
+<h3 id="configuration-file-structure">Configuration File Structure<a class="headerlink" href="#configuration-file-structure" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rlark.io/v1alpha1</span>
+<span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">DeployConfig</span>
+<span class="nt">plane</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">control</span><span class="w">              </span><span class="c1"># control | data</span>
+
+<span class="c1"># Control plane configuration</span>
+<span class="nt">kubernetes</span><span class="p">:</span><span class="w">                 </span><span class="c1"># Deploy to K8s cluster</span>
+<span class="w">  </span><span class="nt">kubeconfig</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/path/to/kubeconfig</span>
+<span class="w">  </span><span class="c1"># Image configuration</span>
+<span class="w">  </span><span class="nt">gateway-image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rlark-gateway:latest</span>
+<span class="w">  </span><span class="nt">controller-manager-image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rlark-controller-manager:latest</span>
+<span class="w">  </span><span class="nt">server-image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rlark-server:latest</span>
+<span class="w">  </span><span class="nt">kcp-image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">kcp:v0.30.0</span>
+<span class="w">  </span><span class="nt">postgresql-image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">postgres:15</span>
+<span class="w">  </span><span class="nt">ui-image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rlark-ui:latest</span>
+<span class="w">  </span><span class="c1"># Storage configuration</span>
+<span class="w">  </span><span class="nt">storage</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pvc</span><span class="w">               </span><span class="c1"># emptyDir | hostPath | pvc</span>
+<span class="w">    </span><span class="nt">storage-class</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;&quot;</span>
+<span class="w">    </span><span class="nt">size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10Gi</span>
+<span class="w">    </span><span class="nt">node-selector</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">kubernetes.io/hostname</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dev-worker</span>
+
+<span class="c1"># Data plane configuration</span>
+<span class="nt">plane</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">data</span>
+<span class="nt">cert</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">ca-cert</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">    </span><span class="no">-----BEGIN CERTIFICATE-----</span>
+<span class="w">    </span><span class="no">...</span>
+<span class="w">    </span><span class="no">-----END CERTIFICATE-----</span>
+<span class="w">  </span><span class="nt">agent-cert</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">    </span><span class="no">-----BEGIN CERTIFICATE-----</span>
+<span class="w">    </span><span class="no">...</span>
+<span class="w">    </span><span class="no">-----END CERTIFICATE-----</span>
+<span class="w">  </span><span class="nt">agent-key</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">    </span><span class="no">-----BEGIN PRIVATE KEY-----</span>
+<span class="w">    </span><span class="no">...</span>
+<span class="w">    </span><span class="no">-----END PRIVATE KEY-----</span>
+<span class="nt">kubernetes</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">kubeconfig</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/path/to/data-kubeconfig</span>
+<span class="w">  </span><span class="nt">agent-image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rlark-agent:latest</span>
+<span class="w">  </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rlark:latest</span>
+</code></pre></div>
+<h2 id="3-kubernetes-deployment">3. Kubernetes Deployment<a class="headerlink" href="#3-kubernetes-deployment" title="Permanent link">&para;</a></h2>
+<h3 id="31-control-plane-deployment">3.1 Control Plane Deployment<a class="headerlink" href="#31-control-plane-deployment" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># 1. Prepare configuration file</span>
+cp<span class="w"> </span>apps/rlark/docs/examples/deploy-control-plane.yaml<span class="w"> </span>my-deploy.yaml
+
+<span class="c1"># 2. Modify image addresses and kubeconfig</span>
+<span class="c1"># 3. Execute installation</span>
+rlarkadm<span class="w"> </span>install<span class="w"> </span>-f<span class="w"> </span>my-deploy.yaml
+
+<span class="c1"># 4. Verify</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-n<span class="w"> </span>rlark-system
+</code></pre></div>
+<p>Control plane components:</p>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Replicas</th>
+<th>Ports</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>kcp</td>
+<td>1</td>
+<td>6443</td>
+<td>API Server</td>
+</tr>
+<tr>
+<td>etcd</td>
+<td>1</td>
+<td>2379</td>
+<td>kcp data storage (optional external)</td>
+</tr>
+<tr>
+<td>postgresql</td>
+<td>1</td>
+<td>5432</td>
+<td>rlark data storage</td>
+</tr>
+<tr>
+<td>server</td>
+<td>1</td>
+<td>8443, 2222</td>
+<td>HTTPS + SSH</td>
+</tr>
+<tr>
+<td>controller-manager</td>
+<td>1</td>
+<td>-</td>
+<td>Control plane controllers</td>
+</tr>
+<tr>
+<td>gateway</td>
+<td>1</td>
+<td>8080</td>
+<td>API Gateway</td>
+</tr>
+<tr>
+<td>ui</td>
+<td>1</td>
+<td>80</td>
+<td>Web management UI</td>
+</tr>
+</tbody>
+</table>
+<h3 id="32-data-plane-deployment">3.2 Data Plane Deployment<a class="headerlink" href="#32-data-plane-deployment" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># 1. Obtain certificates from control plane (via Gateway API or manual signing)</span>
+<span class="c1"># 2. Fill in configuration file</span>
+cp<span class="w"> </span>apps/rlark/docs/examples/deploy-data-plane.yaml<span class="w"> </span>my-data.yaml
+
+<span class="c1"># 3. Execute installation</span>
+rlarkadm<span class="w"> </span>install<span class="w"> </span>-f<span class="w"> </span>my-data.yaml
+
+<span class="c1"># 4. Verify</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-n<span class="w"> </span>rlark-system
+</code></pre></div>
+<p>Data plane components:</p>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Replicas</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>agent</td>
+<td>DaemonSet</td>
+<td>cluster + node mode</td>
+</tr>
+<tr>
+<td>network-sidecar</td>
+<td>Pod injection</td>
+<td>Auto-injected into training Pods</td>
+</tr>
+</tbody>
+</table>
+<h2 id="4-docker-compose-deployment-development">4. Docker Compose Deployment (Development)<a class="headerlink" href="#4-docker-compose-deployment-development" title="Permanent link">&para;</a></h2>
+<p>Suitable for local development and testing:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># docker-compose.yml</span>
+<span class="nt">services</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">kcp</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">kcp:v0.30.0</span>
+<span class="w">    </span><span class="nt">command</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;start&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;--root-directory&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;/data/kcp&quot;</span><span class="p p-Indicator">]</span>
+<span class="w">    </span><span class="nt">ports</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;6443:6443&quot;</span>
+<span class="w">    </span><span class="nt">volumes</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">kcp-data:/data</span>
+
+<span class="w">  </span><span class="nt">postgresql</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">postgres:15</span>
+<span class="w">    </span><span class="nt">environment</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">POSTGRES_DB</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rlark</span>
+<span class="w">      </span><span class="nt">POSTGRES_USER</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rlark</span>
+<span class="w">      </span><span class="nt">POSTGRES_PASSWORD</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">CHANGE_ME</span>
+<span class="w">    </span><span class="nt">ports</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;5432:5432&quot;</span>
+<span class="w">    </span><span class="nt">volumes</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pg-data:/var/lib/postgresql/data</span>
+
+<span class="nt">volumes</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">kcp-data</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">pg-data</span><span class="p">:</span>
+</code></pre></div>
+<h2 id="5-component-configuration">5. Component Configuration<a class="headerlink" href="#5-component-configuration" title="Permanent link">&para;</a></h2>
+<h3 id="51-server">5.1 Server<a class="headerlink" href="#51-server" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--kubeconfig</code></td>
+<td><code>""</code></td>
+<td>Control plane kubeconfig</td>
+</tr>
+<tr>
+<td><code>--https-port</code></td>
+<td><code>8443</code></td>
+<td>HTTPS service port</td>
+</tr>
+<tr>
+<td><code>--ssh-port</code></td>
+<td><code>2222</code></td>
+<td>SSH service port</td>
+</tr>
+<tr>
+<td><code>--db-config</code></td>
+<td><code>""</code></td>
+<td>Database config file path</td>
+</tr>
+<tr>
+<td><code>--ca-cert</code></td>
+<td><code>""</code></td>
+<td>CA certificate path</td>
+</tr>
+<tr>
+<td><code>--ca-key</code></td>
+<td><code>""</code></td>
+<td>CA private key path</td>
+</tr>
+<tr>
+<td><code>--auto-sign-tls-ca-cert</code></td>
+<td><code>false</code></td>
+<td>Automatically sign TLS certificates using CA</td>
+</tr>
+<tr>
+<td><code>--tls-domains</code></td>
+<td><code>""</code></td>
+<td>TLS domain list for auto certificate generation</td>
+</tr>
+</tbody>
+</table>
+<h3 id="52-controller-manager">5.2 Controller-Manager<a class="headerlink" href="#52-controller-manager" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--kubeconfig</code></td>
+<td><code>""</code></td>
+<td>Control plane kubeconfig</td>
+</tr>
+<tr>
+<td><code>--server-address</code></td>
+<td><code>""</code></td>
+<td>Server address (for certificate signing)</td>
+</tr>
+<tr>
+<td><code>--leader-elect</code></td>
+<td><code>true</code></td>
+<td>Enable leader election</td>
+</tr>
+</tbody>
+</table>
+<h3 id="53-gateway">5.3 Gateway<a class="headerlink" href="#53-gateway" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--kubeconfig</code></td>
+<td><code>""</code></td>
+<td>Control plane kubeconfig</td>
+</tr>
+<tr>
+<td><code>--addr</code></td>
+<td><code>:8080</code></td>
+<td>HTTP service address</td>
+</tr>
+<tr>
+<td><code>--db-config</code></td>
+<td><code>""</code></td>
+<td>Database config file path</td>
+</tr>
+<tr>
+<td><code>--server-address</code></td>
+<td><code>""</code></td>
+<td>Control plane Server address for certificate signing</td>
+</tr>
+</tbody>
+</table>
+<h3 id="54-agent">5.4 Agent<a class="headerlink" href="#54-agent" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--kubeconfig</code></td>
+<td><code>""</code></td>
+<td>Data plane kubeconfig</td>
+</tr>
+<tr>
+<td><code>--server-address</code></td>
+<td><code>""</code></td>
+<td>Control plane Server address</td>
+</tr>
+<tr>
+<td><code>--client-cert</code></td>
+<td><code>""</code></td>
+<td>Agent certificate path</td>
+</tr>
+<tr>
+<td><code>--client-key</code></td>
+<td><code>""</code></td>
+<td>Agent private key path</td>
+</tr>
+<tr>
+<td><code>--ca-cert</code></td>
+<td><code>""</code></td>
+<td>CA certificate path</td>
+</tr>
+<tr>
+<td><code>--mode</code></td>
+<td><code>both</code></td>
+<td>Run mode: <code>cluster</code> / <code>node</code> / <code>both</code></td>
+</tr>
+<tr>
+<td><code>--rlark-server-ssh-address</code></td>
+<td><code>""</code></td>
+<td>Server SSH address (cross-cluster networking)</td>
+</tr>
+<tr>
+<td><code>--rlark-server-ssh-host-key</code></td>
+<td><code>""</code></td>
+<td>Server SSH host key</td>
+</tr>
+<tr>
+<td><code>--agent-type</code></td>
+<td><code>auto</code></td>
+<td>Agent type: <code>kubernetes</code> / <code>docker</code> / <code>raw</code> (auto-detected from env mode)</td>
+</tr>
+<tr>
+<td><code>--leader-election</code></td>
+<td><code>true</code></td>
+<td>Enable leader election (disabled when replicas=1)</td>
+</tr>
+<tr>
+<td><code>--image</code></td>
+<td><code>""</code></td>
+<td>RLark container image (network sidecar, SSH server, etc.)</td>
+</tr>
+<tr>
+<td><code>--in-cluster</code></td>
+<td><code>false</code></td>
+<td>Use in-cluster Kubernetes config (auto-set in K8s mode)</td>
+</tr>
+<tr>
+<td><code>--insecure-skip-tls-verify</code></td>
+<td><code>false</code></td>
+<td>Skip TLS certificate verification</td>
+</tr>
+</tbody>
+</table>
+<h3 id="55-env-mode">5.5 Env Mode<a class="headerlink" href="#55-env-mode" title="Permanent link">&para;</a></h3>
+<p>rlark supports three deployment environment modes, configured in the DeployConfig YAML:</p>
+<table>
+<thead>
+<tr>
+<th>Mode</th>
+<th>Description</th>
+<th>Use Case</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>kubernetes</code></td>
+<td>Deploy to K8s cluster</td>
+<td>Production, GPU cluster</td>
+</tr>
+<tr>
+<td><code>docker</code></td>
+<td>Manage via Docker API (TODO)</td>
+<td>Edge devices, single-node</td>
+</tr>
+<tr>
+<td><code>raw</code></td>
+<td>Download artifact and execute (TODO)</td>
+<td>Bare metal, embedded</td>
+</tr>
+</tbody>
+</table>
+<p>In the config file, specify exactly one of <code>kubernetes</code>, <code>docker</code>, or <code>raw</code> env blocks.</p>
+<h3 id="56-agent-modes">5.6 Agent Modes<a class="headerlink" href="#56-agent-modes" title="Permanent link">&para;</a></h3>
+<p>Agent supports three running modes via <code>--mode</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Mode</th>
+<th>Description</th>
+<th>Component</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>cluster</code></td>
+<td>Cluster-level workload management</td>
+<td>Deployment (agent)</td>
+</tr>
+<tr>
+<td><code>node</code></td>
+<td>Node-level network operations</td>
+<td>DaemonSet (agent-node)</td>
+</tr>
+<tr>
+<td><code>both</code></td>
+<td>Run both cluster and node controllers</td>
+<td>Combined</td>
+</tr>
+</tbody>
+</table>
+<p>When <code>--mode=node</code>, the agent runs as a DaemonSet on each node, handling SSH tunnel setup for cross-cluster networking.</p>
+<h2 id="6-addon-configuration">6. Addon Configuration<a class="headerlink" href="#6-addon-configuration" title="Permanent link">&para;</a></h2>
+<p>rlark supports declarative Addon management across data plane clusters. Addons are defined in the addon catalog (<code>../pkg/addons/catalog/</code>) and installed via the Addon API.</p>
+<h3 id="61-addon-catalog-structure">6.1 Addon Catalog Structure<a class="headerlink" href="#61-addon-catalog-structure" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>pkg/addons/catalog/
+├── embodied-runtime-device-plugin/
+│   ├── addon.yaml          # Addon metadata (name, version, description, configurable parameters)
+│   └── manifests/
+│       ├── daemonset.yaml  # K8s DaemonSet with template values
+│       ├── configmap-template.yaml  # ConfigMap template (camera/ROS controller configs)
+│       ├── headless-services.yaml   # Headless Services for camera/ROS controllers
+│       └── rbac.yaml       # ClusterRole + ClusterRoleBinding
+└── csi-driver-rclone/
+    ├── addon.yaml          # Addon metadata (name, version, category: storage)
+    └── manifests/
+        ├── controller.yaml  # CSI Controller Deployment
+        ├── node.yaml        # CSI Node DaemonSet
+        ├── configmap.yaml   # RClone configuration
+        ├── csidriver.yaml   # CSIDriver resource
+        └── rbac.yaml        # RBAC permissions
+</code></pre></div>
+<p>Key configurable parameters for <code>embodied-runtime-device-plugin</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>image</code></td>
+<td>Device plugin container image</td>
+<td><code>rlark/embodied-device-plugin:0.1.0</code></td>
+</tr>
+<tr>
+<td><code>rendererImage</code></td>
+<td>Node-level config renderer initContainer image (yq)</td>
+<td><code>yq:4.53.2</code></td>
+</tr>
+<tr>
+<td><code>cameraImage</code></td>
+<td>Camera controller container image</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>rosImage</code></td>
+<td>ROS controller container image</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>nodeSelector</code></td>
+<td>Node selector for DaemonSet scheduling</td>
+<td><code>nvidia.com/gpu=true</code></td>
+</tr>
+<tr>
+<td><code>robotTolerationKey</code></td>
+<td>Toleration key for robot nodes</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<p>The addon also deploys two headless Services (<code>camera-controller-headless</code> and <code>ros-controller-headless</code>) for stable DNS-based discovery of camera and ROS controllers within the cluster.</p>
+<p>Key configurable parameters for <code>csi-driver-rclone</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>rcloneImage</code></td>
+<td>RClone CSI driver container image</td>
+<td><code>csi-driver-rclone:v0.2.0</code></td>
+</tr>
+<tr>
+<td><code>csiProvisionerImage</code></td>
+<td>CSI provisioner sidecar image</td>
+<td><code>csi-provisioner:v6.2.0</code></td>
+</tr>
+<tr>
+<td><code>livenessProbeImage</code></td>
+<td>Liveness probe sidecar image</td>
+<td><code>livenessprobe:v2.18.0</code></td>
+</tr>
+<tr>
+<td><code>nodeDriverRegistrarImage</code></td>
+<td>Node driver registrar sidecar image</td>
+<td><code>csi-node-driver-registrar:v2.16.0</code></td>
+</tr>
+<tr>
+<td><code>driverName</code></td>
+<td>CSI driver registration name</td>
+<td><code>rclone.csi.veloxpack.io</code></td>
+</tr>
+<tr>
+<td><code>controllerReplicas</code></td>
+<td>Controller Deployment replicas</td>
+<td><code>1</code></td>
+</tr>
+<tr>
+<td><code>controllerLogLevel</code></td>
+<td>Controller log level (0-10)</td>
+<td><code>5</code></td>
+</tr>
+<tr>
+<td><code>nodeLogLevel</code></td>
+<td>Node DaemonSet log level (0-10)</td>
+<td><code>5</code></td>
+</tr>
+</tbody>
+</table>
+<p>The RClone CSI driver enables dynamic provisioning of PersistentVolumes backed by remote storage (S3, GCS, Azure Blob, etc.) via RClone.</p>
+<h3 id="62-installing-an-addon">6.2 Installing an Addon<a class="headerlink" href="#62-installing-an-addon" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Install an addon to a specific cluster</span>
+curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span><span class="s2">&quot;http://localhost:8080/api/v1/clusters/agent-beijing/addons&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{</span>
+<span class="s1">    &quot;addonName&quot;: &quot;embodied-runtime-device-plugin&quot;,</span>
+<span class="s1">    &quot;version&quot;: &quot;0.1.0&quot;,</span>
+<span class="s1">    &quot;values&quot;: {</span>
+<span class="s1">      &quot;image&quot;: &quot;rlark/embodied-device-plugin:0.1.0&quot;</span>
+<span class="s1">    }</span>
+<span class="s1">  }&#39;</span>
+</code></pre></div>
+<h3 id="63-managing-addons">6.3 Managing Addons<a class="headerlink" href="#63-managing-addons" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># List available addons in catalog</span>
+curl<span class="w"> </span><span class="s2">&quot;http://localhost:8080/api/v1/addons&quot;</span>
+
+<span class="c1"># List installed addons across all clusters</span>
+curl<span class="w"> </span><span class="s2">&quot;http://localhost:8080/api/v1/installed-addons&quot;</span>
+
+<span class="c1"># List addons in a specific cluster</span>
+curl<span class="w"> </span><span class="s2">&quot;http://localhost:8080/api/v1/clusters/agent-beijing/addons&quot;</span>
+
+<span class="c1"># Get addon details</span>
+curl<span class="w"> </span><span class="s2">&quot;http://localhost:8080/api/v1/clusters/agent-beijing/addons/embodied-device-plugin&quot;</span>
+
+<span class="c1"># Update addon configuration</span>
+curl<span class="w"> </span>-X<span class="w"> </span>PUT<span class="w"> </span><span class="s2">&quot;http://localhost:8080/api/v1/clusters/agent-beijing/addons/embodied-device-plugin&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{</span>
+<span class="s1">    &quot;values&quot;: {</span>
+<span class="s1">      &quot;image&quot;: &quot;rlark/embodied-device-plugin:0.2.0&quot;</span>
+<span class="s1">    }</span>
+<span class="s1">  }&#39;</span>
+
+<span class="c1"># Uninstall an addon</span>
+curl<span class="w"> </span>-X<span class="w"> </span>DELETE<span class="w"> </span><span class="s2">&quot;http://localhost:8080/api/v1/clusters/agent-beijing/addons/embodied-device-plugin&quot;</span>
+</code></pre></div>
+<h2 id="7-storage-configuration">7. Storage Configuration<a class="headerlink" href="#7-storage-configuration" title="Permanent link">&para;</a></h2>
+<h3 id="71-control-plane-storage">7.1 Control Plane Storage<a class="headerlink" href="#71-control-plane-storage" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Data Content</th>
+<th>Recommended Size</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>kcp</td>
+<td>All CRD objects</td>
+<td>10Gi</td>
+</tr>
+<tr>
+<td>etcd</td>
+<td>kcp metadata</td>
+<td>8Gi</td>
+</tr>
+<tr>
+<td>postgresql</td>
+<td>SSH keys, user data</td>
+<td>30Gi</td>
+</tr>
+</tbody>
+</table>
+<h3 id="72-storage-types">7.2 Storage Types<a class="headerlink" href="#72-storage-types" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Description</th>
+<th>Use Case</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>emptyDir</code></td>
+<td>Ephemeral storage, lost on Pod deletion</td>
+<td>Testing</td>
+</tr>
+<tr>
+<td><code>hostPath</code></td>
+<td>Node local path</td>
+<td>Single-node deployment</td>
+</tr>
+<tr>
+<td><code>pvc</code></td>
+<td>Persistent volume</td>
+<td>Production</td>
+</tr>
+</tbody>
+</table>
+<h2 id="8-network-requirements">8. Network Requirements<a class="headerlink" href="#8-network-requirements" title="Permanent link">&para;</a></h2>
+<h3 id="81-port-exposure">8.1 Port Exposure<a class="headerlink" href="#81-port-exposure" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Port</th>
+<th>Protocol</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Gateway</td>
+<td>8080</td>
+<td>HTTP</td>
+<td>User API access</td>
+</tr>
+<tr>
+<td>Server</td>
+<td>8443</td>
+<td>HTTPS</td>
+<td>Agent tunnel connections</td>
+</tr>
+<tr>
+<td>Server</td>
+<td>2222</td>
+<td>TCP</td>
+<td>SSH user login</td>
+</tr>
+<tr>
+<td>kcp</td>
+<td>6443</td>
+<td>HTTPS</td>
+<td>Control plane API</td>
+</tr>
+</tbody>
+</table>
+<h3 id="82-network-topology">8.2 Network Topology<a class="headerlink" href="#82-network-topology" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>Internet / User Network
+    │
+    ├──▶ Gateway (:8080) ── REST API
+    └──▶ Server (:2222)  ── SSH Login
+         Server (:8443)  ◀── Agent WebSocket (outbound)
+</code></pre></div>
+<p>Agent connects to Server via <strong>outbound</strong> WebSocket — no inbound ports need to be exposed on the data plane.</p>
+<h2 id="9-certificate-management">9. Certificate Management<a class="headerlink" href="#9-certificate-management" title="Permanent link">&para;</a></h2>
+<h3 id="91-certificate-types">9.1 Certificate Types<a class="headerlink" href="#91-certificate-types" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Certificate</th>
+<th>Purpose</th>
+<th>Issuance</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CA Certificate</td>
+<td>Root certificate, signs other certificates</td>
+<td>Generated at deployment</td>
+</tr>
+<tr>
+<td>Agent Certificate</td>
+<td>Agent connects to control plane</td>
+<td>Admin issues via Gateway API</td>
+</tr>
+<tr>
+<td>Domain Certificate</td>
+<td>Cross-cluster Pod communication</td>
+<td>Controller-Manager auto-issues</td>
+</tr>
+<tr>
+<td>SSH Certificate</td>
+<td>User SSH login</td>
+<td>Server issues on-the-fly during authentication</td>
+</tr>
+</tbody>
+</table>
+<h3 id="92-issuing-agent-certificates">9.2 Issuing Agent Certificates<a class="headerlink" href="#92-issuing-agent-certificates" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span><span class="s2">&quot;http://localhost:8080/api/v1/certificates/agent&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;agentID&quot;: &quot;agent-beijing&quot;}&#39;</span>
+</code></pre></div>
+<p>Returns certificate and private key for deployment to the data plane Agent.</p>
+<h3 id="93-ui-authentication">9.3 UI Authentication<a class="headerlink" href="#93-ui-authentication" title="Permanent link">&para;</a></h3>
+<p>During deployment, <code>rlarkadm</code> automatically creates a <code>rlark-ui-auth</code> Secret in the kcp cluster's <code>default</code> namespace, containing randomly generated passwords for admin and user roles:</p>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>admin-password</code></td>
+<td>Admin role password (16 random characters)</td>
+</tr>
+<tr>
+<td><code>user-password</code></td>
+<td>User role password (16 random characters)</td>
+</tr>
+</tbody>
+</table>
+<p>Passwords are displayed in the install summary. The web UI uses <code>POST /api/v1/auth/login</code> to authenticate.</p>
+<h2 id="10-high-availability">10. High Availability<a class="headerlink" href="#10-high-availability" title="Permanent link">&para;</a></h2>
+<h3 id="101-multi-replica-deployment">10.1 Multi-Replica Deployment<a class="headerlink" href="#101-multi-replica-deployment" title="Permanent link">&para;</a></h3>
+<p>Recommended replica counts for production:</p>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Replicas</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Gateway</td>
+<td>2+</td>
+<td>Stateless, horizontally scalable</td>
+</tr>
+<tr>
+<td>Server</td>
+<td>2+</td>
+<td>Interconnected via Peer Manager</td>
+</tr>
+<tr>
+<td>Controller-Manager</td>
+<td>1</td>
+<td>Leader election, active-standby</td>
+</tr>
+<tr>
+<td>kcp</td>
+<td>1</td>
+<td>Single instance (can use external etcd cluster)</td>
+</tr>
+<tr>
+<td>etcd</td>
+<td>3</td>
+<td>Odd-numbered Raft cluster</td>
+</tr>
+<tr>
+<td>postgresql</td>
+<td>1</td>
+<td>Primary-replica replication</td>
+</tr>
+</tbody>
+</table>
+<h3 id="102-external-etcd">10.2 External etcd<a class="headerlink" href="#102-external-etcd" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nt">kubernetes</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">etcd</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">address</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https://my-etcd.example.com:2379</span>
+<span class="w">    </span><span class="c1"># Do not deploy built-in etcd</span>
+</code></pre></div>
+<h3 id="103-external-postgresql">10.3 External PostgreSQL<a class="headerlink" href="#103-external-postgresql" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nt">db</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">host</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pg-primary.example.com</span>
+<span class="w">  </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5432</span>
+<span class="w">  </span><span class="nt">database</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rlark</span>
+<span class="w">  </span><span class="nt">user</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rlark</span>
+<span class="w">  </span><span class="nt">password</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">CHANGE_ME</span>
+</code></pre></div>
+<h2 id="11-monitoring-operations">11. Monitoring &amp; Operations<a class="headerlink" href="#11-monitoring-operations" title="Permanent link">&para;</a></h2>
+<h3 id="111-prometheus-metrics">11.1 Prometheus Metrics<a class="headerlink" href="#111-prometheus-metrics" title="Permanent link">&para;</a></h3>
+<p>Gateway and Server expose Prometheus metrics:</p>
+<ul>
+<li><code>rlark_gateway_requests_total</code>: Gateway request count</li>
+<li><code>rlark_gateway_request_duration_seconds</code>: Request latency</li>
+<li><code>rlark_proxy_requests_total</code>: Server proxy request count</li>
+<li><code>rlark_peer_connections</code>: Current peer connections</li>
+<li><code>rlark_ssh_connections_total</code>: SSH connection count</li>
+</ul>
+<h3 id="112-logging">11.2 Logging<a class="headerlink" href="#112-logging" title="Permanent link">&para;</a></h3>
+<p>Structured logging (zap), controlled via <code>LOG_LEVEL</code> environment variable:</p>
+<div class="highlight"><pre><span></span><code><span class="nv">LOG_LEVEL</span><span class="o">=</span>debug<span class="w"> </span>./bin/server<span class="w"> </span>--kubeconfig<span class="w"> </span>...
+</code></pre></div>
+<h3 id="113-health-checks">11.3 Health Checks<a class="headerlink" href="#113-health-checks" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Check control plane</span>
+rlarkadm<span class="w"> </span>health<span class="w"> </span>-f<span class="w"> </span>deploy-control-plane.yaml
+
+<span class="c1"># Check data plane</span>
+rlarkadm<span class="w"> </span>health<span class="w"> </span>-f<span class="w"> </span>deploy-data-plane.yaml
+</code></pre></div>
+<h2 id="12-upgrades">12. Upgrades<a class="headerlink" href="#12-upgrades" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="c1"># 1. Update image versions</span>
+<span class="c1"># 2. Rolling update (Kubernetes native support)</span>
+kubectl<span class="w"> </span>rollout<span class="w"> </span>restart<span class="w"> </span>deployment<span class="w"> </span>-n<span class="w"> </span>rlark-system
+
+<span class="c1"># 3. Verify</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-n<span class="w"> </span>rlark-system
+</code></pre></div>
+<h2 id="13-troubleshooting">13. Troubleshooting<a class="headerlink" href="#13-troubleshooting" title="Permanent link">&para;</a></h2>
+<h3 id="agent-cannot-connect-to-server">Agent Cannot Connect to Server<a class="headerlink" href="#agent-cannot-connect-to-server" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Check if Agent certificate is valid (not expired, signed by correct CA)</li>
+<li>Check network connectivity: <code>curl -k https://&lt;server&gt;:8443</code></li>
+<li>Check Server logs: <code>kubectl logs -n rlark-system deployment/server</code></li>
+</ol>
+<h3 id="training-job-cannot-start">Training Job Cannot Start<a class="headerlink" href="#training-job-cannot-start" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Check if Node has sufficient resources: <code>kubectl get nodes -n rlark-system</code></li>
+<li>Check Task status: query the corresponding Task CR</li>
+<li>Check Agent logs: <code>kubectl logs -n rlark-system daemonset/agent</code></li>
+</ol>
+<h3 id="cross-cluster-network-not-working">Cross-Cluster Network Not Working<a class="headerlink" href="#cross-cluster-network-not-working" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Check if DomainPeer has been created</li>
+<li>Check if Domain certificate was signed successfully</li>
+<li>Check if network-sidecar is injected into the Pod</li>
+</ol>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.tracking", "navigation.indexes", "toc.follow", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+        <script src="../javascripts/fix-nav.js"></script>
+      
+    
+  </body>
+</html>

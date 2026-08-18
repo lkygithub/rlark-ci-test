@@ -1,0 +1,2404 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Reinforcement Learning Infrastructure for Embodied and Agentic AI">
+      
+      
+      
+      
+        <link rel="prev" href="../reference/">
+      
+      
+        <link rel="next" href="../../zh/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>API Examples - RLark</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="deep-purple" data-md-color-accent="purple">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#api" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="RLark" class="md-header__button md-logo" aria-label="RLark" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            RLark
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              API Examples
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="deep-purple" data-md-color-accent="purple"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="deep-purple" data-md-color-accent="purple"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/RLinf/RLark" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="RLark" class="md-nav__button md-logo" aria-label="RLark" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    RLark
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/RLinf/RLark" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ui-behavior/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Web Console
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core Concepts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Examples
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Examples
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        约定
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="约定">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        资源归属与前端可操作性
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-node" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Node 节点查询（只读 + 污点）
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. Node 节点查询（只读 + 污点）">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#11-label" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.1 列出节点（按 label 过滤）
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#12" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.2 查询单个节点
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#13-merge-patch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.3 设置节点不可调度（打污点，merge-patch）
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-job" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Job 作业管理（前端主要操作对象）
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Job 作业管理（前端主要操作对象）">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-rl-job" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 创建一个完整的 RL 训练 Job
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-job" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2 查询 Job 状态
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#23-job-label" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3 列出 Job（按 label 选择）
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#24-job-spec-resourceversion" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.4 更新 Job（替换 spec，需带 resourceVersion）
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#25-patch-jobmerge-patch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.5 Patch Job（merge-patch 调整副本数）
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#26-job" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.6 删除 Job
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-task" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Task 任务查询（只读）
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Task 任务查询（只读）">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-job-task" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 列出某 Job 下的 Task
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-task" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 查询单个 Task 状态
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-workflow-job-dag" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Workflow 工作流管理（多 Job DAG 编排）
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Workflow 工作流管理（多 Job DAG 编排）">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 创建一个两阶段 Workflow（数据准备 → 训练）
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 查询 Workflow 状态
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#43-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.3 列出 / 删除 Workflow
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#44-patch-workflowmerge-patch-job" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.4 Patch Workflow（merge-patch 调整 job 模板）
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-docker-raw-job-task" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. 其他接入形态（Docker / Raw）在 Job task 模板中的用法
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. 其他接入形态（Docker / Raw）在 Job task 模板中的用法">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-docker-task-job" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 含 Docker task 的 Job
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-raw-task-job-artifact" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 含 Raw task 的 Job（裸进程/二进制 + artifact）
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. 通用查询参数样例
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. 前端开发要点
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. 认证 API
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="8. 认证 API">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#81" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.1 用户登录
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. 存储 API
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="9. 存储 API">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#91-storageclass" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.1 列出 StorageClass
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#92" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.2 列出存储提供商
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. 集群列表 API
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-job-api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. Job 日志 API
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../zh/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    中文
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_9" id="__nav_9_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    中文
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../zh/quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    快速开始
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../zh/ui-behavior/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Web 控制台
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../zh/concepts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    核心概念
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../zh/architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    架构设计
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../zh/deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    部署指南
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../zh/api/reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API 参考
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../zh/api/examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API 示例
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        约定
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="约定">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        资源归属与前端可操作性
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-node" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Node 节点查询（只读 + 污点）
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. Node 节点查询（只读 + 污点）">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#11-label" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.1 列出节点（按 label 过滤）
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#12" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.2 查询单个节点
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#13-merge-patch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.3 设置节点不可调度（打污点，merge-patch）
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-job" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Job 作业管理（前端主要操作对象）
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Job 作业管理（前端主要操作对象）">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-rl-job" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 创建一个完整的 RL 训练 Job
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-job" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2 查询 Job 状态
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#23-job-label" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3 列出 Job（按 label 选择）
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#24-job-spec-resourceversion" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.4 更新 Job（替换 spec，需带 resourceVersion）
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#25-patch-jobmerge-patch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.5 Patch Job（merge-patch 调整副本数）
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#26-job" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.6 删除 Job
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-task" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Task 任务查询（只读）
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Task 任务查询（只读）">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-job-task" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 列出某 Job 下的 Task
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-task" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 查询单个 Task 状态
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-workflow-job-dag" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Workflow 工作流管理（多 Job DAG 编排）
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Workflow 工作流管理（多 Job DAG 编排）">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 创建一个两阶段 Workflow（数据准备 → 训练）
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 查询 Workflow 状态
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#43-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.3 列出 / 删除 Workflow
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#44-patch-workflowmerge-patch-job" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.4 Patch Workflow（merge-patch 调整 job 模板）
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-docker-raw-job-task" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. 其他接入形态（Docker / Raw）在 Job task 模板中的用法
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. 其他接入形态（Docker / Raw）在 Job task 模板中的用法">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-docker-task-job" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 含 Docker task 的 Job
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-raw-task-job-artifact" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 含 Raw task 的 Job（裸进程/二进制 + artifact）
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. 通用查询参数样例
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. 前端开发要点
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. 认证 API
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="8. 认证 API">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#81" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.1 用户登录
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. 存储 API
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="9. 存储 API">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#91-storageclass" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.1 列出 StorageClass
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#92" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.2 列出存储提供商
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. 集群列表 API
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-job-api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. Job 日志 API
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="api">API 调用样例<a class="headerlink" href="#api" title="Permanent link">&para;</a></h1>
+<p>本文件提供 rlark gateway HTTP API 的端到端调用样例，重点围绕 <strong>Kubernetes 接入形态</strong>（<code>agentType=Kubernetes</code>）展开，便于前端/Agent 基于本文件与 <a href="../reference/">reference.md</a> 进行开发。</p>
+<h2 id="_1">约定<a class="headerlink" href="#_1" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Gateway 默认监听 <code>http://localhost:8080</code></li>
+<li>API 根路径：<code>/api/v1/rlinf.io/v1alpha1</code></li>
+<li>资源范围（Scope）：</li>
+<li><strong>Namespaced</strong>（<code>nodes</code>、<code>tasks</code>）：必须在 query 中带 <code>namespace=&lt;ns&gt;</code></li>
+<li><strong>Cluster</strong>（<code>jobs</code>、<code>workflows</code>）：不需要 <code>namespace</code></li>
+<li>接入形态（<code>spec.agentType</code>）：<code>Kubernetes</code> / <code>Docker</code> / <code>Raw</code>，三者互斥</li>
+<li>任务角色（<code>spec.role</code>，必填）：<code>Actor</code> / <code>Rollout</code> / <code>Env</code></li>
+<li>K8s Workload <code>kind</code>：<code>Deployment</code> / <code>DaemonSet</code> / <code>StatefulSet</code> / <code>CloneSet</code></li>
+<li><code>kubernetes.workload.template</code> 是标准 Kubernetes <code>corev1.PodTemplateSpec</code>，包含 <code>metadata</code>（labels 等）与 <code>spec</code>（containers/volumes 等）</li>
+</ul>
+<h3 id="_2">资源归属与前端可操作性<a class="headerlink" href="#_2" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>资源</th>
+<th>创建者</th>
+<th>前端可操作</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Node</code></td>
+<td>agent-controller 的 node controller 从本地向控制面 push（见 <a href="../../pkg/agent/controllers/node/push.go">push.go</a>）</td>
+<td>仅 <strong>List / Get / 打污点（PATCH unschedulable）</strong>，不建议前端 Create/Delete</td>
+</tr>
+<tr>
+<td><code>Task</code></td>
+<td>控制面 job-controller 根据 Job 的 task 模板调谐创建（见 <a href="../../pkg/controllermanager/job/job_controller.go">job_controller.go</a>、<a href="../../pkg/controllermanager/job/sync.go">sync.go</a>）</td>
+<td><strong>只读</strong>（List/Get/Get Status），不建议前端 Create/Update/Delete</td>
+</tr>
+<tr>
+<td><code>Job</code></td>
+<td>用户/前端创建</td>
+<td><strong>全量 CRUD</strong>，前端主要操作对象</td>
+</tr>
+<tr>
+<td><code>Workflow</code></td>
+<td>用户/前端创建</td>
+<td><strong>全量 CRUD</strong>，前端主要操作对象</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>核心用法：前端只需创建/更新 <strong>Job</strong>（含完整的 task 模板）或 <strong>Workflow</strong>（含 job 模板 DAG），控制面会自动调谐创建对应的 Task 与下层 workload。</p>
+</blockquote>
+<p>所有样例使用 <code>curl</code>，响应体省略部分非关键字段（以 <code>...</code> 表示）。</p>
+<hr />
+<h2 id="1-node">1. Node 节点查询（只读 + 污点）<a class="headerlink" href="#1-node" title="Permanent link">&para;</a></h2>
+<p>Node 由各节点上的 agent-controller 自动注册与上报，前端一般只做查询和调度控制。</p>
+<h3 id="11-label">1.1 列出节点（按 label 过滤）<a class="headerlink" href="#11-label" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span><span class="s2">&quot;http://localhost:8080/api/v1/rlinf.io/v1alpha1/nodes?namespace=default&amp;labelSelector=agent-type=kubernetes&quot;</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;apiVersion&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;rlinf.io/v1alpha1&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;kind&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;NodeList&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;metadata&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;resourceVersion&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;12345&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">  </span><span class="nt">&quot;items&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;metadata&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;node-k8s-01&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">      </span><span class="nt">&quot;spec&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;agentType&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Kubernetes&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;unschedulable&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="w"> </span><span class="p">},</span>
+<span class="w">      </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;phase&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Online&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;addresses&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">          </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;InternalIP&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;address&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;10.0.1.23&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">          </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Hostname&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;address&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;node-k8s-01&quot;</span><span class="w"> </span><span class="p">}</span>
+<span class="w">        </span><span class="p">],</span>
+<span class="w">        </span><span class="nt">&quot;capacity&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;cpu&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;32&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;memory&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;128Gi&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;nvidia.com/gpu&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;8&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">        </span><span class="nt">&quot;allocatable&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;cpu&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;30&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;memory&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;120Gi&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;nvidia.com/gpu&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;8&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">        </span><span class="nt">&quot;used&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;cpu&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;4&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;memory&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;16Gi&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;nvidia.com/gpu&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">        </span><span class="nt">&quot;nodeInfo&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">          </span><span class="nt">&quot;architecture&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;amd64&quot;</span><span class="p">,</span>
+<span class="w">          </span><span class="nt">&quot;operatingSystem&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;linux&quot;</span><span class="p">,</span>
+<span class="w">          </span><span class="nt">&quot;kernelVersion&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;5.15.0-91-generic&quot;</span><span class="p">,</span>
+<span class="w">          </span><span class="nt">&quot;agentVersion&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;0.1.0&quot;</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">      </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="12">1.2 查询单个节点<a class="headerlink" href="#12" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span><span class="s2">&quot;http://localhost:8080/api/v1/rlinf.io/v1alpha1/nodes/node-k8s-01?namespace=default&quot;</span>
+</code></pre></div>
+<h3 id="13-merge-patch">1.3 设置节点不可调度（打污点，merge-patch）<a class="headerlink" href="#13-merge-patch" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-X<span class="w"> </span>PATCH<span class="w"> </span><span class="s2">&quot;http://localhost:8080/api/v1/rlinf.io/v1alpha1/nodes/node-k8s-01?namespace=default&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/merge-patch+json&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{ &quot;spec&quot;: { &quot;unschedulable&quot;: true } }&#39;</span>
+</code></pre></div>
+<hr />
+<h2 id="2-job">2. Job 作业管理（前端主要操作对象）<a class="headerlink" href="#2-job" title="Permanent link">&para;</a></h2>
+<p>Job 是 cluster-scoped，聚合多个 Task（如 RL 训练的 Actor/Rollout/Env）。每个 task 模板带 <code>name</code>、<code>head</code>（是否为主节点）及内嵌的 <code>TaskSpec</code>。<strong>只要 task 模板完备，job-controller 会自动调谐创建对应的 Task</strong>（Task 名称由 <code>&lt;jobName&gt;-&lt;taskName&gt;</code> 派生，namespace 当前固定为 <code>default</code>，并打上 <code>rlinf.io/job=&lt;jobName&gt;</code> 标签）。</p>
+<h3 id="21-rl-job">2.1 创建一个完整的 RL 训练 Job<a class="headerlink" href="#21-rl-job" title="Permanent link">&para;</a></h3>
+<p>包含 3 个 task：1 个 head Actor（Deployment，1 副本）、4 个 worker Actor（Deployment）、1 个 Rollout（StatefulSet）。全部使用 K8s 接入。</p>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span><span class="s2">&quot;http://localhost:8080/api/v1/rlinf.io/v1alpha1/jobs&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{</span>
+<span class="s1">    &quot;apiVersion&quot;: &quot;rlinf.io/v1alpha1&quot;,</span>
+<span class="s1">    &quot;kind&quot;: &quot;Job&quot;,</span>
+<span class="s1">    &quot;metadata&quot;: {</span>
+<span class="s1">      &quot;name&quot;: &quot;ppo-cartpole-v1&quot;,</span>
+<span class="s1">      &quot;labels&quot;: { &quot;framework&quot;: &quot;ppo&quot;, &quot;env&quot;: &quot;cartpole&quot; }</span>
+<span class="s1">    },</span>
+<span class="s1">    &quot;spec&quot;: {</span>
+<span class="s1">      &quot;tasks&quot;: [</span>
+<span class="s1">        {</span>
+<span class="s1">          &quot;name&quot;: &quot;actor-head&quot;,</span>
+<span class="s1">          &quot;head&quot;: true,</span>
+<span class="s1">          &quot;role&quot;: &quot;Actor&quot;,</span>
+<span class="s1">          &quot;agentType&quot;: &quot;Kubernetes&quot;,</span>
+<span class="s1">          &quot;kubernetes&quot;: {</span>
+<span class="s1">            &quot;workload&quot;: {</span>
+<span class="s1">              &quot;kind&quot;: &quot;Deployment&quot;,</span>
+<span class="s1">              &quot;replicas&quot;: 1,</span>
+<span class="s1">              &quot;template&quot;: {</span>
+<span class="s1">                &quot;metadata&quot;: { &quot;labels&quot;: { &quot;job&quot;: &quot;ppo-cartpole-v1&quot;, &quot;task&quot;: &quot;actor-head&quot; } },</span>
+<span class="s1">                &quot;spec&quot;: {</span>
+<span class="s1">                  &quot;restartPolicy&quot;: &quot;Always&quot;,</span>
+<span class="s1">                  &quot;containers&quot;: [</span>
+<span class="s1">                    {</span>
+<span class="s1">                      &quot;name&quot;: &quot;trainer&quot;,</span>
+<span class="s1">                      &quot;image&quot;: &quot;registry.example.com/rl/ppo:v0.3.0&quot;,</span>
+<span class="s1">                      &quot;command&quot;: [&quot;python&quot;, &quot;main.py&quot;],</span>
+<span class="s1">                      &quot;args&quot;: [&quot;--role=head&quot;, &quot;--port=8000&quot;],</span>
+<span class="s1">                      &quot;env&quot;: [</span>
+<span class="s1">                        { &quot;name&quot;: &quot;JOB_NAME&quot;, &quot;value&quot;: &quot;ppo-cartpole-v1&quot; },</span>
+<span class="s1">                        { &quot;name&quot;: &quot;TASK_NAME&quot;, &quot;value&quot;: &quot;actor-head&quot; }</span>
+<span class="s1">                      ],</span>
+<span class="s1">                      &quot;ports&quot;: [{ &quot;containerPort&quot;: 8000 }],</span>
+<span class="s1">                      &quot;resources&quot;: { &quot;limits&quot;: { &quot;nvidia.com/gpu&quot;: &quot;1&quot;, &quot;cpu&quot;: &quot;8&quot;, &quot;memory&quot;: &quot;32Gi&quot; } }</span>
+<span class="s1">                    }</span>
+<span class="s1">                  ]</span>
+<span class="s1">                }</span>
+<span class="s1">              }</span>
+<span class="s1">            }</span>
+<span class="s1">          }</span>
+<span class="s1">        },</span>
+<span class="s1">        {</span>
+<span class="s1">          &quot;name&quot;: &quot;actor-worker&quot;,</span>
+<span class="s1">          &quot;role&quot;: &quot;Actor&quot;,</span>
+<span class="s1">          &quot;agentType&quot;: &quot;Kubernetes&quot;,</span>
+<span class="s1">          &quot;kubernetes&quot;: {</span>
+<span class="s1">            &quot;workload&quot;: {</span>
+<span class="s1">              &quot;kind&quot;: &quot;Deployment&quot;,</span>
+<span class="s1">              &quot;replicas&quot;: 4,</span>
+<span class="s1">              &quot;template&quot;: {</span>
+<span class="s1">                &quot;metadata&quot;: { &quot;labels&quot;: { &quot;job&quot;: &quot;ppo-cartpole-v1&quot;, &quot;task&quot;: &quot;actor-worker&quot; } },</span>
+<span class="s1">                &quot;spec&quot;: {</span>
+<span class="s1">                  &quot;restartPolicy&quot;: &quot;Always&quot;,</span>
+<span class="s1">                  &quot;containers&quot;: [</span>
+<span class="s1">                    {</span>
+<span class="s1">                      &quot;name&quot;: &quot;trainer&quot;,</span>
+<span class="s1">                      &quot;image&quot;: &quot;registry.example.com/rl/ppo:v0.3.0&quot;,</span>
+<span class="s1">                      &quot;command&quot;: [&quot;python&quot;, &quot;main.py&quot;],</span>
+<span class="s1">                      &quot;args&quot;: [&quot;--role=worker&quot;, &quot;--head=actor-head:8000&quot;],</span>
+<span class="s1">                      &quot;env&quot;: [</span>
+<span class="s1">                        { &quot;name&quot;: &quot;JOB_NAME&quot;, &quot;value&quot;: &quot;ppo-cartpole-v1&quot; },</span>
+<span class="s1">                        { &quot;name&quot;: &quot;TASK_NAME&quot;, &quot;value&quot;: &quot;actor-worker&quot; }</span>
+<span class="s1">                      ],</span>
+<span class="s1">                      &quot;resources&quot;: { &quot;limits&quot;: { &quot;nvidia.com/gpu&quot;: &quot;1&quot;, &quot;cpu&quot;: &quot;8&quot;, &quot;memory&quot;: &quot;32Gi&quot; } }</span>
+<span class="s1">                    }</span>
+<span class="s1">                  ]</span>
+<span class="s1">                }</span>
+<span class="s1">              }</span>
+<span class="s1">            }</span>
+<span class="s1">          }</span>
+<span class="s1">        },</span>
+<span class="s1">        {</span>
+<span class="s1">          &quot;name&quot;: &quot;rollout&quot;,</span>
+<span class="s1">          &quot;role&quot;: &quot;Rollout&quot;,</span>
+<span class="s1">          &quot;agentType&quot;: &quot;Kubernetes&quot;,</span>
+<span class="s1">          &quot;tensorBoardDir&quot;: &quot;/data/tensorboard/ppo-cartpole-v1&quot;,</span>
+<span class="s1">          &quot;kubernetes&quot;: {</span>
+<span class="s1">            &quot;workload&quot;: {</span>
+<span class="s1">              &quot;kind&quot;: &quot;StatefulSet&quot;,</span>
+<span class="s1">              &quot;replicas&quot;: 2,</span>
+<span class="s1">              &quot;template&quot;: {</span>
+<span class="s1">                &quot;metadata&quot;: { &quot;labels&quot;: { &quot;job&quot;: &quot;ppo-cartpole-v1&quot;, &quot;task&quot;: &quot;rollout&quot; } },</span>
+<span class="s1">                &quot;spec&quot;: {</span>
+<span class="s1">                  &quot;restartPolicy&quot;: &quot;Always&quot;,</span>
+<span class="s1">                  &quot;containers&quot;: [</span>
+<span class="s1">                    {</span>
+<span class="s1">                      &quot;name&quot;: &quot;rollout&quot;,</span>
+<span class="s1">                      &quot;image&quot;: &quot;registry.example.com/rl/rollout:v0.3.0&quot;,</span>
+<span class="s1">                      &quot;args&quot;: [&quot;--env=CartPole-v1&quot;, &quot;--head=actor-head:8000&quot;],</span>
+<span class="s1">                      &quot;resources&quot;: { &quot;limits&quot;: { &quot;cpu&quot;: &quot;4&quot;, &quot;memory&quot;: &quot;8Gi&quot; } },</span>
+<span class="s1">                      &quot;volumeMounts&quot;: [</span>
+<span class="s1">                        { &quot;name&quot;: &quot;tb&quot;, &quot;mountPath&quot;: &quot;/data/tensorboard&quot; }</span>
+<span class="s1">                      ]</span>
+<span class="s1">                    }</span>
+<span class="s1">                  ],</span>
+<span class="s1">                  &quot;volumes&quot;: [</span>
+<span class="s1">                    { &quot;name&quot;: &quot;tb&quot;, &quot;persistentVolumeClaim&quot;: { &quot;claimName&quot;: &quot;tb-pvc&quot; } }</span>
+<span class="s1">                  ]</span>
+<span class="s1">                }</span>
+<span class="s1">              }</span>
+<span class="s1">            }</span>
+<span class="s1">          }</span>
+<span class="s1">        }</span>
+<span class="s1">      ]</span>
+<span class="s1">    }</span>
+<span class="s1">  }&#39;</span>
+</code></pre></div>
+<p>响应 <code>201 Created</code>（<code>status</code> 初始为 Pending，由 job-controller 填充）：</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;apiVersion&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;rlinf.io/v1alpha1&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;kind&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Job&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;metadata&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ppo-cartpole-v1&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;creationTimestamp&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-06-25T03:20:00Z&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">  </span><span class="nt">&quot;spec&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;tasks&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;...&quot;</span><span class="p">]</span><span class="w"> </span><span class="p">},</span>
+<span class="w">  </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;phase&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Pending&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;startTime&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-06-25T03:20:00Z&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;tasks&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">      </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;actor-head&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;phase&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">      </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;actor-worker&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;phase&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">      </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;rollout&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;phase&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="w"> </span><span class="p">}</span>
+<span class="w">    </span><span class="p">]</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<blockquote>
+<p>job-controller 进入 Pending 后会逐个 <code>dispatchTasks</code> 创建 Task，Task 名称形如 <code>ppo-cartpole-v1-actor-head</code>，namespace 为 <code>default</code>，并设置 OwnerReference 指向 Job。</p>
+</blockquote>
+<h3 id="22-job">2.2 查询 Job 状态<a class="headerlink" href="#22-job" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># 完整对象</span>
+curl<span class="w"> </span><span class="s2">&quot;http://localhost:8080/api/v1/rlinf.io/v1alpha1/jobs/ppo-cartpole-v1&quot;</span>
+
+<span class="c1"># 仅 status 子资源</span>
+curl<span class="w"> </span><span class="s2">&quot;http://localhost:8080/api/v1/rlinf.io/v1alpha1/jobs/ppo-cartpole-v1/status&quot;</span>
+</code></pre></div>
+<p>运行中的状态（job-controller 汇总各 Task phase 后驱动状态机迁移）：</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;phase&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Running&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;startTime&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-06-25T03:20:10Z&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;tasks&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">      </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;actor-head&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;phase&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Running&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">      </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;actor-worker&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;phase&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Running&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">      </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;rollout&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;phase&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Running&quot;</span><span class="w"> </span><span class="p">}</span>
+<span class="w">    </span><span class="p">],</span>
+<span class="w">    </span><span class="nt">&quot;conditions&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">      </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Ready&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;True&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;lastTransitionTime&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-06-25T03:20:30Z&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;reason&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;TasksRunning&quot;</span><span class="w"> </span><span class="p">}</span>
+<span class="w">    </span><span class="p">]</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Job 状态机迁移规则（见 <a href="../../pkg/controllermanager/job/statemachine.go">statemachine.go</a>）：</p>
+<table>
+<thead>
+<tr>
+<th>事件</th>
+<th>来源</th>
+<th>迁移</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>init</code></td>
+<td>Job 首次调谐</td>
+<td><code>""</code> → <code>Pending</code></td>
+</tr>
+<tr>
+<td><code>tasks-running</code></td>
+<td>任一 Task 进入 Running</td>
+<td><code>Pending</code> → <code>Running</code></td>
+</tr>
+<tr>
+<td><code>all-tasks-succeeded</code></td>
+<td>所有 Task Succeeded</td>
+<td><code>Running</code> → <code>Succeeded</code></td>
+</tr>
+<tr>
+<td><code>any-task-failed</code></td>
+<td>任一 Task Failed</td>
+<td><code>Running</code> → <code>Failed</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="23-job-label">2.3 列出 Job（按 label 选择）<a class="headerlink" href="#23-job-label" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span><span class="s2">&quot;http://localhost:8080/api/v1/rlinf.io/v1alpha1/jobs?labelSelector=framework=ppo&quot;</span>
+</code></pre></div>
+<h3 id="24-job-spec-resourceversion">2.4 更新 Job（替换 spec，需带 resourceVersion）<a class="headerlink" href="#24-job-spec-resourceversion" title="Permanent link">&para;</a></h3>
+<p>PUT 为全量替换；建议先 GET 取得 <code>resourceVersion</code>，再回写以避免冲突。修改 task 模板后，job-controller 会在下一次调谐时同步到对应的 Task。</p>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-X<span class="w"> </span>PUT<span class="w"> </span><span class="s2">&quot;http://localhost:8080/api/v1/rlinf.io/v1alpha1/jobs/ppo-cartpole-v1&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{</span>
+<span class="s1">    &quot;apiVersion&quot;: &quot;rlinf.io/v1alpha1&quot;,</span>
+<span class="s1">    &quot;kind&quot;: &quot;Job&quot;,</span>
+<span class="s1">    &quot;metadata&quot;: {</span>
+<span class="s1">      &quot;name&quot;: &quot;ppo-cartpole-v1&quot;,</span>
+<span class="s1">      &quot;resourceVersion&quot;: &quot;12345&quot;</span>
+<span class="s1">    },</span>
+<span class="s1">    &quot;spec&quot;: {</span>
+<span class="s1">      &quot;tasks&quot;: [</span>
+<span class="s1">        {</span>
+<span class="s1">          &quot;name&quot;: &quot;actor-head&quot;,</span>
+<span class="s1">          &quot;head&quot;: true,</span>
+<span class="s1">          &quot;role&quot;: &quot;Actor&quot;,</span>
+<span class="s1">          &quot;agentType&quot;: &quot;Kubernetes&quot;,</span>
+<span class="s1">          &quot;kubernetes&quot;: {</span>
+<span class="s1">            &quot;workload&quot;: {</span>
+<span class="s1">              &quot;kind&quot;: &quot;Deployment&quot;,</span>
+<span class="s1">              &quot;replicas&quot;: 1,</span>
+<span class="s1">              &quot;template&quot;: {</span>
+<span class="s1">                &quot;metadata&quot;: { &quot;labels&quot;: { &quot;job&quot;: &quot;ppo-cartpole-v1&quot;, &quot;task&quot;: &quot;actor-head&quot; } },</span>
+<span class="s1">                &quot;spec&quot;: {</span>
+<span class="s1">                  &quot;restartPolicy&quot;: &quot;Always&quot;,</span>
+<span class="s1">                  &quot;containers&quot;: [</span>
+<span class="s1">                    {</span>
+<span class="s1">                      &quot;name&quot;: &quot;trainer&quot;,</span>
+<span class="s1">                      &quot;image&quot;: &quot;registry.example.com/rl/ppo:v0.4.0&quot;,</span>
+<span class="s1">                      &quot;args&quot;: [&quot;--role=head&quot;, &quot;--port=8000&quot;, &quot;--lr=0.0003&quot;],</span>
+<span class="s1">                      &quot;resources&quot;: { &quot;limits&quot;: { &quot;nvidia.com/gpu&quot;: &quot;1&quot; } }</span>
+<span class="s1">                    }</span>
+<span class="s1">                  ]</span>
+<span class="s1">                }</span>
+<span class="s1">              }</span>
+<span class="s1">            }</span>
+<span class="s1">          }</span>
+<span class="s1">        }</span>
+<span class="s1">      ]</span>
+<span class="s1">    }</span>
+<span class="s1">  }&#39;</span>
+</code></pre></div>
+<h3 id="25-patch-jobmerge-patch">2.5 Patch Job（merge-patch 调整副本数）<a class="headerlink" href="#25-patch-jobmerge-patch" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-X<span class="w"> </span>PATCH<span class="w"> </span><span class="s2">&quot;http://localhost:8080/api/v1/rlinf.io/v1alpha1/jobs/ppo-cartpole-v1&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/merge-patch+json&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{ &quot;spec&quot;: { &quot;tasks&quot;: [ { &quot;name&quot;: &quot;actor-worker&quot;, &quot;role&quot;: &quot;Actor&quot;, &quot;agentType&quot;: &quot;Kubernetes&quot;, &quot;kubernetes&quot;: { &quot;workload&quot;: { &quot;replicas&quot;: 8 } } } ] } }&#39;</span>
+</code></pre></div>
+<blockquote>
+<p>注意：merge-patch 对数组是整体替换， patch task 数组时需保证元素包含 <code>role</code> 等必填字段，或改用 JSON-Patch 精确定位数组元素。</p>
+</blockquote>
+<h3 id="26-job">2.6 删除 Job<a class="headerlink" href="#26-job" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-X<span class="w"> </span>DELETE<span class="w"> </span><span class="s2">&quot;http://localhost:8080/api/v1/rlinf.io/v1alpha1/jobs/ppo-cartpole-v1&quot;</span>
+</code></pre></div>
+<blockquote>
+<p>删除 Job 后，由于其 OwnerReference 关系，job-controller 创建的 Task 会被垃圾回收。</p>
+</blockquote>
+<hr />
+<h2 id="3-task">3. Task 任务查询（只读）<a class="headerlink" href="#3-task" title="Permanent link">&para;</a></h2>
+<p>Task 由 job-controller 根据 Job 的 task 模板调谐创建，前端<strong>不应</strong>直接 Create/Update/Delete Task，但可以查询以观察底层 workload 的实际运行状态。</p>
+<h3 id="31-job-task">3.1 列出某 Job 下的 Task<a class="headerlink" href="#31-job-task" title="Permanent link">&para;</a></h3>
+<p>job-controller 创建 Task 时会打上 <code>rlinf.io/job=&lt;jobName&gt;</code> 标签，可用 labelSelector 过滤：</p>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span><span class="s2">&quot;http://localhost:8080/api/v1/rlinf.io/v1alpha1/tasks?namespace=default&amp;labelSelector=rlinf.io/job=ppo-cartpole-v1&quot;</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;apiVersion&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;rlinf.io/v1alpha1&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;kind&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;TaskList&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;items&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;metadata&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ppo-cartpole-v1-actor-head&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;namespace&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;default&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;labels&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;rlinf.io/job&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ppo-cartpole-v1&quot;</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">},</span>
+<span class="w">      </span><span class="nt">&quot;spec&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;role&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Actor&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;agentType&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Kubernetes&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;kubernetes&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;workload&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;kind&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Deployment&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;replicas&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">},</span>
+<span class="w">      </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;phase&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Running&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;observedNodes&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;node-k8s-01&quot;</span><span class="p">],</span><span class="w"> </span><span class="nt">&quot;retryCount&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="p">}</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;metadata&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ppo-cartpole-v1-actor-worker&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;namespace&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;default&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">      </span><span class="nt">&quot;spec&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;role&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Actor&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;agentType&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Kubernetes&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;kubernetes&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;workload&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;kind&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Deployment&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;replicas&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">4</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">},</span>
+<span class="w">      </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;phase&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Running&quot;</span><span class="w"> </span><span class="p">}</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;metadata&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ppo-cartpole-v1-rollout&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;namespace&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;default&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">      </span><span class="nt">&quot;spec&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;role&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Rollout&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;agentType&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Kubernetes&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;kubernetes&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;workload&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;kind&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;StatefulSet&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;replicas&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">},</span>
+<span class="w">      </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;phase&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Running&quot;</span><span class="w"> </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="32-task">3.2 查询单个 Task 状态<a class="headerlink" href="#32-task" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span><span class="s2">&quot;http://localhost:8080/api/v1/rlinf.io/v1alpha1/tasks/ppo-cartpole-v1-actor-head/status?namespace=default&quot;</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;phase&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Running&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;observedNodes&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;node-k8s-01&quot;</span><span class="p">],</span>
+<span class="w">    </span><span class="nt">&quot;conditions&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">      </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Ready&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;True&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;lastTransitionTime&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-06-25T03:21:00Z&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;reason&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;PodRunning&quot;</span><span class="w"> </span><span class="p">}</span>
+<span class="w">    </span><span class="p">],</span>
+<span class="w">    </span><span class="nt">&quot;startTime&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-06-25T03:20:30Z&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;retryCount&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<hr />
+<h2 id="4-workflow-job-dag">4. Workflow 工作流管理（多 Job DAG 编排）<a class="headerlink" href="#4-workflow-job-dag" title="Permanent link">&para;</a></h2>
+<p>Workflow 是 cluster-scoped，由若干 <code>jobTemplates</code> 组成，每个模板通过 <code>dependencies</code> 声明前置依赖，形成 DAG。每个 <code>jobTemplates[].spec</code> 即一个完整的 <code>JobSpec</code>，结构与独立 Job 完全一致。</p>
+<h3 id="41-workflow">4.1 创建一个两阶段 Workflow（数据准备 → 训练）<a class="headerlink" href="#41-workflow" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span><span class="s2">&quot;http://localhost:8080/api/v1/rlinf.io/v1alpha1/workflows&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{</span>
+<span class="s1">    &quot;apiVersion&quot;: &quot;rlinf.io/v1alpha1&quot;,</span>
+<span class="s1">    &quot;kind&quot;: &quot;Workflow&quot;,</span>
+<span class="s1">    &quot;metadata&quot;: { &quot;name&quot;: &quot;ppo-pipeline-v1&quot; },</span>
+<span class="s1">    &quot;spec&quot;: {</span>
+<span class="s1">      &quot;jobTemplates&quot;: [</span>
+<span class="s1">        {</span>
+<span class="s1">          &quot;name&quot;: &quot;prepare-data&quot;,</span>
+<span class="s1">          &quot;dependencies&quot;: [],</span>
+<span class="s1">          &quot;spec&quot;: {</span>
+<span class="s1">            &quot;tasks&quot;: [</span>
+<span class="s1">              {</span>
+<span class="s1">                &quot;name&quot;: &quot;prep&quot;,</span>
+<span class="s1">                &quot;role&quot;: &quot;Env&quot;,</span>
+<span class="s1">                &quot;agentType&quot;: &quot;Kubernetes&quot;,</span>
+<span class="s1">                &quot;kubernetes&quot;: {</span>
+<span class="s1">                  &quot;workload&quot;: {</span>
+<span class="s1">                    &quot;kind&quot;: &quot;Deployment&quot;,</span>
+<span class="s1">                    &quot;replicas&quot;: 1,</span>
+<span class="s1">                    &quot;template&quot;: {</span>
+<span class="s1">                      &quot;metadata&quot;: { &quot;labels&quot;: { &quot;step&quot;: &quot;prepare&quot; } },</span>
+<span class="s1">                      &quot;spec&quot;: {</span>
+<span class="s1">                        &quot;restartPolicy&quot;: &quot;Always&quot;,</span>
+<span class="s1">                        &quot;containers&quot;: [</span>
+<span class="s1">                          {</span>
+<span class="s1">                            &quot;name&quot;: &quot;prep&quot;,</span>
+<span class="s1">                            &quot;image&quot;: &quot;registry.example.com/rl/prep:v0.3.0&quot;,</span>
+<span class="s1">                            &quot;args&quot;: [&quot;--dataset=cartpole&quot;, &quot;--out=/data/processed&quot;, &quot;--oneshot&quot;],</span>
+<span class="s1">                            &quot;volumeMounts&quot;: [{ &quot;name&quot;: &quot;data&quot;, &quot;mountPath&quot;: &quot;/data&quot; }]</span>
+<span class="s1">                          }</span>
+<span class="s1">                        ],</span>
+<span class="s1">                        &quot;volumes&quot;: [{ &quot;name&quot;: &quot;data&quot;, &quot;persistentVolumeClaim&quot;: { &quot;claimName&quot;: &quot;data-pvc&quot; } }]</span>
+<span class="s1">                      }</span>
+<span class="s1">                    }</span>
+<span class="s1">                  }</span>
+<span class="s1">                }</span>
+<span class="s1">              }</span>
+<span class="s1">            ]</span>
+<span class="s1">          }</span>
+<span class="s1">        },</span>
+<span class="s1">        {</span>
+<span class="s1">          &quot;name&quot;: &quot;train&quot;,</span>
+<span class="s1">          &quot;dependencies&quot;: [&quot;prepare-data&quot;],</span>
+<span class="s1">          &quot;spec&quot;: {</span>
+<span class="s1">            &quot;tasks&quot;: [</span>
+<span class="s1">              {</span>
+<span class="s1">                &quot;name&quot;: &quot;actor-head&quot;,</span>
+<span class="s1">                &quot;head&quot;: true,</span>
+<span class="s1">                &quot;role&quot;: &quot;Actor&quot;,</span>
+<span class="s1">                &quot;agentType&quot;: &quot;Kubernetes&quot;,</span>
+<span class="s1">                &quot;kubernetes&quot;: {</span>
+<span class="s1">                  &quot;workload&quot;: {</span>
+<span class="s1">                    &quot;kind&quot;: &quot;Deployment&quot;,</span>
+<span class="s1">                    &quot;replicas&quot;: 1,</span>
+<span class="s1">                    &quot;template&quot;: {</span>
+<span class="s1">                      &quot;metadata&quot;: { &quot;labels&quot;: { &quot;step&quot;: &quot;train&quot; } },</span>
+<span class="s1">                      &quot;spec&quot;: {</span>
+<span class="s1">                        &quot;restartPolicy&quot;: &quot;Always&quot;,</span>
+<span class="s1">                        &quot;containers&quot;: [</span>
+<span class="s1">                          {</span>
+<span class="s1">                            &quot;name&quot;: &quot;trainer&quot;,</span>
+<span class="s1">                            &quot;image&quot;: &quot;registry.example.com/rl/ppo:v0.3.0&quot;,</span>
+<span class="s1">                            &quot;args&quot;: [&quot;--data=/data/processed&quot;],</span>
+<span class="s1">                            &quot;resources&quot;: { &quot;limits&quot;: { &quot;nvidia.com/gpu&quot;: &quot;1&quot; } }</span>
+<span class="s1">                          }</span>
+<span class="s1">                        ]</span>
+<span class="s1">                      }</span>
+<span class="s1">                    }</span>
+<span class="s1">                  }</span>
+<span class="s1">                }</span>
+<span class="s1">              }</span>
+<span class="s1">            ]</span>
+<span class="s1">          }</span>
+<span class="s1">        }</span>
+<span class="s1">      ]</span>
+<span class="s1">    }</span>
+<span class="s1">  }&#39;</span>
+</code></pre></div>
+<blockquote>
+<p>说明：<code>prepare-data</code> 无依赖会先调度；<code>train</code> 依赖 <code>prepare-data</code>，在前者成功后才会启动。每个 jobTemplate 的 <code>spec</code> 字段即完整 <code>JobSpec</code>，前端可复用 Job 表单组件。</p>
+</blockquote>
+<h3 id="42-workflow">4.2 查询 Workflow 状态<a class="headerlink" href="#42-workflow" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span><span class="s2">&quot;http://localhost:8080/api/v1/rlinf.io/v1alpha1/workflows/ppo-pipeline-v1/status&quot;</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;phase&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Running&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;startTime&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-06-25T03:30:00Z&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;jobs&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">      </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;prepare-data&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;phase&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Succeeded&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">      </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;train&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;phase&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Running&quot;</span><span class="w"> </span><span class="p">}</span>
+<span class="w">    </span><span class="p">]</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="43-workflow">4.3 列出 / 删除 Workflow<a class="headerlink" href="#43-workflow" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># 列表</span>
+curl<span class="w"> </span><span class="s2">&quot;http://localhost:8080/api/v1/rlinf.io/v1alpha1/workflows?limit=10&quot;</span>
+
+<span class="c1"># 删除</span>
+curl<span class="w"> </span>-X<span class="w"> </span>DELETE<span class="w"> </span><span class="s2">&quot;http://localhost:8080/api/v1/rlinf.io/v1alpha1/workflows/ppo-pipeline-v1&quot;</span>
+</code></pre></div>
+<h3 id="44-patch-workflowmerge-patch-job">4.4 Patch Workflow（merge-patch 调整 job 模板）<a class="headerlink" href="#44-patch-workflowmerge-patch-job" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-X<span class="w"> </span>PATCH<span class="w"> </span><span class="s2">&quot;http://localhost:8080/api/v1/rlinf.io/v1alpha1/workflows/ppo-pipeline-v1&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/merge-patch+json&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{ &quot;spec&quot;: { &quot;jobTemplates&quot;: [ { &quot;name&quot;: &quot;train&quot;, &quot;dependencies&quot;: [&quot;prepare-data&quot;], &quot;spec&quot;: { &quot;tasks&quot;: [ { &quot;name&quot;: &quot;actor-head&quot;, &quot;head&quot;: true, &quot;role&quot;: &quot;Actor&quot;, &quot;agentType&quot;: &quot;Kubernetes&quot;, &quot;kubernetes&quot;: { &quot;workload&quot;: { &quot;kind&quot;: &quot;Deployment&quot;, &quot;replicas&quot;: 2, &quot;template&quot;: { &quot;metadata&quot;: { &quot;labels&quot;: { &quot;step&quot;: &quot;train&quot; } }, &quot;spec&quot;: { &quot;restartPolicy&quot;: &quot;Always&quot;, &quot;containers&quot;: [ { &quot;name&quot;: &quot;trainer&quot;, &quot;image&quot;: &quot;registry.example.com/rl/ppo:v0.4.0&quot; } ] } } } } } ] } } ] } }&#39;</span>
+</code></pre></div>
+<blockquote>
+<p>注意：merge-patch 对 <code>jobTemplates</code> 数组是整体替换，需带上完整的 job 模板结构。</p>
+</blockquote>
+<hr />
+<h2 id="5-docker-raw-job-task">5. 其他接入形态（Docker / Raw）在 Job task 模板中的用法<a class="headerlink" href="#5-docker-raw-job-task" title="Permanent link">&para;</a></h2>
+<blockquote>
+<p><strong>开发状态</strong>：Docker 和 Raw 接入形态的代码框架已搭建（<code>pkg/agent/controllers/base/types.go</code>），但实际运行时实现尚为 TODO（<code>LocalDockerClient any // TODO</code>、<code>LocalRawClient any // TODO</code>）。以下展示的 API 结构已定稿，可供前端开发和测试使用。</p>
+</blockquote>
+<p>Job 的 task 模板支持三种互斥的 <code>agentType</code>，前端表单应按 agentType 切换分片。以下展示在 Job 内使用 Docker / Raw task 的写法（完整字段见 <a href="../reference/">reference.md</a>）。</p>
+<h3 id="51-docker-task-job">5.1 含 Docker task 的 Job<a class="headerlink" href="#51-docker-task-job" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span><span class="s2">&quot;http://localhost:8080/api/v1/rlinf.io/v1alpha1/jobs&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{</span>
+<span class="s1">    &quot;apiVersion&quot;: &quot;rlinf.io/v1alpha1&quot;,</span>
+<span class="s1">    &quot;kind&quot;: &quot;Job&quot;,</span>
+<span class="s1">    &quot;metadata&quot;: { &quot;name&quot;: &quot;docker-job-01&quot; },</span>
+<span class="s1">    &quot;spec&quot;: {</span>
+<span class="s1">      &quot;tasks&quot;: [</span>
+<span class="s1">        {</span>
+<span class="s1">          &quot;name&quot;: &quot;docker-actor&quot;,</span>
+<span class="s1">          &quot;head&quot;: true,</span>
+<span class="s1">          &quot;role&quot;: &quot;Actor&quot;,</span>
+<span class="s1">          &quot;agentType&quot;: &quot;Docker&quot;,</span>
+<span class="s1">          &quot;docker&quot;: {</span>
+<span class="s1">            &quot;containers&quot;: [</span>
+<span class="s1">              {</span>
+<span class="s1">                &quot;name&quot;: &quot;trainer&quot;,</span>
+<span class="s1">                &quot;image&quot;: &quot;pytorch/pytorch:2.3.0-cuda12.1-cudnn8-runtime&quot;,</span>
+<span class="s1">                &quot;command&quot;: [&quot;python&quot;],</span>
+<span class="s1">                &quot;args&quot;: [&quot;train.py&quot;],</span>
+<span class="s1">                &quot;environment&quot;: [{ &quot;name&quot;: &quot;CUDA_VISIBLE_DEVICES&quot;, &quot;value&quot;: &quot;0&quot; }],</span>
+<span class="s1">                &quot;volumes&quot;: [{ &quot;source&quot;: &quot;/host/data&quot;, &quot;target&quot;: &quot;/data&quot; }]</span>
+<span class="s1">              }</span>
+<span class="s1">            ]</span>
+<span class="s1">          }</span>
+<span class="s1">        }</span>
+<span class="s1">      ]</span>
+<span class="s1">    }</span>
+<span class="s1">  }&#39;</span>
+</code></pre></div>
+<h3 id="52-raw-task-job-artifact">5.2 含 Raw task 的 Job（裸进程/二进制 + artifact）<a class="headerlink" href="#52-raw-task-job-artifact" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span><span class="s2">&quot;http://localhost:8080/api/v1/rlinf.io/v1alpha1/jobs&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{</span>
+<span class="s1">    &quot;apiVersion&quot;: &quot;rlinf.io/v1alpha1&quot;,</span>
+<span class="s1">    &quot;kind&quot;: &quot;Job&quot;,</span>
+<span class="s1">    &quot;metadata&quot;: { &quot;name&quot;: &quot;raw-job-01&quot; },</span>
+<span class="s1">    &quot;spec&quot;: {</span>
+<span class="s1">      &quot;tasks&quot;: [</span>
+<span class="s1">        {</span>
+<span class="s1">          &quot;name&quot;: &quot;raw-actor&quot;,</span>
+<span class="s1">          &quot;head&quot;: true,</span>
+<span class="s1">          &quot;role&quot;: &quot;Actor&quot;,</span>
+<span class="s1">          &quot;agentType&quot;: &quot;Raw&quot;,</span>
+<span class="s1">          &quot;raw&quot;: {</span>
+<span class="s1">            &quot;artifact&quot;: &quot;https://repo.example.com/bin/actor-v0.3.0.tar.gz&quot;,</span>
+<span class="s1">            &quot;entrypoint&quot;: [&quot;./actor&quot;, &quot;--port=8000&quot;],</span>
+<span class="s1">            &quot;environment&quot;: [{ &quot;name&quot;: &quot;RANK&quot;, &quot;value&quot;: &quot;0&quot; }]</span>
+<span class="s1">          }</span>
+<span class="s1">        }</span>
+<span class="s1">      ]</span>
+<span class="s1">    }</span>
+<span class="s1">  }&#39;</span>
+</code></pre></div>
+<hr />
+<h2 id="6">6. 通用查询参数样例<a class="headerlink" href="#6" title="Permanent link">&para;</a></h2>
+<p>适用于所有 <code>GET ...</code> 列表接口。</p>
+<table>
+<thead>
+<tr>
+<th>场景</th>
+<th>示例 URL</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>分页</td>
+<td><code>tasks?namespace=default&amp;limit=20&amp;continue=&lt;token&gt;</code></td>
+</tr>
+<tr>
+<td>label 选择</td>
+<td><code>jobs?labelSelector=framework=ppo,env=cartpole</code></td>
+</tr>
+<tr>
+<td>字段选择</td>
+<td><code>tasks?namespace=default&amp;fieldSelector=status.phase=Running</code></td>
+</tr>
+<tr>
+<td>按名称前缀（label）</td>
+<td><code>tasks?namespace=default&amp;labelSelector=app%3Dmnist</code></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="7">7. 前端开发要点<a class="headerlink" href="#7" title="Permanent link">&para;</a></h2>
+<ol>
+<li><strong>Scope 决定是否传 namespace</strong>：<code>nodes</code>/<code>tasks</code> 必传 <code>?namespace=</code>；<code>jobs</code>/<code>workflows</code> 不要传。</li>
+<li><strong>前端主要操作 Job 和 Workflow</strong>：Task 由 job-controller 调谐创建，Node 由 agent-controller 上报，前端对这两者只读（Node 支持打污点）。</li>
+<li><strong>PodTemplateSpec 是原生 K8s 对象</strong>：<code>spec.kubernetes.workload.template</code> 可直接复用社区 K8s 表单/校验组件（containers、env、resources、volumes、probe 等）。</li>
+<li><strong>三种 agentType 互斥</strong>：<code>kubernetes</code> / <code>docker</code> / <code>raw</code> 三选一；前端表单应按 agentType 切换分片。</li>
+<li><strong>Status 为只读</strong>：<code>status</code> 由系统填充，前端不应在 PUT/PATCH 的 body 里带 <code>status</code>（如需更新状态用 <code>/status</code> 子资源，一般前端只读）。</li>
+<li><strong>PUT 需 resourceVersion</strong>：全量更新前先 GET 拿到 <code>metadata.resourceVersion</code>，避免 <code>409 Conflict</code>。</li>
+<li><strong>PATCH 用 merge-patch</strong>：<code>Content-Type: application/merge-patch+json</code> 适合增量更新（如改副本数、改镜像）；但对数组是整体替换，patch <code>tasks</code>/<code>jobTemplates</code> 时需带完整元素，或改用 JSON-Patch。</li>
+<li><strong>Job/Workflow 的 task/job 模板</strong>：内嵌的 <code>spec</code> 即 <code>JobSpec</code>，结构与独立 Job 完全一致，前端可复用同一表单组件。</li>
+<li><strong>Task 名称派生规则</strong>：job-controller 创建 Task 时名称为 <code>&lt;jobName&gt;-&lt;taskName&gt;</code>，namespace 为 <code>default</code>，标签 <code>rlinf.io/job=&lt;jobName&gt;</code>；前端可用此标签查询某 Job 下的所有 Task。</li>
+</ol>
+<hr />
+<h2 id="8-api">8. 认证 API<a class="headerlink" href="#8-api" title="Permanent link">&para;</a></h2>
+<h3 id="81">8.1 用户登录<a class="headerlink" href="#81" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span><span class="s2">&quot;http://localhost:8080/api/v1/auth/login&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;username&quot;: &quot;admin&quot;, &quot;password&quot;: &quot;your-password&quot;}&#39;</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><span class="p">{</span><span class="nt">&quot;ok&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;role&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;admin&quot;</span><span class="p">}</span>
+</code></pre></div>
+<hr />
+<h2 id="9-api">9. 存储 API<a class="headerlink" href="#9-api" title="Permanent link">&para;</a></h2>
+<h3 id="91-storageclass">9.1 列出 StorageClass<a class="headerlink" href="#91-storageclass" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># 列出所有集群的 StorageClass</span>
+curl<span class="w"> </span><span class="s2">&quot;http://localhost:8080/api/v1/storage/storageclass&quot;</span>
+
+<span class="c1"># 按集群过滤</span>
+curl<span class="w"> </span><span class="s2">&quot;http://localhost:8080/api/v1/storage/storageclass?clusters=agent-beijing,agent-shanghai&quot;</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;data&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;ceph-rbd&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ceph-rbd&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;clusters&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;agent-beijing&quot;</span><span class="p">],</span>
+<span class="w">      </span><span class="nt">&quot;description&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Ceph RBD StorageClass&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;bucket&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">},</span>
+<span class="w">  </span><span class="nt">&quot;success&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="92">9.2 列出存储提供商<a class="headerlink" href="#92" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span><span class="s2">&quot;http://localhost:8080/api/v1/storage/storageclass/provider&quot;</span>
+</code></pre></div>
+<hr />
+<h2 id="10-api">10. 集群列表 API<a class="headerlink" href="#10-api" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span><span class="s2">&quot;http://localhost:8080/api/v1/clusters&quot;</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;data&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;agent-beijing&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Beijing GPU Cluster&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;cloud&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;phase&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Online&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;cloudNodes&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">4</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;embodiedNodes&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;robots&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;gpuModels&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;A100&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;V100&quot;</span><span class="p">],</span>
+<span class="w">      </span><span class="nt">&quot;cpuUsage&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.45</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;gpuUsage&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.72</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;runningJobs&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;description&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Beijing GPU training cluster&quot;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;success&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
+<span class="p">}</span>
+</code></pre></div>
+<hr />
+<h2 id="11-job-api">11. Job 日志 API<a class="headerlink" href="#11-job-api" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span><span class="s2">&quot;http://localhost:8080/api/v1/rlinf.io/v1alpha1/jobs/ppo-cartpole-v1/logs&quot;</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;pods&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;taskName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;actor-head&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;podName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;actor-head-0&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;phase&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Running&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;node&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;gpu-node-01&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;logs&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Training started...\nEpoch 1/100: loss=0.45...&quot;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.sections", "navigation.tracking", "navigation.indexes", "toc.follow", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+        <script src="../../javascripts/fix-nav.js"></script>
+      
+    
+  </body>
+</html>

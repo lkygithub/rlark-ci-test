@@ -6,6 +6,7 @@ import {
   Copy,
   Download,
   ExternalLink,
+  Info,
   KeyRound,
   LoaderCircle,
   MoreVertical,
@@ -25,10 +26,11 @@ import {
   type Job,
   type Phase,
   type PodInfo,
+  type PullProgressEntry,
   type Worker as WorkerItem,
 } from "../data";
 import type { Copy as CopyType } from "../i18n";
-import type { CRDJob } from "../types";
+import type { CRDJob, CRDNode, NodeEventEntry } from "../types";
 import { useAutoRefresh } from "../hooks";
 import { crdToJob } from "../utils/crd";
 import { formatChinaDateTime } from "../utils/time";
@@ -82,6 +84,85 @@ async function copyText(value: string) {
   return copied;
 }
 
+// aggregateJobPullProgress collects pullProgress entries from nodePullProgressMap
+// for all nodes referenced by the job's taskStatuses.observedNodes. Used by the
+// list/detail top StatusBadge hover to surface image pull progress while a job
+// is Pending (mirrors WorkerRow's worker-level tooltip).
+function aggregateJobPullProgress(
+  job: Job,
+  nodePullProgressMap: Record<string, PullProgressEntry[]>,
+): PullProgressEntry[] {
+  const nodeNames = new Set<string>();
+  for (const ts of job.taskStatuses ?? []) {
+    for (const n of ts.observedNodes ?? []) {
+      if (n) nodeNames.add(n);
+    }
+  }
+  const aggregated: PullProgressEntry[] = [];
+  const seen = new Set<string>();
+  for (const nodeName of nodeNames) {
+    const entries = nodePullProgressMap[nodeName];
+    if (!entries) continue;
+    for (const p of entries) {
+      // Dedup by image+status to avoid showing identical entries from
+      // multiple nodes pulling the same image.
+      const key = `${p.image}|${p.status}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      aggregated.push(p);
+    }
+  }
+  return aggregated;
+}
+
+// aggregateJobEvents mirrors aggregateJobPullProgress but for Node.status.events
+// (DiskPressure 等 Warning 事件)。在任务 Pending 期间，从 taskStatuses 中
+// observedNodes 命中的节点上聚合 warning 事件，供列表/详情顶部 StatusBadge
+// 的 "i" tooltip 展示。多节点同一事件按 (objectKind, objectName, reason)
+// 去重，保留 lastTime 最新的一条。
+function aggregateJobEvents(
+  job: Job,
+  nodeEventsMap: Record<string, NodeEventEntry[]>,
+): NodeEventEntry[] {
+  const nodeNames = new Set<string>();
+  for (const ts of job.taskStatuses ?? []) {
+    for (const n of ts.observedNodes ?? []) {
+      if (n) nodeNames.add(n);
+    }
+  }
+  const merged = new Map<string, NodeEventEntry>();
+  for (const nodeName of nodeNames) {
+    const entries = nodeEventsMap[nodeName];
+    if (!entries) continue;
+    for (const ev of entries) {
+      const key = `${ev.objectKind ?? ""}|${ev.objectName ?? ""}|${ev.reason ?? ""}`;
+      const existing = merged.get(key);
+      if (!existing) {
+        merged.set(key, ev);
+        continue;
+      }
+      // keep the entry with the latest lastTime so a re-observed event
+      // refreshes rather than duplicates.
+      if (
+        ev.lastTime &&
+        (!existing.lastTime || ev.lastTime > existing.lastTime)
+      ) {
+        merged.set(key, ev);
+      }
+    }
+  }
+  const out = [...merged.values()];
+  // newest-first by lastTime; fall back to reason for stable ordering when
+  // timestamps tie (or are absent).
+  out.sort((a, b) => {
+    const ta = a.lastTime ?? "";
+    const tb = b.lastTime ?? "";
+    if (ta === tb) return (a.reason ?? "").localeCompare(b.reason ?? "");
+    return tb.localeCompare(ta);
+  });
+  return out;
+}
+
 export function JobsPage({
   copy: c,
   isMockMode,
@@ -126,16 +207,50 @@ export function JobsPage({
       direction:
         current.key === key && current.direction === "asc" ? "desc" : "asc",
     }));
+  // Per-node pull progress cache, refreshed alongside jobs. Keyed by node name
+  // so list/detail top StatusBadge hover can aggregate progress for nodes
+  // referenced by job.taskStatuses[].observedNodes.
+  const [nodePullProgressMap, setNodePullProgressMap] = useState<
+    Record<string, PullProgressEntry[]>
+  >({});
+  // Per-node warning events cache（Node.status.events），同样 keyed by node
+  // name，供列表/详情顶部 StatusBadge 的 "i" tooltip 在 Pending 时聚合展示。
+  const [nodeEventsMap, setNodeEventsMap] = useState<
+    Record<string, NodeEventEntry[]>
+  >({});
 
   const fetchJobs = async (isInitial = true) => {
     if (isInitial) setLoading(true);
     setError("");
     try {
-      const resp = await fetch("/api/v1/rlinf.io/v1alpha1/jobs");
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      const data = await resp.json();
+      const [jobsResp, nodesResp] = await Promise.all([
+        fetch("/api/v1/rlinf.io/v1alpha1/jobs"),
+        fetch("/api/v1/rlinf.io/v1alpha1/nodes"),
+      ]);
+      if (!jobsResp.ok) throw new Error(`HTTP ${jobsResp.status}`);
+      const data = await jobsResp.json();
       const items: CRDJob[] = data.items ?? [];
       setRealJobs(items.map(crdToJob));
+      // Build nodeName -> pullProgress / nodeName -> events maps. Failures
+      // here are non-fatal: the hover tooltip simply won't appear.
+      if (nodesResp.ok) {
+        const nodesData = await nodesResp.json();
+        const nodeItems: CRDNode[] = nodesData.items ?? [];
+        const progressMap: Record<string, PullProgressEntry[]> = {};
+        const eventsMap: Record<string, NodeEventEntry[]> = {};
+        for (const n of nodeItems) {
+          const pp = n.status?.pullProgress;
+          if (Array.isArray(pp) && pp.length > 0) {
+            progressMap[n.metadata.name] = pp;
+          }
+          const evs = n.status?.events;
+          if (Array.isArray(evs) && evs.length > 0) {
+            eventsMap[n.metadata.name] = evs;
+          }
+        }
+        setNodePullProgressMap(progressMap);
+        setNodeEventsMap(eventsMap);
+      }
     } catch (e) {
       setRealJobs([]);
       setError(e instanceof Error ? e.message : String(e));
@@ -277,6 +392,8 @@ export function JobsPage({
               }
             : undefined
         }
+        nodePullProgressMap={nodePullProgressMap}
+        nodeEventsMap={nodeEventsMap}
       />
     );
   }
@@ -420,58 +537,77 @@ export function JobsPage({
                 </td>
               </tr>
             )}
-            {pagedJobs.map((job) => (
-              <tr key={job.id}>
-                <td>
-                  <button
-                    className="link-cell"
-                    onClick={() => onSelect(job.id)}
-                  >
-                    <strong>{job.id}</strong>
-                    {job.displayName !== job.id && (
-                      <small>{job.displayName}</small>
+            {pagedJobs.map((job) => {
+              const jobPullProgress =
+                job.phase === "Pending"
+                  ? aggregateJobPullProgress(job, nodePullProgressMap)
+                  : [];
+              const jobEvents =
+                job.phase === "Pending"
+                  ? aggregateJobEvents(job, nodeEventsMap)
+                  : [];
+              return (
+                <tr key={job.id}>
+                  <td>
+                    <button
+                      className="link-cell"
+                      onClick={() => onSelect(job.id)}
+                    >
+                      <strong>{job.id}</strong>
+                      {job.displayName !== job.id && (
+                        <small>{job.displayName}</small>
+                      )}
+                    </button>
+                  </td>
+                  <td>
+                    <span className="role-chip">{c.jobType[job.type]}</span>
+                  </td>
+                  <td>
+                    <div className="status-with-info">
+                      <StatusBadge phase={effectiveJobPhase(job)} copy={c} />
+                      {(jobPullProgress.length > 0 || jobEvents.length > 0) && (
+                        <PullProgressInfo
+                          progress={jobPullProgress}
+                          events={jobEvents}
+                          zh={zh}
+                        />
+                      )}
+                    </div>
+                  </td>
+                  <td>
+                    <span className="inline-progress">
+                      <i>
+                        <b style={{ width: job.progress + "%" }} />
+                      </i>
+                      {job.runningWorkers}/{job.workers}
+                    </span>
+                  </td>
+                  <td>{job.roleCount}</td>
+                  <td>{formatTaskTime(job.submittedAt)}</td>
+                  <td>{formatTaskTime(job.stoppedAt)}</td>
+                  <td>
+                    {adminMode ? (
+                      <AdminJobActions
+                        job={job}
+                        zh={zh}
+                        onStop={() => handleToggleStop(job)}
+                        onRestart={() => handleRestart(job)}
+                        onDelete={() => handleDelete(job)}
+                      />
+                    ) : (
+                      <JobActionMenu
+                        job={job}
+                        zh={zh}
+                        onEdit={() => onEdit?.(job)}
+                        onClone={() => onClone?.(job)}
+                        onDelete={() => handleDelete(job)}
+                        onToggleStop={() => handleToggleStop(job)}
+                      />
                     )}
-                  </button>
-                </td>
-                <td>
-                  <span className="role-chip">{c.jobType[job.type]}</span>
-                </td>
-                <td>
-                  <StatusBadge phase={effectiveJobPhase(job)} copy={c} />
-                </td>
-                <td>
-                  <span className="inline-progress">
-                    <i>
-                      <b style={{ width: job.progress + "%" }} />
-                    </i>
-                    {job.runningWorkers}/{job.workers}
-                  </span>
-                </td>
-                <td>{job.roleCount}</td>
-                <td>{formatTaskTime(job.submittedAt)}</td>
-                <td>{formatTaskTime(job.stoppedAt)}</td>
-                <td>
-                  {adminMode ? (
-                    <AdminJobActions
-                      job={job}
-                      zh={zh}
-                      onStop={() => handleToggleStop(job)}
-                      onRestart={() => handleRestart(job)}
-                      onDelete={() => handleDelete(job)}
-                    />
-                  ) : (
-                    <JobActionMenu
-                      job={job}
-                      zh={zh}
-                      onEdit={() => onEdit?.(job)}
-                      onClone={() => onClone?.(job)}
-                      onDelete={() => handleDelete(job)}
-                      onToggleStop={() => handleToggleStop(job)}
-                    />
-                  )}
-                </td>
-              </tr>
-            ))}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -505,6 +641,7 @@ function JobActionMenu({
   const [open, setOpen] = useState(false);
   const [menuStyle, setMenuStyle] = useState<CSSProperties>({});
   const ref = useRef<HTMLDivElement>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
 
   useLayoutEffect(() => {
     if (!open || !ref.current) return;
@@ -544,22 +681,32 @@ function JobActionMenu({
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpen(false);
     };
+    const handleClose = () => setOpen(false);
     document.addEventListener("pointerdown", handlePointer);
     document.addEventListener("keydown", handleKey);
+    window.addEventListener("scroll", handleClose, true);
+    window.addEventListener("resize", handleClose);
     return () => {
       document.removeEventListener("pointerdown", handlePointer);
       document.removeEventListener("keydown", handleKey);
+      window.removeEventListener("scroll", handleClose, true);
+      window.removeEventListener("resize", handleClose);
     };
   }, [open]);
 
   const isStopped = job.stopped || job.phase === "Stopped";
   const isTerminal = job.phase === "Succeeded";
 
+  const handleToggle = () => {
+    setOpen((v) => !v);
+  };
+
   return (
     <div className="row-actions" ref={ref} style={{ position: "relative" }}>
       <button
+        ref={btnRef}
         className="icon-button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={handleToggle}
         title={zh ? "操作" : "Actions"}
         aria-expanded={open}
       >
@@ -689,6 +836,8 @@ export function JobDetailPage({
   onBack,
   onClone,
   adminActions,
+  nodePullProgressMap = {},
+  nodeEventsMap = {},
 }: {
   job: Job;
   copy: CopyType;
@@ -700,6 +849,12 @@ export function JobDetailPage({
     onRestart: () => void;
     onDelete: () => void;
   };
+  // Per-node pullProgress cache shared from JobsPage; used by the top
+  // StatusBadge hover to surface image pull progress while the job is Pending.
+  nodePullProgressMap?: Record<string, PullProgressEntry[]>;
+  // Per-node warning events cache（Node.status.events），用于详情顶部
+  // StatusBadge 的 "i" tooltip 及 worker 行 tooltip 在 Pending 时聚合展示。
+  nodeEventsMap?: Record<string, NodeEventEntry[]>;
 }) {
   const zh = c.nav.overview === "总览";
   const [activeTab, setActiveTab] = useState<"workers" | "logs" | "metrics">(
@@ -707,6 +862,14 @@ export function JobDetailPage({
   );
   const [taskNodes, setTaskNodes] = useState<Record<string, string>>({});
   const [tensorBoardProxy, setTensorBoardProxy] = useState<string>("");
+  const [pullProgressMap, setPullProgressMap] = useState<
+    Record<string, PullProgressEntry[]>
+  >({});
+  // Task.status.events 缓存，keyed by lowercased task 名；用于无 pod.node
+  // 的 fallback worker 行展示 warning 事件。
+  const [taskEventsMap, setTaskEventsMap] = useState<
+    Record<string, NodeEventEntry[]>
+  >({});
   const [pods, setPods] = useState<PodInfo[]>([]);
   const [domainIPMap, setDomainIPMap] = useState<Record<string, string>>({});
   const [podLogs, setPodLogs] = useState<
@@ -735,6 +898,19 @@ export function JobDetailPage({
   const [logRange, setLogRange] = useState("1h");
   const [logStreamEnabled, setLogStreamEnabled] = useState(false);
 
+  // Aggregate Node CR pullProgress for the top StatusBadge hover. Uses Node CR
+  // (not the Task CR-derived pullProgressMap used by WorkerRow) so the tooltip
+  // reflects raw node-agent reported progress while the job is Pending.
+  const jobPullProgress =
+    job.phase === "Pending"
+      ? aggregateJobPullProgress(job, nodePullProgressMap)
+      : [];
+  // 同样从 Node CR events 聚合本 job 的 warning 事件，用于详情顶部
+  // StatusBadge 的 "i" tooltip。worker 行 tooltip 则按节点取
+  // nodeEventsMap[pod.node]，并在 pod.node 缺失时回退到 Task.status.events。
+  const jobEvents =
+    job.phase === "Pending" ? aggregateJobEvents(job, nodeEventsMap) : [];
+
   useAutoRefresh(
     async () => {
       const labelSelector = `rlinf.io/job=${job.name}`;
@@ -745,6 +921,8 @@ export function JobDetailPage({
       const data = await resp.json();
       const items = data.items ?? [];
       const nodeMap: Record<string, string> = {};
+      const progressMap: Record<string, PullProgressEntry[]> = {};
+      const taskEventsMap: Record<string, NodeEventEntry[]> = {};
       let tbProxy = "";
       for (const item of items) {
         const taskName = item.metadata?.name ?? "";
@@ -753,9 +931,24 @@ export function JobDetailPage({
         if (item.status?.tensorBoardProxy) {
           tbProxy = item.status.tensorBoardProxy;
         }
+        const pp: PullProgressEntry[] = item.status?.pullProgress ?? [];
+        if (Array.isArray(pp) && pp.length > 0) {
+          // Key case-insensitively so it matches the lowercased lookup keys
+          // built from job/task names below.
+          progressMap[taskName.toLowerCase()] = pp;
+        }
+        // 控制面 task reconciler 已将各节点 events 聚合到
+        // Task.status.events；按 task 名保存，供 fallback worker 行
+        // （无 pod.node 时）展示事件。
+        const evs: NodeEventEntry[] = item.status?.events ?? [];
+        if (Array.isArray(evs) && evs.length > 0) {
+          taskEventsMap[taskName.toLowerCase()] = evs;
+        }
       }
       setTaskNodes(nodeMap);
       setTensorBoardProxy(tbProxy);
+      setPullProgressMap(progressMap);
+      setTaskEventsMap(taskEventsMap);
     },
     10000,
     [job.name],
@@ -886,6 +1079,14 @@ export function JobDetailPage({
                   `${ts.name}: worker state synced`,
                   `${ts.name}: waiting for runtime heartbeat`,
                 ],
+            pullProgress:
+              pullProgressMap[jobChildName] ??
+              pullProgressMap[ts.name.toLowerCase()] ??
+              [],
+            events:
+              taskEventsMap[jobChildName] ??
+              taskEventsMap[ts.name.toLowerCase()] ??
+              [],
           };
         })
       : [];
@@ -898,6 +1099,23 @@ export function JobDetailPage({
       ? pods.map((pod, index) => {
           const resource = resourceForTask(pod.taskName);
           const role = resource?.role ?? pod.taskName;
+          const phase = (pod.phase || "Pending") as Phase;
+          // When the worker is still Pending, query the hosting node's
+          // pullProgress (reported by node-agent) so the StatusBadge "i"
+          // hover surfaces live image pull progress for this worker.
+          const nodePullProgress =
+            phase === "Pending" && pod.node
+              ? (nodePullProgressMap[pod.node] ?? [])
+              : [];
+          // 同样从 Node.status.events 取节点 warning 事件；当 pod.node
+          // 缺失时回退到 Task.status.events，让 Pending worker 行 tooltip
+          // 在调度前就能展示 DiskPressure 等原因。
+          const workerEvents =
+            phase === "Pending"
+              ? pod.node && (nodeEventsMap[pod.node] ?? []).length > 0
+                ? (nodeEventsMap[pod.node] ?? [])
+                : (taskEventsMap[pod.taskName?.toLowerCase() ?? ""] ?? [])
+              : [];
           return {
             id: `${pod.namespace}/${pod.podNamespace}/${pod.podName}`,
             name: pod.podName || `${role}-${index}`,
@@ -914,6 +1132,8 @@ export function JobDetailPage({
                   `${role}: worker state synced`,
                   `${role}: waiting for runtime heartbeat`,
                 ],
+            pullProgress: nodePullProgress,
+            events: workerEvents,
           };
         })
       : fallbackWorkers;
@@ -1069,6 +1289,8 @@ export function JobDetailPage({
         tensorBoardProxy={tensorBoardProxy}
         onClone={onClone}
         adminActions={adminActions}
+        jobPullProgress={jobPullProgress}
+        jobEvents={jobEvents}
       />
       <div className="sub-tabs">
         {tabs.map((tab) => (
@@ -1347,6 +1569,8 @@ function JobPublicOverview({
   tensorBoardProxy,
   onClone,
   adminActions,
+  jobPullProgress = [],
+  jobEvents = [],
 }: {
   job: Job;
   copy: CopyType;
@@ -1361,6 +1585,11 @@ function JobPublicOverview({
     onRestart: () => void;
     onDelete: () => void;
   };
+  // Per-node pullProgress cache shared from JobsPage; surfaced next to the
+  // top StatusBadge while the job is still Pending.
+  jobPullProgress?: PullProgressEntry[];
+  // 节点级 Warning 事件聚合，在 Pending 时与 pullProgress 一并展示。
+  jobEvents?: NodeEventEntry[];
 }) {
   const zh = c.nav.overview === "总览";
   const baseConfigRows = [
@@ -1387,7 +1616,16 @@ function JobPublicOverview({
           </p>
         </div>
         <div className="job-detail-summary-status">
-          <StatusBadge phase={displayPhase} copy={c} />
+          <div className="status-with-info">
+            <StatusBadge phase={displayPhase} copy={c} />
+            {(jobPullProgress.length > 0 || jobEvents.length > 0) && (
+              <PullProgressInfo
+                progress={jobPullProgress}
+                events={jobEvents}
+                zh={zh}
+              />
+            )}
+          </div>
           <small>
             {job.stopped
               ? zh
@@ -1692,34 +1930,6 @@ function SummaryMetric({
       <span>{label}</span>
       <strong>{value}</strong>
       <small>{hint}</small>
-    </div>
-  );
-}
-
-function CopyableCodeBlock({
-  label,
-  value,
-  copy: c,
-}: {
-  label: string;
-  value: string;
-  copy: CopyType;
-}) {
-  const [copied, setCopied] = useState(false);
-  const copyValue = async () => {
-    if (!(await copyText(value))) return;
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1600);
-  };
-  return (
-    <div className="copyable-code-block">
-      <div>
-        <span>{label}</span>
-        <button className="icon-button" onClick={copyValue} title={c.api.copy}>
-          {copied ? <Check size={15} /> : <Copy size={15} />}
-        </button>
-      </div>
-      <code>{value}</code>
     </div>
   );
 }
@@ -2223,6 +2433,180 @@ function TimeSeriesCard({
   );
 }
 
+function formatBytes(bytes: number): string {
+  if (!bytes || bytes < 0) return "0B";
+  const GB = 1024 * 1024 * 1024;
+  const MB = 1024 * 1024;
+  const KB = 1024;
+  if (bytes >= GB) return (bytes / GB).toFixed(1) + "GB";
+  if (bytes >= MB) return (bytes / MB).toFixed(1) + "MB";
+  if (bytes >= KB) return (bytes / KB).toFixed(1) + "KB";
+  return bytes + "B";
+}
+
+// PullProgressInfo renders an "i" icon at the top-right of a task status badge.
+// Hovering (or focusing) it reveals the live image pull progress / speed for
+// the task's images while its pods have not yet reached Running, plus any
+// node-level Warning events (DiskPressure 等) aggregated from
+// Node.status.events / Task.status.events so operators can see why a pod is
+// stuck Pending even when no image pull is in flight.
+//
+// The tooltip uses position: fixed (instead of position: absolute) so it can
+// escape the overflow:auto / overflow:hidden of its ancestor containers
+// (notably .worker-table-scroll, where overflow-x:auto forces overflow-y to
+// compute to auto per the CSS spec, clipping any absolutely-positioned
+// descendant). The icon's viewport position is measured on hover/focus and
+// the tooltip is placed above the icon, or below if there isn't enough room
+// above (e.g. when the icon sits in the first row of the Jobs list table).
+function PullProgressInfo({
+  progress,
+  events = [],
+  zh,
+}: {
+  progress: PullProgressEntry[];
+  events?: NodeEventEntry[];
+  zh: boolean;
+}) {
+  const wrapperRef = useRef<HTMLSpanElement | null>(null);
+  const tooltipRef = useRef<HTMLSpanElement | null>(null);
+  const [pos, setPos] = useState<{
+    top: number;
+    left: number;
+    above: boolean;
+  } | null>(null);
+
+  const measure = () => {
+    const icon = wrapperRef.current;
+    const tooltip = tooltipRef.current;
+    if (!icon || !tooltip) return;
+    const iconRect = icon.getBoundingClientRect();
+    const tooltipH = tooltip.offsetHeight;
+    const tooltipW = tooltip.offsetWidth;
+    const gap = 6;
+    const margin = 8;
+
+    const spaceAbove = iconRect.top;
+    const spaceBelow = window.innerHeight - iconRect.bottom;
+    const above = spaceAbove >= tooltipH + gap || spaceAbove >= spaceBelow;
+
+    const top = above ? iconRect.top - tooltipH - gap : iconRect.bottom + gap;
+
+    // Right-align the tooltip with the icon so the existing ::after arrow
+    // (positioned at right: 10px in CSS) still points at the icon. Clamp
+    // within the viewport so the tooltip doesn't overflow the left edge.
+    let left = iconRect.right - tooltipW;
+    left = Math.max(
+      margin,
+      Math.min(left, window.innerWidth - tooltipW - margin),
+    );
+
+    setPos({ top, left, above });
+  };
+
+  const clear = () => setPos(null);
+
+  // Re-measure on scroll/resize while the tooltip is open so it stays
+  // anchored to the icon as the page scrolls.
+  useEffect(() => {
+    if (!pos) return;
+    const handler = () => measure();
+    window.addEventListener("scroll", handler, true);
+    window.addEventListener("resize", handler);
+    return () => {
+      window.removeEventListener("scroll", handler, true);
+      window.removeEventListener("resize", handler);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pos !== null]);
+
+  const tooltipStyle: CSSProperties | undefined = pos
+    ? {
+        position: "fixed",
+        top: pos.top,
+        left: pos.left,
+        bottom: "auto",
+        right: "auto",
+      }
+    : undefined;
+
+  return (
+    <span
+      className="status-info"
+      tabIndex={0}
+      ref={wrapperRef}
+      onMouseEnter={measure}
+      onMouseLeave={clear}
+      onFocus={measure}
+      onBlur={clear}
+    >
+      <Info size={13} />
+      <span
+        ref={tooltipRef}
+        className={`status-info-tooltip${pos && !pos.above ? " status-info-tooltip-below" : ""}`}
+        style={tooltipStyle}
+      >
+        {progress.length > 0 && (
+          <>
+            <strong>{zh ? "镜像拉取进度" : "Image Pull Progress"}</strong>
+            {progress.map((p, i) => {
+              const pct =
+                p.total > 0
+                  ? Math.min(100, Math.round((p.downloaded / p.total) * 100))
+                  : 0;
+              return (
+                <span key={`p-${i}`} className="pull-entry">
+                  <code>{p.image}</code>
+                  <span className="pull-status">
+                    {p.message || p.status}
+                    {p.status === "pulling" && p.total > 0 ? ` · ${pct}%` : ""}
+                  </span>
+                  {p.total > 0 && (
+                    <span className="pull-detail">
+                      {formatBytes(p.downloaded)} / {formatBytes(p.total)}
+                    </span>
+                  )}
+                  {p.speed > 0 && (
+                    <span className="pull-detail">
+                      {formatBytes(p.speed)}/s
+                    </span>
+                  )}
+                </span>
+              );
+            })}
+          </>
+        )}
+        {events.length > 0 && (
+          <>
+            <strong className="status-info-tooltip-section">
+              {zh ? "节点事件" : "Node Events"}
+            </strong>
+            {events.map((ev, i) => (
+              <span key={`e-${i}`} className="pull-entry event-entry">
+                <span
+                  className={`event-chip event-${ev.type?.toLowerCase() ?? "normal"}`}
+                >
+                  {ev.reason || ev.type || "Event"}
+                </span>
+                {ev.objectName && (
+                  <code className="event-object">{ev.objectName}</code>
+                )}
+                {ev.message && (
+                  <span className="event-message">{ev.message}</span>
+                )}
+                {ev.lastTime && (
+                  <span className="pull-detail">
+                    {formatChinaDateTime(ev.lastTime)}
+                  </span>
+                )}
+              </span>
+            ))}
+          </>
+        )}
+      </span>
+    </span>
+  );
+}
+
 function WorkerTableRow({
   jobName,
   worker,
@@ -2307,7 +2691,18 @@ function WorkerTableRow({
           <span className="table-date">{createdAt}</span>
         </td>
         <td>
-          <StatusBadge phase={worker.phase} copy={c} />
+          <div className="status-with-info">
+            <StatusBadge phase={worker.phase} copy={c} />
+            {worker.phase !== "Running" &&
+              ((worker.pullProgress && worker.pullProgress.length > 0) ||
+                (worker.events && worker.events.length > 0)) && (
+                <PullProgressInfo
+                  progress={worker.pullProgress ?? []}
+                  events={worker.events ?? []}
+                  zh={zh}
+                />
+              )}
+          </div>
         </td>
         <td>
           <div className="worker-table-actions">

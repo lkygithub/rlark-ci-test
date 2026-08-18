@@ -26,12 +26,12 @@ Server 是控制面核心，负责所有 Agent 和外部客户端的连接管理
 
 | 功能         | 实现                                                      | 关键文件                                                         |
 | ---------- | ------------------------------------------------------- | ------------------------------------------------------------ |
-| Agent 隧道管理 | 基于 remotedialer 的反向代理，Agent 主动连接 Server 建立 WebSocket 隧道 | [handle\_proxy.go](../../pkg/server/handle_proxy.go)         |
-| 证书签发       | X.509 和 SSH 证书的签发/吊销，支持 agent/domain/ssh-guest 等角色      | [sign.go](../../pkg/server/sign.go)                          |
-| SSH 服务     | 用户 SSH 登录认证（证书 + 公钥两阶段），direct-tcpip 通道转发               | [ssh\_server.go](../../pkg/server/ssh_server.go)             |
-| Peer 互联    | Server 间 Peer-to-Peer 连接，支持多 Server 高可用                 | [peer\_manager.go](../../pkg/server/peer_manager.go)         |
-| K8s 代理     | 将 K8s API 请求通过 Agent 隧道转发到数据面集群                         | [kube\_proxy.go](../../pkg/server/kube_proxy.go)             |
-| Pod 缓存     | 基于 Informer 的内存 Pod 缓存，用于 SSH 快速查找目标 Pod                | [caches/pod\_cache.go](../../pkg/server/caches/pod_cache.go) |
+| Agent 隧道管理 | 基于 remotedialer 的反向代理，Agent 主动连接 Server 建立 WebSocket 隧道 | [handle\_proxy.go](https://github.com/RLinf/RLark/tree/main/apps/rlark/pkg/server/handle_proxy.go)         |
+| 证书签发       | X.509 和 SSH 证书的签发/吊销，支持 agent/domain/ssh-guest 等角色      | [sign.go](https://github.com/RLinf/RLark/tree/main/apps/rlark/pkg/server/sign.go)                          |
+| SSH 服务     | 用户 SSH 登录认证（证书 + 公钥两阶段），direct-tcpip 通道转发               | [ssh\_server.go](https://github.com/RLinf/RLark/tree/main/apps/rlark/pkg/server/ssh_server.go)             |
+| Peer 互联    | Server 间 Peer-to-Peer 连接，支持多 Server 高可用                 | [peer\_manager.go](https://github.com/RLinf/RLark/tree/main/apps/rlark/pkg/server/peer_manager.go)         |
+| K8s 代理     | 将 K8s API 请求通过 Agent 隧道转发到数据面集群                         | [kube\_proxy.go](https://github.com/RLinf/RLark/tree/main/apps/rlark/pkg/server/kube_proxy.go)             |
+| Pod 缓存     | 基于 Informer 的内存 Pod 缓存，用于 SSH 快速查找目标 Pod                | [caches/pod\_cache.go](https://github.com/RLinf/RLark/tree/main/apps/rlark/pkg/server/caches/pod_cache.go) |
 
 **Agent 连接生命周期**：
 
@@ -56,11 +56,11 @@ Gateway 是面向用户的 HTTP API 网关，提供 RESTful 接口。
 
 | 功能       | 路由                                                               | 文件                                                    |
 | -------- | ---------------------------------------------------------------- | ----------------------------------------------------- |
-| CRD CRUD | `GET/POST/PUT/PATCH/DELETE /api/v1/rlinf.io/v1alpha1/{resource}` | [router.go](../../pkg/gateway/router.go)              |
-| 证书管理     | `POST /api/v1/certificates/agent`                                | [cert\_handler.go](../../pkg/gateway/cert_handler.go) |
-| SSH 密钥   | `GET/POST/DELETE /api/v1/ssh-user-keys`                          | [suk\_handler.go](../../pkg/gateway/suk_handler.go)   |
-| Pod 日志   | `GET /api/v1/.../jobs/:name/logs`                                | [job\_logs.go](../../pkg/gateway/job_logs.go)         |
-| 监控指标     | Prometheus middleware                                            | [metrics.go](../../pkg/gateway/metrics.go)            |
+| CRD CRUD | `GET/POST/PUT/PATCH/DELETE /api/v1/rlinf.io/v1alpha1/{resource}` | [router.go](https://github.com/RLinf/RLark/tree/main/apps/rlark/pkg/gateway/router.go)              |
+| 证书管理     | `POST /api/v1/certificates/agent`                                | [cert\_handler.go](https://github.com/RLinf/RLark/tree/main/apps/rlark/pkg/gateway/cert_handler.go) |
+| SSH 密钥   | `GET/POST/DELETE /api/v1/ssh-user-keys`                          | [suk\_handler.go](https://github.com/RLinf/RLark/tree/main/apps/rlark/pkg/gateway/suk_handler.go)   |
+| Pod 日志   | `GET /api/v1/.../jobs/:name/logs`                                | [job\_logs.go](https://github.com/RLinf/RLark/tree/main/apps/rlark/pkg/gateway/job_logs.go)         |
+| 监控指标     | Prometheus middleware                                            | [metrics.go](https://github.com/RLinf/RLark/tree/main/apps/rlark/pkg/gateway/metrics.go)            |
 
 ### 3.3 Controller-Manager
 
@@ -70,11 +70,11 @@ Controller-Manager 运行在控制面，负责协调高层资源的生命周期�
 
 | 控制器                 | 职责                                                      | 关键文件                                               |
 | ------------------- | ------------------------------------------------------- | -------------------------------------------------- |
-| Job Controller      | 将 Job 拆分为 Task，驱动状态机 (Pending→Running→Succeeded/Failed) | [job/](../../pkg/controllermanager/job/)           |
-| Domain Controller   | 管理 Domain CRD，分配 IP 子网，签发 DomainPeer 证书                 | [domain/](../../pkg/controllermanager/domain/)     |
-| Task Controller     | 监听 Task 状态，同步到对应的 Job                                   | [task/](../../pkg/controllermanager/task/)         |
-| Node Controller     | 监听 Node 注册/离线事件                                         | [node/](../../pkg/controllermanager/node/)         |
-| Workflow Controller | DAG 编排，按依赖顺序调度 Job                                      | [workflow/](../../pkg/controllermanager/workflow/) |
+| Job Controller      | 将 Job 拆分为 Task，驱动状态机 (Pending→Running→Succeeded/Failed) | [job/](https://github.com/RLinf/RLark/tree/main/apps/rlark/pkg/controllermanager/job/)           |
+| Domain Controller   | 管理 Domain CRD，分配 IP 子网，签发 DomainPeer 证书                 | [domain/](https://github.com/RLinf/RLark/tree/main/apps/rlark/pkg/controllermanager/domain/)     |
+| Task Controller     | 监听 Task 状态，同步到对应的 Job                                   | [task/](https://github.com/RLinf/RLark/tree/main/apps/rlark/pkg/controllermanager/task/)         |
+| Node Controller     | 监听 Node 注册/离线事件                                         | [node/](https://github.com/RLinf/RLark/tree/main/apps/rlark/pkg/controllermanager/node/)         |
+| Workflow Controller | DAG 编排，按依赖顺序调度 Job                                      | [workflow/](https://github.com/RLinf/RLark/tree/main/apps/rlark/pkg/controllermanager/workflow/) |
 
 **Job 状态机**：
 
@@ -97,7 +97,7 @@ Agent 部署在每个数据面集群中，有两种运行模式：
 | 模式        | 组件           | 职责                                                              |
 | --------- | ------------ | --------------------------------------------------------------- |
 | `cluster` | clusterAgent | 资源同步：Pull 控制器（管理面 CR → 本地 k8s 资源）+ Push 控制器（本地 k8s 状态 → 管理面 CR） |
-| `node`    | nodeAgent    | 网络路由：运行 NodeServer，处理跨集群 Pod 流量转发                               |
+| `node`    | nodeAgent    | 网络路由：运行 NodeServer，处理跨集群 Pod 流量转发；镜像预拉取：将分发到节点的任务镜像预拉取到节点容器运行时（containerd/docker） |
 
 **clusterAgent 控制器**：
 
@@ -138,7 +138,7 @@ graph LR
 
 Sidecar 以容器形式注入到每个训练 Pod 中，实现跨集群 Pod 间网络通信。
 
-**关键文件**：[sidecar/server.go](../../pkg/network/sidecar/server.go)
+**关键文件**：[sidecar/server.go](https://github.com/RLinf/RLark/tree/main/apps/rlark/pkg/network/sidecar/server.go)
 
 **双重角色**：
 
@@ -164,7 +164,7 @@ graph LR
 
 NodeServer 运行在每个节点上（由 nodeAgent 管理），负责节点级网络路由。
 
-**关键文件**：[nodeserver/server.go](../../pkg/network/nodeserver/server.go)
+**关键文件**：[nodeserver/server.go](https://github.com/RLinf/RLark/tree/main/apps/rlark/pkg/network/nodeserver/server.go)
 
 **核心功能**：
 
@@ -175,7 +175,7 @@ NodeServer 运行在每个节点上（由 nodeAgent 管理），负责节点级�
 
 ### 4.4 ContainerNetworkAdapter
 
-**关键文件**：[container/network.go](../../pkg/agent/container/network.go)
+**关键文件**：[container/network.go](https://github.com/RLinf/RLark/tree/main/apps/rlark/pkg/agent/container/network.go)
 
 **路由决策**：
 
@@ -192,7 +192,7 @@ func (a *containerNetworkAdapter) GetContainerNetworkDial(...) (utils.Dial, erro
 
 ### 4.5 SSHDialer
 
-**关键文件**：[container/ssh\_dialer.go](../../pkg/agent/container/ssh_dialer.go)
+**关键文件**：[container/ssh\_dialer.go](https://github.com/RLinf/RLark/tree/main/apps/rlark/pkg/agent/container/ssh_dialer.go)
 
 按 Domain 维护的 SSH 连接池，设计要点：
 
@@ -206,18 +206,18 @@ func (a *containerNetworkAdapter) GetContainerNetworkDial(...) (utils.Dial, erro
 
 **embodied-runtime** 是部署在每个数据面节点上的 DaemonSet 组件，管理机械臂（ROS 1/2）和摄像头硬件。它与 Agent 集成，将物理设备作为 Kubernetes 设备资源（`rlinf.io/device`）暴露，使训练 Task 可以像申请 GPU 一样申请机械臂和摄像头。
 
-**关键文件**：[apps/embodied-runtime/](../../../embodied-runtime/)
+**关键文件**：[apps/embodied-runtime/](https://github.com/RLinf/RLark/tree/main/apps/embodied-runtime/)
 
 **组件概览**：
 
 | 组件 | 职责 | 关键文件 |
 |-----------|---------------|----------|
-| Device Plugin | 向 kubelet 注册 `rlinf.io/device`；检测节点本地硬件；向 Task Pod 注入 socket 和 CLI 二进制 | [plugin.go](../../../../embodied-runtime/pkg/deviceplugin/plugin.go) |
-| Mutating Webhook | 自动向申请 `rlinf.io/device` 的 Pod 注入 `devinit` init 容器；管理 CA 证书和 serving 证书 | [webhook.go](../../../../embodied-runtime/pkg/deviceplugin/webhook.go) |
-| ros-controller | 管理 ROS 1（`roscore` + `roslaunch`）机器人生命周期；通过 Unix socket 暴露 gRPC API | [roscontroller/](../../../../embodied-runtime/pkg/roscontroller/) |
-| ros2-controller | 管理 ROS 2 机器人生命周期；通过 Unix socket 暴露 gRPC API | [ros2controller/](../../../../embodied-runtime/pkg/ros2controller/) |
-| camera-controller | 管理摄像头（V4L2 / RTSP / RealSense）生命周期；ffmpeg 转码；通过 Unix socket 暴露 gRPC API | [cameracontroller/](../../../../embodied-runtime/pkg/cameracontroller/) |
-| CLI（rosctr / camctr） | 挂载到 Task Pod 中的命令行工具，用于直接控制机器人/摄像头 | [cmd/rosctr/](../../../../embodied-runtime/cmd/rosctr/) |
+| Device Plugin | 向 kubelet 注册 `rlinf.io/device`；检测节点本地硬件；向 Task Pod 注入 socket 和 CLI 二进制 | [plugin.go](https://github.com/RLinf/RLark/tree/main/apps/embodied-runtime/pkg/deviceplugin/plugin.go) |
+| Mutating Webhook | 自动向申请 `rlinf.io/device` 的 Pod 注入 `devinit` init 容器；管理 CA 证书和 serving 证书 | [webhook.go](https://github.com/RLinf/RLark/tree/main/apps/embodied-runtime/pkg/deviceplugin/webhook.go) |
+| ros-controller | 管理 ROS 1（`roscore` + `roslaunch`）机器人生命周期；通过 Unix socket 暴露 gRPC API | [roscontroller/](https://github.com/RLinf/RLark/tree/main/apps/embodied-runtime/pkg/roscontroller/) |
+| ros2-controller | 管理 ROS 2 机器人生命周期；通过 Unix socket 暴露 gRPC API | [ros2controller/](https://github.com/RLinf/RLark/tree/main/apps/embodied-runtime/pkg/ros2controller/) |
+| camera-controller | 管理摄像头（V4L2 / RTSP / RealSense）生命周期；ffmpeg 转码；通过 Unix socket 暴露 gRPC API | [cameracontroller/](https://github.com/RLinf/RLark/tree/main/apps/embodied-runtime/pkg/cameracontroller/) |
+| CLI（rosctr / camctr） | 挂载到 Task Pod 中的命令行工具，用于直接控制机器人/摄像头 | [cmd/rosctr/](https://github.com/RLinf/RLark/tree/main/apps/embodied-runtime/cmd/rosctr/) |
 
 **设备生命周期**：
 
