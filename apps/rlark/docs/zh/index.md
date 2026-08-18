@@ -14,11 +14,6 @@ hide:
   <img src="https://img.shields.io/badge/Kubernetes-kcp-326CE5?logo=kubernetes&style=flat-square" alt="Kubernetes" />
 </div>
 
-<div align="center" markdown>
-  <a href="../"><img src="https://img.shields.io/badge/English%20Docs-blue?logo=readthedocs&style=flat-square" alt="English Docs" /></a>
-  <a href="./"><img src="https://img.shields.io/badge/中文文档-red?logo=readthedocs&style=flat-square" alt="中文文档" /></a>
-</div>
-
 <h1 align="center">
   <sub>RLark 具身智能云原生纳管平台</sub>
 </h1>
@@ -51,10 +46,6 @@ bash apps/rlark/docs/examples/quickstart.sh
 ```
 
 详见 [快速开始指南](quickstart.md) 了解前置依赖和详细说明。
-
-## 使用 Web 控制台
-
-详见 [https://rlark-docs.pages.dev/](https://rlark-docs.pages.dev/)。
 
 ## 技术栈
 

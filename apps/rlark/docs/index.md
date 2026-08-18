@@ -1,4 +1,8 @@
 ---
+hide:
+  - navigation
+  - toc
+---
 
 <div align="center">
   <img src="images/logo-en.png" alt="RLark Logo" width="400" />
@@ -8,11 +12,6 @@
   <img src="https://img.shields.io/badge/Go-1.26-00ADD8?logo=go&style=flat-square" alt="Go Version" />
   <img src="https://img.shields.io/badge/TypeScript-React-3178C6?logo=typescript&style=flat-square" alt="TypeScript" />
   <img src="https://img.shields.io/badge/Kubernetes-kcp-326CE5?logo=kubernetes&style=flat-square" alt="Kubernetes" />
-</div>
-
-<div align="center" markdown>
-  <a href="./"><img src="https://img.shields.io/badge/English%20Docs-blue?logo=readthedocs&style=flat-square" alt="English Docs" /></a>
-  <a href="zh/"><img src="https://img.shields.io/badge/中文文档-red?logo=readthedocs&style=flat-square" alt="中文文档" /></a>
 </div>
 
 <h1 align="center">
@@ -47,10 +46,6 @@ bash apps/rlark/docs/examples/quickstart.sh
 ```
 
 See the [Quick Start Guide](quickstart.md) for prerequisite requirements and detailed instructions.
-
-## Try the Web Console
-
-See [https://rlark-docs.pages.dev/](https://rlark-docs.pages.dev/) for the full Web Console guide.
 
 ## Tech Stack
 

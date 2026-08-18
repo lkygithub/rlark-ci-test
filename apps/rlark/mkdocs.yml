@@ -1,7 +1,10 @@
-site_name: RLark
+site_name: rlark
 site_description: Reinforcement Learning Infrastructure for Embodied and Agentic AI
 repo_url: https://github.com/RLinf/RLark
 edit_uri: edit/main/apps/rlark/docs/
+exclude_docs: |
+  README.md
+  zh/README.md
 
 theme:
   name: material
@@ -20,7 +23,9 @@ theme:
         name: Switch to light mode
   features:
     - navigation.sections
+    - navigation.instant
     - navigation.tracking
+    - navigation.expand
     - navigation.indexes
     - toc.follow
     - content.code.copy
@@ -73,7 +78,11 @@ nav:
     - Configuration: reference/configuration.md
     - CRD: reference/crd.md
   - 中文:
-    - 首页: zh/index.md
+    - 概览:
+      - RLark 是什么: zh/index.md
+      - 核心能力: zh/overview/capabilities.md
+      - 核心概念: zh/concepts.md
+      - 系统架构: zh/architecture.md
     - 快速开始: zh/quickstart.md
     - Web 控制台: zh/ui-behavior.md
     - 核心概念: zh/concepts.md
