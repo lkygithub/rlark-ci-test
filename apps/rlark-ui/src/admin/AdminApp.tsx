@@ -90,7 +90,16 @@ export function AdminLogin({
     <div className={"admin-login-page theme-" + theme}>
       <div className="admin-login-topbar">
         <div className="admin-brand">
-          <img src="/rlark-logo.png" alt="RLark" className="brand-logo" />
+          <img
+            src={`/rlark-logo-${lang}-light.png`}
+            alt="RLark"
+            className="brand-logo brand-logo-light"
+          />
+          <img
+            src={`/rlark-logo-${lang}-dark.png`}
+            alt="RLark"
+            className="brand-logo brand-logo-dark"
+          />
           <div className="admin-brand-text">
             <strong>RLark</strong>
             <small>ADMIN</small>
@@ -324,7 +333,7 @@ export function AdminApp() {
       }
     >
       <aside className="sidebar">
-        <Logo />
+        <Logo lang={lang} />
         <nav>
           <span className="nav-label">{zh ? "管理后台" : "Admin"}</span>
           {adminNavItems.map((item) => {
