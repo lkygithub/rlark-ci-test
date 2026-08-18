@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="apps/rlark/docs/images/logo.png" alt="RLark Logo" width="400" />
+  <img src="apps/rlark/docs/images/logo-zh.png" alt="RLark Logo" width="400" />
 </div>
 
 <div align="center">
