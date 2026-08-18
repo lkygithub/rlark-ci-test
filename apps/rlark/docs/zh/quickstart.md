@@ -183,7 +183,7 @@ rm -rf ~/.rlark
 
 ## 下一步
 
-- 阅读 [Web UI 使用指南](web-ui-guide.md) 通过图形界面管理任务
+- 阅读 [Web UI 使用指南](ui-behavior.md) 通过图形界面管理任务
 - 阅读 [核心概念](concepts.md) 了解资源模型和命名约定
 - 阅读 [部署指南](deployment.md) 了解生产环境部署和真机设备纳管
 - 阅读 [API 示例](api/examples.md) 了解完整 API 用法

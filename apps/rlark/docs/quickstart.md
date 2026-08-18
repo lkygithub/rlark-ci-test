@@ -226,7 +226,7 @@ rm -rf ~/.rlark
 
 ## Next Steps
 
-- Read the [Web UI Guide](web-ui-guide.md) for graphical task management
+- Read the [Web UI Guide](ui-behavior.md) for graphical task management
 - Read [Core Concepts](concepts.md) for the resource model and naming conventions
 - Read [Deployment Guide](deployment.md) for production deployment and real device onboarding
 - Read [API Examples](api/examples.md) for complete API usage
