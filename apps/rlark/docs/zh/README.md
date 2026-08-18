@@ -1,29 +1,12 @@
 # 文档
 
-RLark 文档提供中英文两种语言。
+RLark 中英文文档采用一致的、按受众划分的信息架构：
 
-## 中文文档
+1. **概览**：产品能力、核心概念和系统架构。
+2. **快速开始**：部署控制面、纳管 Kubernetes 数据面并运行第一个任务。
+3. **平台使用指南**：集群节点、任务与 Worker、工作流、存储和 SSH Key。
+4. **管理员指南**：生产部署、数据面接入、网络安全、具身设备和运维。
+5. **开发者指南**：源码开发、技术架构、调试、设备适配和贡献流程。
+6. **参考手册**：CLI、API、CRD、配置项和发布说明。
 
-| 文档 | 说明 |
-|------|------|
-| [架构设计](architecture.md) | 完整技术架构、组件交互、数据流 |
-| [核心概念](concepts.md) | Domain、Job、Task、Workflow 等概念解释 |
-| [快速开始](quickstart.md) | 本地开发环境搭建与第一个训练任务 |
-| [部署指南](deployment.md) | 生产环境部署、配置说明 |
-| [Web 控制台交互约定](ui-behavior.md) | 数据模式、导航、偏好设置和弹窗行为 |
-| [API 参考](../api/reference.md) | 完整的 REST API 参考 |
-| [API 示例](../api/examples.md) | 端到端 API 调用示例 |
-
-## English Documentation
-
-| Document | Description |
-|----------|-------------|
-| [Architecture](../architecture.md) | Complete technical architecture, component interactions, data flows |
-| [Core Concepts](../concepts.md) | Domain, Job, Task, Workflow, and other concepts |
-| [Quick Start](../quickstart.md) | Local development environment setup and first training job |
-| [Deployment Guide](../deployment.md) | Production deployment and configuration |
-| [Web Console Behavior](../ui-behavior.md) | Data modes, navigation, preferences, and dialog behavior |
-| [API Reference](../api/reference.md) | Complete REST API reference |
-| [API Examples](../api/examples.md) | End-to-end API usage examples |
-
-> [返回首页](index.md) | [Back to Home](../index.md)
+请打开[中文首页](index.md)或 [English Home](../index.md)。发布站点导航定义在 `apps/rlark/mkdocs.yml`。

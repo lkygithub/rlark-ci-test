@@ -18,8 +18,8 @@
 
 | 资源 | 创建者 | 前端可操作 |
 |---|---|---|
-| `Node` | agent-controller 的 node controller 从本地向控制面 push（见 [push.go](../../pkg/agent/controllers/node/push.go)） | 仅 **List / Get / 打污点（PATCH unschedulable）**，不建议前端 Create/Delete |
-| `Task` | 控制面 job-controller 根据 Job 的 task 模板调谐创建（见 [job_controller.go](../../pkg/controllermanager/job/job_controller.go)、[sync.go](../../pkg/controllermanager/job/sync.go)） | **只读**（List/Get/Get Status），不建议前端 Create/Update/Delete |
+| `Node` | agent-controller 的 node controller 从本地向控制面 push（见 [push.go](https://github.com/RLinf/RLark/tree/main/apps/rlark/pkg/agent/controllers/node/push.go)） | 仅 **List / Get / 打污点（PATCH unschedulable）**，不建议前端 Create/Delete |
+| `Task` | 控制面 job-controller 根据 Job 的 task 模板调谐创建（见 [job_controller.go](https://github.com/RLinf/RLark/tree/main/apps/rlark/pkg/controllermanager/job/job_controller.go)、[sync.go](https://github.com/RLinf/RLark/tree/main/apps/rlark/pkg/controllermanager/job/sync.go)） | **只读**（List/Get/Get Status），不建议前端 Create/Update/Delete |
 | `Job` | 用户/前端创建 | **全量 CRUD**，前端主要操作对象 |
 | `Workflow` | 用户/前端创建 | **全量 CRUD**，前端主要操作对象 |
 
@@ -255,7 +255,7 @@ curl "http://localhost:8080/api/v1/rlinf.io/v1alpha1/jobs/ppo-cartpole-v1/status
 }
 ```
 
-Job 状态机迁移规则（见 [statemachine.go](../../pkg/controllermanager/job/statemachine.go)）：
+Job 状态机迁移规则（见 [statemachine.go](https://github.com/RLinf/RLark/tree/main/apps/rlark/pkg/controllermanager/job/statemachine.go)）：
 
 | 事件 | 来源 | 迁移 |
 |---|---|---|
