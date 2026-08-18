@@ -489,3 +489,139 @@ kubectl get pods -n rlark-system
 1. 检查 DomainPeer 是否已创建
 2. 检查 Domain 证书是否签发成功
 3. 检查 network-sidecar 是否注入到 Pod 中
+
+## 14. 真机设备纳管
+
+rlark 支持纳管带有 GPU 或具身设备（摄像头、机械臂等）的真实物理节点。
+
+### 14.1 架构概览
+
+```
+┌──────────────────────────────────────────────┐
+│  控制面 (kcp)                                 │
+│  ┌──────────────────────────────────────┐     │
+│  │  Node CR  ←  Agent 上报节点信息       │     │
+│  │  Addon CR ←  管理员声明式安装插件     │     │
+│  └──────────────────────────────────────┘     │
+└──────────────────────────────────────────────┘
+                      │
+                      ▼
+┌──────────────────────────────────────────────┐
+│  数据面 (真机集群)                            │
+│  ┌──────────────────────────────────────┐     │
+│  │  rlark-agent (DaemonSet)             │     │
+│  │  ├─ 上报 GPU 型号/数量               │     │
+│  │  ├─ 上报具身设备型号/数量             │     │
+│  │  └─ 管理 Addon 安装                  │     │
+│  ├──────────────────────────────────────┤     │
+│  │  embodied-runtime Device Plugin      │     │
+│  │  ├─ 自动发现摄像头 (V4L2)            │     │
+│  │  ├─ 控制 ROS/ROS2 进程               │     │
+│  │  └─ 注入设备到训练 Pod               │     │
+│  ├──────────────────────────────────────┤     │
+│  │  NVIDIA Device Plugin (GPU 节点)     │     │
+│  │  └─ 上报 GPU 资源                    │     │
+│  └──────────────────────────────────────┘     │
+└──────────────────────────────────────────────┘
+```
+
+### 14.2 纳管流程
+
+**Step 1：在真机上加入集群**
+
+```bash
+# 在每台真机上安装 containerd/kubelet，加入集群
+# 给节点打上标签，标识设备类型
+kubectl label node robot-01 rlark.io/node-category=robot
+kubectl label node gpu-node-01 rlark.io/node-category=cloud rlark.io/model='NVIDIA H800'
+```
+
+**Step 2：安装 NVIDIA Device Plugin（GPU 节点）**
+
+```bash
+kubectl apply -f https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/main/deployments/static/nvidia-device-plugin.yml
+```
+
+**Step 3：安装 embodied-runtime Device Plugin（具身设备节点）**
+
+通过 rlark Addon 机制声明式安装：
+
+```bash
+curl -X POST "http://localhost:8080/api/v1/clusters/agent-beijing/addons" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "addonName": "embodied-runtime-device-plugin",
+    "version": "0.1.0",
+    "values": {
+      "nodeSelector": "rlark.io/node-category=robot"
+    }
+  }'
+```
+
+**Step 4：验证设备注册**
+
+```bash
+# 查看节点设备信息
+kubectl describe node robot-01 | grep rlinf.io/device
+
+# 在 Web UI 的 Nodes 页面查看设备型号和空闲量
+```
+
+### 14.3 设备元数据
+
+管理员可以补充节点位置和设备型号元数据，这些信息会显示在 Web UI 中：
+
+```bash
+# 节点位置
+kubectl annotate node robot-01 \
+  rlark.io/ip-location='{"province":"上海市","city":"上海市"}' --overwrite
+
+# 节点型号
+kubectl label node robot-01 rlark.io/model='NVIDIA H800' --overwrite
+```
+
+> 具身设备类型和数量由 Device Plugin 自动上报，无需手动标注。
+
+### 14.4 编写使用真机设备的 Job
+
+在 Job 的 Task 中通过 `nodeSelector` 和 `resources` 指定设备需求：
+
+```json
+{
+  "tasks": [{
+    "name": "robot-trainer",
+    "nodeSelector": {
+      "rlark.io/cluster-id": "rlark-agent-beijing",
+      "rlark.io/node-category": "robot"
+    },
+    "kubernetes": {
+      "workload": {
+        "template": {
+          "spec": {
+            "containers": [{
+              "name": "trainer",
+              "image": "my-training-image:latest",
+              "resources": {
+                "limits": {
+                  "rlinf.io/device": "1",
+                  "rlinf.io/device-camera": "1"
+                }
+              }
+            }]
+          }
+        }
+      }
+    }
+  }]
+}
+```
+
+### 14.5 设备资源类型
+
+| 设备 | 资源名 | 上报方式 |
+|------|--------|---------|
+| NVIDIA GPU | `nvidia.com/gpu` | NVIDIA Device Plugin |
+| 摄像头 | `rlinf.io/device-camera` | embodied-runtime Device Plugin |
+| ROS 控制器 | `rlinf.io/device-ros` | embodied-runtime Device Plugin |
+| ROS2 控制器 | `rlinf.io/device-ros2` | embodied-runtime Device Plugin |
+| 通用具身设备 | `rlinf.io/device-<model>` | embodied-runtime Device Plugin |
