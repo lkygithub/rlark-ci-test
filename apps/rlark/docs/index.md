@@ -14,6 +14,11 @@ hide:
   <img src="https://img.shields.io/badge/Kubernetes-kcp-326CE5?logo=kubernetes&style=flat-square" alt="Kubernetes" />
 </div>
 
+<div align="center" markdown>
+  <a href="https://rlark.readthedocs.io/en/latest/"><img src="https://img.shields.io/badge/English%20Docs-blue?logo=readthedocs&style=flat-square" alt="English Docs" /></a>
+  <a href="https://rlark.readthedocs.io/en/latest/cn/README/"><img src="https://img.shields.io/badge/中文文档-red?logo=readthedocs&style=flat-square" alt="中文文档" /></a>
+</div>
+
 <h1 align="center">
   <sub>RLark — Cross-Cluster Embodied Intelligence Cloud-Native Platform</sub>
 </h1>
