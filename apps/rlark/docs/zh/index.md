@@ -47,10 +47,6 @@ bash apps/rlark/docs/examples/quickstart.sh
 
 详见 [快速开始指南](quickstart.md) 了解前置依赖和详细说明。
 
-## 使用 Web 控制台
-
-详见 [https://rlark-docs.pages.dev/](https://rlark-docs.pages.dev/)。
-
 ## 技术栈
 
 - **语言**：Go (控制面/Agent) + TypeScript (前端)

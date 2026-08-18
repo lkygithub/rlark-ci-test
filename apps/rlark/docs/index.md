@@ -47,10 +47,6 @@ bash apps/rlark/docs/examples/quickstart.sh
 
 See the [Quick Start Guide](quickstart.md) for prerequisite requirements and detailed instructions.
 
-## Try the Web Console
-
-See [https://rlark-docs.pages.dev/](https://rlark-docs.pages.dev/) for the full Web Console guide.
-
 ## Tech Stack
 
 - **Language**: Go (control plane/agent) + TypeScript (frontend)

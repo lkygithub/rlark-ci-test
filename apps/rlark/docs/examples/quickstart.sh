@@ -185,7 +185,18 @@ $(go env GOPATH)/bin/controller-gen crd:maxDescLen=0 \
   output:crd:artifacts:config=/tmp/rlark/crds
 kubectl --kubeconfig /tmp/rlark/admin.kubeconfig --context root-shard \
   apply -f /tmp/rlark/crds/ --validate=false
-ok "kubeconfig, DB config, and CRDs ready"
+
+# Local quickstart credentials. Production installs use rlarkadm-generated
+# random credentials and must not reuse these ephemeral values.
+ADMIN_PASSWORD=$(python3 -c 'import secrets; print(secrets.token_hex(8))')
+USER_PASSWORD=$(python3 -c 'import secrets; print(secrets.token_hex(8))')
+kubectl --kubeconfig /tmp/rlark/admin.kubeconfig --context root \
+  create secret generic rlark-ui-auth -n default \
+  --from-literal="admin-password=$ADMIN_PASSWORD" \
+  --from-literal="user-password=$USER_PASSWORD" \
+  --dry-run=client -o yaml \
+  | kubectl --kubeconfig /tmp/rlark/admin.kubeconfig --context root apply -f -
+ok "kubeconfig, DB config, CRDs, and UI credentials ready"
 
 # =============================================================================
 # Step 7: Start control plane
@@ -393,6 +404,10 @@ for i in $(seq 1 $CLUSTER_COUNT); do
 echo "  kind (rlark-data-$i):"
 echo "    └── rlark-agent"
 done
+echo ""
+echo "Web UI credentials (local quickstart only):"
+echo "  admin / $ADMIN_PASSWORD"
+echo "  user  / $USER_PASSWORD"
 echo ""
 echo "Kubeconfigs:"
 echo "  kcp:  /tmp/rlark/admin.kubeconfig"
