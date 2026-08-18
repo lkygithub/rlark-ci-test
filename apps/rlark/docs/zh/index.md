@@ -49,11 +49,7 @@ bash apps/rlark/docs/examples/quickstart.sh
 
 ## 使用 Web 控制台
 
-```bash
-cd apps/rlark-ui && npm install && npm run dev
-```
-
-浏览器访问 `http://localhost:5173`。详见 [Web 控制台](ui-behavior.md)。
+详见 [https://rlark-docs.pages.dev/](https://rlark-docs.pages.dev/)。
 
 ## 技术栈
 

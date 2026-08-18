@@ -42,13 +42,7 @@ USE_LOCAL_REGISTRY=true bash apps/rlark/docs/examples/quickstart.sh
 
 ## 快速体验：Web UI
 
-部署完成后，启动 Web UI 即可通过图形界面管理任务：
-
-```bash
-cd apps/rlark-ui && npm install && npm run dev
-```
-
-浏览器访问 `http://localhost:5173`，详细使用说明见 [Web UI 使用指南](ui-behavior.md)。
+部署完成后，访问 [https://rlark-docs.pages.dev/](https://rlark-docs.pages.dev/) 了解如何使用控制台查看资源、提交训练任务和管理存储。
 
 ## 创建第一个训练任务（curl）
 

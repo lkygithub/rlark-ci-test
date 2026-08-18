@@ -49,11 +49,7 @@ See the [Quick Start Guide](quickstart.md) for prerequisite requirements and det
 
 ## Try the Web Console
 
-```bash
-cd apps/rlark-ui && npm install && npm run dev
-```
-
-Open `http://localhost:5173`. See [Web Console](ui-behavior.md) for the full guide.
+See [https://rlark-docs.pages.dev/](https://rlark-docs.pages.dev/) for the full Web Console guide.
 
 ## Tech Stack
 
