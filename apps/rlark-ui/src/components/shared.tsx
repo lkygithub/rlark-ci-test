@@ -110,16 +110,17 @@ export function SortButton({
   );
 }
 
-export function Logo() {
+export function Logo({ lang }: { lang: Lang }) {
+  const locale = lang === "zh" ? "zh" : "en";
   return (
     <div className="brand">
       <img
-        src="/rlark-logo.png"
+        src={`/rlark-logo-${locale}-light.png`}
         alt="RLark"
         className="brand-logo brand-logo-light"
       />
       <img
-        src="/rlark-logo-white.png"
+        src={`/rlark-logo-${locale}-dark.png`}
         alt="RLark"
         className="brand-logo brand-logo-dark"
       />
