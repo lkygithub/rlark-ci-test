@@ -149,7 +149,7 @@ export default function App() {
       }
     >
       <aside className="sidebar">
-        <Logo />
+        <Logo lang={lang} />
         <nav>
           <span className="nav-label">{c.nav.workspace}</span>
           {navItems.map((item) => {
