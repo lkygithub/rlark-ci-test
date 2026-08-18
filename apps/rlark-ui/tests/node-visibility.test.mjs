@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  getNodeCategories,
   getNodeCategory,
   isBusinessWorkerNode,
 } from "../dist/test/utils/nodeVisibility.js";
@@ -18,6 +19,15 @@ test("shows categorized workload workers", () => {
       true,
     );
   }
+});
+
+test("supports multiple Kubernetes-safe category labels", () => {
+  const hybrid = node("hybrid-worker", {
+    "rlark.io/node-category-cloud": "true",
+    "rlark.io/node-category-robot": "true",
+  });
+  assert.deepEqual(getNodeCategories(hybrid), ["cloud", "robot"]);
+  assert.equal(isBusinessWorkerNode(hybrid), true);
 });
 
 test("hides uncategorized management nodes", () => {

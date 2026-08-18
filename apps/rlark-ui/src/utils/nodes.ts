@@ -3,33 +3,46 @@ import { Bot, CircleDot, CloudCog, Server } from "lucide-react";
 import { nodes as mockNodes, type NodeKind } from "../data";
 import type { CRDNode, CRDNodeLite, NodeCategory } from "../types";
 import {
+  getNodeCategories,
   getNodeCategory,
+  hasNodeCategory,
   isBusinessWorkerNode,
   NODE_CATEGORY_LABEL,
 } from "./nodeVisibility";
 
-export { getNodeCategory, isBusinessWorkerNode };
+export {
+  getNodeCategories,
+  getNodeCategory,
+  hasNodeCategory,
+  isBusinessWorkerNode,
+};
 
 export function getNodeLocation(node: CRDNode): string {
-  const raw = node.metadata.annotations?.["rlark.io/ip-location"];
-  if (raw) {
-    try {
-      const location = JSON.parse(raw) as {
-        city?: string;
-        province?: string;
-        country?: string;
-      };
-      const parts = [location.province, location.city].filter(
-        (value, index, values): value is string =>
-          Boolean(value) && values.indexOf(value) === index,
-      );
-      if (parts.length > 0) return parts.join(" · ");
-      if (location.country) return location.country;
-    } catch {
-      // Fall back to the legacy city label below.
-    }
-  }
-  return node.metadata.labels?.["rlark.io/city"] ?? "";
+  return (
+    node.metadata.annotations?.["rlark.io/city"] ??
+    node.metadata.labels?.["rlark.io/city"] ??
+    ""
+  );
+}
+
+export function getNodeGPUModel(node: CRDNode): string {
+  return (
+    node.metadata.annotations?.["rlark.io/gpu-model"] ??
+    node.metadata.labels?.["rlark.io/gpu-model"] ??
+    node.metadata.annotations?.["rlark.io/model"] ??
+    node.metadata.labels?.["rlark.io/model"] ??
+    ""
+  );
+}
+
+export function getNodeDeviceModel(node: CRDNode): string {
+  return (
+    node.metadata.annotations?.["rlark.io/device-model"] ??
+    node.metadata.labels?.["rlark.io/device-model"] ??
+    node.metadata.annotations?.["rlark.io/model"] ??
+    node.metadata.labels?.["rlark.io/model"] ??
+    ""
+  );
 }
 
 function resourceNumber(value?: string): number {
@@ -106,7 +119,8 @@ export function getNodeResourceSummary(
   const capacity = node.status?.capacity ?? node.status?.allocatable ?? {};
   const allocatable = node.status?.allocatable ?? capacity;
   const used = node.status?.used ?? {};
-  const model = node.metadata.labels?.["rlark.io/model"] ?? "";
+  const model =
+    category === "cloud" ? getNodeGPUModel(node) : getNodeDeviceModel(node);
 
   // Existing GPU nodes may predate the RLark category label. The Kubernetes
   // extended resource is authoritative, so show it regardless of category.

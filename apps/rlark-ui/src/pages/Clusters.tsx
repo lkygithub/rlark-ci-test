@@ -32,7 +32,10 @@ import {
   categoryLabels,
   formatResourceQuantity,
   getGPUResourceKey,
+  getNodeDeviceModel,
+  getNodeCategories,
   getNodeCategory,
+  getNodeGPUModel,
   getNodeLocation,
   getNodeResourceSummary,
   isBusinessWorkerNode,
@@ -577,8 +580,7 @@ export function NodeDetailReal({
     addresses.find((address) => address.type === "InternalIP")?.address ??
     addresses[0]?.address ??
     "—";
-  const category = getNodeCategory(node);
-  const categoryInfo = categoryLabels[category];
+  const categories = getNodeCategories(node);
   const capacity = node.status?.capacity ?? {};
   const allocatable = node.status?.allocatable ?? {};
   const requestedFallback = useMemo(() => {
@@ -759,7 +761,13 @@ export function NodeDetailReal({
         <div className="node-insight-facts">
           <div>
             <small>{zh ? "节点类型" : "Node type"}</small>
-            <strong>{zh ? categoryInfo.zh : categoryInfo.en}</strong>
+            <strong>
+              {categories
+                .map((value) =>
+                  zh ? categoryLabels[value].zh : categoryLabels[value].en,
+                )
+                .join(" / ")}
+            </strong>
           </div>
           <div>
             <small>{zh ? "接入形态" : "Agent type"}</small>
@@ -947,15 +955,21 @@ export function NodeDetailReal({
                 </div>
                 <div>
                   <dt>{zh ? "节点分类" : "Category"}</dt>
-                  <dd>{zh ? categoryInfo.zh : categoryInfo.en}</dd>
+                  <dd>
+                    {categories
+                      .map((value) =>
+                        zh
+                          ? categoryLabels[value].zh
+                          : categoryLabels[value].en,
+                      )
+                      .join(" / ")}
+                  </dd>
                 </div>
                 <div>
                   <dt>{zh ? "GPU 型号" : "GPU model"}</dt>
                   <dd>
                     {hasGPUResource
-                      ? labels["rlark.io/gpu-model"] ||
-                        labels["rlark.io/model"] ||
-                        (zh ? "未标注" : "Unlabeled")
+                      ? getNodeGPUModel(node) || (zh ? "未标注" : "Unlabeled")
                       : zh
                         ? "无 GPU"
                         : "No GPU"}
@@ -965,8 +979,7 @@ export function NodeDetailReal({
                   <dt>{zh ? "端设备型号" : "Device model"}</dt>
                   <dd>
                     {deviceResourceKeys.length > 0
-                      ? labels["rlark.io/device-model"] ||
-                        labels["rlark.io/model"] ||
+                      ? getNodeDeviceModel(node) ||
                         deviceResourceKeys.map(deviceLabel).join("、")
                       : zh
                         ? "无端设备"

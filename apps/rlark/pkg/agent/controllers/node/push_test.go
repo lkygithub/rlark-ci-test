@@ -1,11 +1,51 @@
 package node
 
 import (
+	"reflect"
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 )
+
+func TestMergeManagementNodeMetadata(t *testing.T) {
+	managementLabels := map[string]string{
+		"rlark.io/node-category-cloud": "true",
+		"admin.example/obsolete":       "keep-out",
+	}
+	discoveredLabels := map[string]string{
+		"kubernetes.io/hostname":       "gpu47",
+		"rlark.io/node-category-cloud": "false",
+	}
+	wantLabels := map[string]string{
+		"kubernetes.io/hostname":       "gpu47",
+		"rlark.io/node-category-cloud": "true",
+	}
+	if got := mergeManagementMetadata(managementLabels, discoveredLabels, isManagementOwnedNodeLabel); !reflect.DeepEqual(got, wantLabels) {
+		t.Fatalf("merged labels = %#v, want %#v", got, wantLabels)
+	}
+
+	managementAnnotations := map[string]string{
+		"rlark.io/city":         "深圳市",
+		"rlark.io/gpu-model":    "NVIDIA 4090",
+		"rlark.io/device-model": "Unitree G1",
+		"other.example/note":    "management-only",
+	}
+	discoveredAnnotations := map[string]string{
+		"rlark.io/agent-note": "reported",
+		"rlark.io/city":       "stale-local-value",
+	}
+	wantAnnotations := map[string]string{
+		"rlark.io/city":         "深圳市",
+		"rlark.io/gpu-model":    "NVIDIA 4090",
+		"rlark.io/device-model": "Unitree G1",
+		"rlark.io/agent-note":   "reported",
+		"other.example/note":    "management-only",
+	}
+	if got := mergeManagementAnnotations(managementAnnotations, discoveredAnnotations); !reflect.DeepEqual(got, wantAnnotations) {
+		t.Fatalf("merged annotations = %#v, want %#v", got, wantAnnotations)
+	}
+}
 
 func TestRequestedResourcesForNode(t *testing.T) {
 	pods := []corev1.Pod{

@@ -20,7 +20,60 @@ import (
 const (
 	AgentVersion      = "0.1.0"
 	HeartbeatInterval = 30 * time.Second
+
+	nodeCategoryLabel       = "rlark.io/node-category"
+	nodeCategoryLabelPrefix = "rlark.io/node-category-"
+	nodeCityAnnotation      = "rlark.io/city"
+	nodeGPUModelAnnotation  = "rlark.io/gpu-model"
+	nodeDeviceAnnotation    = "rlark.io/device-model"
+	nodeLegacyModel         = "rlark.io/model"
 )
+
+func isManagementOwnedNodeLabel(key string) bool {
+	return key == nodeCategoryLabel || strings.HasPrefix(key, nodeCategoryLabelPrefix)
+}
+
+func isManagementOwnedNodeAnnotation(key string) bool {
+	switch key {
+	case nodeCityAnnotation, nodeGPUModelAnnotation, nodeDeviceAnnotation, nodeLegacyModel:
+		return true
+	default:
+		return false
+	}
+}
+
+// mergeManagementMetadata keeps business metadata authored on the management
+// plane while refreshing metadata discovered from the local Kubernetes Node.
+// City and hardware models intentionally live only on the management Node CR.
+func mergeManagementMetadata(management, discovered map[string]string, managementOwned func(string) bool) map[string]string {
+	merged := make(map[string]string, len(discovered)+len(management))
+	for key, value := range discovered {
+		if !managementOwned(key) {
+			merged[key] = value
+		}
+	}
+	for key, value := range management {
+		if managementOwned(key) {
+			merged[key] = value
+		}
+	}
+	return merged
+}
+
+func mergeManagementAnnotations(management, discovered map[string]string) map[string]string {
+	merged := make(map[string]string, len(management)+len(discovered))
+	for key, value := range management {
+		if !strings.HasPrefix(key, "rlark.io/") || isManagementOwnedNodeAnnotation(key) {
+			merged[key] = value
+		}
+	}
+	for key, value := range discovered {
+		if !isManagementOwnedNodeAnnotation(key) {
+			merged[key] = value
+		}
+	}
+	return merged
+}
 
 // pushNodeReconciler watches local K8s Nodes and reports their info to management Node CRs.
 type pushNodeReconciler struct {
@@ -199,22 +252,12 @@ func (r *pushNodeReconciler) updateManagementNode(ctx context.Context, logger lo
 	}
 
 	mgmtNode.Spec = desiredNode.Spec
-	mgmtNode.Labels = desiredNode.Labels
-	if mgmtNode.Annotations == nil {
-		mgmtNode.Annotations = make(map[string]string)
-	}
-	for k, v := range desiredNode.Annotations {
-		if mgmtNode.Annotations[k] != v {
-			mgmtNode.Annotations[k] = v
-		}
-	}
-	for k := range mgmtNode.Annotations {
-		if strings.HasPrefix(k, "rlark.io/") {
-			if _, ok := desiredNode.Annotations[k]; !ok {
-				delete(mgmtNode.Annotations, k)
-			}
-		}
-	}
+	mgmtNode.Labels = mergeManagementMetadata(
+		mgmtNode.Labels,
+		desiredNode.Labels,
+		isManagementOwnedNodeLabel,
+	)
+	mgmtNode.Annotations = mergeManagementAnnotations(mgmtNode.Annotations, desiredNode.Annotations)
 	if err := r.c.ManagementClient.Update(ctx, &mgmtNode); err != nil {
 		logger.Error(err, "failed to update management Node spec")
 		return reconcile.Result{RequeueAfter: HeartbeatInterval}, err
