@@ -1,0 +1,7 @@
+/* Prevent RTD-injected JS from expanding all navigation sections on initial load.
+   mkdocs-material uses checkbox toggles; RTD's version-selector script
+   checks them all, causing the nav to appear fully expanded on the homepage.
+   This CSS restores the default collapsed state for nav items. */
+.md-nav__item--nested > .md-nav__toggle:not(:checked) ~ .md-nav {
+  display: none;
+}

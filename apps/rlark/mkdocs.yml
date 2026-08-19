@@ -27,6 +27,12 @@ theme:
     - toc.follow
     - content.code.copy
 
+extra_css:
+  - extra.css
+
+extra_javascript:
+  - extra.js
+
 plugins:
   - i18n:
       docs_structure: folder
