@@ -196,10 +196,16 @@ export interface CRDNodeLite {
     name: string;
     namespace?: string;
     labels?: Record<string, string>;
+    annotations?: Record<string, string>;
+  };
+  spec?: {
+    unschedulable?: boolean;
   };
   status?: {
     phase?: string;
+    capacity?: Record<string, string>;
     allocatable?: Record<string, string>;
+    used?: Record<string, string>;
   };
 }
 
