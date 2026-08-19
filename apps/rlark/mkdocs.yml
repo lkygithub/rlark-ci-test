@@ -24,7 +24,6 @@ theme:
   features:
     # navigation.instant disabled: conflicts with ReadTheDocs injected JS
     - navigation.sections
-    - navigation.expand
     - navigation.indexes
     - toc.follow
     - content.code.copy
@@ -83,10 +82,11 @@ plugins:
             CLI: CLI
             API: API
             "API Examples": "API 示例"
-            "Storage API": "Storage API"
+            "Storage API": "存储 API"
             CRDs: CRD
             Configuration: 配置项
-            "Release Notes / Changelog": "Release Notes / Changelog"
+            "Release Notes / Changelog": "版本发布 / Changelog"
+            Debugging: 调试
   - search
 
 nav:
@@ -118,8 +118,8 @@ nav:
   - Developer Guide:
     - Developer Guide Overview: developer-guide/index.md
     - Local Development and Debugging: developer-guide/local-development.md
+    - Debugging: developer-guide/debugging.md
     - Project Layout: developer-guide/project-layout.md
-    - Technical Architecture: architecture.md
     - New Device Integration: developer-guide/device-integration.md
     - Embodied Runtime: developer-guide/embodied-runtime-reference.md
     - Contributing: developer-guide/contributing.md

@@ -101,4 +101,4 @@ curl "http://localhost:8080/api/v1/rlinf.io/v1alpha1/jobs/ppo-cartpole-v1/status
 
 ## 3. 更多示例
 
-请查看英文版 [API Examples](../api/examples.md) 获取完整的 Node、Job、Task、Workflow、Docker/Raw 接入形态、认证、存储、日志等 API 调用示例。
+Node、Job、Task、Workflow、Docker/Raw 接入形态、认证、存储、日志等完整 API 调用示例，请参见 [API 参考](../api/reference.md)。

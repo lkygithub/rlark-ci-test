@@ -47,11 +47,23 @@ Manage cross-cluster embodied intelligence workloads natively with Kubernetes, f
 ## Quick Start
 
 ```bash
+# Clone the repository and enter the project directory
+git clone https://github.com/RLinf/RLark.git
+cd RLark
+
 # One-click deploy: control plane (Docker Compose) + 2 kind clusters + cross-cluster network test
 bash apps/rlark/docs/examples/quickstart.sh
 ```
 
-See the [Quick Start Guide](quickstart.md) for prerequisite requirements and detailed instructions.
+!!! tip "System Requirements"
+    - OS: Linux (recommended) or macOS
+    - CPU Architecture: amd64 / arm64
+    - Memory: ≥ 16 GB recommended
+    - Disk: ≥ 20 GB free space recommended
+    - Dependencies: Docker ≥ 24.0, kind ≥ 0.20, kubectl ≥ 1.28, jq, python3
+    - Users in China: the script automatically falls back to domestic mirror if Docker Hub is unreachable
+
+See the [Quick Start Guide](quickstart.md) for full prerequisites and step-by-step instructions.
 
 ## Tech Stack
 

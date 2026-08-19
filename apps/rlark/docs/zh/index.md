@@ -47,11 +47,23 @@ hide:
 ## 快速开始
 
 ```bash
+# 克隆仓库并进入项目目录
+git clone https://github.com/RLinf/RLark.git
+cd RLark
+
 # 一键部署：控制面（Docker Compose）+ 2 个 kind 集群 + 跨集群网络验证
 bash apps/rlark/docs/examples/quickstart.sh
 ```
 
-详见 [快速开始指南](quickstart.md) 了解前置依赖和详细说明。
+!!! tip "系统要求"
+    - 操作系统：Linux（推荐）或 macOS
+    - CPU 架构：amd64 / arm64
+    - 内存：建议 ≥ 16 GB
+    - 磁盘：建议 ≥ 20 GB 可用空间
+    - 依赖：Docker ≥ 24.0、kind ≥ 0.20、kubectl ≥ 1.28、jq、python3
+    - 中国大陆用户：如 Docker Hub 拉取镜像失败，脚本会自动尝试国内镜像源
+
+详见 [快速开始指南](quickstart.md) 了解完整前置依赖和分步说明。
 
 ## 技术栈
 

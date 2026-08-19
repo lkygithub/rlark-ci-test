@@ -55,9 +55,16 @@ ssh -J <user>@<bastion>:<port> <user>@<pod-name>
 
 ## Security Notes
 
-- SSH keys use a shared user key list; not isolated per console login user
-- Complete identity authentication and auditing outside of RLark
+!!! warning "Security Limitation"
+    SSH keys use a **shared user key list**, not isolated per console login user. This means:
+    - Anyone with a private key corresponding to a registered public key can access pods where that key is injected
+    - In multi-tenant environments, this feature should be limited to trusted users
+    - Key revocation does **not** affect already-running pods (injected keys remain active)
+    - Audit logging must be performed at the entry point (before the bastion)
+
 - Never upload private keys
+- Verify the bastion host key fingerprint before first connection
+- Rotate keys regularly and recreate affected pods to remove old public keys
 
 ## API Equivalent
 

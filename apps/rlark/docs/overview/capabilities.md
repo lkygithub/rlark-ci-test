@@ -2,7 +2,9 @@
 
 RLark provides a unified control plane for heterogeneous embodied-intelligence infrastructure.
 
-- **Multi-cluster resource management** — onboard Kubernetes, Docker, and raw runtimes and view usable compute and embodied devices consistently.
+- **Multi-cluster resource management** — onboard multiple runtimes and view usable compute and embodied devices consistently.
+  - Kubernetes Runtime: **Stable** (production-ready)
+  - Docker / Raw Runtime: **Experimental** (code framework in place, runtime implementation TODO)
 - **Job and workflow orchestration** — describe distributed jobs as Tasks and compose repeatable pipelines as Workflows.
 - **Cross-cluster networking** — connect workloads through TUN, gVisor netstack, and SSH tunnels without requiring direct inbound connectivity.
 - **Interactive development** — inspect Workers, copy SSH commands, and open WebTerminal sessions from the console.

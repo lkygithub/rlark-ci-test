@@ -140,7 +140,7 @@ camctr list
 - 仅在兼容的边缘集群部署控制器
 - 先用非生产设备验证发现与分配流程
 - 确认宿主机运行时依赖和设备访问权限
-- 操作真实硬件前遵循 [安全清单](../developer-guide/device-integration.md#真实设备安全要求)
+- 操作真实硬件前遵循 [安全清单](../developer-guide/device-integration.md) 中的真实设备安全要求
 
 ## 参考
 
