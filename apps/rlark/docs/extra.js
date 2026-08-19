@@ -1,15 +1,19 @@
 /**
- * Fix RTD-injected JS that expands all navigation sections.
- * RTD's version-selector script checks all nav toggle checkboxes, causing
- * the sidebar to appear fully expanded on every page.
+ * Fallback for browsers that do not support the CSS :has() selector
+ * (extra.css handles the primary fix).
  *
- * This script unchecks toggles that are NOT ancestors of the current page,
- * so the current page's path stays expanded while everything else collapses.
+ * RTD's version-selector JS checks all nav toggle checkboxes, causing
+ * the sidebar to appear fully expanded. This script unchecks toggles
+ * that are not ancestors of the current page.
  */
-document.addEventListener('DOMContentLoaded', function () {
-  requestAnimationFrame(function () {
-    // Collect toggles that are ancestors of active nav items.
-    // DOM structure: li.nested > input.toggle + nav.md-nav > ul.md-nav__list > li.md-nav__item--active
+(function () {
+  // Only run if :has() is not supported (e.g., older Firefox)
+  try {
+    document.querySelector(':has(*)');
+    return; // :has() supported, CSS handles it
+  } catch (e) { /* fall through to JS fallback */ }
+
+  function fixNav() {
     var keepChecked = new Set();
     var activeItems = document.querySelectorAll('.md-nav__item--active');
     activeItems.forEach(function (item) {
@@ -25,12 +29,15 @@ document.addEventListener('DOMContentLoaded', function () {
         el = el.parentElement;
       }
     });
-
-    // Uncheck all toggles except those in the current page's path
     document.querySelectorAll('.md-nav__toggle').forEach(function (t) {
       if (!keepChecked.has(t)) {
         t.checked = false;
       }
     });
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    fixNav();
+    setTimeout(fixNav, 500);
   });
-});
+})();

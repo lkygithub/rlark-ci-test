@@ -1,4 +1,23 @@
-/* Fallback: hide unchecked nav sections (overridden by JS in extra.js). */
-.md-nav__item--nested > .md-nav__toggle:not(:checked) ~ .md-nav {
+/*
+ * Fix RTD-injected JS that expands all navigation sections.
+ *
+ * RTD's version-selector JS checks all nav toggle checkboxes, so the
+ * navigation appears fully expanded. CSS alone cannot prevent JS from
+ * toggling checkboxes, but we can hide the expanded submenus visually.
+ *
+ * Strategy: collapse all nested navs by default, then reveal only the
+ * path that contains the current active page.
+ */
+.md-nav__item--nested > .md-nav {
   display: none;
+}
+
+/* Section index page: the nested item is itself active */
+.md-nav__item--active > .md-nav {
+  display: block;
+}
+
+/* Child page: the nested item contains an active descendant */
+.md-nav__item--nested:has(.md-nav__item--active) > .md-nav {
+  display: block;
 }
