@@ -5,6 +5,9 @@
 Domain 定义了跨集群通信的网络边界。每个 Domain 有一个 CIDR 范围用于 IP 分配。
 
 ### 创建 Domain
+
+<!-- TODO: 截图 - 管理后台 Domain 管理 -->
+
 - 管理后台 → Domain 管理 → 创建 Domain
 - 输入唯一名称和 CIDR 范围（如 `10.200.0.0/24`）
 - Domain CRD 在 kcp 中创建

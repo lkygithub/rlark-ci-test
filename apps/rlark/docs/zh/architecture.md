@@ -2,7 +2,7 @@
 
 ## 1. 设计目标
 
-rlark 是一个面向跨集群具身智能场景的云原生纳管平台，核心设计目标：
+RLark 是一个面向跨集群具身智能场景的云原生纳管平台，核心设计目标：
 
 1. **云端到端侧的工作负载编排**：从云端 GPU 训练（RL/LLM）到端侧部署（机械臂、传感器、摄像头），统一的声明式抽象覆盖具身智能全链路
 2. **多运行时数据面**：原生支持 Kubernetes、Docker、Raw 三种运行时 — GPU 集群运行 k8s 承载大规模训练，端侧设备运行 k8s 或 Docker/Raw 实现轻量级具身部署（Docker/Raw 运行时：代码框架已就绪，运行时实现尚为 TODO）
@@ -12,7 +12,7 @@ rlark 是一个面向跨集群具身智能场景的云原生纳管平台，核�
 
 ## 2. 总体架构
 
-rlark 采用**控制面—数据面**分离架构，控制面基于 kcp（Kubernetes Control Plane）运行，数据面 Agent 部署在每个 GPU 集群或端侧设备中，支持 k8s、Docker 和 Raw 三种运行时。**embodied-runtime**（Device Plugin + Controllers）以 DaemonSet 形式运行在每个数据面节点上，管理机械臂（ROS 1/2）和摄像头硬件，将其作为 Kubernetes 设备资源暴露。
+RLark 采用**控制面—数据面**分离架构，控制面基于 kcp（Kubernetes Control Plane）运行，数据面 Agent 部署在每个 GPU 集群或端侧设备中，支持 k8s、Docker 和 Raw 三种运行时。**embodied-runtime**（Device Plugin + Controllers）以 DaemonSet 形式运行在每个数据面节点上，管理机械臂（ROS 1/2）和摄像头硬件，将其作为 Kubernetes 设备资源暴露。
 
 ![系统架构](../images/architecture.svg)
 
@@ -333,7 +333,7 @@ flowchart LR
 
 ### 8.1 为什么用 kcp 而不是原生 k8s API Server？
 
-kcp 相比原生 k8s API Server 更加轻量，可以脱离完整的 Kubernetes 集群独立部署，降低了控制面的资源开销和运维复杂度。同时 kcp 原生的逻辑集群（logical cluster）概念与 rlark 的 Domain 概念天然契合，为未来多租户场景预留了扩展性。
+kcp 相比原生 k8s API Server 更加轻量，可以脱离完整的 Kubernetes 集群独立部署，降低了控制面的资源开销和运维复杂度。同时 kcp 原生的逻辑集群（logical cluster）概念与 RLark 的 Domain 概念天然契合，为未来多租户场景预留了扩展性。
 
 ### 8.2 为什么用 SSH 隧道而不是 VPN？
 

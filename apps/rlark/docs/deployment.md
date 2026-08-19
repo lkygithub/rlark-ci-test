@@ -2,7 +2,7 @@
 
 ## 1. Deployment Architecture
 
-rlark supports three deployment modes for different scenarios:
+RLark supports three deployment modes for different scenarios:
 
 | Mode | Complexity | Use Case |
 |------|-----------|----------|
@@ -203,7 +203,7 @@ volumes:
 
 ### 5.5 Env Mode
 
-rlark supports three deployment environment modes, configured in the DeployConfig YAML:
+RLark supports three deployment environment modes, configured in the DeployConfig YAML:
 
 | Mode | Description | Use Case |
 |------|-------------|----------|

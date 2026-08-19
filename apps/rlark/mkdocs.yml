@@ -63,8 +63,8 @@ plugins:
             "Administrator Guide": 管理员指南
             "Administrator Guide Overview": 管理员指南概览
             "Production Control Plane": 生产级控制面部署
-            "Data Plane Onboarding": 数据面集群接入
-            "Embodied Device Onboarding": 具身设备集群接入
+            "GPU Cluster Onboarding": GPU 集群接入
+            "Embodied Device Onboarding": 具身设备接入
             "Embodied Runtime": "Embodied Runtime"
             "Agent Installation and Upgrade": "Agent 安装与升级"
             "Node and Resource Management": 节点与资源管理
@@ -108,7 +108,7 @@ nav:
   - Administrator Guide:
     - Administrator Guide Overview: admin-guide/index.md
     - Production Control Plane: admin-guide/control-plane.md
-    - Data Plane Onboarding: admin-guide/data-plane.md
+    - GPU Cluster Onboarding: admin-guide/data-plane.md
     - Embodied Device Onboarding: admin-guide/embodied-runtime.md
     - Agent Installation and Upgrade: admin-guide/agent.md
     - Node and Resource Management: admin-guide/nodes.md

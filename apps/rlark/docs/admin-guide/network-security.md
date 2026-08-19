@@ -5,6 +5,9 @@
 A Domain defines a network boundary for cross-cluster communication. Each Domain has a CIDR range for IP allocation.
 
 ### Creating a Domain
+
+<!-- TODO: screenshot - Domain management in the administrator console -->
+
 - Administrator Console → Domain Management → Create Domain
 - Enter a unique name and CIDR range (e.g., `10.200.0.0/24`)
 - The Domain CRD is created in kcp

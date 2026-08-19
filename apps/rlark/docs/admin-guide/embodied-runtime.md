@@ -2,7 +2,7 @@
 
 ## GPU Clusters vs. Embodied Devices
 
-RLark can manage two types of compute resources. See [Data Plane Onboarding](data-plane.md) for standard GPU cluster onboarding.
+RLark can manage two types of compute resources. See [GPU Cluster Onboarding](data-plane.md) for standard GPU cluster onboarding.
 
 | | GPU Cluster Onboarding | Embodied Device Onboarding |
 |---|---|---|

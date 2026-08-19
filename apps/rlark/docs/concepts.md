@@ -2,7 +2,7 @@
 
 ## 1. Resource Hierarchy
 
-rlark uses a multi-layer resource abstraction, from underlying infrastructure to top-level embodied AI workloads:
+RLark uses a multi-layer resource abstraction, from underlying infrastructure to top-level embodied AI workloads:
 
 ```
 Workflow  ──── Workflow (DAG orchestration of multiple Jobs)
@@ -20,7 +20,7 @@ Workflow  ──── Workflow (DAG orchestration of multiple Jobs)
 
 ## 2. Domain
 
-Domain is the fundamental unit of **network isolation** and **security boundary** in rlark.
+Domain is the fundamental unit of **network isolation** and **security boundary** in RLark.
 
 ### Concept
 
@@ -429,7 +429,7 @@ graph TD
 
 ## 13. Ray Cluster Integration
 
-rlark supports declarative Ray cluster creation via Task annotations:
+RLark supports declarative Ray cluster creation via Task annotations:
 
 ```yaml
 annotations:
@@ -449,7 +449,7 @@ annotations:
 
 ## 14. Object Storage & PVCs
 
-rlark supports mounting persistent volumes to training tasks via `pvcStorageMap` in the Task specification.
+RLark supports mounting persistent volumes to training tasks via `pvcStorageMap` in the Task specification.
 
 ### Concept
 
@@ -473,7 +473,7 @@ kubernetes:
 
 ## 15. User Authentication
 
-rlark provides a simple role-based authentication system for the Web UI.
+RLark provides a simple role-based authentication system for the Web UI.
 
 ### Roles
 
@@ -491,7 +491,7 @@ rlark provides a simple role-based authentication system for the Web UI.
 
 ## 16. Addon (Component Management)
 
-Addon is rlark's component management system, allowing users to install, configure, and manage third-party components (device plugins, monitoring agents, etc.) across multiple data plane clusters.
+Addon is RLark's component management system, allowing users to install, configure, and manage third-party components (device plugins, monitoring agents, etc.) across multiple data plane clusters.
 
 ### Concept
 
@@ -553,7 +553,7 @@ Web Terminal provides interactive Pod terminal access directly from the Web UI.
 
 ### Concept
 
-The Web Terminal allows users to open a terminal session into any Pod managed by rlark, without needing to SSH into the underlying node or install kubectl locally.
+The Web Terminal allows users to open a terminal session into any Pod managed by RLark, without needing to SSH into the underlying node or install kubectl locally.
 
 ### Architecture
 
@@ -574,7 +574,7 @@ When the shell exits (for example, after `exit`), the proxy chain forwards a nor
 
 ## 18. Pod HTTP Proxy
 
-Pod HTTP Proxy allows direct HTTP access to Pods managed by rlark through the Server → Agent proxy chain.
+Pod HTTP Proxy allows direct HTTP access to Pods managed by RLark through the Server → Agent proxy chain.
 
 ### Concept
 
@@ -604,11 +604,11 @@ Client ──HTTP──▶ Gateway ──proxy via Server──▶ Agent ──r
 
 ## 19. TensorBoard Proxy
 
-TensorBoard Proxy provides a web-based visualization dashboard for training metrics (loss curves, scalar summaries, histograms, etc.) directly from the rlark Web UI, without needing to expose TensorBoard ports externally.
+TensorBoard Proxy provides a web-based visualization dashboard for training metrics (loss curves, scalar summaries, histograms, etc.) directly from the RLark Web UI, without needing to expose TensorBoard ports externally.
 
 ### Concept
 
-When a training Task runs TensorBoard (listening on port 6006), rlark automatically proxies the TensorBoard UI through the Gateway. Users can open TensorBoard from the Web UI by clicking a link, and the browser accesses it via the Gateway proxy.
+When a training Task runs TensorBoard (listening on port 6006), RLark automatically proxies the TensorBoard UI through the Gateway. Users can open TensorBoard from the Web UI by clicking a link, and the browser accesses it via the Gateway proxy.
 
 ### Architecture
 
