@@ -17,10 +17,12 @@ Each job type pre-configures a set of default roles. You can add, remove, or cus
 
 For each worker role, configure the following:
 
-- **Cluster and Node** -- Select the target cluster and optionally a specific node. Use the **Node Selector** to filter nodes by attributes such as:
-  - Node type: cloud, edge, or robot
-  - GPU model (e.g., A100, H100, RTX 4090)
-  - Physical location or zone
+1. Select the target cluster. Each option shows the cluster name, type label, and current status in one line.
+2. Choose one GPU or embodied-device specification from the list, which shows available/total devices and nodes, then set the shared per-Worker resource request. Set the request to `0` for debugging workloads that should keep the placement constraint without requesting the selected device.
+3. Choose one scheduling mode:
+   - **Automatic selection**: enter the desired Worker count. The console validates the total request against schedulable capacity and selects eligible nodes.
+   - **Select nodes**: click eligible nodes or drag across node cards. Each selected node creates one Worker; click or drag across selected nodes again to remove them.
+4. Review the shared placement summary, then configure the image, prepare script, environment variables, and storage mounts.
 
 - **Container Image** -- Specify the container image for this role. You can use an image tag (e.g., `myimage:latest`) or a digest (e.g., `myimage@sha256:...`). Using a digest is recommended for reproducibility and auditability.
 
@@ -57,6 +59,10 @@ Before submitting, review the generated YAML manifest that represents your job. 
 
 Once satisfied, submit the job. You can monitor the job status from the Jobs list, which shows real-time updates on worker provisioning, initialization, and execution.
 
+After selecting a role, its resource summary shows the GPU or embodied-device model configured on the assigned node and its requested quantity, such as `NVIDIA RTX 4090 · 1 GPU`. If the Worker has not reported its assigned node yet, the console resolves the model from the role's selected hostname candidates.
+
+When a Worker is Pending, hover or focus the information icon beside that Worker's status. RLark reads events for that exact data-plane Pod, so kubelet `Pulling`/`Pulled` events and image-pull failures appear without mixing in events from other Workers on the same node. Byte or percentage progress is shown only when the runtime reports it; the console never fabricates a progress percentage.
+
 ## Inspecting Workers and Pods
 
 ### Job Overview
@@ -79,6 +85,8 @@ Below the overview, the worker list shows every worker instance with:
 - **Node** -- The physical node hosting this worker
 - **IP** -- The Pod IP address
 - **Status** -- Per-worker status (Pending, ContainerCreating, Running, Terminated)
+
+Use **Refresh** in the list header to update Task, Pod, placement, IP, and status information without reloading the page.
 
 Click any worker to see its runtime details, including container status, resource usage, and events.
 
@@ -117,7 +125,7 @@ You can open an interactive terminal directly into the main container of any run
 
 ### Opening a Terminal
 
-From the worker list, click the **Terminal** action on any worker. This opens a WebTerminal session that runs `/bin/sh` in the worker's main container.
+From the worker list, click the **Terminal** action on any worker. This opens a WebTerminal session that runs `/bin/sh` in the worker's main container. WebTerminal requires an authenticated user, a running Worker, and a reachable RLark SSH tunnel.
 
 ### Diagnostic Commands
 
@@ -171,6 +179,19 @@ Deleting a job performs a full cleanup:
 
 - **Edit** -- Modify a stopped job's configuration (roles, resources, commands) and resubmit.
 - **Clone** -- Create a copy of an existing job configuration to use as a template for a new job.
+
+### Lifecycle Actions
+
+The detail-page action bar supports the full Job lifecycle:
+
+- **Stop** pauses a running Job and preserves its configuration.
+- **Start** resumes a stopped Job.
+- **Restart** opens a choice: restart immediately with the current configuration, or edit the Job and restart after the updated configuration is saved.
+- **Delete** opens a danger confirmation that identifies the target Job and warns that the operation cannot be undone before permanently removing it.
+
+Lifecycle actions require confirmation. While an action is in progress, the other action buttons are disabled; failures are shown in the same action area. A Job is removed from the page only after the delete request succeeds.
+
+The Jobs table provides a Start/Stop shortcut in each row. Open the adjacent actions menu to clone, restart, or delete the Job; Restart uses the same immediate-restart or edit-and-restart choice as the detail page.
 
 ## Preflight Checklist
 

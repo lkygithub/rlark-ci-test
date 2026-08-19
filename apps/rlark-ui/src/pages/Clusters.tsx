@@ -472,10 +472,26 @@ export function ClusterDetailReal({
                     <code>{address}</code>
                   </td>
                   <td>
-                    <small>{resource.primary}</small>
+                    {resource.lines.length ? (
+                      resource.lines.map((line) => (
+                        <small key={line.key} className="cluster-resource-line">
+                          {line.primary}
+                        </small>
+                      ))
+                    ) : (
+                      <small>{resource.primary}</small>
+                    )}
                   </td>
                   <td>
-                    <small>{resource.secondary}</small>
+                    {resource.lines.length ? (
+                      resource.lines.map((line) => (
+                        <small key={line.key} className="cluster-resource-line">
+                          {line.secondary}
+                        </small>
+                      ))
+                    ) : (
+                      <small>—</small>
+                    )}
                   </td>
                 </tr>
               );
