@@ -14,7 +14,7 @@ hide:
 </div>
 
 <div align="center" markdown>
-  <a href="../"><img src="https://img.shields.io/badge/English-EN-4051b5?style=flat-square" alt="English" /></a>
+  <a href="https://rlark-ci-test.readthedocs.io/en/latest/"><img src="https://img.shields.io/badge/English-EN-4051b5?style=flat-square" alt="English" /></a>
   <img src="https://img.shields.io/badge/中文-中文-e91e63?style=flat-square" alt="中文" />
 </div>
 

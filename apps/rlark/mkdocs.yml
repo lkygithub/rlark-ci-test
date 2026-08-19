@@ -69,10 +69,9 @@ plugins:
             "Complete Deployment Reference": 完整部署参考
             "Developer Guide": 开发者指南
             "Developer Guide Overview": 开发者指南概览
-            "Local Development": 本地源码运行
+            "Local Development and Debugging": 本地开发与调试
             "Project Layout": 项目结构
             "Technical Architecture": 技术架构
-            "Development and Debugging": 开发与调试
             "New Device Integration": 新设备适配
             Contributing: 贡献指南
             Reference: 参考手册
@@ -113,10 +112,9 @@ nav:
     - Complete Deployment Reference: deployment.md
   - Developer Guide:
     - Developer Guide Overview: developer-guide/index.md
-    - Local Development: developer-guide/local-development.md
+    - Local Development and Debugging: developer-guide/local-development.md
     - Project Layout: developer-guide/project-layout.md
     - Technical Architecture: architecture.md
-    - Development and Debugging: developer-guide/debugging.md
     - New Device Integration: developer-guide/device-integration.md
     - Contributing: developer-guide/contributing.md
   - Reference:
