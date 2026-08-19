@@ -7,7 +7,7 @@ SSH keys serve two purposes in RLark:
 1. Server authentication for SSH bastion access
 2. Injecting public keys into Job Pod `~/.ssh/authorized_keys`
 
-<!-- TODO: screenshot - SSH key management in the console -->
+![SSH Key Management](../images/ui/ssh-key-ui.png)
 
 ## Adding a Public Key
 

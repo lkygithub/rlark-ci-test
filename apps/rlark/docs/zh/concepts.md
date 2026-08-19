@@ -2,7 +2,7 @@
 
 ## 1. 资源层次
 
-rlark 采用多层资源抽象，从底层基础设施到上层具身智能工作负载逐层封装：
+RLark 采用多层资源抽象，从底层基础设施到上层具身智能工作负载逐层封装：
 
 ```
 Workflow  ──── 工作流（DAG 编排多个 Job）
@@ -20,7 +20,7 @@ Workflow  ──── 工作流（DAG 编排多个 Job）
 
 ## 2. Domain（安全域）
 
-Domain 是 rlark 中**网络隔离**和**安全边界**的基本单位。
+Domain 是 RLark 中**网络隔离**和**安全边界**的基本单位。
 
 ### 概念
 
@@ -429,7 +429,7 @@ graph TD
 
 ## 13. Ray 集群集成
 
-rlark 支持通过 Task 注解声明式创建 Ray 集群：
+RLark 支持通过 Task 注解声明式创建 Ray 集群：
 
 ```yaml
 annotations:
@@ -449,7 +449,7 @@ annotations:
 
 ## 14. 对象存储与 PVC
 
-rlark 支持通过 Task 的 `pvcStorageMap` 为训练任务挂载持久化存储卷。
+RLark 支持通过 Task 的 `pvcStorageMap` 为训练任务挂载持久化存储卷。
 
 ### 概念
 
@@ -473,7 +473,7 @@ kubernetes:
 
 ## 15. 用户认证
 
-rlark 为 Web UI 提供简单的基于角色的认证系统。
+RLark 为 Web UI 提供简单的基于角色的认证系统。
 
 ### 角色
 
@@ -491,7 +491,7 @@ rlark 为 Web UI 提供简单的基于角色的认证系统。
 
 ## 16. Addon（组件管理）
 
-Addon 是 rlark 的组件管理系统，允许用户在多个数据面集群中安装、配置和管理第三方组件（设备插件、监控代理等）。
+Addon 是 RLark 的组件管理系统，允许用户在多个数据面集群中安装、配置和管理第三方组件（设备插件、监控代理等）。
 
 ### 概念
 
@@ -553,7 +553,7 @@ Web Terminal 提供从 Web UI 直接交互式访问 Pod 终端的能力。
 
 ### 概念
 
-Web Terminal 允许用户打开任何 rlark 管理的 Pod 的终端会话，无需 SSH 到底层节点或本地安装 kubectl。
+Web Terminal 允许用户打开任何 RLark 管理的 Pod 的终端会话，无需 SSH 到底层节点或本地安装 kubectl。
 
 ### 架构
 
@@ -574,7 +574,7 @@ Shell 退出（例如执行 `exit`）时，代理链会转发 WebSocket 正常�
 
 ## 18. Pod HTTP Proxy（Pod HTTP 代理）
 
-Pod HTTP Proxy 允许通过 Server → Agent 代理链直接向 rlark 管理的 Pod 发送 HTTP 请求。
+Pod HTTP Proxy 允许通过 Server → Agent 代理链直接向 RLark 管理的 Pod 发送 HTTP 请求。
 
 ### 概念
 
@@ -604,11 +604,11 @@ Pod HTTP Proxy 使用户无需知道 Pod 的真实 IP 地址或建立 SSH 隧道
 
 ## 19. TensorBoard Proxy（TensorBoard 代理）
 
-TensorBoard Proxy 提供基于 Web 的训练指标可视化仪表板（损失曲线、标量摘要、直方图等），可直接从 rlark Web UI 访问，无需对外暴露 TensorBoard 端口。
+TensorBoard Proxy 提供基于 Web 的训练指标可视化仪表板（损失曲线、标量摘要、直方图等），可直接从 RLark Web UI 访问，无需对外暴露 TensorBoard 端口。
 
 ### 概念
 
-当训练 Task 运行 TensorBoard（监听端口 6006）时，rlark 通过 Gateway 自动代理 TensorBoard UI。用户可以在 Web UI 中点击链接打开 TensorBoard，浏览器通过 Gateway 代理访问。
+当训练 Task 运行 TensorBoard（监听端口 6006）时，RLark 通过 Gateway 自动代理 TensorBoard UI。用户可以在 Web UI 中点击链接打开 TensorBoard，浏览器通过 Gateway 代理访问。
 
 ### 架构
 

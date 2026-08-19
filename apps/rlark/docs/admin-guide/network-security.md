@@ -6,7 +6,7 @@ A Domain defines a network boundary for cross-cluster communication. Each Domain
 
 ### Creating a Domain
 
-<!-- TODO: screenshot - Domain management in the administrator console -->
+![Domain Management](../images/ui/domain-ui.png)
 
 - Administrator Console → Domain Management → Create Domain
 - Enter a unique name and CIDR range (e.g., `10.200.0.0/24`)

@@ -235,12 +235,12 @@ sleep 15
 
 # Gateway may need restart if admin-cert is not ready on first start
 for i in $(seq 1 30); do
-  if curl -s -o /dev/null -w "%{http_code}" "http://localhost:8080/api/v1/rlinf.io/v1alpha1/nodes" 2>/dev/null | grep -q "200"; then
+  if curl -s -o /dev/null -w "%{http_code}" "http://localhost:9000/api/v1/rlinf.io/v1alpha1/nodes" 2>/dev/null | grep -q "200"; then
     break
   fi
   sleep 2
 done
-if ! curl -s -o /dev/null -w "%{http_code}" "http://localhost:8080/api/v1/rlinf.io/v1alpha1/nodes" 2>/dev/null | grep -q "200"; then
+if ! curl -s -o /dev/null -w "%{http_code}" "http://localhost:9000/api/v1/rlinf.io/v1alpha1/nodes" 2>/dev/null | grep -q "200"; then
   log "Gateway not ready, restarting..."
   KCP_KUBECONFIG=/tmp/rlark/kcp-kubeconfig.yaml \
   DB_CONFIG=/tmp/rlark/db-config.yaml \
@@ -248,7 +248,7 @@ if ! curl -s -o /dev/null -w "%{http_code}" "http://localhost:8080/api/v1/rlinf.
   docker compose -f "$SCRIPT_DIR/docker-compose.yml" up -d --force-recreate rlark-gateway rlark-controller-manager
   sleep 15
   for i in $(seq 1 30); do
-    if curl -s -o /dev/null -w "%{http_code}" "http://localhost:8080/api/v1/rlinf.io/v1alpha1/nodes" 2>/dev/null | grep -q "200"; then
+    if curl -s -o /dev/null -w "%{http_code}" "http://localhost:9000/api/v1/rlinf.io/v1alpha1/nodes" 2>/dev/null | grep -q "200"; then
       break
     fi
     sleep 2
@@ -307,7 +307,7 @@ log "Step 9: Deploying Agents..."
 # Request agent certificates sequentially (to avoid gateway race conditions)
 for i in $(seq 1 $CLUSTER_COUNT); do
   CID="agent-my-cluster-$i"
-  curl -s -X POST "http://localhost:8080/api/v1/certificates/agent" \
+  curl -s -X POST "http://localhost:9000/api/v1/certificates/agent" \
     -H "Content-Type: application/json" \
     -d "{\"cluster_id\":\"${CID}\"}" > "/tmp/rlark/agent-cert-$i.json"
   jq -r .ca_cert "/tmp/rlark/agent-cert-$i.json" > "/tmp/rlark/ca-$i.pem"
@@ -357,7 +357,7 @@ wait
 # =============================================================================
 log "Step 10: Verifying node registration..."
 sleep 10
-curl -s "http://localhost:8080/api/v1/rlinf.io/v1alpha1/nodes" | \
+curl -s "http://localhost:9000/api/v1/rlinf.io/v1alpha1/nodes" | \
   jq -r '.items[] | "  \(.metadata.name)  cluster-id=\(.metadata.labels["rlark.io/cluster-id"])"'
 ok "Nodes verified"
 
@@ -450,7 +450,7 @@ echo "    ├── local-registry :5555"
 echo "    ├── kcp            :6443"
 echo "    ├── postgresql     :5432"
 echo "    ├── rlark-server   :8443 + :2222"
-echo "    ├── rlark-gateway  :8080"
+echo "    ├── rlark-gateway  :9000"
 echo "    └── rlark-controller-manager"
 for i in $(seq 1 $CLUSTER_COUNT); do
 echo "  kind (rlark-data-$i):"

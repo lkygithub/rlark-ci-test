@@ -6,7 +6,7 @@ Domain 定义了跨集群通信的网络边界。每个 Domain 有一个 CIDR �
 
 ### 创建 Domain
 
-<!-- TODO: 截图 - 管理后台 Domain 管理 -->
+![Domain 管理](../../images/ui/domain-ui.png)
 
 - 管理后台 → Domain 管理 → 创建 Domain
 - 输入唯一名称和 CIDR 范围（如 `10.200.0.0/24`）
