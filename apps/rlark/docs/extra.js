@@ -8,22 +8,21 @@
  */
 document.addEventListener('DOMContentLoaded', function () {
   requestAnimationFrame(function () {
-    // Collect toggles that are ancestors of active nav items
+    // Collect toggles that are ancestors of active nav items.
+    // DOM structure: li.nested > input.toggle + nav.md-nav > ul.md-nav__list > li.md-nav__item--active
     var keepChecked = new Set();
     var activeItems = document.querySelectorAll('.md-nav__item--active');
     activeItems.forEach(function (item) {
-      var el = item.parentElement;
+      var el = item;
       while (el) {
-        if (el.classList.contains('md-nav')) {
-          var toggle = el.parentElement.querySelector(':scope > .md-nav__toggle');
+        if (el.classList.contains('md-nav__item--nested')) {
+          var toggle = el.querySelector(':scope > .md-nav__toggle');
           if (toggle) {
             keepChecked.add(toggle);
-            toggle.checked = true;  // ensure it stays checked
+            toggle.checked = true;
           }
-          el = el.parentElement;
-        } else {
-          break;
         }
+        el = el.parentElement;
       }
     });
 
