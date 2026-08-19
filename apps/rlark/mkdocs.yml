@@ -24,7 +24,7 @@ theme:
         name: Switch to light mode
   features:
     # navigation.instant disabled: conflicts with ReadTheDocs injected JS
-    - navigation.tracking
+    - navigation.sections
     - navigation.expand
     - navigation.indexes
     - toc.follow
@@ -32,15 +32,6 @@ theme:
 
 plugins:
   - search
-
-extra:
-  alternate:
-    - name: 中文
-      link: zh/
-      lang: zh
-    - name: English
-      link: ./
-      lang: en
 
 nav:
   - 中文:
