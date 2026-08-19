@@ -8864,7 +8864,7 @@ tbody tr:hover {
   display: block;
   resize: vertical;
   caret-color: #ffffff;
-  color: transparent;
+  color: #d4d4d4;
   background: transparent;
 }
 
