@@ -4,6 +4,47 @@
 
 Onboarding a data plane cluster makes its compute resources available to RLark for scheduling training jobs. The process involves creating a cluster registration in the admin console, generating agent credentials, and running the agent on the target cluster.
 
+## Onboarding Methods
+
+RLark supports two methods for onboarding data plane clusters:
+
+### UI-Based (Recommended)
+
+Use the administrator console for a guided onboarding experience. See [Step-by-Step Onboarding](#step-by-step-onboarding) below.
+
+### CLI-Based
+
+Use `rlarkadm` and `rlarkctl` for scripted or automated onboarding:
+
+```bash
+# 1. Sign the agent certificate
+rlarkctl sign \
+  --role=agent \
+  --client-id=agent-my-cluster-1 \
+  --output=/tmp/agent-certs
+
+# 2. Create and apply the agent deployment
+rlarkadm install -f deploy-data-plane.yaml
+```
+
+Example `deploy-data-plane.yaml`:
+
+```yaml
+apiVersion: v1
+kind: DeployConfig
+plane: data
+controlPlaneAddress: https://<control-plane>:8443
+kubernetes:
+  image: rlark:latest
+cert:
+  caCert: /tmp/agent-certs/ca-cert.pem
+  agentCert: /tmp/agent-certs/cert.pem
+  agentKey: /tmp/agent-certs/key.pem
+```
+
+!!! tip "CLI vs UI"
+    Use the UI for initial setup and testing. Use the CLI for automation, CI/CD pipelines, and bulk cluster onboarding.
+
 ## Step-by-Step Onboarding
 
 ### Step 1: Create Cluster Registration

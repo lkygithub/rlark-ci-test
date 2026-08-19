@@ -40,7 +40,9 @@ hide:
 
 ## 架构概览
 
+<div style="max-width: 85%; margin: 0 auto;" markdown="1">
 ![系统架构](../images/architecture.png)
+</div>
 
 ## 快速开始
 

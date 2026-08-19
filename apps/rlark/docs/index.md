@@ -40,7 +40,9 @@ Manage cross-cluster embodied intelligence workloads natively with Kubernetes, f
 
 ## Architecture Overview
 
+<div style="max-width: 85%; margin: 0 auto;" markdown="1">
 ![System Architecture](images/architecture.png)
+</div>
 
 ## Quick Start
 

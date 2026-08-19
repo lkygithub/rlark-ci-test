@@ -4,6 +4,47 @@
 
 接入数据面集群使其计算资源可用于 RLark 调度训练任务。流程包括在管理控制台创建集群注册、生成 Agent 凭据，以及在目标集群上运行 Agent。
 
+## 接入方式
+
+RLark 支持两种数据面集群接入方式：
+
+### 通过 UI（推荐）
+
+使用管理后台进行引导式接入，详见下方逐步接入流程。
+
+### 通过命令行
+
+使用 `rlarkadm` 和 `rlarkctl` 进行脚本化或自动化接入：
+
+```bash
+# 1. 签发 Agent 证书
+rlarkctl sign \
+  --role=agent \
+  --client-id=agent-my-cluster-1 \
+  --output=/tmp/agent-certs
+
+# 2. 创建并应用 Agent 部署
+rlarkadm install -f deploy-data-plane.yaml
+```
+
+示例 `deploy-data-plane.yaml`：
+
+```yaml
+apiVersion: v1
+kind: DeployConfig
+plane: data
+controlPlaneAddress: https://<control-plane>:8443
+kubernetes:
+  image: rlark:latest
+cert:
+  caCert: /tmp/agent-certs/ca-cert.pem
+  agentCert: /tmp/agent-certs/cert.pem
+  agentKey: /tmp/agent-certs/key.pem
+```
+
+!!! tip "UI vs CLI"
+    UI 适用于初始设置和测试，CLI 适用于自动化、CI/CD 流水线和批量集群接入。
+
 ## 逐步接入
 
 ### 第一步：创建集群注册
@@ -11,7 +52,7 @@
 1. 登录管理后台 `http://<host>:5173/admin`
 2. 进入 **集群管理** → **创建集群**
 
-![创建集群](../images/ui/admin-create-cluster.jpg)
+![创建集群](../../images/ui/admin-create-cluster.jpg)
 
 3. 输入集群名称（如 `my-cluster-1`）
 4. 选择集群类型和区域
@@ -52,7 +93,7 @@ Agent 需要以下 Kubernetes RBAC 权限：
 1. 返回管理后台
 2. 进入 **集群管理** → **集群与节点**
 
-![验证集群节点](../images/ui/admin-clusters-nodes.jpg)
+![验证集群节点](../../images/ui/admin-clusters-nodes.jpg)
 
 3. 确认集群状态显示为 **在线**
 4. 检查可用的 Worker 节点已列出

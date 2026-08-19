@@ -39,9 +39,11 @@ plugins:
           name: English
           default: true
           build: true
+          site_name: "RLark Embodied AI Cloud-Native Management Platform"
         - locale: zh
           name: 中文
           build: true
+          site_name: "RLark 具身智能云原生纳管平台"
           nav_translations:
             Overview: 概览
             "What is RLark": "RLark 是什么"
@@ -57,6 +59,7 @@ plugins:
             Workflows: 工作流
             Storage: 存储
             "SSH Keys": "SSH Key"
+            "RL Training Best Practices": "RL 训练最佳实践"
             "Administrator Guide": 管理员指南
             "Administrator Guide Overview": 管理员指南概览
             "Production Control Plane": 生产级控制面部署
@@ -94,6 +97,7 @@ nav:
   - Quick Start: quickstart.md
   - Platform User Guide:
     - User Guide Overview: user-guide/index.md
+    - RL Training Best Practices: user-guide/best-practices.md
     - Console Access and Navigation: user-guide/console.md
     - Clusters and Nodes: user-guide/clusters-nodes.md
     - Jobs: user-guide/jobs.md
