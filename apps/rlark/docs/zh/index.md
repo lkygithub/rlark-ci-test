@@ -13,6 +13,10 @@ hide:
   <img src="https://img.shields.io/badge/Kubernetes-kcp-326CE5?logo=kubernetes&style=flat-square" alt="Kubernetes" />
 </div>
 
+<div align="center" markdown>
+  [:material-translate: English](../) &nbsp;·&nbsp; [:material-translate: 中文](.)
+</div>
+
 <h1 align="center">
   <sub>RLark 具身智能云原生纳管平台</sub>
 </h1>
