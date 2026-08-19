@@ -994,6 +994,11 @@ button {
   border-radius: 999px;
 }
 
+.cluster-resource-line {
+  display: block;
+  white-space: nowrap;
+}
+
 .mini-bars {
   height: 178px;
   display: flex;
@@ -13885,8 +13890,36 @@ tr.clickable:hover {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
   overflow: hidden;
+}
+
+.node-row-resource-line {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  line-height: 1.25;
+}
+
+.node-row-resource-line > i {
+  flex: none;
+  color: var(--soft);
+  font-size: 9px;
+  font-style: normal;
+}
+
+.node-row-resource-line > strong {
+  min-width: 0;
+}
+
+.node-row-resource-line > strong.unlabeled {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.node-row-resource-line > small {
+  flex: none;
 }
 
 .node-row-resource strong,
