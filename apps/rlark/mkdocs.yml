@@ -1,5 +1,5 @@
 site_name: RLark
-site_url: https://rlark.readthedocs.io/
+site_url: !ENV READTHEDOCS_CANONICAL_URL
 site_description: Reinforcement Learning Infrastructure for Embodied and Agentic AI
 repo_url: https://github.com/RLinf/RLark
 edit_uri: edit/main/apps/rlark/docs/
@@ -23,7 +23,7 @@ theme:
         icon: material/brightness-4
         name: Switch to light mode
   features:
-    - navigation.instant
+    # navigation.instant disabled: conflicts with ReadTheDocs injected JS
     - navigation.tracking
     - navigation.expand
     - navigation.indexes
@@ -36,10 +36,10 @@ plugins:
 extra:
   alternate:
     - name: 中文
-      link: /zh/
+      link: zh/
       lang: zh
     - name: English
-      link: /
+      link: ./
       lang: en
 
 nav:
