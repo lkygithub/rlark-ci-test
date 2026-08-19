@@ -1,6 +1,7 @@
-"""Patch mkdocs.yml with build_only_locale and language switcher for ReadTheDocs."""
+"""Patch mkdocs.yml and zh markdown files for ReadTheDocs builds."""
 import re
 import os
+import glob
 
 lang = os.environ.get("READTHEDOCS_LANGUAGE", "en")
 # Normalize: RTD uses "zh-cn" but i18n plugin expects "zh"
@@ -20,22 +21,36 @@ content = re.sub(
 )
 
 # Inject language switcher (extra.alternate) for cross-project links on RTD
-alternate_block = rf"""
+# RTD uses "zh-cn" for Chinese translation subproject URL
+alternate_block = """
 extra:
   alternate:
     - name: English
       link: https://rlark-ci-test.readthedocs.io/en/latest/
       lang: en
     - name: 中文
-      link: https://rlark-ci-test.readthedocs.io/zh/latest/
-      lang: zh
+      link: https://rlark-ci-test.readthedocs.io/zh-cn/latest/
+      lang: zh-cn
 """
 
-# Remove existing extra.alternate if present, then inject new one
 content = re.sub(r"\n# .*navigation\.instant.*\n", "\n", content)
 content = content.rstrip() + "\n" + alternate_block
 
 with open(config_path, "w") as f:
     f.write(content)
+
+# Fix image paths in zh/ markdown files
+# When build_only_locale=zh, pages are at root, but markdown assumes zh/ subdir
+# ../../images/ -> ../images/ (for files in zh/subdir/)
+# ../images/    -> images/     (for files in zh/ root)
+for md_file in glob.glob("apps/rlark/docs/zh/**/*.md", recursive=True):
+    with open(md_file) as f:
+        md_content = f.read()
+    # Remove one level of "../" from image paths
+    md_content = md_content.replace("../../images/", "__TEMP_IMAGES__/")
+    md_content = md_content.replace("../images/", "images/")
+    md_content = md_content.replace("__TEMP_IMAGES__/", "../images/")
+    with open(md_file, "w") as f:
+        f.write(md_content)
 
 print(f"[i18n] build_only_locale={lang}")
