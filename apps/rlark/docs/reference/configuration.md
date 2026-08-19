@@ -1,8 +1,8 @@
 # Configuration Reference
 
-## Database Configuration (`db-config.yaml`)
+## Database Configuration
 
-PostgreSQL connection configuration loaded via `--db-config` flag.
+PostgreSQL connection configuration loaded via `--db-config` flag. Used by rlark-server, rlark-gateway, and rlark-controller-manager.
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
@@ -18,13 +18,9 @@ PostgreSQL connection configuration loaded via `--db-config` flag.
 | `debug` | bool | `false` | Enable query logging |
 
 !!! note "Connection pooling"
-    The `maxOpenConns` and `maxIdleConns` values control the database connection pool size. Adjust these based on your expected workload concurrency. Setting `maxOpenConns` too low can cause bottlenecks under high load, while setting it too high can overwhelm the database server.
-
-!!! tip "Debug mode"
-    Enable `debug: true` during development to log all SQL queries. This is useful for troubleshooting performance issues or verifying query behavior, but should be disabled in production to avoid excessive logging.
+    Adjust `maxOpenConns` and `maxIdleConns` based on actual load. Increase for high-concurrency scenarios.
 
 **Example:**
-
 ```yaml
 host: postgresql
 port: 5432
@@ -38,9 +34,212 @@ connMaxIdleTime: 5m
 debug: false
 ```
 
+## rlark-server
+
+Control plane server. Manages TLS/SSH certificates, agent registration, and the Gateway API.
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--https-port` | int | `8443` | HTTPS listen port |
+| `--ssh-port` | int | `2222` | SSH listen port |
+| `--unsafe-http-port` | int | `8888` | Unsafe HTTP port for certificate signing API |
+| `--auto-sign-tls-ca-cert` | bool | `false` | Auto-sign TLS CA certificate if not present |
+| `--tls-domains` | strings | `["localhost"]` | TLS certificate domain list |
+| `--db-config` | string | `""` | Database configuration file path |
+| `--peer-service` | string | `""` | Cluster peer service DNS name |
+| `--peers` | strings | `[]` | Cluster peer server addresses |
+| `--kubeconfig` | string | `$KUBECONFIG` | kubeconfig file path |
+| `--master` | string | `""` | Kubernetes API server address |
+| `--in-cluster` | bool | `false` | Use in-cluster Kubernetes config |
+| `--kube-namespace` | string | `""` | Kubernetes namespace |
+| `--kube-qps` | float32 | `5000` | Kubernetes client QPS |
+| `--kube-burst` | int | `8000` | Kubernetes client burst |
+| `--kube-timeout` | duration | `0` | Kubernetes client request timeout |
+
+!!! tip "`--unsafe-http-port`"
+    Agents use this port for certificate signing. In production, only expose to internal networks.
+
+**Example:**
+```bash
+rlark-server \
+  --https-port=8443 \
+  --ssh-port=2222 \
+  --auto-sign-tls-ca-cert \
+  --tls-domains=localhost,rlark.example.com \
+  --db-config=/etc/rlark/db-config.yaml
+```
+
+## rlark-gateway
+
+API gateway. Handles all REST API requests including cluster management, job management, and storage operations.
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--addr` | string | `:8080` | API gateway bind address |
+| `--db-config` | string | `""` | Database configuration file path |
+| `--server-address` | string | `https://rlark-server.rlark-system.svc:8443` | RLark server address for certificate signing |
+| `--kubeconfig` | string | `$KUBECONFIG` | kubeconfig file path |
+| `--master` | string | `""` | Kubernetes API server address |
+| `--in-cluster` | bool | `false` | Use in-cluster Kubernetes config |
+| `--kube-namespace` | string | `""` | Kubernetes namespace |
+| `--kube-qps` | float32 | `5000` | Kubernetes client QPS |
+| `--kube-burst` | int | `8000` | Kubernetes client burst |
+| `--kube-timeout` | duration | `0` | Kubernetes client request timeout |
+
+**Example:**
+```bash
+rlark-gateway \
+  --addr=:8080 \
+  --db-config=/etc/rlark/db-config.yaml \
+  --server-address=https://rlark-server:8443
+```
+
+## rlark-controller-manager
+
+Controller manager. Reconciles Jobs, Workflows, and Domain resources.
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--server-address` | string | `https://rlark-server.rlark-system.svc:8443` | RLark server address |
+| `--db-config` | string | `""` | Database configuration file path |
+| `--leader-elect` | bool | `true` | Enable leader election for HA |
+| `--leader-election-id` | string | `rlark-controller-manager` | Leader election identity |
+| `--metrics-bind-address` | string | `:8080` | Metrics endpoint bind address |
+| `--health-probe-bind-address` | string | `:8081` | Health probe endpoint bind address |
+| `--sync-workers` | int | `5` | Number of concurrent sync workers |
+| `--kubeconfig` | string | `$KUBECONFIG` | kubeconfig file path |
+| `--master` | string | `""` | Kubernetes API server address |
+| `--in-cluster` | bool | `false` | Use in-cluster Kubernetes config |
+| `--kube-namespace` | string | `""` | Kubernetes namespace |
+| `--kube-qps` | float32 | `5000` | Kubernetes client QPS |
+| `--kube-burst` | int | `8000` | Kubernetes client burst |
+| `--kube-timeout` | duration | `0` | Kubernetes client request timeout |
+
+!!! note "Single-instance deployment"
+    Set `--leader-elect=false` for single-instance deployments to avoid unnecessary election overhead.
+
+**Example:**
+```bash
+rlark-controller-manager \
+  --server-address=https://rlark-server:8443 \
+  --db-config=/etc/rlark/db-config.yaml \
+  --leader-elect=false \
+  --metrics-bind-address=:8080 \
+  --health-probe-bind-address=:8081
+```
+
+## rlark-agent
+
+Data plane agent. Deployed on each cluster or node. Manages node registration, Task execution, and cross-cluster networking.
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--server-address` | string | `https://localhost:8443` | RLark server address |
+| `--server-hostname` | string | `""` | Expected server TLS hostname |
+| `--client-cert` | string | `""` | Client TLS certificate path |
+| `--client-key` | string | `""` | Client TLS private key path |
+| `--ca-cert` | string | `""` | CA certificate path |
+| `--insecure-skip-tls-verify` | bool | `false` | Skip TLS certificate verification |
+| `--agent-type` | string | `Kubernetes` | Agent type: Kubernetes, Docker, Raw |
+| `--mode` | string | `cluster` | Agent mode: cluster, node, both |
+| `--leader-election` | bool | `false` | Enable agent leader election |
+| `--leader-election-key` | string | `default/rlark-agent` | Leader election key (namespace/name) |
+| `--leader-election-id` | string | `hostname-pid` | Leader election identity |
+| `--metrics-bind-address` | string | `:8081` | Metrics endpoint bind address |
+| `--rlark-server-ssh-address` | string | `""` | RLark server SSH address (user@host:port) |
+| `--rlark-server-ssh-host-key` | string | `""` | RLark server SSH host key |
+| `--image` | string | `""` | RLark network sidecar image |
+| `--enable-same-cluster-direct` | bool | `true` | Enable same-cluster direct Pod access |
+| `--enable-cross-cluster-direct` | bool | `true` | Enable cross-cluster direct Pod access |
+| `--kubelet-dir` | string | `""` | Kubelet directory for pod UID discovery |
+| `--image-pull-enabled` | bool | `true` | Enable image pre-pull |
+| `--containerd-socket` | string | `/run/containerd/containerd.sock` | Containerd socket path |
+| `--containerd-namespace` | string | `k8s.io` | Containerd namespace |
+| `--node-name` | string | `$NODE_NAME` | Local node name |
+| `--nodeserver-unix-socket` | string | `/var/run/rlark/nodeserver.sock` | NodeServer Unix socket path |
+| `--kubeconfig` | string | `$KUBECONFIG` | kubeconfig file path |
+| `--master` | string | `""` | Kubernetes API server address |
+| `--in-cluster` | bool | `false` | Use in-cluster Kubernetes config |
+| `--kube-namespace` | string | `""` | Kubernetes namespace |
+| `--kube-qps` | float32 | `5000` | Kubernetes client QPS |
+| `--kube-burst` | int | `8000` | Kubernetes client burst |
+| `--kube-timeout` | duration | `0` | Kubernetes client request timeout |
+
+!!! tip "`--mode` values"
+    - `cluster`: Cluster-level agent only, manages cluster-wide resources
+    - `node`: Node-level agent only, manages Tasks on a single node
+    - `both`: Runs both cluster and node-level agents
+
+**Example:**
+```bash
+rlark-agent \
+  --mode=both \
+  --server-address=https://rlark-server:8443 \
+  --client-cert=/etc/rlark/agent-cert.pem \
+  --client-key=/etc/rlark/agent-key.pem \
+  --ca-cert=/etc/rlark/ca-cert.pem \
+  --image=rlark:latest \
+  --node-name=worker-01
+```
+
+## rlark-network-sidecar
+
+Network sidecar. Runs alongside each Task Pod to provide cross-cluster Pod-to-Pod networking via TUN device and gVisor netstack.
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--sidecar-unix-socket` | string | `/var/run/rlark/nodeserver.sock` | NodeServer Unix socket path |
+| `--sidecar-tun-name` | string | `gnet0` | TUN device name |
+| `--sidecar-tun-mtu` | int | `1500` | TUN device MTU |
+| `--sidecar-proxy-listen` | string | `:5700` | Proxy TCP listen address |
+| `--sidecar-hosts-sync-enabled` | bool | `true` | Enable periodic hosts file sync |
+| `--sidecar-hosts-sync-interval` | duration | `30s` | Hosts sync interval |
+| `--sidecar-hosts-file` | string | `/etc/hosts` | Hosts file path |
+
+**Example:**
+```bash
+rlark-network-sidecar \
+  --sidecar-unix-socket=/var/run/rlark/nodeserver.sock \
+  --sidecar-tun-name=gnet0 \
+  --sidecar-tun-mtu=1500
+```
+
+## sshd
+
+SSH daemon. Provides SSH access to running Task Pods. Integrated into rlark-server via `--ssh-port`.
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--port` | string | `22` | SSH listen port |
+| `--shell` | string | `""` | Shell binary path (default: /bin/bash) |
+
+**Environment variables:**
+
+| Variable | Description |
+|----------|-------------|
+| `RLARK_SSH_PUBLIC_KEY` | SSH public key for authorized_keys |
+| `RLARK_SSH_AUTHORIZED_KEYS_FILE` | Path to authorized_keys file |
+
+## Storage Provider Configuration
+
+Object storage backend configuration used by the gateway.
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `accessKeyId` | string | `""` | Access key ID |
+| `secretAccessKey` | string | `""` | Secret access key |
+| `bucket` | string | `""` | Bucket name |
+| `endpoint` | string | `http://localhost:9000` | Storage endpoint |
+| `region` | string | `us-east-1` | Region |
+| `usePathStyle` | bool | `false` | Use path-style addressing |
+| `provider` | string | `""` | Storage provider name |
+
+!!! tip "MinIO vs AWS S3"
+    Set `usePathStyle: true` for MinIO. Leave `false` for AWS S3.
+
 ## rlarkadm Deploy Configuration
 
-The YAML file passed to `rlarkadm install -f`.
+The YAML file passed to `rlarkadm install -f`. See [CLI Reference](cli.md#rlarkadm) for usage.
 
 ### Top-level Fields
 
@@ -58,10 +257,7 @@ The YAML file passed to `rlarkadm install -f`.
 | `insecureSkipTLSVerify` | bool | Skip TLS verification |
 
 !!! note "Environment selection"
-    Exactly one of `kubernetes`, `docker`, or `raw` must be specified, depending on your target deployment environment. The control plane will use the selected environment to determine how to provision and configure its components.
-
-!!! tip "Data plane certificate"
-    When deploying a data plane (`plane: data`), you must provide `cert` with valid CA, agent certificate, and agent key paths. These certificates are used to establish mutual TLS with the control plane. Without them, the agent cannot authenticate.
+    Choose exactly one of `kubernetes`, `docker`, or `raw`.
 
 ### DBConfig
 
@@ -89,13 +285,13 @@ The YAML file passed to `rlarkadm install -f`.
 | `uiImage` | string | UI image |
 | `replicas` | int | Component replicas |
 | `storage` | StorageConfig | Storage configuration |
-| `kcp` | ComponentConfig | kcp component configuration |
-| `etcd` | EtcdConfig | etcd component configuration |
-| `postgresql` | ComponentConfig | PostgreSQL component configuration |
+| `kcp` | ComponentConfig | kcp component config |
+| `etcd` | EtcdConfig | etcd component config |
+| `postgresql` | ComponentConfig | PostgreSQL component config |
 | `containerdSocket` | string | Containerd socket path |
 
-!!! tip "Image override precedence"
-    Component-specific image fields (e.g., `gatewayImage`) take precedence over the global `image` field. If `image` is set to `rlark:latest` but `gatewayImage` is set to `rlark-gateway:custom`, the gateway will use `rlark-gateway:custom` while other components fall back to `rlark:latest`.
+!!! tip "Image priority"
+    If both `image` and a specific component image (e.g., `gatewayImage`) are set, the specific image takes priority.
 
 ### DockerEnv
 
@@ -113,6 +309,9 @@ The YAML file passed to `rlarkadm install -f`.
 
 ### RawEnv
 
+!!! warning "Experimental"
+    Raw deployment is experimental. Prefer Kubernetes or Docker.
+
 | Field | Type | Description |
 |-------|------|-------------|
 | `gatewayArtifact` | string | Gateway binary path |
@@ -124,10 +323,9 @@ The YAML file passed to `rlarkadm install -f`.
 | `etcdArtifact` | string | etcd binary path |
 | `postgresqlArtifact` | string | PostgreSQL binary path |
 
-!!! note "Raw environment"
-    The `raw` environment is intended for running RLark components directly on the host without containerization. Each artifact path should point to the compiled binary for that component. This is typically used for development and debugging purposes.
-
 ### CertConfig
+
+Required for data plane deployment.
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -139,16 +337,11 @@ The YAML file passed to `rlarkadm install -f`.
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `type` | string | | Storage type: `emptyDir`, `hostPath`, `pvc` |
-| `hostPath` | string | | Host path for `hostPath` type |
-| `storageClass` | string | | StorageClass for `pvc` type |
+| `type` | string | | Storage type: emptyDir, hostPath, pvc |
+| `hostPath` | string | | Host path for hostPath type |
+| `storageClass` | string | | StorageClass for PVC type |
 | `size` | string | | Storage size |
 | `nodeSelector` | map | | Node selector for PV |
-
-!!! tip "Storage type selection"
-    - **`emptyDir`**: Ephemeral storage tied to the Pod lifecycle. Use for development or stateless workloads.
-    - **`hostPath`**: Mounts a directory from the host node. Suitable for single-node deployments or when data locality is required.
-    - **`pvc`**: Persistent volume claim. Use in production with a StorageClass that supports your cluster's storage backend.
 
 ### ComponentConfig
 
@@ -166,7 +359,6 @@ The YAML file passed to `rlarkadm install -f`.
 | `storage` | StorageConfig | Storage configuration |
 
 **Example (control plane):**
-
 ```yaml
 apiVersion: v1
 kind: DeployConfig
@@ -185,20 +377,3 @@ db:
   user: rlark
   password: CHANGE_ME
 ```
-
-## Storage Provider Configuration
-
-Configuration for the object storage backend used by the gateway.
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `accessKeyId` | string | `""` | Access key ID |
-| `secretAccessKey` | string | `""` | Secret access key |
-| `bucket` | string | `""` | Bucket name |
-| `endpoint` | string | `http://localhost:9000` | Storage endpoint |
-| `region` | string | `us-east-1` | Region |
-| `usePathStyle` | bool | `false` | Use path-style addressing |
-| `provider` | string | `""` | Storage provider name |
-
-!!! tip "Path-style addressing"
-    Enable `usePathStyle: true` when connecting to S3-compatible storage services that use path-style URLs (e.g., MinIO). For AWS S3, leave this as `false` to use virtual-hosted-style addressing.

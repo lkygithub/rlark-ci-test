@@ -14,7 +14,8 @@ hide:
 </div>
 
 <div align="center" markdown>
-  [:material-translate: English](../) &nbsp;·&nbsp; [:material-translate: 中文](.)
+  <a href="../"><img src="https://img.shields.io/badge/English-EN-4051b5?style=flat-square" alt="English" /></a>
+  <img src="https://img.shields.io/badge/中文-中文-e91e63?style=flat-square" alt="中文" />
 </div>
 
 <h1 align="center">
