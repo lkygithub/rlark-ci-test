@@ -6,20 +6,7 @@ build:
     python: "3.12"
   jobs:
     pre_build:
-      - python -c "
-        import re, os
-        lang = os.environ.get('READTHEDOCS_LANGUAGE', 'en')
-        with open('apps/rlark/mkdocs.yml') as f:
-            content = f.read()
-        content = re.sub(
-            r'(docs_structure: folder\n)',
-            rf'\1      build_only_locale: {lang}\n',
-            content
-        )
-        with open('apps/rlark/mkdocs.yml', 'w') as f:
-            f.write(content)
-        print(f'[i18n] build_only_locale={lang}')
-        "
+      - python apps/rlark/docs/rtd_patch.py
 
 mkdocs:
   configuration: apps/rlark/mkdocs.yml
