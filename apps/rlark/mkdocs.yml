@@ -1,4 +1,5 @@
 site_name: RLark
+site_url: https://rlark.readthedocs.io/
 site_description: Reinforcement Learning Infrastructure for Embodied and Agentic AI
 repo_url: https://github.com/RLinf/RLark
 edit_uri: edit/main/apps/rlark/docs/
