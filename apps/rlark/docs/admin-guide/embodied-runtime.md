@@ -1,8 +1,22 @@
-# Embodied Runtime Deployment
+# Embodied Device Onboarding
 
-## Overview
+## GPU Clusters vs. Embodied Devices
 
-The Embodied Runtime (`apps/embodied-runtime`) enables robots and cameras to participate in RLark training jobs as schedulable devices. It consists of a Kubernetes Device Plugin, gRPC-based controllers for ROS 1, ROS 2, and cameras, and CLI tools for device interaction.
+RLark can manage two types of compute resources. See [Data Plane Onboarding](data-plane.md) for standard GPU cluster onboarding.
+
+| | GPU Cluster Onboarding | Embodied Device Onboarding |
+|---|---|---|
+| **Target** | Cloud / on-prem GPU clusters | Edge clusters with robots, cameras, or other physical devices |
+| **Agent** | `rlark-agent` connects the cluster to the control plane | Same Agent, plus a **Device Plugin** to register devices |
+| **Resources** | `nvidia.com/gpu`, CPU, memory | `rlinf.io/device-*` (robots, cameras, etc.) |
+| **Workload** | Standard RL training with Ray | RL training that interacts with real hardware (robots, cameras) |
+| **Networking** | Cluster-internal or cross-cluster via Domain | May require host device passthrough or macvlan for fixed-IP robots |
+
+Both follow the same [cluster registration flow](data-plane.md#step-by-step-onboarding). The key difference is **what runs on the cluster after onboarding**: a GPU cluster only needs the Agent, while an embodied edge cluster also needs the **Embodied Runtime** to discover and manage physical devices.
+
+## What is Embodied Runtime?
+
+The Embodied Runtime (`apps/embodied-runtime`) enables robots and cameras to participate in RLark training jobs as schedulable devices. It consists of a Kubernetes Device Plugin, gRPC-based controllers for ROS 1, ROS 2, and cameras, and CLI tools for device interaction. For a deep dive into internals, see [Embodied Runtime Reference](../developer-guide/embodied-runtime-reference.md).
 
 ## Architecture
 
@@ -13,6 +27,12 @@ The Embodied Runtime has three layers:
 | Device Plugin | `device-plugin` | Registers device resources (`rlinf.io/device-*`) with Kubernetes |
 | Controllers | `ros-controller`, `ros2-controller`, `camera-controller` | gRPC services that manage device lifecycle |
 | Webhook | Mutating Webhook | Automatically injects `devinit` sidecar for macvlan networking |
+
+### How It Works
+
+1. **Device Plugin** registers with kubelet and advertises `rlinf.io/device[-<model>]` resources.
+2. On `Allocate`, it injects the socket directory (`/var/run/rlark`) and CLI binary directory (`/opt/rlinf/bin`) into the requesting pod, along with `RLINF_EMBODIED_*` environment variables.
+3. User pods use the mounted CLIs (or gRPC directly) to control hardware.
 
 ## Prerequisites
 
@@ -91,94 +111,9 @@ host_macvlans:
 
 The mutating webhook automatically injects a `devinit` sidecar that creates the macvlan interface in the Worker container.
 
-### ROS 1 Controller
+### Controller Pods
 
-For ROS 1 robots, deploy the controller as a pod alongside the agent:
-
-```yaml
-apiVersion: v1
-kind: Pod
-metadata:
-  name: ros-controller
-  namespace: rlark-system
-spec:
-  hostPID: true
-  containers:
-  - name: ros-controller
-    image: rlark-embodied-runtime:latest
-    command: ["/ros-controller"]
-    args: ["--socket=/var/run/rlark/ros-ctrl.sock"]
-    securityContext:
-      privileged: true
-    volumeMounts:
-    - name: rlark-socket
-      mountPath: /var/run/rlark
-  volumes:
-  - name: rlark-socket
-    hostPath:
-      path: /var/run/rlark
-```
-
-### ROS 2 Controller
-
-Similar to ROS 1, but uses a different socket:
-
-```yaml
-args: ["--socket=/var/run/rlark/ros2-ctrl.sock"]
-```
-
-### Camera Controller
-
-```yaml
-apiVersion: v1
-kind: Pod
-metadata:
-  name: camera-controller
-  namespace: rlark-system
-spec:
-  containers:
-  - name: camera-controller
-    image: rlark-embodied-runtime:latest
-    command: ["/camera-controller"]
-    args: ["--socket=/var/run/rlark/camera-ctrl.sock"]
-    volumeMounts:
-    - name: rlark-socket
-      mountPath: /var/run/rlark
-  volumes:
-  - name: rlark-socket
-    hostPath:
-      path: /var/run/rlark
-```
-
-## CLI Tools
-
-### rosctr
-
-Robot controller CLI:
-
-```bash
-rosctr list              # List available robots
-rosctr status <id>       # Check robot status
-rosctr modes <id>        # List available modes
-rosctr mode <id> <mode>  # Switch robot mode
-rosctr start <id>        # Start robot
-rosctr stop <id>         # Stop robot
-rosctr reset <id>        # Reset robot
-rosctr logs <id>         # Get robot logs
-```
-
-### camctr
-
-Camera controller CLI:
-
-```bash
-camctr list              # List available cameras
-camctr info <id>         # Get camera information
-camctr open <id>         # Open camera
-camctr close <id>        # Close camera
-camctr capture <id>      # Capture a single frame
-camctr watch <id>        # Stream video frames
-```
+For full controller pod specs, manager modes, and networking details, see [Embodied Runtime Reference](../developer-guide/embodied-runtime-reference.md).
 
 ## Verification
 
@@ -198,17 +133,6 @@ rosctr list
 camctr list
 ```
 
-## gRPC API
-
-The controllers expose gRPC services for programmatic access:
-
-| Service | RPCs | Description |
-|---------|------|-------------|
-| RobotController | StartRobot, StopRobot, GetRobotStatus, SwitchMode, ResetRobot, ListRobots, ListModes, GetRobotLogs | Robot lifecycle management |
-| CameraController | ListCameras, OpenCamera, CloseCamera, CaptureFrame, CaptureFrames, WatchFrames | Camera management and frame capture |
-
-See `proto/embodied-runtime/` for the full API definition.
-
 ## Safety
 
 When deploying with real robots:
@@ -222,6 +146,7 @@ When deploying with real robots:
 
 | Resource | Path |
 |----------|------|
+| Embodied Runtime Reference | [Full technical reference](../developer-guide/embodied-runtime-reference.md) |
 | Embodied Runtime README | `apps/embodied-runtime/README.md` |
 | Deployment Examples | `apps/embodied-runtime/docs/examples.md` |
 | gRPC API Reference | `apps/embodied-runtime/docs/proto-api.md` |

@@ -1,8 +1,22 @@
-# Embodied Runtime 部署
+# 具身设备集群接入
 
-## 概述
+## GPU 集群 vs. 具身设备
 
-Embodied Runtime（`apps/embodied-runtime`）使机器人和摄像头能够作为可调度设备参与 RLark 训练任务。它由 Kubernetes Device Plugin、基于 gRPC 的 ROS 1/ROS 2/摄像头控制器以及 CLI 工具组成。
+RLark 可以管理两类计算资源。标准 GPU 集群接入请参见 [数据面集群接入](data-plane.md)。
+
+| | GPU 集群接入 | 具身设备集群接入 |
+|---|---|---|
+| **目标** | 云端 / 自建 GPU 集群 | 带有机器人、摄像头等物理设备的边缘集群 |
+| **Agent** | `rlark-agent` 连接集群到控制面 | 同一个 Agent，额外需要 **Device Plugin** 注册设备 |
+| **资源类型** | `nvidia.com/gpu`、CPU、内存 | `rlinf.io/device-*`（机器人、摄像头等） |
+| **工作负载** | 标准 Ray 强化学习训练 | 需要与真实硬件交互的 RL 训练（机器人、摄像头） |
+| **网络** | 集群内或通过 Domain 跨集群 | 可能需要宿主设备透传或 macvlan 连接固定 IP 机器人 |
+
+两者使用相同的 [集群注册流程](data-plane.md#_1)。关键区别在于**接入后集群上运行什么**：GPU 集群只需要 Agent，而具身设备集群还需要 **Embodied Runtime** 来发现和管理物理设备。
+
+## 什么是 Embodied Runtime？
+
+Embodied Runtime（`apps/embodied-runtime`）使机器人和摄像头能够作为可调度设备参与 RLark 训练任务。它由 Kubernetes Device Plugin、基于 gRPC 的 ROS 1/ROS 2/摄像头控制器以及 CLI 工具组成。深入了解内部细节请参见 [Embodied Runtime 参考](../developer-guide/embodied-runtime-reference.md)。
 
 ## 架构
 
@@ -13,6 +27,12 @@ Embodied Runtime 有三层结构：
 | Device Plugin | `device-plugin` | 向 Kubernetes 注册设备资源（`rlinf.io/device-*`） |
 | 控制器 | `ros-controller`, `ros2-controller`, `camera-controller` | 管理设备生命周期的 gRPC 服务 |
 | Webhook | Mutating Webhook | 自动注入 `devinit` sidecar，用于 macvlan 网络 |
+
+### 工作原理
+
+1. **Device Plugin** 向 kubelet 注册并申报 `rlinf.io/device[-<model>]` 资源。
+2. 收到 `Allocate` 请求时，把 socket 目录（`/var/run/rlark`）与 CLI 目录（`/opt/rlinf/bin`）注入业务 Pod，并通过 `RLINF_EMBODIED_*` 环境变量告知可用运行时。
+3. 业务 Pod 用挂载的 CLI（或直接走 gRPC）驱动硬件。
 
 ## 前置条件
 
@@ -91,92 +111,9 @@ host_macvlans:
 
 Mutating Webhook 会自动注入 `devinit` sidecar，在 Worker 容器中创建 macvlan 接口。
 
-### ROS 1 控制器
+### 控制器 Pod
 
-```yaml
-apiVersion: v1
-kind: Pod
-metadata:
-  name: ros-controller
-  namespace: rlark-system
-spec:
-  hostPID: true
-  containers:
-  - name: ros-controller
-    image: rlark-embodied-runtime:latest
-    command: ["/ros-controller"]
-    args: ["--socket=/var/run/rlark/ros-ctrl.sock"]
-    securityContext:
-      privileged: true
-    volumeMounts:
-    - name: rlark-socket
-      mountPath: /var/run/rlark
-  volumes:
-  - name: rlark-socket
-    hostPath:
-      path: /var/run/rlark
-```
-
-### ROS 2 控制器
-
-与 ROS 1 类似，使用不同的 socket：
-
-```yaml
-args: ["--socket=/var/run/rlark/ros2-ctrl.sock"]
-```
-
-### 摄像头控制器
-
-```yaml
-apiVersion: v1
-kind: Pod
-metadata:
-  name: camera-controller
-  namespace: rlark-system
-spec:
-  containers:
-  - name: camera-controller
-    image: rlark-embodied-runtime:latest
-    command: ["/camera-controller"]
-    args: ["--socket=/var/run/rlark/camera-ctrl.sock"]
-    volumeMounts:
-    - name: rlark-socket
-      mountPath: /var/run/rlark
-  volumes:
-  - name: rlark-socket
-    hostPath:
-      path: /var/run/rlark
-```
-
-## CLI 工具
-
-### rosctr
-
-机器人控制器 CLI：
-
-```bash
-rosctr list              # 列出可用机器人
-rosctr status <id>       # 检查机器人状态
-rosctr modes <id>        # 列出可用模式
-rosctr mode <id> <mode>  # 切换机器人模式
-rosctr start <id>        # 启动机器人
-rosctr stop <id>         # 停止机器人
-rosctr reset <id>        # 重置机器人
-rosctr logs <id>         # 获取机器人日志
-```
-
-### camctr
-
-摄像头控制器 CLI：
-
-```bash
-camctr list              # 列出可用摄像头
-camctr info <id>         # 获取摄像头信息
-camctr open <id>         # 打开摄像头
-camctr close <id>        # 关闭摄像头
-camctr capture <id>      # 捕获单帧
-camctr watch <id>        # 流式传输视频帧
-```
+完整的控制器 Pod 规格、Manager 模式和组网细节请参见 [Embodied Runtime 参考](../developer-guide/embodied-runtime-reference.md)。
 
 ## 验证
 
@@ -196,17 +133,6 @@ rosctr list
 camctr list
 ```
 
-## gRPC API
-
-控制器暴露 gRPC 服务供程序化访问：
-
-| 服务 | RPC | 说明 |
-|------|-----|------|
-| RobotController | StartRobot, StopRobot, GetRobotStatus, SwitchMode, ResetRobot, ListRobots, ListModes, GetRobotLogs | 机器人生命周期管理 |
-| CameraController | ListCameras, OpenCamera, CloseCamera, CaptureFrame, CaptureFrames, WatchFrames | 摄像头管理和帧捕获 |
-
-完整 API 定义参见 `proto/embodied-runtime/`。
-
 ## 安全
 
 部署真实机器人时：
@@ -220,6 +146,7 @@ camctr list
 
 | 资源 | 路径 |
 |------|------|
+| Embodied Runtime 参考 | [完整技术参考](../developer-guide/embodied-runtime-reference.md) |
 | Embodied Runtime README | `apps/embodied-runtime/README.zh-CN.md` |
 | 部署示例 | `apps/embodied-runtime/docs/examples.zh-CN.md` |
 | gRPC API 参考 | `apps/embodied-runtime/docs/proto-api.zh-CN.md` |

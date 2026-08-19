@@ -40,8 +40,8 @@ hide:
 
 ## 架构概览
 
-<div style="max-width: 85%; margin: 0 auto;" markdown="1">
-![系统架构](../images/architecture.png)
+<div style="max-width: 85%; margin: 0 auto;">
+  <img src="../images/architecture.png" alt="系统架构" style="width: 100%;">
 </div>
 
 ## 快速开始

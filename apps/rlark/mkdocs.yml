@@ -64,10 +64,11 @@ plugins:
             "Administrator Guide Overview": 管理员指南概览
             "Production Control Plane": 生产级控制面部署
             "Data Plane Onboarding": 数据面集群接入
+            "Embodied Device Onboarding": 具身设备集群接入
+            "Embodied Runtime": "Embodied Runtime"
             "Agent Installation and Upgrade": "Agent 安装与升级"
             "Node and Resource Management": 节点与资源管理
             "Networking and Security": 网络与安全
-            "Embodied Runtime": "Embodied Runtime 部署"
             "Operations and Troubleshooting": 运维与故障排查
             "Complete Deployment Reference": 完整部署参考
             "Developer Guide": 开发者指南
@@ -108,10 +109,10 @@ nav:
     - Administrator Guide Overview: admin-guide/index.md
     - Production Control Plane: admin-guide/control-plane.md
     - Data Plane Onboarding: admin-guide/data-plane.md
+    - Embodied Device Onboarding: admin-guide/embodied-runtime.md
     - Agent Installation and Upgrade: admin-guide/agent.md
     - Node and Resource Management: admin-guide/nodes.md
     - Networking and Security: admin-guide/network-security.md
-    - Embodied Runtime: admin-guide/embodied-runtime.md
     - Operations and Troubleshooting: admin-guide/operations.md
     - Complete Deployment Reference: deployment.md
   - Developer Guide:
@@ -120,6 +121,7 @@ nav:
     - Project Layout: developer-guide/project-layout.md
     - Technical Architecture: architecture.md
     - New Device Integration: developer-guide/device-integration.md
+    - Embodied Runtime: developer-guide/embodied-runtime-reference.md
     - Contributing: developer-guide/contributing.md
   - Reference:
     - Reference Overview: reference/index.md
@@ -134,7 +136,11 @@ nav:
 markdown_extensions:
   - admonition
   - pymdownx.highlight
-  - pymdownx.superfences
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
   - pymdownx.details
   - tables
   - toc:

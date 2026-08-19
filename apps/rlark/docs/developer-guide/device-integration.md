@@ -6,33 +6,9 @@ RLark's embodied runtime (`apps/embodied-runtime`) enables robots and cameras to
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────────┐
-│                  RLark Job                   │
-│  ┌─────────────────────────────────────┐    │
-│  │          Worker Container            │    │
-│  │  ┌──────────┐  ┌──────────────────┐ │    │
-│  │  │ rosctr CLI│  │  camctr CLI     │ │    │
-│  │  └─────┬─────┘  └────────┬─────────┘ │    │
-│  │        │ grpc            │ grpc       │    │
-│  └────────┼─────────────────┼────────────┘    │
-│           │                 │                  │
-│  ┌────────▼─────────────────▼────────────┐    │
-│  │     embodied-runtime Controller       │    │
-│  │  (Robot Controller + Camera Controller)│   │
-│  └───────────────────────────────────────┘    │
-│                    │                           │
-│  ┌─────────────────▼──────────────────────┐   │
-│  │        Device Plugin + Mutating Webhook │   │
-│  │  (registers rlinf.io/device-* resources)│   │
-│  └────────────────────────────────────────┘   │
-│                    │                           │
-│  ┌─────────────────▼──────────────────────┐   │
-│  │          Physical Hardware              │   │
-│  │  (Franka, UR5, RealSense, etc.)        │   │
-│  └────────────────────────────────────────┘   │
-└─────────────────────────────────────────────┘
-```
+![Embodied Runtime Architecture](../images/embodied-runtime-architecture.svg)
+
+For a deep dive into the Embodied Runtime internals, see [Embodied Runtime](embodied-runtime-reference.md).
 
 ## Device Resource Concept
 
@@ -220,8 +196,9 @@ Nodes are labeled with `rlark.io/node-category` to indicate their type:
 
 | Resource | Path |
 |----------|------|
+| Embodied Runtime Reference | [Embodied Runtime](embodied-runtime-reference.md) |
 | Embodied Runtime CLI | `apps/embodied-runtime/docs/cli.md` |
-| Deployment Examples | `apps/embodied-runtime/docs/deployment-examples.md` |
+| Deployment Examples | `apps/embodied-runtime/docs/examples.md` |
 | gRPC API | `proto/embodied-runtime/` |
 | Python SDK | `sdks/embodied-runtime-python/` |
 | Go SDK | `sdks/embodied-runtime-go/` |

@@ -6,33 +6,9 @@ RLark 的具身运行时（`apps/embodied-runtime`）使机器人和摄像头能
 
 ## 架构
 
-```
-┌─────────────────────────────────────────────┐
-│                  RLark Job                   │
-│  ┌─────────────────────────────────────┐    │
-│  │          Worker 容器                  │    │
-│  │  ┌──────────┐  ┌──────────────────┐ │    │
-│  │  │ rosctr CLI│  │  camctr CLI     │ │    │
-│  │  └─────┬─────┘  └────────┬─────────┘ │    │
-│  │        │ gRPC            │ gRPC       │    │
-│  └────────┼─────────────────┼────────────┘    │
-│           │                 │                  │
-│  ┌────────▼─────────────────▼────────────┐    │
-│  │     embodied-runtime Controller       │    │
-│  │  (Robot Controller + Camera Controller)│   │
-│  └───────────────────────────────────────┘    │
-│                    │                           │
-│  ┌─────────────────▼──────────────────────┐   │
-│  │        Device Plugin + Mutating Webhook │   │
-│  │  (注册 rlinf.io/device-* 资源)          │   │
-│  └────────────────────────────────────────┘   │
-│                    │                           │
-│  ┌─────────────────▼──────────────────────┐   │
-│  │          物理硬件                        │   │
-│  │  (Franka, UR5, RealSense 等)            │   │
-│  └────────────────────────────────────────┘   │
-└─────────────────────────────────────────────┘
-```
+![Embodied Runtime 架构](../../images/embodied-runtime-architecture.svg)
+
+深入了解 Embodied Runtime 内部细节请参见 [Embodied Runtime](embodied-runtime-reference.md)。
 
 ## 设备资源概念
 
@@ -220,8 +196,9 @@ status, err := client.GetStatus(ctx)
 
 | 资源 | 路径 |
 |------|------|
+| Embodied Runtime 参考 | [Embodied Runtime](embodied-runtime-reference.md) |
 | Embodied Runtime CLI | `apps/embodied-runtime/docs/cli.md` |
-| 部署示例 | `apps/embodied-runtime/docs/deployment-examples.md` |
+| 部署示例 | `apps/embodied-runtime/docs/examples.zh-CN.md` |
 | gRPC API | `proto/embodied-runtime/` |
 | Python SDK | `sdks/embodied-runtime-python/` |
 | Go SDK | `sdks/embodied-runtime-go/` |
