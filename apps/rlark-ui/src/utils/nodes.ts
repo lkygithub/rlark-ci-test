@@ -263,9 +263,6 @@ export function buildMockCRDNodes(): CRDNode[] {
               }
             : {}),
         },
-        annotations: {
-          "rlark.io/ip-location": JSON.stringify({ city }),
-        },
         creationTimestamp: "2026-06-29T10:00:00Z",
       },
       spec: {

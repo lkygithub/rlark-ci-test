@@ -898,6 +898,9 @@ export function AdminPage({
         annotations[key] = labels[key]?.trim() ?? "";
         delete labels[key];
       });
+      delete annotations["rlark.io/ip-location"];
+      delete annotations["rlark.io/location"];
+      delete labels["rlark.io/location"];
       const labelPatch: Record<string, string | null> = { ...labels };
       NODE_FREE_TEXT_KEYS.forEach((key) => {
         labelPatch[key] = null;
@@ -1015,8 +1018,12 @@ export function AdminPage({
             const value = batchLocation.trim();
             if (value) annotations["rlark.io/city"] = value;
             else delete annotations["rlark.io/city"];
+            delete annotations["rlark.io/ip-location"];
+            delete annotations["rlark.io/location"];
             delete labels["rlark.io/city"];
+            delete labels["rlark.io/location"];
             removedLabelKeys.add("rlark.io/city");
+            removedLabelKeys.add("rlark.io/location");
           }
           const categories = batchFields.has("categories")
             ? batchCategories
