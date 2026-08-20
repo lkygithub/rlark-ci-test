@@ -199,8 +199,8 @@ localStorage.clear()
 # 重新生成 CRD 清单
 make generate
 
-# 更新 API 客户端代码
-# （项目特定的代码生成步骤）
+# 重新生成 typed clients、informers 和 listers
+make -C api generate-clients
 ```
 
 始终在 API 和 Web UI 中都测试面向用户的变更。

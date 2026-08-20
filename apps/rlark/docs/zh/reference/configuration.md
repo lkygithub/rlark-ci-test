@@ -42,7 +42,7 @@ debug: false
 |------|------|--------|------|
 | `--https-port` | int | `8443` | HTTPS 监听端口 |
 | `--ssh-port` | int | `2222` | SSH 监听端口 |
-| `--unsafe-http-port` | int | `8888` | 不安全 HTTP 端口（用于证书签名 API） |
+| `--unsafe-http-port` | int | `8888` | 内部 HTTP：`/healthz`、`/readyz`、`/livez`、`/metrics` 和 Peer 代理 |
 | `--auto-sign-tls-ca-cert` | bool | `false` | 若 TLS CA 证书不存在则自动签发 |
 | `--tls-domains` | strings | `["localhost"]` | TLS 证书域名列表 |
 | `--db-config` | string | `""` | 数据库配置文件路径 |
@@ -57,7 +57,7 @@ debug: false
 | `--kube-timeout` | duration | `0` | Kubernetes 客户端请求超时 |
 
 !!! tip "`--unsafe-http-port` 用途"
-    Agent 通过此端口请求证书签名。生产环境应仅对内网开放。
+    该端点没有认证。应保持内部可见；Agent TLS 连接和证书操作使用 8443 端口。
 
 **示例：**
 ```bash
@@ -75,7 +75,7 @@ API 网关。处理所有 REST API 请求，包括集群管理、任务管理和
 
 | 参数 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
-| `--addr` | string | `:8080` | API 网关绑定地址 |
+| `--addr` | string | `:8080` | API 网关绑定地址；`rlarkadm` 会覆盖为 `:8090` |
 | `--db-config` | string | `""` | 数据库配置文件路径 |
 | `--server-address` | string | `https://rlark-server.rlark-system.svc:8443` | 证书签名的 RLark Server 地址 |
 | `--kubeconfig` | string | `$KUBECONFIG` | kubeconfig 文件路径 |
@@ -243,21 +243,23 @@ Gateway 使用的对象存储后端配置。
 
 ### 顶层字段
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `apiVersion` | string | API 版本（必填） |
-| `kind` | string | 必须为 `DeployConfig` |
-| `plane` | string | 部署类型：`control`（控制面）或 `data`（数据面） |
-| `controlPlaneAddress` | string | 控制面地址（数据面部署时必填） |
-| `db` | DBConfig | 数据库配置 |
-| `kubernetes` | KubernetesEnv | Kubernetes 部署环境 |
-| `docker` | DockerEnv | Docker 部署环境 |
-| `raw` | RawEnv | Raw 部署环境 |
-| `cert` | CertConfig | 证书配置（数据面部署时必填） |
-| `insecureSkipTLSVerify` | bool | 跳过 TLS 验证 |
+下表名称是 `rlarkadm` 接受的准确 YAML 键名。
+
+| 字段 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| `apiVersion` | string | — | API 版本（必填）；仓库示例使用 `rlark.io/v1alpha1` |
+| `kind` | string | — | 必须为 `DeployConfig` |
+| `plane` | string | — | 必填：`control`（控制面）或 `data`（数据面） |
+| `control-plane-address` | string | `""` | Server HTTPS/WSS 地址；数据面部署时必填 |
+| `db` | DBConfig | 未设置 | 数据库配置；在 `rlarkadm` 部署中启用 PostgreSQL 组件 |
+| `kubernetes` | KubernetesEnv | 未设置 | Kubernetes 部署环境 |
+| `docker` | DockerEnv | 未设置 | Docker 部署环境 |
+| `raw` | RawEnv | 未设置 | Raw 部署环境 |
+| `cert` | CertConfig | 未设置 | 证书配置；数据面部署时必填 |
+| `insecure-skip-tls-verify` | bool | `false` | 跳过 Server TLS 验证 |
 
 !!! note "环境选择"
-    `kubernetes`、`docker`、`raw` 三者选其一。
+    `kubernetes`、`docker`、`raw` 三者选其一。数据面还必须提供 `control-plane-address` 和 `cert`。
 
 ### DBConfig
 
@@ -271,41 +273,41 @@ Gateway 使用的对象存储后端配置。
 
 ### KubernetesEnv
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `kubeconfig` | string | kubeconfig 文件路径 |
-| `gatewayImage` | string | Gateway 镜像 |
-| `controllerManagerImage` | string | Controller Manager 镜像 |
-| `serverImage` | string | Server 镜像 |
-| `agentImage` | string | Agent 镜像 |
-| `image` | string | 所有组件默认镜像 |
-| `kcpImage` | string | kcp 镜像 |
-| `etcdImage` | string | etcd 镜像 |
-| `postgresqlImage` | string | PostgreSQL 镜像 |
-| `uiImage` | string | UI 镜像 |
-| `replicas` | int | 组件副本数 |
-| `storage` | StorageConfig | 存储配置 |
-| `kcp` | ComponentConfig | kcp 组件配置 |
-| `etcd` | EtcdConfig | etcd 组件配置 |
-| `postgresql` | ComponentConfig | PostgreSQL 组件配置 |
-| `containerdSocket` | string | Containerd Socket 路径 |
+| 字段 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| `kubeconfig` | string | `""` | kubeconfig 文件路径；空值使用 client-go 常规加载规则 |
+| `gateway-image` | string | `""` | Gateway 镜像 |
+| `controller-manager-image` | string | `""` | Controller Manager 镜像 |
+| `server-image` | string | `""` | Server 镜像 |
+| `agent-image` | string | `""` | Agent 镜像 |
+| `image` | string | `""` | RLark 共享镜像回退值；在数据面还会启用网络 Sidecar 和 SSH 支持 |
+| `kcp-image` | string | `""` | kcp 镜像 |
+| `etcd-image` | string | `""` | 内置 etcd 镜像；仅设置该字段且未配置外部地址时启用内置 etcd |
+| `postgresql-image` | string | `""` | PostgreSQL 镜像；仅设置顶层 `db` 块时启用 PostgreSQL |
+| `ui-image` | string | `""` | UI 镜像 |
+| `replicas` | int | `0`（解析为 `1`） | 组件默认副本数 |
+| `storage` | StorageConfig | 未设置 | 默认存储配置 |
+| `kcp` | ComponentConfig | 未设置 | kcp 组件配置 |
+| `etcd` | EtcdConfig | 未设置 | etcd 组件配置 |
+| `postgresql` | ComponentConfig | 未设置 | PostgreSQL 组件配置 |
+| `containerd-socket` | string | `/run/containerd/containerd.sock` | 节点 Agent 的 Containerd Socket 路径 |
 
 !!! tip "镜像优先级"
-    如果同时设置了 `image` 和特定组件镜像（如 `gatewayImage`），特定组件镜像优先生效。
+    `gateway-image` 等组件专用镜像优先于 `image`。
 
 ### DockerEnv
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| `gatewayImage` | string | Gateway 镜像 |
-| `controllerManagerImage` | string | Controller Manager 镜像 |
-| `serverImage` | string | Server 镜像 |
-| `agentImage` | string | Agent 镜像 |
-| `image` | string | 所有组件默认镜像 |
-| `kcpImage` | string | kcp 镜像 |
-| `etcdImage` | string | etcd 镜像 |
-| `postgresqlImage` | string | PostgreSQL 镜像 |
-| `uiImage` | string | UI 镜像 |
+| `gateway-image` | string | Gateway 镜像 |
+| `controller-manager-image` | string | Controller Manager 镜像 |
+| `server-image` | string | Server 镜像 |
+| `agent-image` | string | Agent 镜像 |
+| `image` | string | RLark 共享镜像回退值 |
+| `kcp-image` | string | kcp 镜像 |
+| `etcd-image` | string | etcd 镜像 |
+| `postgresql-image` | string | PostgreSQL 镜像 |
+| `ui-image` | string | UI 镜像 |
 
 ### RawEnv
 
@@ -314,14 +316,14 @@ Gateway 使用的对象存储后端配置。
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| `gatewayArtifact` | string | Gateway 二进制路径 |
-| `controllerManagerArtifact` | string | Controller Manager 二进制路径 |
-| `serverArtifact` | string | Server 二进制路径 |
-| `agentArtifact` | string | Agent 二进制路径 |
-| `networkSidecarArtifact` | string | Network Sidecar 二进制路径 |
-| `kcpArtifact` | string | kcp 二进制路径 |
-| `etcdArtifact` | string | etcd 二进制路径 |
-| `postgresqlArtifact` | string | PostgreSQL 二进制路径 |
+| `gateway-artifact` | string | Gateway 二进制路径 |
+| `controller-manager-artifact` | string | Controller Manager 二进制路径 |
+| `server-artifact` | string | Server 二进制路径 |
+| `agent-artifact` | string | Agent 二进制路径 |
+| `network-sidecar-artifact` | string | Network Sidecar 二进制路径 |
+| `kcp-artifact` | string | kcp 二进制路径 |
+| `etcd-artifact` | string | etcd 二进制路径 |
+| `postgresql-artifact` | string | PostgreSQL 二进制路径 |
 
 ### CertConfig
 
@@ -329,19 +331,19 @@ Gateway 使用的对象存储后端配置。
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| `caCert` | string | CA 证书路径 |
-| `agentCert` | string | Agent 证书路径 |
-| `agentKey` | string | Agent 私钥路径 |
+| `ca-cert` | string | 内联 CA PEM 或已存在的文件路径 |
+| `agent-cert` | string | 内联 Agent 证书 PEM 或已存在的文件路径 |
+| `agent-key` | string | 内联 Agent 私钥 PEM 或已存在的文件路径 |
 
 ### StorageConfig
 
 | 字段 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
 | `type` | string | | 存储类型：emptyDir、hostPath、pvc |
-| `hostPath` | string | | hostPath 类型的主机路径 |
-| `storageClass` | string | | PVC 类型的 StorageClass |
-| `size` | string | | 存储大小 |
-| `nodeSelector` | map | | PV 节点选择器 |
+| `host-path` | string | `""` | hostPath 类型的主机路径 |
+| `storage-class` | string | `""` | PVC 类型的 StorageClass；空值使用集群默认值 |
+| `size` | string | `""` | 存储大小 |
+| `node-selector` | map | 空 | 工作负载节点选择器 |
 
 ### ComponentConfig
 
@@ -360,15 +362,16 @@ Gateway 使用的对象存储后端配置。
 
 **示例（控制面）：**
 ```yaml
-apiVersion: v1
+apiVersion: rlark.io/v1alpha1
 kind: DeployConfig
 plane: control
 kubernetes:
-  image: rlark:latest
-  kcpImage: ghcr.io/kcp-dev/kcp:latest
-  etcdImage: quay.io/coreos/etcd:v3.5
-  postgresqlImage: postgres:15
-  uiImage: rlark-ui:latest
+  gateway-image: rlark:latest
+  controller-manager-image: rlark:latest
+  server-image: rlark:latest
+  kcp-image: kcp:v0.30.0
+  postgresql-image: postgres:15
+  ui-image: rlark-ui:latest
   replicas: 1
 db:
   host: postgresql
@@ -376,4 +379,20 @@ db:
   database: rlark
   user: rlark
   password: CHANGE_ME
+```
+
+**示例（数据面）：**
+```yaml
+apiVersion: rlark.io/v1alpha1
+kind: DeployConfig
+plane: data
+control-plane-address: https://rlark.example.com:8443
+cert:
+  ca-cert: /path/to/ca-cert.pem
+  agent-cert: /path/to/agent-cert.pem
+  agent-key: /path/to/agent-key.pem
+kubernetes:
+  kubeconfig: ~/.kube/config
+  agent-image: rlark:latest
+  image: rlark:latest
 ```

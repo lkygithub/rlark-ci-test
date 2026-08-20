@@ -1,44 +1,67 @@
 # Workflows
 
-## Overview
+Use a Workflow to connect Job templates as a DAG. Each template becomes a child Job after its dependencies succeed.
 
-A Workflow connects reusable Job templates as a DAG. Define dependencies between stages and submit a run. Each stage generates an independent Job.
+## Prerequisites
 
-## Creating a Workflow
+Before creating a Workflow:
 
-### Step 1: Design the DAG
-- Add nodes representing Job templates
-- Drag to create dependencies between nodes
-- Self-loops and cycles are rejected
-- Predecessor templates appear before dependents in YAML
+- Confirm the control plane and Workflow controller are running and that you can create standalone Jobs.
+- Onboard every target cluster and verify that its nodes appear as available Workers.
+- Make each referenced image accessible from its target cluster, and create any required Domain, storage class, or PVC first.
+- Prepare each stage so that it exits with status 0 only after its work is complete; dependent stages are released from the child Job status, not from shell output.
 
-### Step 2: Configure Each Job
-- For each node, configure: type, roles, Header, cluster, node selectors, GPU, storage, Domain, run script
-- Same configuration options as a standalone Job
+## Task 1: Create the DAG
 
-### Step 3: Review YAML
-- Verify template names are unique
-- Verify no dependency cycles
-- Record image tags with corresponding digests
-- Verify storage configuration
+1. Open **Workflows** and choose **Create Workflow**.
+2. Enter the Workflow name.
+3. In **DAG Editor**, add a Job node for each stage.
+4. Double-click a node name to rename it.
+5. Drag from a node's right output port to the target node to create a dependency. Click an edge to remove it.
+6. Confirm that the graph has no self-loop or cycle; the editor rejects both.
 
-### Step 4: Submit and Verify
-- Submit the workflow
-- Confirm child Jobs transition to Succeeded or Failed
-- Record the root node's generated child Job name for monitoring
+## Task 2: Configure Each Job
 
-## Monitoring Workflow Execution
+1. Continue to **Job Details**.
+2. Select each Job tab in turn.
+3. Configure its type, roles, Header role, target cluster, Worker resources, node selector, image, environment, storage, Domain, and run script as required.
+4. Ensure every role has a target cluster and image and matches at least one available Worker.
 
-- Open Workflow details to see the DAG visualization
-- Each node shows its child Job status
-- Click a node to navigate to the child Job details
-- Inspect child Jobs independently
+The Job options follow the standalone Job form, but SSH key and TensorBoard settings are not included in the current Workflow form.
 
-## Important Notes
+## Task 3: Review and Submit
 
-- Default example templates are not directly runnable
-- If a predecessor Job script ends but the Job stays in Running state, check for background processes
+1. Continue to **YAML Preview**.
+2. Confirm that Workflow and template names are unique and valid Kubernetes resource names.
+3. Verify each template's `dependencies`, image, storage, Domain, and task configuration.
+4. Choose **Create Workflow**.
+
+The console submits a Workflow CR. It does not generate a shell installation command.
+
+## Task 4: Monitor the Run
+
+1. Open the Workflow from the list.
+2. Review the DAG execution view and the child Job table.
+3. Select a non-pending DAG node to open its generated child Job. Generated Job names use `<workflow-name>-<template-name>`.
+4. Inspect each child Job's Workers and logs when troubleshooting.
+
+A dependent stage starts only after its predecessors succeed. If a predecessor's script has ended but its Job remains Running, check whether background processes are still active.
+
+## Validate the Result
+
+- Confirm the Workflow phase becomes `Succeeded` and every DAG node is `Succeeded`.
+- Confirm the child Job table contains one Job for every template and that each generated name matches `<workflow-name>-<template-name>`.
+- Open each child Job and verify its Worker count, target cluster, logs, and expected output or artifacts. A green DAG alone does not validate application-level results.
+
+## Handle Failures
+
+If any child Job becomes `Failed`, the Workflow becomes terminal `Failed`, and dependent stages that have not started are not released. Existing child Jobs are not a rollback mechanism; inspect or stop them separately as needed.
+
+1. Open the failed DAG node and inspect its Workers, events, and container logs.
+2. Check image pull access, cluster and Worker availability, selectors and resource requests, storage mounts, Domain connectivity, and the script exit code.
+3. Correct the underlying configuration or workload. The current Workflow run cannot resume from the failed node; submit a new Workflow run with a unique name (or delete the old run before reusing its name).
+4. Verify the replacement run with the checks above.
 
 ## API Equivalent
 
-Create or update a Workflow CR and query its generated Jobs. See [CRD Reference](../reference/crd.md).
+Create a Workflow CR with `POST /api/v1/rlinf.io/v1alpha1/workflows`, then query the Workflow and generated Jobs. See [CRD Reference](../reference/crd.md).

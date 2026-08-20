@@ -2,143 +2,107 @@
 
 ## 概述
 
-接入 GPU 集群使其计算资源可用于 RLark 调度训练任务。流程包括在管理控制台创建集群注册、生成 Agent 凭据，以及在目标集群上运行 Agent。
+接入 Kubernetes 数据面需要 Agent 证书及供 `rlarkadm` 使用的 `DeployConfig`。当前管理表单用于签发证书，不要求填写集群类型或区域，也不会生成 Shell 安装命令。
 
-## 接入方式
+## 通过 UI 获取证书
 
-RLark 支持两种 GPU 集群接入方式：
+### 第一步：签发集群证书
 
-### 通过 UI（推荐）
+1. 登录管理平台 `http://<host>:5173/admin`。
+2. 打开**集群管理** → **创建集群**。
+3. 只需输入集群名称，例如 `my-cluster-01`。
+4. 选择**签发证书**。
 
-使用管理后台进行引导式接入，详见下方逐步接入流程。
+![创建集群](../../images/ui/admin-create-cluster.jpg)
 
-### 通过命令行
+签发后，页面会显示集群名称、Server 地址和完整部署 YAML，并将名称加入**已签发集群**；之后仍可展开该记录并再次复制 YAML。
 
-使用 `rlarkadm` 和 `rlarkctl` 进行脚本化或自动化接入：
+!!! warning "保护 YAML"
+    页面显示的 `agent-key` 是私钥。请安全保存复制的 YAML，且不要在其他集群复用。
+
+### 第二步：完善部署 YAML
+
+UI 输出与 `rlarkadm` 接受的 `DeployConfig` 一致：
+
+```yaml
+apiVersion: rlark.io/v1alpha1
+kind: DeployConfig
+plane: data
+control-plane-address: https://<control-plane>:8443
+
+cert:
+  ca-cert: |
+    -----BEGIN CERTIFICATE-----
+    <CA 证书>
+    -----END CERTIFICATE-----
+  agent-cert: |
+    -----BEGIN CERTIFICATE-----
+    <Agent 证书>
+    -----END CERTIFICATE-----
+  agent-key: |
+    -----BEGIN PRIVATE KEY-----
+    <Agent 私钥>
+    -----END PRIVATE KEY-----
+
+kubernetes:
+  kubeconfig: /path/to/kubeconfig.yaml
+  agent-image: rlark-agent:latest
+```
+
+将 `kubernetes.kubeconfig` 替换为可向目标集群部署资源的 kubeconfig，并设置可用的 Agent 镜像。仅在启用需要共享 RLark 镜像的组件时添加可选的 `kubernetes.image`。所有可用字段参见[配置参考](../reference/configuration.md)。
+
+### 第三步：安装数据面
+
+将完善后的 YAML 保存为 `deploy-data-plane.yaml`，再从受信任的管理主机运行：
 
 ```bash
-# 1. 签发 Agent 证书
+rlarkadm install -f deploy-data-plane.yaml
+```
+
+UI 不会生成此命令，也不会代为执行。
+
+### 第四步：验证注册
+
+1. 返回**集群管理** → **集群列表**或**节点管理**。
+2. 等待 Agent 连接并同步节点。
+3. 确认集群在线，且预期 Worker 节点已经出现。
+
+![验证集群节点](../../images/ui/admin-clusters-nodes.jpg)
+
+## 通过 CLI 获取证书
+
+自动化场景可签发 Agent 证书并使用仓库维护的部署示例：
+
+```bash
 rlarkctl sign \
   --role=agent \
   --client-id=agent-my-cluster-1 \
   --output=/tmp/agent-certs
 
-# 2. 创建并应用 Agent 部署
-rlarkadm install -f deploy-data-plane.yaml
+rlarkadm install -f apps/rlark/docs/examples/deploy-data-plane.yaml
 ```
 
-示例 `deploy-data-plane.yaml`：
+安装前请更新示例中的 Server 地址、证书内容或路径、kubeconfig 和镜像。
 
-```yaml
-apiVersion: v1
-kind: DeployConfig
-plane: data
-controlPlaneAddress: https://<control-plane>:8443
-kubernetes:
-  image: rlark:latest
-cert:
-  caCert: /tmp/agent-certs/ca-cert.pem
-  agentCert: /tmp/agent-certs/cert.pem
-  agentKey: /tmp/agent-certs/key.pem
-```
+## 添加调度元数据
 
-!!! tip "UI vs CLI"
-    UI 适用于初始设置和测试，CLI 适用于自动化、CI/CD 流水线和批量集群接入。
+使用节点管理的批量编辑器设置城市、一个或多个云算力/端算力/真机分类、GPU 型号或设备型号，也可批量 Cordon/Uncordon。字段存储在控制面的 Node CR 上，并会在 Agent 刷新 Kubernetes 发现状态时保留。
 
-## 逐步接入
+## 运行冒烟测试
 
-### 第一步：创建集群注册
-
-1. 登录管理后台 `http://<host>:5173/admin`
-2. 进入 **集群管理** → **创建集群**
-
-![创建集群](../../images/ui/admin-create-cluster.jpg)
-
-3. 输入集群名称（如 `my-cluster-1`）
-4. 选择集群类型和区域
-5. 点击 **创建**
-
-### 第二步：生成安装命令
-
-创建集群注册后，控制台会生成包含凭据的安装命令。
-
-!!! warning "保护凭据"
-    生成的命令包含集群范围的凭据，应视为机密信息，不要在不同集群间共享。
-
-### 第三步：运行 Agent
-
-在目标 Kubernetes 集群上运行生成的命令。典型命令如下：
-
-```bash
-rlark-agent \
-  --mode=both \
-  --server-address=https://<control-plane>:8443 \
-  --client-cert=/etc/rlark/agent-cert.pem \
-  --client-key=/etc/rlark/agent-key.pem \
-  --ca-cert=/etc/rlark/ca-cert.pem \
-  --image=rlark:latest
-```
-
-Agent 需要以下 Kubernetes RBAC 权限：
-
-| 权限 | 用途 |
-|------|------|
-| `pods`（create, get, list, watch, delete） | Task Pod 生命周期管理 |
-| `nodes`（get, list, watch） | 节点发现 |
-| `configmaps`（create, get, update） | 配置管理 |
-| `secrets`（create, get） | 镜像拉取密钥 |
-
-### 第四步：验证 Agent 连接
-
-1. 返回管理后台
-2. 进入 **集群管理** → **集群与节点**
-
-![验证集群节点](../../images/ui/admin-clusters-nodes.jpg)
-
-3. 确认集群状态显示为 **在线**
-4. 检查可用的 Worker 节点已列出
-
-### 第五步：添加调度元数据
-
-为节点添加标签和注解以支持调度：
-
-```bash
-# 为节点添加调度标签
-kubectl label node <node-name> rlark.io/node-category=cloud
-kubectl annotate node <node-name> rlark.io/gpu-model=A100
-
-# 或通过管理后台 UI 操作
-```
-
-### 第六步：运行冒烟测试
-
-创建简单的测试 Job 验证数据面完全可用：
-
-```yaml
-apiVersion: rlinf.io/v1alpha1
-kind: Job
-metadata:
-  name: smoke-test
-spec:
-  tasks:
-  - name: ping
-    nodeSelector:
-      rlark.io/cluster-id: <cluster-id>
-    image: busybox
-    command: ["echo", "Data plane is ready!"]
-```
+从业务平台创建一个小型 Job，为 Worker 选择刚接入的集群并填写可用镜像后提交。确认 Worker 进入 Running、日志可查看；如果镜像提供 Shell，再确认 WebTerminal 可以打开。
 
 ## 故障排查
 
 | 症状 | 排查方向 |
 |------|---------|
-| Agent 无法连接 | 验证 Server 地址、TLS 证书和网络连通性 |
-| 集群显示离线 | 检查 Agent 日志：`kubectl logs -n rlark-system deploy/rlark-agent` |
-| 节点未出现 | 验证节点标签和 Agent `--mode` 设置 |
-| Task 无法调度 | 检查 nodeSelector 是否匹配可用节点 |
+| Agent 无法连接 | Server 地址、CA/Agent 证书是否匹配、出站网络 |
+| 集群显示离线 | Agent Deployment 日志和证书有效期 |
+| 节点未出现 | Agent 模式、本地 RBAC、节点控制器日志 |
+| Job 无法调度 | 所选集群、节点选择器、资源申请、镜像拉取状态 |
 
 ## 注册管理
 
-- 为每个 GPU 集群创建**独立的注册**
-- 使用 `rlarkctl sign` 定期轮换证书
-- 移除未使用的注册以保持集群列表整洁
+- 每个数据面集群分别签发 Agent 证书。
+- 复制的部署 YAML 含有 `agent-key`，必须按 Secret 保护。
+- 使用 `rlarkctl sign` 轮换证书，并重新部署受影响的 Agent。

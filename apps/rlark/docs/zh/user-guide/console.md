@@ -44,4 +44,4 @@ RLark 有两个登录入口：
 
 ## API 等效操作
 
-所有控制台操作也可通过 [Gateway API](../api/reference.md) 在 `http://<host>:8080` 完成。
+已支持的资源操作可通过 [Gateway API](../api/reference.md) 完成。独立 Gateway 默认使用 `http://<host>:8080`；`rlarkadm` 部署使用其配置的 Service 与 UI 代理。并非每个 UI 交互都有一一对应的公开接口，请以 API 参考为准。

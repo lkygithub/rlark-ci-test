@@ -31,11 +31,11 @@ hide:
 ## 核心能力
 
 - **具身智能工作负载编排**：从云端 GPU 训练（RL/LLM）到端侧部署，统一的声明式 Job/Workflow/Task 抽象覆盖全链路
-- **多运行时数据面**：原生支持 Kubernetes 运行时，Docker 和 Raw 运行时处于实验性阶段
+- **多运行时数据面**：基于 Kubernetes 统一纳管云端 GPU 集群与端侧设备，覆盖训练到具身设备部署的完整链路；面向不适合部署 Kubernetes 的轻量端侧场景，后续将扩展 Docker 和 Raw 运行时支持
 - **跨集群资源抽象**：通过 Domain 和 Node CRD 统一管理多地 GPU 集群和端侧设备，控制面运行在 kcp 之上
 - **声明式训练任务**：多层抽象，支持 DAG 编排的训练流水线，声明式定义 Ray 集群
 - **跨集群 Pod 网络**：基于 TUN 设备 + gVisor 协议栈 + SSH 隧道的虚拟网络，Pod 跨集群通信无需 NAT 穿透
-- **证书体系**：X.509 + SSH 双层证书，支持 Agent 接入、Domain 隔离、用户 SSH 登录鉴权
+- **证书体系**：X.509 + SSH 双层证书，支持 Agent 接入、Domain 范围的跨集群转发鉴权、用户 SSH 登录鉴权
 - **可观测性**：Prometheus 指标暴露、Pod 日志实时查询、Web 管理界面
 
 ## 架构概览

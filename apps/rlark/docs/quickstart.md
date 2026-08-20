@@ -1,5 +1,8 @@
 # Quick Start
 
+!!! warning "Development version"
+    RLark does not currently have a stable release. These instructions target the latest `main` branch, which is a development snapshot and may change without backward-compatibility guarantees. Clone or update `main` and build all components from the same commit.
+
 Choose one of two approaches to complete the minimum RLark lifecycle:
 
 | Approach | Description | Best for |
@@ -19,6 +22,28 @@ Choose one of two approaches to complete the minimum RLark lifecycle:
 | jq | >= 1.6 | Parse JSON |
 | python3 | >= 3.8 | Process kubeconfig |
 | node + npm | >= 18 | UI dev server (Method B only) |
+
+Root access is not required. Your user must be able to access the Docker daemon (for example, through membership in the platform's Docker group or Docker Desktop). Verify access before starting:
+
+```bash
+docker info
+```
+
+If this fails with a permission error, fix Docker access according to your operating system's guidance rather than running the entire quick start with `sudo`.
+
+### Recover from a Failed Run
+
+The scripts clean resources left by a previous run when started again. After fixing the reported problem, rerun the same script. If automatic cleanup cannot proceed, clean the local environment first:
+
+```bash
+docker compose -f apps/rlark/docs/examples/docker-compose.yml down -v
+kind delete cluster --name rlark-data-1
+kind delete cluster --name rlark-data-2
+docker rm -f local-registry
+rm -rf /tmp/rlark /tmp/kind-kubeconfig-*
+```
+
+Cleanup commands can report that absent resources were not found; that is safe to ignore. These commands remove Quick Start state, including the local PostgreSQL volume, so do not use them for an environment whose data you need to retain.
 
 ---
 
@@ -129,15 +154,15 @@ Next steps:
 ![Create a data-plane cluster](images/ui/admin-create-cluster.jpg)
 
 3. Enter a cluster name (e.g. `my-cluster`)
-4. Click **Create** — the UI will show the certificate and deploy config
-5. **Copy the cluster-id from the UI** (e.g. `rlark-my-cluster`). The server adds a `rlark-` prefix to the cluster name you entered
+4. Click **Sign Certificate** — the UI shows the Server address and complete `DeployConfig` YAML
+5. Keep the entered cluster name for the next step (e.g. `my-cluster`)
 
 ### 3. Deploy the Data Plane
 
-Run the data plane script with the cluster-id from step 2:
+Run the data plane script with the cluster name from step 2:
 
 ```bash
-bash apps/rlark/docs/examples/quickstart-dp.sh --cluster-id rlark-my-cluster
+bash apps/rlark/docs/examples/quickstart-dp.sh --cluster-id my-cluster
 ```
 
 This script:
@@ -154,8 +179,8 @@ To deploy multiple data plane clusters, create them in the UI first, then pass a
 ```bash
 # Create cluster-1 and cluster-2 in the UI, then:
 bash apps/rlark/docs/examples/quickstart-dp.sh \
-  --cluster-id rlark-my-cluster-1 \
-  --cluster-id rlark-my-cluster-2
+  --cluster-id my-cluster-1 \
+  --cluster-id my-cluster-2
 ```
 
 ### 4. Verify the Cluster and Nodes

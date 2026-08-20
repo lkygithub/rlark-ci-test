@@ -18,13 +18,13 @@ Workflow  ──── 工作流（DAG 编排多个 Job）
 
 **具身智能场景**：典型流水线包括 GPU 集群训练策略模型、端侧设备（机械臂、传感器）在物理环境中执行策略、数据回流到训练 —— 全链路通过同一平台编排。
 
-## 2. Domain（安全域）
+## 2. Domain（网络域）
 
-Domain 是 RLark 中**网络隔离**和**安全边界**的基本单位。
+Domain 是 RLark 中**虚拟网络分组和寻址**的基本单位。
 
 ### 概念
 
-一个 Domain 代表一个逻辑上的训练网络，同一 Domain 内的 Pod 可以通过虚拟 IP 直接通信，不同 Domain 之间完全隔离。
+一个 Domain 代表一个逻辑上的训练网络，同一 Domain 内的 Pod 可以通过虚拟 IP 通信，跨集群转发会校验 Domain 归属。Domain 不会隔离底层集群、节点、运行时、存储或普通 Kubernetes 网络；需要隔离时，仍须使用基础设施提供的网络策略和安全控制。
 
 ### 关键属性
 
@@ -473,21 +473,14 @@ kubernetes:
 
 ## 15. 用户认证
 
-RLark 为 Web UI 提供简单的基于角色的认证系统。
-
-### 角色
-
-| 角色 | 权限 |
-|------|------|
-| `admin` | 完全访问：创建/管理 Job、Node、Domain、Workflow |
-| `user` | 只读访问：查看 Job、Node 和系统状态 |
+RLark 为 Web UI 提供登录和基于角色的导航。当前 `admin` 与 `user` 的区别**仅是前端门禁**：用于选择管理平台或业务平台，Gateway 不会把这些角色作为 API 授权策略执行。不要将 UI 角色视为安全边界，也不要据此向不受信任的客户端暴露 Gateway。
 
 ### 认证流程
 
 1. 部署时，`rlarkadm` 生成随机密码并存储在 KCP Secret（`rlark-ui-auth`）中
 2. Web UI 发送 `POST /api/v1/auth/login` 携带用户名和密码
 3. Gateway 对比 KCP Secret 中的凭据，返回角色
-4. 前端将认证结果存储在 `sessionStorage` 中
+4. 前端将登录结果存储在 `sessionStorage` 中，并以所选控制台路由作为角色门禁
 
 ## 16. Addon（组件管理）
 
@@ -635,11 +628,11 @@ TensorBoard Proxy 提供基于 Web 的训练指标可视化仪表板（损失曲
 
 ## 20. SSH 密钥管理
 
-SSH 密钥管理允许用户通过 API 或 Web UI 上传 SSH 公钥，实现免密 SSH 登录 Pod，无需共享证书。
+SSH 密钥管理允许用户通过 API 或 Web UI 上传 SSH 公钥。已登记的密钥用于以对应用户名认证到 RLark SSH 堡垒机；在创建 Job 时明确选中的密钥还会写入该 Job 的 `sshPublicKey` 字段，供工作负载注入。
 
 ### 概念
 
-每位用户可以上传一个或多个 SSH 公钥。这些密钥存储在控制平面命名空间的 Kubernetes Secret（`rlark-ssh-user-keys`）中。当 Pod 创建时，Agent 会将用户的公钥注入到 Pod 的 `authorized_keys` 文件中，实现免密 SSH 访问。
+密钥按用户名存储在控制平面命名空间的 Kubernetes Secret（`rlark-ssh-user-keys`）中。SSH Server 会验证客户端密钥是否登记在当前 SSH 用户名下。当前实现**没有**检查该用户是否获准访问某个 Pod，即堡垒机认证通过后不存在按用户或按 Pod 的授权策略。创建 Job 时选择密钥与堡垒机授权是两件独立的事：前者只是把公钥写入生成的工作负载配置。
 
 ### API
 

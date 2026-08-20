@@ -35,7 +35,7 @@
 
 | 症状 | 排查方向 | 解决方案 |
 |------|---------|---------|
-| Job 卡在 Pending | `kubectl describe job <name>` | 检查 nodeSelector 匹配可用节点 |
+| RLark Job 卡在 Pending | `kubectl describe jobs.rlinf.io <name>` | 检查 nodeSelector 匹配可用节点 |
 | Task 未创建 | 检查 Controller Manager 日志 | 验证 Job namespace 与节点 namespace 匹配 |
 | Worker 无法启动 | `kubectl describe pod <worker-name>` | 检查镜像拉取、资源可用性 |
 | 跨集群网络失败 | 检查 Domain CRD 和 SSH 隧道 | 验证 DomainPeer 资源，重启 network-sidecar |
@@ -70,7 +70,7 @@ kubectl logs -n rlark-system deploy/rlark-controller-manager --tail=100
 
 # 资源状态
 kubectl get nodes -o wide
-kubectl get jobs -A
+kubectl get jobs.rlinf.io -A
 kubectl get domains -A
 ```
 

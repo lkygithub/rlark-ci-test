@@ -20,11 +20,11 @@ Workflow  ──── Workflow (DAG orchestration of multiple Jobs)
 
 ## 2. Domain
 
-Domain is the fundamental unit of **network isolation** and **security boundary** in RLark.
+Domain is the fundamental unit of **virtual network grouping and addressing** in RLark.
 
 ### Concept
 
-A Domain represents a logical training network. Pods within the same Domain can communicate directly via virtual IPs, while different Domains are completely isolated.
+A Domain represents a logical training network. Pods within the same Domain can communicate via virtual IPs, and cross-cluster forwarding checks Domain membership. A Domain does not isolate the underlying clusters, nodes, runtimes, storage, or ordinary Kubernetes networking; use the infrastructure's network policies and security controls when isolation is required.
 
 ### Key Properties
 
@@ -44,7 +44,7 @@ status:
 
 ### Design Intent
 
-- **Network Isolation**: Different embodied AI tasks (e.g., Team A's robot manipulation experiment and Team B's navigation experiment) are assigned to different Domains without interference
+- **Virtual Network Grouping**: Workloads assigned to a Domain share its virtual address space and cross-cluster forwarding scope; this is not infrastructure-level isolation
 - **IP Management**: The Domain Controller in Controller-Manager allocates IP subnets and assigns unique IPs to each workload
 - **Certificate Granularity**: Each Domain has an independent X.509 certificate for cross-cluster communication authentication
 
@@ -473,21 +473,14 @@ kubernetes:
 
 ## 15. User Authentication
 
-RLark provides a simple role-based authentication system for the Web UI.
-
-### Roles
-
-| Role | Permissions |
-|------|-------------|
-| `admin` | Full access: create/manage jobs, nodes, domains, workflows |
-| `user` | Read-only access: view jobs, nodes, and system status |
+RLark provides login and role-based navigation for the Web UI. The current `admin` and `user` distinction is a **frontend gate only**: it selects the admin or platform console, but the Gateway does not enforce these roles as API authorization. Do not treat the UI role as a security boundary or expose the Gateway to untrusted clients on that basis.
 
 ### Authentication Flow
 
 1. During deployment, `rlarkadm` generates random passwords and stores them in a KCP Secret (`rlark-ui-auth`)
 2. Web UI sends `POST /api/v1/auth/login` with username and password
 3. Gateway validates against the KCP Secret and returns the role
-4. Frontend stores the authentication result in `sessionStorage`
+4. Frontend stores the login result in `sessionStorage` and uses the selected console route as the role gate
 
 ## 16. Addon (Component Management)
 
@@ -635,11 +628,11 @@ Browser ──HTTP──▶ Gateway ──proxy to Server──▶ Server ──
 
 ## 20. SSH Key Management
 
-SSH Key Management allows users to upload their SSH public keys through the API or Web UI, enabling passwordless SSH login to Pods without sharing certificates.
+SSH Key Management allows users to upload SSH public keys through the API or Web UI. A registered key authenticates its named user to the RLark SSH bastion. A key explicitly selected in a Job is also copied to that Job's `sshPublicKey` field for workload injection.
 
 ### Concept
 
-Each user can upload one or more SSH public keys. These keys are stored in a Kubernetes Secret (`rlark-ssh-user-keys`) in the control plane namespace. When a Pod is created, the Agent injects the user's public keys into the Pod's `authorized_keys` file, allowing SSH access without a password.
+Keys are stored by username in a Kubernetes Secret (`rlark-ssh-user-keys`) in the control plane namespace. The SSH server verifies that the presented key is registered for the SSH username. The current implementation does **not** authorize that user for particular Pods; after bastion authentication, there is no per-user or per-Pod policy check. Selecting a key while creating a Job is separate from bastion authorization and places that public key in the generated workload configuration.
 
 ### API
 
@@ -650,7 +643,7 @@ Each user can upload one or more SSH public keys. These keys are stored in a Kub
 ### Key Features
 
 - **Web UI management**: A dedicated SSH Keys page in the Web UI for viewing and managing keys
-- **Per-task key injection**: Individual Jobs and Tasks can specify an `sshPublicKey` field, which takes precedence over centrally managed keys for that specific workload
+- **Explicit workload injection**: Individual Jobs and Tasks can specify an `sshPublicKey` field; the UI copies the selected registered key into a new Job
 - **Conflict detection**: Duplicate keys are detected and rejected with a 409 response
 - **Retry on conflict**: The API automatically retries on write conflicts (up to 5 attempts)
 - **Key validation**: Public keys are validated using `golang.org/x/crypto/ssh` before storage

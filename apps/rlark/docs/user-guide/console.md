@@ -44,4 +44,4 @@ RLark has two login entry points:
 
 ## API Equivalent
 
-All console operations are also available through the [Gateway API](../api/reference.md) at `http://<host>:8080`.
+Supported resource operations are available through the [Gateway API](../api/reference.md). The standalone Gateway defaults to `http://<host>:8080`; an `rlarkadm` deployment uses its configured Service and UI proxy. The API reference is authoritative because not every UI interaction has a one-to-one public endpoint.

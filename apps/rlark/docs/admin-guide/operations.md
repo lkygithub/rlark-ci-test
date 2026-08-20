@@ -35,7 +35,7 @@ Check the system from control plane to data plane in this order:
 
 | Symptom | Check | Resolution |
 |---------|-------|------------|
-| Job stuck in Pending | `kubectl describe job <name>` | Check nodeSelector matches available nodes |
+| RLark Job stuck in Pending | `kubectl describe jobs.rlinf.io <name>` | Check nodeSelector matches available nodes |
 | Task not created | Check controller-manager logs | Verify Job namespace matches node namespace |
 | Worker fails to start | `kubectl describe pod <worker-name>` | Check image pull, resource availability |
 | Cross-cluster network fails | Check Domain CRD and SSH tunnels | Verify DomainPeer resources, restart network-sidecar |
@@ -70,7 +70,7 @@ kubectl logs -n rlark-system deploy/rlark-controller-manager --tail=100
 
 # Resource status
 kubectl get nodes -o wide
-kubectl get jobs -A
+kubectl get jobs.rlinf.io -A
 kubectl get domains -A
 ```
 

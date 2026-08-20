@@ -42,7 +42,7 @@ Control plane server. Manages TLS/SSH certificates, agent registration, and the 
 |------|------|---------|-------------|
 | `--https-port` | int | `8443` | HTTPS listen port |
 | `--ssh-port` | int | `2222` | SSH listen port |
-| `--unsafe-http-port` | int | `8888` | Unsafe HTTP port for certificate signing API |
+| `--unsafe-http-port` | int | `8888` | Internal HTTP for `/healthz`, `/readyz`, `/livez`, `/metrics`, and peer proxying |
 | `--auto-sign-tls-ca-cert` | bool | `false` | Auto-sign TLS CA certificate if not present |
 | `--tls-domains` | strings | `["localhost"]` | TLS certificate domain list |
 | `--db-config` | string | `""` | Database configuration file path |
@@ -75,7 +75,7 @@ API gateway. Handles all REST API requests including cluster management, job man
 
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
-| `--addr` | string | `:8080` | API gateway bind address |
+| `--addr` | string | `:8080` | API gateway bind address; `rlarkadm` overrides it to `:8090` |
 | `--db-config` | string | `""` | Database configuration file path |
 | `--server-address` | string | `https://rlark-server.rlark-system.svc:8443` | RLark server address for certificate signing |
 | `--kubeconfig` | string | `$KUBECONFIG` | kubeconfig file path |
@@ -243,21 +243,23 @@ The YAML file passed to `rlarkadm install -f`. See [CLI Reference](cli.md#rlarka
 
 ### Top-level Fields
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `apiVersion` | string | API version (required) |
-| `kind` | string | Must be `DeployConfig` |
-| `plane` | string | `control` or `data` |
-| `controlPlaneAddress` | string | Control plane address (required for data plane) |
-| `db` | DBConfig | Database configuration |
-| `kubernetes` | KubernetesEnv | Kubernetes deployment environment |
-| `docker` | DockerEnv | Docker deployment environment |
-| `raw` | RawEnv | Raw deployment environment |
-| `cert` | CertConfig | Certificate configuration (required for data plane) |
-| `insecureSkipTLSVerify` | bool | Skip TLS verification |
+These names are the exact YAML keys accepted by `rlarkadm`.
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `apiVersion` | string | — | API version (required); maintained examples use `rlark.io/v1alpha1` |
+| `kind` | string | — | Must be `DeployConfig` |
+| `plane` | string | — | Required: `control` or `data` |
+| `control-plane-address` | string | `""` | Server HTTPS/WSS address; required for the data plane |
+| `db` | DBConfig | unset | Database configuration; enables PostgreSQL components in `rlarkadm` deployments |
+| `kubernetes` | KubernetesEnv | unset | Kubernetes deployment environment |
+| `docker` | DockerEnv | unset | Docker deployment environment |
+| `raw` | RawEnv | unset | Raw deployment environment |
+| `cert` | CertConfig | unset | Certificate configuration; required for the data plane |
+| `insecure-skip-tls-verify` | bool | `false` | Skip Server TLS verification |
 
 !!! note "Environment selection"
-    Choose exactly one of `kubernetes`, `docker`, or `raw`.
+    Choose exactly one of `kubernetes`, `docker`, or `raw`. The data plane also requires `control-plane-address` and `cert`.
 
 ### DBConfig
 
@@ -271,41 +273,41 @@ The YAML file passed to `rlarkadm install -f`. See [CLI Reference](cli.md#rlarka
 
 ### KubernetesEnv
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `kubeconfig` | string | kubeconfig file path |
-| `gatewayImage` | string | Gateway image |
-| `controllerManagerImage` | string | Controller manager image |
-| `serverImage` | string | Server image |
-| `agentImage` | string | Agent image |
-| `image` | string | Default image for all components |
-| `kcpImage` | string | kcp image |
-| `etcdImage` | string | etcd image |
-| `postgresqlImage` | string | PostgreSQL image |
-| `uiImage` | string | UI image |
-| `replicas` | int | Component replicas |
-| `storage` | StorageConfig | Storage configuration |
-| `kcp` | ComponentConfig | kcp component config |
-| `etcd` | EtcdConfig | etcd component config |
-| `postgresql` | ComponentConfig | PostgreSQL component config |
-| `containerdSocket` | string | Containerd socket path |
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `kubeconfig` | string | `""` | kubeconfig file path; an empty value uses the normal client-go loading rules |
+| `gateway-image` | string | `""` | Gateway image |
+| `controller-manager-image` | string | `""` | Controller Manager image |
+| `server-image` | string | `""` | Server image |
+| `agent-image` | string | `""` | Agent image |
+| `image` | string | `""` | Shared RLark image fallback; on the data plane also enables network sidecar and SSH support |
+| `kcp-image` | string | `""` | kcp image |
+| `etcd-image` | string | `""` | Built-in etcd image; built-in etcd is enabled only when set and no external address is configured |
+| `postgresql-image` | string | `""` | PostgreSQL image; PostgreSQL is enabled only when the top-level `db` block is set |
+| `ui-image` | string | `""` | UI image |
+| `replicas` | int | `0` (resolved to `1`) | Default component replicas |
+| `storage` | StorageConfig | unset | Default storage configuration |
+| `kcp` | ComponentConfig | unset | kcp component config |
+| `etcd` | EtcdConfig | unset | etcd component config |
+| `postgresql` | ComponentConfig | unset | PostgreSQL component config |
+| `containerd-socket` | string | `/run/containerd/containerd.sock` | Node Agent containerd socket path |
 
 !!! tip "Image priority"
-    If both `image` and a specific component image (e.g., `gatewayImage`) are set, the specific image takes priority.
+    A component-specific image such as `gateway-image` takes priority over `image`.
 
 ### DockerEnv
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `gatewayImage` | string | Gateway image |
-| `controllerManagerImage` | string | Controller manager image |
-| `serverImage` | string | Server image |
-| `agentImage` | string | Agent image |
-| `image` | string | Default image for all components |
-| `kcpImage` | string | kcp image |
-| `etcdImage` | string | etcd image |
-| `postgresqlImage` | string | PostgreSQL image |
-| `uiImage` | string | UI image |
+| `gateway-image` | string | Gateway image |
+| `controller-manager-image` | string | Controller Manager image |
+| `server-image` | string | Server image |
+| `agent-image` | string | Agent image |
+| `image` | string | Shared RLark image fallback |
+| `kcp-image` | string | kcp image |
+| `etcd-image` | string | etcd image |
+| `postgresql-image` | string | PostgreSQL image |
+| `ui-image` | string | UI image |
 
 ### RawEnv
 
@@ -314,14 +316,14 @@ The YAML file passed to `rlarkadm install -f`. See [CLI Reference](cli.md#rlarka
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `gatewayArtifact` | string | Gateway binary path |
-| `controllerManagerArtifact` | string | Controller manager binary path |
-| `serverArtifact` | string | Server binary path |
-| `agentArtifact` | string | Agent binary path |
-| `networkSidecarArtifact` | string | Network sidecar binary path |
-| `kcpArtifact` | string | kcp binary path |
-| `etcdArtifact` | string | etcd binary path |
-| `postgresqlArtifact` | string | PostgreSQL binary path |
+| `gateway-artifact` | string | Gateway binary path |
+| `controller-manager-artifact` | string | Controller Manager binary path |
+| `server-artifact` | string | Server binary path |
+| `agent-artifact` | string | Agent binary path |
+| `network-sidecar-artifact` | string | Network sidecar binary path |
+| `kcp-artifact` | string | kcp binary path |
+| `etcd-artifact` | string | etcd binary path |
+| `postgresql-artifact` | string | PostgreSQL binary path |
 
 ### CertConfig
 
@@ -329,19 +331,19 @@ Required for data plane deployment.
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `caCert` | string | CA certificate path |
-| `agentCert` | string | Agent certificate path |
-| `agentKey` | string | Agent private key path |
+| `ca-cert` | string | Inline CA PEM or an existing file path |
+| `agent-cert` | string | Inline Agent certificate PEM or an existing file path |
+| `agent-key` | string | Inline Agent private key PEM or an existing file path |
 
 ### StorageConfig
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `type` | string | | Storage type: emptyDir, hostPath, pvc |
-| `hostPath` | string | | Host path for hostPath type |
-| `storageClass` | string | | StorageClass for PVC type |
-| `size` | string | | Storage size |
-| `nodeSelector` | map | | Node selector for PV |
+| `host-path` | string | `""` | Host path for hostPath type |
+| `storage-class` | string | `""` | StorageClass for PVC type; empty uses the cluster default |
+| `size` | string | `""` | Storage size |
+| `node-selector` | map | empty | Node selector for the workload |
 
 ### ComponentConfig
 
@@ -360,15 +362,16 @@ Required for data plane deployment.
 
 **Example (control plane):**
 ```yaml
-apiVersion: v1
+apiVersion: rlark.io/v1alpha1
 kind: DeployConfig
 plane: control
 kubernetes:
-  image: rlark:latest
-  kcpImage: ghcr.io/kcp-dev/kcp:latest
-  etcdImage: quay.io/coreos/etcd:v3.5
-  postgresqlImage: postgres:15
-  uiImage: rlark-ui:latest
+  gateway-image: rlark:latest
+  controller-manager-image: rlark:latest
+  server-image: rlark:latest
+  kcp-image: kcp:v0.30.0
+  postgresql-image: postgres:15
+  ui-image: rlark-ui:latest
   replicas: 1
 db:
   host: postgresql
@@ -376,4 +379,20 @@ db:
   database: rlark
   user: rlark
   password: CHANGE_ME
+```
+
+**Example (data plane):**
+```yaml
+apiVersion: rlark.io/v1alpha1
+kind: DeployConfig
+plane: data
+control-plane-address: https://rlark.example.com:8443
+cert:
+  ca-cert: /path/to/ca-cert.pem
+  agent-cert: /path/to/agent-cert.pem
+  agent-key: /path/to/agent-key.pem
+kubernetes:
+  kubeconfig: ~/.kube/config
+  agent-image: rlark:latest
+  image: rlark:latest
 ```

@@ -56,11 +56,11 @@ plugins:
             "Platform User Guide": 平台使用指南
             "User Guide Overview": 使用指南概览
             "Console Access and Navigation": 控制台访问与导航
-            "Clusters and Nodes": 集群与节点
-            Jobs: 任务
-            Workflows: 工作流
-            Storage: 存储
-            "SSH Keys": "SSH Key"
+            "Find Compute Resources": 查找算力资源
+            "Submit and Manage Jobs": 提交和管理任务
+            "Build Workflows": 构建工作流
+            "Attach Storage": 挂载存储
+            "Connect with SSH Keys": 使用 SSH 密钥连接
             "RL Training Best Practices": "RL 训练最佳实践"
             "Administrator Guide": 管理员指南
             "Administrator Guide Overview": 管理员指南概览
@@ -83,10 +83,11 @@ plugins:
             Reference: 参考手册
             "Reference Overview": 参考手册概览
             CLI: CLI
-            API: API
+            "Gateway API Reference": "Gateway API 参考"
             "API Examples": "API 示例"
+            "OpenAPI Specification": "OpenAPI 规范"
             "Storage API": "存储 API"
-            CRDs: CRD
+            "CRD Schema Reference": "CRD Schema 参考"
             Configuration: 配置项
             "Release Notes / Changelog": "版本发布 / Changelog"
             Debugging: 调试
@@ -103,11 +104,11 @@ nav:
     - User Guide Overview: user-guide/index.md
     - RL Training Best Practices: user-guide/best-practices.md
     - Console Access and Navigation: user-guide/console.md
-    - Clusters and Nodes: user-guide/clusters-nodes.md
-    - Jobs: user-guide/jobs.md
-    - Workflows: user-guide/workflows.md
-    - Storage: user-guide/storage.md
-    - SSH Keys: user-guide/ssh-keys.md
+    - Find Compute Resources: user-guide/clusters-nodes.md
+    - Submit and Manage Jobs: user-guide/jobs.md
+    - Build Workflows: user-guide/workflows.md
+    - Attach Storage: user-guide/storage.md
+    - Connect with SSH Keys: user-guide/ssh-keys.md
   - Administrator Guide:
     - Administrator Guide Overview: admin-guide/index.md
     - Production Control Plane: admin-guide/control-plane.md
@@ -129,8 +130,9 @@ nav:
   - Reference:
     - Reference Overview: reference/index.md
     - CLI: reference/cli.md
-    - API: api/reference.md
+    - API Reference: api/reference.md
     - API Examples: api/examples.md
+    - OpenAPI Specification: api/swagger.yaml
     - Storage API: storage-api.md
     - CRDs: reference/crd.md
     - Configuration: reference/configuration.md

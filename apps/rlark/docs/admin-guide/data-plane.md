@@ -2,143 +2,107 @@
 
 ## Overview
 
-Onboarding a data plane cluster makes its compute resources available to RLark for scheduling training jobs. The process involves creating a cluster registration in the admin console, generating agent credentials, and running the agent on the target cluster.
+Onboarding a Kubernetes data plane requires an Agent certificate and a `DeployConfig` for `rlarkadm`. The current admin form signs certificates; it does not ask for a cluster type or region and does not generate a shell installation command.
 
-## Onboarding Methods
+## UI-Based Certificate Flow
 
-RLark supports two methods for onboarding data plane clusters:
+### Step 1: Sign the Cluster Certificate
 
-### UI-Based (Recommended)
+1. Sign in to the administrator console at `http://<host>:5173/admin`.
+2. Open **Cluster Management** → **Create Cluster**.
+3. Enter only the cluster name, for example `my-cluster-01`.
+4. Choose **Sign Certificate**.
 
-Use the administrator console for a guided onboarding experience. See [Step-by-Step Onboarding](#step-by-step-onboarding) below.
+![Create Cluster](../images/ui/admin-create-cluster.jpg)
 
-### CLI-Based
+After signing, the page displays the cluster name, Server address, and a complete deploy YAML. It also adds the name to **Signed Clusters**, where the YAML can be opened and copied again.
 
-Use `rlarkadm` and `rlarkctl` for scripted or automated onboarding:
+!!! warning "Protect the YAML"
+    The displayed `agent-key` is a private key. Store the copied YAML securely and never reuse it for another cluster.
+
+### Step 2: Complete the Deploy YAML
+
+The UI output matches the `DeployConfig` accepted by `rlarkadm`:
+
+```yaml
+apiVersion: rlark.io/v1alpha1
+kind: DeployConfig
+plane: data
+control-plane-address: https://<control-plane>:8443
+
+cert:
+  ca-cert: |
+    -----BEGIN CERTIFICATE-----
+    <CA certificate>
+    -----END CERTIFICATE-----
+  agent-cert: |
+    -----BEGIN CERTIFICATE-----
+    <Agent certificate>
+    -----END CERTIFICATE-----
+  agent-key: |
+    -----BEGIN PRIVATE KEY-----
+    <Agent private key>
+    -----END PRIVATE KEY-----
+
+kubernetes:
+  kubeconfig: /path/to/kubeconfig.yaml
+  agent-image: rlark-agent:latest
+```
+
+Replace `kubernetes.kubeconfig` with a kubeconfig that can deploy to the target cluster and set an available Agent image. Add the optional `kubernetes.image` only when enabling components that require the shared RLark image. See [Configuration Reference](../reference/configuration.md) for all accepted keys.
+
+### Step 3: Install the Data Plane
+
+Save the completed YAML as `deploy-data-plane.yaml`, then run it from a trusted administration host:
 
 ```bash
-# 1. Sign the agent certificate
+rlarkadm install -f deploy-data-plane.yaml
+```
+
+The UI does not generate this command or execute it for you.
+
+### Step 4: Verify Registration
+
+1. Return to **Cluster Management** → **Cluster List** or **Node Management**.
+2. Wait for the Agent connection and node synchronization.
+3. Confirm that the cluster appears online and expected Worker nodes are present.
+
+![Verify Cluster Nodes](../images/ui/admin-clusters-nodes.jpg)
+
+## CLI-Based Certificate Flow
+
+For automation, sign an Agent certificate and use the maintained deployment example:
+
+```bash
 rlarkctl sign \
   --role=agent \
   --client-id=agent-my-cluster-1 \
   --output=/tmp/agent-certs
 
-# 2. Create and apply the agent deployment
-rlarkadm install -f deploy-data-plane.yaml
+rlarkadm install -f apps/rlark/docs/examples/deploy-data-plane.yaml
 ```
 
-Example `deploy-data-plane.yaml`:
+Update the example's Server address, certificate values or paths, kubeconfig, and images before installation.
 
-```yaml
-apiVersion: v1
-kind: DeployConfig
-plane: data
-controlPlaneAddress: https://<control-plane>:8443
-kubernetes:
-  image: rlark:latest
-cert:
-  caCert: /tmp/agent-certs/ca-cert.pem
-  agentCert: /tmp/agent-certs/cert.pem
-  agentKey: /tmp/agent-certs/key.pem
-```
+## Add Scheduling Metadata
 
-!!! tip "CLI vs UI"
-    Use the UI for initial setup and testing. Use the CLI for automation, CI/CD pipelines, and bulk cluster onboarding.
+Use the Node Management batch editor to set city, one or more cloud/edge/robot categories, GPU model, or device model. You can also cordon or uncordon selected nodes. These fields are stored on the control-plane Node CR and preserved when the Agent refreshes discovered Kubernetes state.
 
-## Step-by-Step Onboarding
+## Run a Smoke Test
 
-### Step 1: Create Cluster Registration
-
-1. Sign in to the administrator console at `http://<host>:5173/admin`
-2. Navigate to **Cluster Management** → **Create Cluster**
-
-![Create Cluster](../images/ui/admin-create-cluster.jpg)
-
-3. Enter a cluster name (e.g., `my-cluster-1`)
-4. Select the cluster type and region
-5. Click **Create**
-
-### Step 2: Generate Installation Command
-
-After creating the cluster registration, the console generates an installation command with embedded credentials.
-
-!!! warning "Protect credentials"
-    The generated command contains cluster-scoped credentials. Treat them as secrets and do not share them between clusters.
-
-### Step 3: Run the Agent
-
-Run the generated command on the target Kubernetes cluster. The command typically looks like:
-
-```bash
-rlark-agent \
-  --mode=both \
-  --server-address=https://<control-plane>:8443 \
-  --client-cert=/etc/rlark/agent-cert.pem \
-  --client-key=/etc/rlark/agent-key.pem \
-  --ca-cert=/etc/rlark/ca-cert.pem \
-  --image=rlark:latest
-```
-
-The agent requires the following Kubernetes RBAC permissions:
-
-| Permission | Purpose |
-|------------|---------|
-| `pods` (create, get, list, watch, delete) | Task Pod lifecycle management |
-| `nodes` (get, list, watch) | Node discovery |
-| `configmaps` (create, get, update) | Configuration management |
-| `secrets` (create, get) | Image pull secrets |
-
-### Step 4: Verify Agent Connection
-
-1. Return to the administrator console
-2. Navigate to **Cluster Management** → **Clusters and Nodes**
-
-![Verify Cluster Nodes](../images/ui/admin-clusters-nodes.jpg)
-
-3. Verify that the cluster appears with status **Online**
-4. Check that usable Worker nodes are listed
-
-### Step 5: Add Scheduling Metadata
-
-Add labels and annotations to nodes for scheduling:
-
-```bash
-# Label nodes for scheduling
-kubectl label node <node-name> rlark.io/node-category=cloud
-kubectl annotate node <node-name> rlark.io/gpu-model=A100
-
-# Or use the admin console UI
-```
-
-### Step 6: Run a Smoke Test
-
-Create a simple test Job to verify the data plane is fully functional:
-
-```yaml
-apiVersion: rlinf.io/v1alpha1
-kind: Job
-metadata:
-  name: smoke-test
-spec:
-  tasks:
-  - name: ping
-    nodeSelector:
-      rlark.io/cluster-id: <cluster-id>
-    image: busybox
-    command: ["echo", "Data plane is ready!"]
-```
+Create a small Job from the platform console, choose the onboarded cluster for its Worker, use an available image, and submit it. Verify that the Worker reaches Running, logs are available, and WebTerminal opens if the image supplies a shell.
 
 ## Troubleshooting
 
 | Symptom | Check |
 |---------|-------|
-| Agent not connecting | Verify server address, TLS certificates, and network connectivity |
-| Cluster shows offline | Check agent logs: `kubectl logs -n rlark-system deploy/rlark-agent` |
-| Nodes not appearing | Verify node labels and agent `--mode` setting |
-| Tasks not scheduling | Check node selectors match available nodes |
+| Agent not connecting | Server address, CA/Agent certificate pair, outbound connectivity |
+| Cluster shows offline | Agent deployment logs and certificate validity |
+| Nodes not appearing | Agent mode, local RBAC, and node-controller logs |
+| Job does not schedule | Selected cluster, node selectors, resource requests, image pull status |
 
 ## Registration Management
 
-- Create a **separate registration** for each data plane cluster
-- Rotate certificates periodically using `rlarkctl sign`
-- Remove unused registrations to keep the cluster list clean
+- Sign a separate Agent certificate for each data-plane cluster.
+- Treat copied deploy YAML as a secret because it contains `agent-key`.
+- Rotate certificates with `rlarkctl sign` and redeploy the affected Agent.

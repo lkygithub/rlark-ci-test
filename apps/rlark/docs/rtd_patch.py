@@ -22,14 +22,15 @@ content = re.sub(
 
 # Inject language switcher (extra.alternate) for cross-project links on RTD
 # RTD uses "zh-cn" for Chinese translation subproject URL
-alternate_block = """
+version = os.environ.get("READTHEDOCS_VERSION", "latest")
+alternate_block = f"""
 extra:
   alternate:
     - name: English
-      link: https://rlark-ci-test.readthedocs.io/en/latest/
+      link: https://rlark-ci-test.readthedocs.io/en/{version}/
       lang: en
     - name: 中文
-      link: https://rlark-ci-test.readthedocs.io/zh-cn/latest/
+      link: https://rlark-ci-test.readthedocs.io/zh-cn/{version}/
       lang: zh-cn
 """
 

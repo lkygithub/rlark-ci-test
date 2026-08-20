@@ -12,7 +12,7 @@ RLark can manage two types of compute resources. See [GPU Cluster Onboarding](da
 | **Workload** | Standard RL training with Ray | RL training that interacts with real hardware (robots, cameras) |
 | **Networking** | Cluster-internal or cross-cluster via Domain | May require host device passthrough or macvlan for fixed-IP robots |
 
-Both follow the same [cluster registration flow](data-plane.md#step-by-step-onboarding). The key difference is **what runs on the cluster after onboarding**: a GPU cluster only needs the Agent, while an embodied edge cluster also needs the **Embodied Runtime** to discover and manage physical devices.
+Both follow the same [cluster certificate flow](data-plane.md). The key difference is **what runs on the cluster after onboarding**: a GPU cluster only needs the Agent, while an embodied edge cluster also needs the **Embodied Runtime** to discover and manage physical devices.
 
 ## What is Embodied Runtime?
 

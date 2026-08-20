@@ -199,8 +199,8 @@ After changing CRD types, regenerate API clients:
 # Regenerate CRD manifests
 make generate
 
-# Update API client code
-# (project-specific code generation steps)
+# Regenerate typed clients, informers, and listers
+make -C api generate-clients
 ```
 
 Always test user-facing changes in both the API and Web UI.

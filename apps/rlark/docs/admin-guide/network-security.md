@@ -2,7 +2,7 @@
 
 ## Managing Network Domains
 
-A Domain defines a network boundary for cross-cluster communication. Each Domain has a CIDR range for IP allocation.
+A Domain groups virtual addresses and scopes cross-cluster forwarding. Each Domain has a CIDR range for IP allocation. It is not an isolation boundary for the underlying infrastructure or ordinary Kubernetes networking.
 
 ### Creating a Domain
 
@@ -47,7 +47,7 @@ Client Pod (cluster-B)                    Server Pod (cluster-A)
 
 ## Security Best Practices
 
-- Use separate Domains for different security zones
+- Enforce security-zone isolation with infrastructure controls such as Kubernetes NetworkPolicy; do not rely on Domains alone
 - Rotate TLS certificates periodically via `rlarkadm`
 - Review DomainPeer resources for unexpected cross-cluster connections
 - SSH keys for Worker access should be managed through the platform, not directly on nodes

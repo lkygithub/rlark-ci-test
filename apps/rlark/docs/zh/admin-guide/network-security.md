@@ -2,7 +2,7 @@
 
 ## 管理网络域
 
-Domain 定义了跨集群通信的网络边界。每个 Domain 有一个 CIDR 范围用于 IP 分配。
+Domain 用于虚拟地址分组并限定跨集群转发范围。每个 Domain 有一个 CIDR 范围用于 IP 分配，但它不是底层基础设施或普通 Kubernetes 网络的隔离边界。
 
 ### 创建 Domain
 

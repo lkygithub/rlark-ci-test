@@ -1,5 +1,8 @@
 # 快速开始
 
+!!! warning "开发版本"
+    RLark 当前尚无稳定版本。本文面向最新的 `main` 分支；该分支是开发快照，可能发生不保证向后兼容的变更。请克隆或更新 `main`，并基于同一提交构建所有组件。
+
 选择以下两种方式之一完成 RLark 的最小完整闭环：
 
 | 方式 | 说明 | 适合 |
@@ -19,6 +22,28 @@
 | jq | >= 1.6 | 解析 JSON |
 | python3 | >= 3.8 | 处理 kubeconfig |
 | node + npm | >= 18 | UI 开发服务器（仅方式 B） |
+
+无需 root 权限，但当前用户必须有权访问 Docker daemon（例如加入系统的 Docker 用户组，或使用 Docker Desktop）。开始前请验证：
+
+```bash
+docker info
+```
+
+如果命令提示权限不足，请按操作系统的 Docker 指引修复用户权限，不要使用 `sudo` 运行整个快速开始流程。
+
+### 失败后恢复
+
+脚本再次启动时会清理由上一次运行遗留的资源。修复报错原因后，重新运行同一脚本即可。如果自动清理无法继续，请先手动清理本地环境：
+
+```bash
+docker compose -f apps/rlark/docs/examples/docker-compose.yml down -v
+kind delete cluster --name rlark-data-1
+kind delete cluster --name rlark-data-2
+docker rm -f local-registry
+rm -rf /tmp/rlark /tmp/kind-kubeconfig-*
+```
+
+清理时提示资源不存在可以安全忽略。上述命令会删除快速开始环境的状态，包括本地 PostgreSQL 数据卷；需要保留数据的环境请勿执行。
 
 ---
 
@@ -131,15 +156,15 @@ bash apps/rlark/docs/examples/quickstart-cp.sh
 ![管理平台创建数据面集群](../images/ui/admin-create-cluster.jpg)
 
 3. 输入集群名称（如 `my-cluster`）
-4. 点击**创建** — UI 会显示证书和部署配置
-5. **从 UI 复制集群 ID**（如 `rlark-my-cluster`）。服务器会自动在你输入的集群名称前添加 `rlark-` 前缀
+4. 点击**签发证书** — UI 会显示 Server 地址和完整 `DeployConfig` YAML
+5. 记下输入的集群名称（如 `my-cluster`），供下一步使用
 
 ### 3. 部署数据面
 
-使用步骤 2 中的集群 ID 运行数据面脚本：
+使用步骤 2 中的集群名称运行数据面脚本：
 
 ```bash
-bash apps/rlark/docs/examples/quickstart-dp.sh --cluster-id rlark-my-cluster
+bash apps/rlark/docs/examples/quickstart-dp.sh --cluster-id my-cluster
 ```
 
 脚本会：
@@ -156,8 +181,8 @@ bash apps/rlark/docs/examples/quickstart-dp.sh --cluster-id rlark-my-cluster
 ```bash
 # 在 UI 中创建 cluster-1 和 cluster-2 后，运行：
 bash apps/rlark/docs/examples/quickstart-dp.sh \
-  --cluster-id rlark-my-cluster-1 \
-  --cluster-id rlark-my-cluster-2
+  --cluster-id my-cluster-1 \
+  --cluster-id my-cluster-2
 ```
 
 ### 4. 验证集群和节点

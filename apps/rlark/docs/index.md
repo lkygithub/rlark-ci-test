@@ -31,11 +31,11 @@ Manage cross-cluster embodied intelligence workloads natively with Kubernetes, f
 ## Key Capabilities
 
 - **Embodied AI Workload Orchestration**: From cloud GPU training (RL/LLM) to edge deployment, unified declarative Job/Workflow/Task abstraction across the full pipeline
-- **Multi-Runtime Data Plane**: Native support for Kubernetes runtime, with Docker and Raw runtimes in experimental status
+- **Multi-Runtime Data Plane**: Kubernetes provides unified management for cloud GPU clusters and edge devices across the complete training-to-deployment lifecycle; Docker and Raw runtime support will extend coverage to lightweight edge scenarios where Kubernetes is not suitable
 - **Cross-Cluster Resource Abstraction**: Unify multi-site GPU clusters and edge devices via Domain and Node CRDs, with the control plane running on kcp
 - **Declarative Training Jobs**: Multi-layer abstraction with DAG-based training pipelines and declarative Ray cluster definition
 - **Cross-Cluster Pod Networking**: Virtual network based on TUN devices + gVisor netstack + SSH tunnels, enabling Pod-to-Pod communication without NAT traversal
-- **Certificate System**: Dual-layer X.509 + SSH certificates for Agent access, Domain isolation, and user SSH authentication
+- **Certificate System**: Dual-layer X.509 + SSH certificates for Agent access, Domain-scoped cross-cluster forwarding authentication, and user SSH authentication
 - **Observability**: Prometheus metrics, real-time Pod log streaming, and web management UI
 
 ## Architecture Overview

@@ -78,7 +78,8 @@ rlarkctl sign \
 
 ### rlarkctl revoke
 
-Revoke a certificate.
+!!! warning "Not implemented"
+    This command calls the Gateway certificate-revocation endpoint, whose handler is not implemented. Do not use it as an operational revocation mechanism.
 
 | Flag | Short | Type | Default | Description |
 |------|-------|------|---------|-------------|

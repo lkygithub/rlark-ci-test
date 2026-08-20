@@ -12,7 +12,7 @@ rlark 支持三种部署方式，适用于不同场景：
 
 ## 2. 部署工具：rlarkadm
 
-`rlarkadm` 是 rlark 的部署 CLI，统一管理控制面和数据面的安装、卸载和健康检查。
+`rlarkadm` 是 RLark 的部署 CLI，用于安装和卸载控制面、数据面组件。安装时会等待每个 Kubernetes 工作负载就绪，单个组件最长等待 180 秒；当前没有独立的 `health` 子命令。
 
 ```bash
 # 安装
@@ -20,40 +20,38 @@ rlarkadm install -f <配置文件>
 
 # 卸载
 rlarkadm uninstall -f <配置文件>
-
-# 健康检查
-rlarkadm health -f <配置文件>
 ```
 
 ### 配置文件结构
 
+一个文件只能描述一个平面，并且只能配置 `kubernetes`、`docker`、`raw` 三种环境中的一种。请从仓库中维护的示例开始修改，不要把控制面和数据面拼到同一个 YAML 文档中：
+
 ```yaml
+# 控制面
 apiVersion: rlark.io/v1alpha1
 kind: DeployConfig
-plane: control              # control | data
-
-# 控制面配置
-kubernetes:                 # 部署到 K8s 集群
-  kubeconfig: /path/to/kubeconfig
-  # 镜像配置
-  gateway-image: rlark-gateway:latest
-  controller-manager-image: rlark-controller-manager:latest
-  server-image: rlark-server:latest
+plane: control
+kubernetes:
+  kubeconfig: /path/to/control-kubeconfig
+  gateway-image: rlark:latest
+  controller-manager-image: rlark:latest
+  server-image: rlark:latest
   kcp-image: kcp:v0.30.0
-  postgresql-image: postgres:15
   ui-image: rlark-ui:latest
-  # 存储配置
   storage:
-    type: pvc               # emptyDir | hostPath | pvc
+    type: pvc
     storage-class: ""
     size: 10Gi
-    node-selector:
-      kubernetes.io/hostname: dev-worker
+```
 
-# 数据面配置
+```yaml
+# 数据面
+apiVersion: rlark.io/v1alpha1
+kind: DeployConfig
 plane: data
+control-plane-address: https://rlark.example.com:8443
 cert:
-  ca-cert: |
+  ca-cert: |                # 可填写 PEM 内容或已存在的文件路径
     -----BEGIN CERTIFICATE-----
     ...
     -----END CERTIFICATE-----
@@ -67,8 +65,8 @@ cert:
     -----END PRIVATE KEY-----
 kubernetes:
   kubeconfig: /path/to/data-kubeconfig
-  agent-image: rlark-agent:latest
-  image: rlark:latest
+  agent-image: rlark:latest
+  image: rlark:latest       # 可选；启用 Pod 网络和 SSH 支持
 ```
 
 ## 3. Kubernetes 部署
@@ -92,12 +90,12 @@ kubectl get pods -n rlark-system
 | 组件 | 副本数 | 端口 | 说明 |
 |------|--------|------|------|
 | kcp | 1 | 6443 | API Server |
-| etcd | 1 | 2379 | kcp 数据存储（可选外置） |
-| postgresql | 1 | 5432 | rlark 数据存储 |
-| server | 1 | 8443, 2222 | HTTPS + SSH |
-| controller-manager | 1 | - | 控制面控制器 |
-| gateway | 1 | 8080 | API Gateway |
-| ui | 1 | 80 | Web 管理界面 |
+| etcd | 1 | 2379 | kcp 存储；仅设置 `etcd-image` 且未配置外部地址时部署 |
+| postgresql | 1 | 5432 | RLark 存储；仅设置顶层 `db` 配置块时部署 |
+| server | 1 | 8443, 2222, 8888 | HTTPS、SSH、健康检查和指标 HTTP |
+| controller-manager | 1 | 8080, 8081 | 指标和健康探针 |
+| gateway | 1 | 8090 | `rlarkadm` 部署中的 API Gateway |
+| ui | 1 | 80 | Web 管理界面；将 `/api/` 代理到 Gateway |
 
 ### 3.2 数据面部署
 
@@ -117,8 +115,9 @@ kubectl get pods -n rlark-system
 
 | 组件 | 副本数 | 说明 |
 |------|--------|------|
-| agent | DaemonSet | cluster + node 模式 |
-| network-sidecar | Pod 注入 | 自动注入到训练 Pod |
+| agent | Deployment | 集群级同步（`--mode=cluster`） |
+| agent-node | DaemonSet | 节点网络和镜像预拉取（`--mode=node`） |
+| network-sidecar | 注入的容器 | 配置 `kubernetes.image` 后加入符合条件的训练 Pod |
 
 ## 4. Docker Compose 部署（开发环境）
 
@@ -157,31 +156,32 @@ volumes:
 
 | 参数 | 默认值 | 说明 |
 |------|--------|------|
-| `--kubeconfig` | `""` | 控制面 kubeconfig |
+| `--kubeconfig` | `$KUBECONFIG` | 控制面 kubeconfig |
 | `--https-port` | `8443` | HTTPS 服务端口 |
 | `--ssh-port` | `2222` | SSH 服务端口 |
+| `--unsafe-http-port` | `8888` | `/healthz`、`/readyz` 和指标使用的无认证 HTTP 端口 |
 | `--db-config` | `""` | 数据库配置文件路径 |
-| `--ca-cert` | `""` | CA 证书路径 |
-| `--ca-key` | `""` | CA 私钥路径 |
-| `--auto-sign-tls-ca-cert` | `false` | 自动使用 CA 签署 TLS 证书 |
-| `--tls-domains` | `""` | 自动证书生成的 TLS 域名列表 |
+| `--auto-sign-tls-ca-cert` | `false` | Kubernetes 中不存在 TLS CA 和 Server 证书时自动生成 |
+| `--tls-domains` | `localhost` | 生成的 Server 证书包含的逗号分隔 DNS 名称 |
 
 ### 5.2 Controller-Manager
 
 | 参数 | 默认值 | 说明 |
 |------|--------|------|
-| `--kubeconfig` | `""` | 控制面 kubeconfig |
-| `--server-address` | `""` | Server 地址（用于证书签发） |
+| `--kubeconfig` | `$KUBECONFIG` | 控制面 kubeconfig |
+| `--server-address` | `https://rlark-server.rlark-system.svc:8443` | Server 地址 |
 | `--leader-elect` | `true` | 是否启用 Leader 选举 |
+| `--metrics-bind-address` | `:8080` | 指标监听地址 |
+| `--health-probe-bind-address` | `:8081` | `/healthz` 和 `/readyz` 监听地址 |
 
 ### 5.3 Gateway
 
 | 参数 | 默认值 | 说明 |
 |------|--------|------|
-| `--kubeconfig` | `""` | 控制面 kubeconfig |
-| `--addr` | `:8080` | HTTP 服务地址 |
+| `--kubeconfig` | `$KUBECONFIG` | 控制面 kubeconfig |
+| `--addr` | `:8080` | 独立二进制默认值；`rlarkadm` 会覆盖为 `:8090` |
 | `--db-config` | `""` | 数据库配置文件路径 |
-| `--server-address` | `""` | 控制面 Server 地址，用于证书签发 |
+| `--server-address` | `https://rlark-server.rlark-system.svc:8443` | 用于证书签发的 Server 地址 |
 
 ### 5.4 Agent
 
@@ -345,22 +345,27 @@ curl -X DELETE "http://localhost:8080/api/v1/clusters/agent-beijing/addons/embod
 
 | 组件 | 端口 | 协议 | 说明 |
 |------|------|------|------|
-| Gateway | 8080 | HTTP | 用户 API 访问 |
-| Server | 8443 | HTTPS | Agent 隧道连接 |
-| Server | 2222 | TCP | SSH 用户登录 |
-| kcp | 6443 | HTTPS | 控制面 API |
+| UI | 80 | HTTP | 浏览器入口；将 `/api/` 代理到 Gateway |
+| Gateway | 8090 | HTTP | `rlarkadm` 内部 API（独立二进制默认 `8080`） |
+| Server | 8443 | HTTPS/WSS | Agent 隧道、代理和证书操作 |
+| Server | 2222 | SSH | 用户和跨集群 SSH |
+| Server | 8888 | HTTP | 内部健康检查和指标 |
+| kcp | 6443 | HTTPS | 内部控制面 API |
 
 ### 8.2 网络拓扑
 
-```
-Internet / 用户网络
-    │
-    ├──▶ Gateway (:8080) ── REST API
-    └──▶ Server (:2222)  ── SSH 登录
-         Server (:8443)  ◀── Agent WebSocket (出方向)
+```text
+用户 / 浏览器 ──HTTP──▶ UI (:80) ──/api 代理──▶ Gateway (:8090)
+用户 SSH 客户端 ──────▶ Server (:2222)
+                                        ▲
+数据面集群 ──出方向 WSS─────────────────┤ Server (:8443)
+  ├─ agent Deployment（cluster 模式）  │
+  └─ agent-node DaemonSet（node 模式） ┘
+
+Server / Gateway / Controller Manager ──HTTPS──▶ kcp (:6443)
 ```
 
-Agent 通过**出方向** WebSocket 连接 Server，无需暴露数据面端口。
+两个数据面 Agent 都主动向 Server 发起出方向连接，因此无需开放数据面入站端口。在控制面按需开放 UI 80 和 Server 8443、2222 端口；Gateway、kcp、健康检查和指标端口应保持内部可见。
 
 ## 9. 证书管理
 
@@ -376,9 +381,12 @@ Agent 通过**出方向** WebSocket 连接 Server，无需暴露数据面端口�
 ### 9.2 签发 Agent 证书
 
 ```bash
+# UI 会把 /api/ 代理到 Gateway
+kubectl port-forward -n rlark-system svc/rlark-ui 8080:80
+
 curl -X POST "http://localhost:8080/api/v1/certificates/agent" \
   -H "Content-Type: application/json" \
-  -d '{"agentID": "agent-beijing"}'
+  -d '{"cluster_id": "beijing"}'
 ```
 
 返回证书和私钥，部署到数据面 Agent 的配置中。
@@ -394,20 +402,13 @@ curl -X POST "http://localhost:8080/api/v1/certificates/agent" \
 
 密码会在安装摘要中显示。Web UI 通过 `POST /api/v1/auth/login` 进行认证。
 
-## 10. 高可用部署
+## 10. 生产部署与高可用
 
-### 10.1 多副本部署
+### 10.1 当前 `rlarkadm` 能力范围
 
-生产环境建议的组件副本数：
+仓库维护的 `rlarkadm` 示例为每个启用的控制面组件部署 1 个副本。虽然配置支持全局和组件级 `replicas`，RLark 目前没有为 Gateway、Server、kcp、etcd 或 PostgreSQL 提供经过验证的生产高可用拓扑；仅增加副本数不能视为实现了高可用。
 
-| 组件 | 副本数 | 说明 |
-|------|--------|------|
-| Gateway | 2+ | 无状态，可水平扩展 |
-| Server | 2+ | 通过 Peer Manager 互联 |
-| Controller-Manager | 1 | Leader 选举，主备模式 |
-| kcp | 1 | 单实例（可配合外部 etcd 集群） |
-| etcd | 3 | 奇数节点 Raft 集群 |
-| postgresql | 1 | 主备复制 |
+生产环境默认应沿用维护中的单副本拓扑，除非已独立设计并验证组件拓扑、共享状态、流量路由、故障恢复和存储行为。需要高可用数据服务时，应使用外部托管方案；`rlarkadm` 不会配置 PostgreSQL 主备复制。
 
 ### 10.2 外部 etcd
 
@@ -422,7 +423,7 @@ kubernetes:
 
 ```yaml
 db:
-  host: pg-primary.example.com
+  host: pg-managed.example.com
   port: 5432
   database: rlark
   user: rlark
@@ -451,13 +452,26 @@ LOG_LEVEL=debug ./bin/server --kubeconfig ...
 
 ### 11.3 健康检查
 
-```bash
-# 检查控制面
-rlarkadm health -f deploy-control-plane.yaml
+`rlarkadm install` 会等待每个 Deployment、StatefulSet 和 DaemonSet 的期望副本全部就绪。后续可这样检查：
 
-# 检查数据面
-rlarkadm health -f deploy-data-plane.yaml
+```bash
+kubectl get deploy,statefulset,daemonset -n rlark-system
+kubectl rollout status deployment/rlark-server -n rlark-system
+kubectl rollout status deployment/rlark-agent -n rlark-system
+kubectl rollout status daemonset/rlark-agent-node -n rlark-system
+
+# Server 健康检查（通常仅集群内部可见）
+kubectl port-forward -n rlark-system svc/rlark-server 8888:8888
+curl --fail http://localhost:8888/healthz
+curl --fail http://localhost:8888/readyz
+
+# Controller Manager 健康检查
+kubectl port-forward -n rlark-system deployment/rlark-controller-manager 8081:8081
+curl --fail http://localhost:8081/healthz
+curl --fail http://localhost:8081/readyz
 ```
+
+Gateway 和 Agent 暴露指标，但没有专用 HTTP 健康路由；请通过 Kubernetes 工作负载就绪状态和日志检查。
 
 ## 12. 升级
 
