@@ -2,7 +2,7 @@
 
 ## 1. 资源层次
 
-rlark 采用多层资源抽象，从底层基础设施到上层具身智能工作负载逐层封装：
+RLark 采用多层资源抽象，从底层基础设施到上层具身智能工作负载逐层封装：
 
 ```
 Workflow  ──── 工作流（DAG 编排多个 Job）
@@ -18,13 +18,13 @@ Workflow  ──── 工作流（DAG 编排多个 Job）
 
 **具身智能场景**：典型流水线包括 GPU 集群训练策略模型、端侧设备（机械臂、传感器）在物理环境中执行策略、数据回流到训练 —— 全链路通过同一平台编排。
 
-## 2. Domain（安全域）
+## 2. Domain（网络域）
 
-Domain 是 rlark 中**网络隔离**和**安全边界**的基本单位。
+Domain 是 RLark 中**虚拟网络分组和寻址**的基本单位。
 
 ### 概念
 
-一个 Domain 代表一个逻辑上的训练网络，同一 Domain 内的 Pod 可以通过虚拟 IP 直接通信，不同 Domain 之间完全隔离。
+一个 Domain 代表一个逻辑上的训练网络，同一 Domain 内的 Pod 可以通过虚拟 IP 通信，跨集群转发会校验 Domain 归属。Domain 不会隔离底层集群、节点、运行时、存储或普通 Kubernetes 网络；需要隔离时，仍须使用基础设施提供的网络策略和安全控制。
 
 ### 关键属性
 
@@ -429,7 +429,7 @@ graph TD
 
 ## 13. Ray 集群集成
 
-rlark 支持通过 Task 注解声明式创建 Ray 集群：
+RLark 支持通过 Task 注解声明式创建 Ray 集群：
 
 ```yaml
 annotations:
@@ -449,7 +449,7 @@ annotations:
 
 ## 14. 对象存储与 PVC
 
-rlark 支持通过 Task 的 `pvcStorageMap` 为训练任务挂载持久化存储卷。
+RLark 支持通过 Task 的 `pvcStorageMap` 为训练任务挂载持久化存储卷。
 
 ### 概念
 
@@ -473,25 +473,18 @@ kubernetes:
 
 ## 15. 用户认证
 
-rlark 为 Web UI 提供简单的基于角色的认证系统。
-
-### 角色
-
-| 角色 | 权限 |
-|------|------|
-| `admin` | 完全访问：创建/管理 Job、Node、Domain、Workflow |
-| `user` | 只读访问：查看 Job、Node 和系统状态 |
+RLark 为 Web UI 提供登录和基于角色的导航。当前 `admin` 与 `user` 的区别**仅是前端门禁**：用于选择管理平台或业务平台，Gateway 不会把这些角色作为 API 授权策略执行。不要将 UI 角色视为安全边界，也不要据此向不受信任的客户端暴露 Gateway。
 
 ### 认证流程
 
 1. 部署时，`rlarkadm` 生成随机密码并存储在 KCP Secret（`rlark-ui-auth`）中
 2. Web UI 发送 `POST /api/v1/auth/login` 携带用户名和密码
 3. Gateway 对比 KCP Secret 中的凭据，返回角色
-4. 前端将认证结果存储在 `sessionStorage` 中
+4. 前端将登录结果存储在 `sessionStorage` 中，并以所选控制台路由作为角色门禁
 
 ## 16. Addon（组件管理）
 
-Addon 是 rlark 的组件管理系统，允许用户在多个数据面集群中安装、配置和管理第三方组件（设备插件、监控代理等）。
+Addon 是 RLark 的组件管理系统，允许用户在多个数据面集群中安装、配置和管理第三方组件（设备插件、监控代理等）。
 
 ### 概念
 
@@ -553,7 +546,7 @@ Web Terminal 提供从 Web UI 直接交互式访问 Pod 终端的能力。
 
 ### 概念
 
-Web Terminal 允许用户打开任何 rlark 管理的 Pod 的终端会话，无需 SSH 到底层节点或本地安装 kubectl。
+Web Terminal 允许用户打开任何 RLark 管理的 Pod 的终端会话，无需 SSH 到底层节点或本地安装 kubectl。
 
 ### 架构
 
@@ -574,7 +567,7 @@ Shell 退出（例如执行 `exit`）时，代理链会转发 WebSocket 正常�
 
 ## 18. Pod HTTP Proxy（Pod HTTP 代理）
 
-Pod HTTP Proxy 允许通过 Server → Agent 代理链直接向 rlark 管理的 Pod 发送 HTTP 请求。
+Pod HTTP Proxy 允许通过 Server → Agent 代理链直接向 RLark 管理的 Pod 发送 HTTP 请求。
 
 ### 概念
 
@@ -604,11 +597,11 @@ Pod HTTP Proxy 使用户无需知道 Pod 的真实 IP 地址或建立 SSH 隧道
 
 ## 19. TensorBoard Proxy（TensorBoard 代理）
 
-TensorBoard Proxy 提供基于 Web 的训练指标可视化仪表板（损失曲线、标量摘要、直方图等），可直接从 rlark Web UI 访问，无需对外暴露 TensorBoard 端口。
+TensorBoard Proxy 提供基于 Web 的训练指标可视化仪表板（损失曲线、标量摘要、直方图等），可直接从 RLark Web UI 访问，无需对外暴露 TensorBoard 端口。
 
 ### 概念
 
-当训练 Task 运行 TensorBoard（监听端口 6006）时，rlark 通过 Gateway 自动代理 TensorBoard UI。用户可以在 Web UI 中点击链接打开 TensorBoard，浏览器通过 Gateway 代理访问。
+当训练 Task 运行 TensorBoard（监听端口 6006）时，RLark 通过 Gateway 自动代理 TensorBoard UI。用户可以在 Web UI 中点击链接打开 TensorBoard，浏览器通过 Gateway 代理访问。
 
 ### 架构
 
@@ -635,11 +628,11 @@ TensorBoard Proxy 提供基于 Web 的训练指标可视化仪表板（损失曲
 
 ## 20. SSH 密钥管理
 
-SSH 密钥管理允许用户通过 API 或 Web UI 上传 SSH 公钥，实现免密 SSH 登录 Pod，无需共享证书。
+SSH 密钥管理允许用户通过 API 或 Web UI 上传 SSH 公钥。已登记的密钥用于以对应用户名认证到 RLark SSH 堡垒机；在创建 Job 时明确选中的密钥还会写入该 Job 的 `sshPublicKey` 字段，供工作负载注入。
 
 ### 概念
 
-每位用户可以上传一个或多个 SSH 公钥。这些密钥存储在控制平面命名空间的 Kubernetes Secret（`rlark-ssh-user-keys`）中。当 Pod 创建时，Agent 会将用户的公钥注入到 Pod 的 `authorized_keys` 文件中，实现免密 SSH 访问。
+密钥按用户名存储在控制平面命名空间的 Kubernetes Secret（`rlark-ssh-user-keys`）中。SSH Server 会验证客户端密钥是否登记在当前 SSH 用户名下。当前实现**没有**检查该用户是否获准访问某个 Pod，即堡垒机认证通过后不存在按用户或按 Pod 的授权策略。创建 Job 时选择密钥与堡垒机授权是两件独立的事：前者只是把公钥写入生成的工作负载配置。
 
 ### API
 
