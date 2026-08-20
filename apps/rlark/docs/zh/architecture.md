@@ -2,17 +2,17 @@
 
 ## 1. 设计目标
 
-rlark 是一个面向跨集群具身智能场景的云原生纳管平台，核心设计目标：
+RLark 是一个面向跨集群具身智能场景的云原生纳管平台，核心设计目标：
 
 1. **云端到端侧的工作负载编排**：从云端 GPU 训练（RL/LLM）到端侧部署（机械臂、传感器、摄像头），统一的声明式抽象覆盖具身智能全链路
-2. **多运行时数据面**：原生支持 Kubernetes、Docker、Raw 三种运行时 — GPU 集群运行 k8s 承载大规模训练，端侧设备运行 k8s 或 Docker/Raw 实现轻量级具身部署（Docker/Raw 运行时：代码框架已就绪，运行时实现尚为 TODO）
+2. **多运行时数据面**：以 Kubernetes 运行时统一纳管云端 GPU 集群与端侧设备，形成云端训练、跨集群协同和具身设备部署的完整链路；后续将通过 Docker 和 Raw 运行时扩展更多轻量端侧场景
 3. **跨集群资源池化**：将分布在不同地域的 GPU 集群和端侧设备统一管理，形成逻辑上的单一资源池
 4. **Pod 间直接网络通信**：具身智能场景中训练进程与端侧机器人之间需要实时通信，要求跨集群 Pod 能够直接建立 TCP 连接
 5. **安全隔离**：多租户下的具身智能任务需要网络隔离，不同团队/项目的设备和数据不能互相访问
 
 ## 2. 总体架构
 
-rlark 采用**控制面—数据面**分离架构，控制面基于 kcp（Kubernetes Control Plane）运行，数据面 Agent 部署在每个 GPU 集群或端侧设备中，支持 k8s、Docker 和 Raw 三种运行时。**embodied-runtime**（Device Plugin + Controllers）以 DaemonSet 形式运行在每个数据面节点上，管理机械臂（ROS 1/2）和摄像头硬件，将其作为 Kubernetes 设备资源暴露。
+RLark 采用**控制面—数据面**分离架构，控制面使用 kcp 作为兼容 Kubernetes 的 API Server，Agent 将云端 GPU 集群与端侧 Kubernetes 节点统一接入控制面。可选的 **embodied-runtime** Device Plugin 部署到配有机械臂（ROS 1/2）或摄像头硬件的 Kubernetes 节点，将这些设备作为 Kubernetes 资源暴露；后续将通过 Docker 和 Raw 数据面运行时适配更多轻量端侧环境。
 
 ![系统架构](../images/architecture.svg)
 
@@ -29,7 +29,7 @@ Server 是控制面核心，负责所有 Agent 和外部客户端的连接管理
 | Agent 隧道管理 | 基于 remotedialer 的反向代理，Agent 主动连接 Server 建立 WebSocket 隧道 | [handle\_proxy.go](https://github.com/RLinf/RLark/tree/main/apps/rlark/pkg/server/handle_proxy.go)         |
 | 证书签发       | X.509 和 SSH 证书的签发/吊销，支持 agent/domain/ssh-guest 等角色      | [sign.go](https://github.com/RLinf/RLark/tree/main/apps/rlark/pkg/server/sign.go)                          |
 | SSH 服务     | 用户 SSH 登录认证（证书 + 公钥两阶段），direct-tcpip 通道转发               | [ssh\_server.go](https://github.com/RLinf/RLark/tree/main/apps/rlark/pkg/server/ssh_server.go)             |
-| Peer 互联    | Server 间 Peer-to-Peer 连接，支持多 Server 高可用                 | [peer\_manager.go](https://github.com/RLinf/RLark/tree/main/apps/rlark/pkg/server/peer_manager.go)         |
+| Peer 互联    | Server 间 Peer-to-Peer 连接管理                              | [peer\_manager.go](https://github.com/RLinf/RLark/tree/main/apps/rlark/pkg/server/peer_manager.go)         |
 | K8s 代理     | 将 K8s API 请求通过 Agent 隧道转发到数据面集群                         | [kube\_proxy.go](https://github.com/RLinf/RLark/tree/main/apps/rlark/pkg/server/kube_proxy.go)             |
 | Pod 缓存     | 基于 Informer 的内存 Pod 缓存，用于 SSH 快速查找目标 Pod                | [caches/pod\_cache.go](https://github.com/RLinf/RLark/tree/main/apps/rlark/pkg/server/caches/pod_cache.go) |
 
@@ -183,7 +183,7 @@ NodeServer 运行在每个节点上（由 nodeAgent 管理），负责节点级�
 func (a *containerNetworkAdapter) GetContainerNetworkDial(...) (utils.Dial, error) {
     // 1. 同集群 → 直接 TCP 连接目标 Pod 的 Proxy
     if targetPod.GlobalNamespace == a.globalNamespace {
-        return dialer.DialContext("tcp", targetPod.LocalIP + ":57")
+        return dialer.DialContext(ctx, "tcp", net.JoinHostPort(targetPod.LocalIP, "5700"))
     }
     // 2. 跨集群 → SSH 隧道
     return a.sshDialer.DialContext(ctx, domainID, sshAddr, cert, key, target)
@@ -281,8 +281,8 @@ graph TD
 | ----------- | -------------------------------- |
 | `agent`     | 接入 Server 隧道，代理 K8s API 请求       |
 | `domain`    | 访问同 Domain 下的 Pod，建立跨集群网络连接      |
-| `ssh-guest` | 通过 SSH 登录到有权限的 Pod               |
-| `admin`     | 签发/吊销证书，Kubernetes impersonation |
+| `ssh-guest` | 通过用户公钥认证后访问 SSH 堡垒机；尚未实现按 Pod 授权 |
+| `admin`     | 签发证书和 Kubernetes impersonation；Gateway 吊销接口尚未实现 |
 
 ### 6.3 用户 SSH 登录流程
 
@@ -333,7 +333,7 @@ flowchart LR
 
 ### 8.1 为什么用 kcp 而不是原生 k8s API Server？
 
-kcp 相比原生 k8s API Server 更加轻量，可以脱离完整的 Kubernetes 集群独立部署，降低了控制面的资源开销和运维复杂度。同时 kcp 原生的逻辑集群（logical cluster）概念与 rlark 的 Domain 概念天然契合，为未来多租户场景预留了扩展性。
+kcp 相比原生 k8s API Server 更加轻量，可以脱离完整的 Kubernetes 集群独立部署，降低了控制面的资源开销和运维复杂度。同时 kcp 原生的逻辑集群（logical cluster）概念与 RLark 的 Domain 概念天然契合，为未来多租户场景预留了扩展性。
 
 ### 8.2 为什么用 SSH 隧道而不是 VPN？
 
@@ -348,7 +348,7 @@ VPN 方案需要开放底层网络，在异构集群环境下配置复杂。SSH 
 
 iptables/CNI 方案需要修改节点网络配置，权限要求高。TUN + gVisor 方案：
 
-- 运行在用户态，gVisor 协议栈支持 TCP/UDP/ICMP 完整协议族（注：创建 TUN 设备需要 privileged 权限）
-- gVisor 协议栈支持 TCP/UDP/ICMP 完整协议族
+- 运行在用户态，但创建 TUN 设备仍需要 privileged 权限
+- gVisor netstack 处理所需的网络协议
 - 可以作为 Sidecar 容器注入，与业务容器解耦
 
