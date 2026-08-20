@@ -162,12 +162,11 @@ deploy_agent() {
   kubectl --kubeconfig "$KC" apply -f "$SCRIPT_DIR/agent-rbac.yaml"
   sed "s|\${IMAGE}|$IMAGE|g" "$SCRIPT_DIR/agent-deploy.yaml" | kubectl --kubeconfig "$KC" apply -f -
 
-  log "  Waiting for Agent pod to be created..."
-  sleep 5
-  kubectl --kubeconfig "$KC" wait --for=condition=Ready \
-    pods -n rlark-system -l app=rlark-agent --timeout=120s 2>/dev/null && \
-    ok "  Agent $i pod ready" || \
-    warn "  Agent $i pod not ready after 120s"
+  log "  Waiting for Agent deployment to become ready..."
+  kubectl --kubeconfig "$KC" rollout status \
+    deployment/rlark-agent -n rlark-system --timeout=120s >/dev/null || \
+    err "Agent $i deployment did not become ready"
+  ok "  Agent $i pod ready"
 
   NODE_NAME=$(kubectl --kubeconfig "$KC" get nodes -o jsonpath='{.items[0].metadata.name}')
   kubectl --kubeconfig "$KC" label node "$NODE_NAME" "rlark.io/cluster-id=${CID}" --overwrite 2>/dev/null || true
@@ -179,12 +178,12 @@ deploy_agent() {
   # Set node-category on the management plane (the push controller treats this label as management-owned)
   if [ -f /tmp/rlark/admin.kubeconfig ]; then
     kubectl --kubeconfig /tmp/rlark/admin.kubeconfig --context root-shard \
-      -n "${CID}" label node "$NODE_NAME" "rlark.io/node-category=cloud" --overwrite 2>/dev/null || true
+      -n "rlark-${CID}" label node "$NODE_NAME" "rlark.io/node-category=cloud" --overwrite 2>/dev/null || true
   fi
 
   echo -e "\033[1;32m[$(date +%H:%M:%S)] ✓\033[0m Agent $i deployed (cluster-id: $CID)"
 }
-export -f deploy_agent log ok warn
+export -f deploy_agent log ok warn err
 export SCRIPT_DIR IMAGE CLUSTER_IDS
 
 for i in $(seq 1 $CLUSTER_COUNT); do
@@ -194,16 +193,22 @@ done
 # =============================================================================
 # Step 5: Verify nodes
 # =============================================================================
-log "Step 5: Verifying node registration (waiting for agent to report)..."
-sleep 30
-NODE_COUNT=$(curl -s "http://localhost:9000/api/v1/rlinf.io/v1alpha1/nodes" | jq '.items | length')
-log "  Registered nodes: $NODE_COUNT"
-if [ "$NODE_COUNT" -eq 0 ]; then
-  warn "  No nodes registered yet. Check agent logs: kubectl --kubeconfig /tmp/kind-kubeconfig-1 logs -n rlark-system deploy/rlark-agent"
-fi
-curl -s "http://localhost:9000/api/v1/rlinf.io/v1alpha1/nodes" | \
+log "Step 5: Verifying node registration (waiting for agents to report)..."
+for attempt in $(seq 1 30); do
+  REGISTERED=0
+  for CID in "${CLUSTER_IDS[@]}"; do
+    if curl -fsS "http://localhost:9000/api/v1/rlinf.io/v1alpha1/nodes" | \
+      jq -e --arg cid "rlark-${CID}" '.items[] | select(.metadata.labels["rlark.io/cluster-id"] == $cid)' >/dev/null; then
+      REGISTERED=$((REGISTERED + 1))
+    fi
+  done
+  [ "$REGISTERED" -eq "$CLUSTER_COUNT" ] && break
+  sleep 2
+done
+[ "${REGISTERED:-0}" -eq "$CLUSTER_COUNT" ] || err "Only ${REGISTERED:-0}/$CLUSTER_COUNT expected nodes registered"
+curl -fsS "http://localhost:9000/api/v1/rlinf.io/v1alpha1/nodes" | \
   jq -r '.items[] | "  \(.metadata.name)  cluster-id=\(.metadata.labels["rlark.io/cluster-id"])"'
-ok "Nodes verified"
+ok "All $CLUSTER_COUNT nodes verified"
 
 # =============================================================================
 # Final: Print summary

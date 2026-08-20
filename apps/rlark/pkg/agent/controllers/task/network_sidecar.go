@@ -25,7 +25,7 @@ func applyNetworkSidecar(template *corev1.PodTemplateSpec, mgmtTask *rlarkv1alph
 		Name:            sidecarContainerName,
 		Image:           image,
 		ImagePullPolicy: corev1.PullIfNotPresent,
-		Command:         []string{"/rlark-network-sidecar"},
+		Command:         []string{"network-sidecar"},
 		Env: []corev1.EnvVar{
 			{
 				Name:  "LOG_LEVEL",

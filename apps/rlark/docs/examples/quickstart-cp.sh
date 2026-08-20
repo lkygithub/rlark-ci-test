@@ -93,7 +93,7 @@ COPY server /rlark-server
 COPY agent /rlark-agent
 COPY controller-manager /rlark-controller-manager
 COPY gateway /rlark-gateway
-COPY network-sidecar /rlark-network-sidecar
+COPY network-sidecar /usr/local/bin/network-sidecar
 DOCKERFILE
 
 docker build -t "$IMAGE" -f /tmp/Dockerfile.rlark /tmp/rlark-bin
@@ -229,30 +229,43 @@ log "Step 6: Starting control plane..."
 KCP_KUBECONFIG=/tmp/rlark/kcp-kubeconfig.yaml \
 DB_CONFIG=/tmp/rlark/db-config.yaml \
 IMAGE="$IMAGE" \
-docker compose -f "$SCRIPT_DIR/docker-compose.yml" up -d --force-recreate rlark-server rlark-gateway rlark-controller-manager
+docker compose -f "$SCRIPT_DIR/docker-compose.yml" up -d --force-recreate rlark-server
 
-log "Waiting for control plane..."
-sleep 15
-for i in $(seq 1 30); do
-  if curl -s -o /dev/null -w "%{http_code}" "http://localhost:9000/api/v1/rlinf.io/v1alpha1/nodes" 2>/dev/null | grep -q "200"; then
+log "Waiting for Server to initialize Gateway certificates..."
+CERTS_READY=false
+for i in $(seq 1 60); do
+  ADMIN_CERT=$(kubectl --kubeconfig /tmp/rlark/admin.kubeconfig --context root-shard \
+    get secret rlark-admin-cert -n default \
+    -o jsonpath='{.data.client\.crt}' 2>/dev/null || true)
+  ADMIN_KEY=$(kubectl --kubeconfig /tmp/rlark/admin.kubeconfig --context root-shard \
+    get secret rlark-admin-cert -n default \
+    -o jsonpath='{.data.client\.key}' 2>/dev/null || true)
+  TLS_CA=$(kubectl --kubeconfig /tmp/rlark/admin.kubeconfig --context root-shard \
+    get secret rlark-tls-ca -n default \
+    -o jsonpath='{.data.ca\.crt}' 2>/dev/null || true)
+  if [ -n "$ADMIN_CERT" ] && [ -n "$ADMIN_KEY" ] && [ -n "$TLS_CA" ]; then
+    CERTS_READY=true
     break
   fi
   sleep 2
 done
-if ! curl -s -o /dev/null -w "%{http_code}" "http://localhost:9000/api/v1/rlinf.io/v1alpha1/nodes" 2>/dev/null | grep -q "200"; then
-  log "Gateway not ready, restarting..."
-  KCP_KUBECONFIG=/tmp/rlark/kcp-kubeconfig.yaml \
-  DB_CONFIG=/tmp/rlark/db-config.yaml \
-  IMAGE="$IMAGE" \
-  docker compose -f "$SCRIPT_DIR/docker-compose.yml" up -d --force-recreate rlark-gateway rlark-controller-manager
-  sleep 15
-  for i in $(seq 1 30); do
-    if curl -s -o /dev/null -w "%{http_code}" "http://localhost:9000/api/v1/rlinf.io/v1alpha1/nodes" 2>/dev/null | grep -q "200"; then
-      break
-    fi
-    sleep 2
-  done
-fi
+$CERTS_READY || err "Server did not initialize Gateway certificates"
+
+KCP_KUBECONFIG=/tmp/rlark/kcp-kubeconfig.yaml \
+DB_CONFIG=/tmp/rlark/db-config.yaml \
+IMAGE="$IMAGE" \
+docker compose -f "$SCRIPT_DIR/docker-compose.yml" up -d --no-deps --force-recreate rlark-gateway rlark-controller-manager
+
+log "Waiting for Gateway..."
+GATEWAY_READY=false
+for i in $(seq 1 30); do
+  if curl -s -o /dev/null -w "%{http_code}" "http://localhost:9000/api/v1/rlinf.io/v1alpha1/nodes" 2>/dev/null | grep -q "200"; then
+    GATEWAY_READY=true
+    break
+  fi
+  sleep 2
+done
+$GATEWAY_READY || err "Gateway failed to become ready"
 ok "Control plane is running"
 
 # =============================================================================

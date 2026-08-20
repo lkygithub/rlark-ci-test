@@ -3,8 +3,8 @@
 RLark 为异构具身智能基础设施提供统一控制面。
 
 - **多集群资源纳管**：统一接入多种运行时，集中查看可用算力节点和具身设备。
-  - Kubernetes Runtime：**Preview**（已实现并可用于评估，但尚不承诺生产稳定性）
-  - Docker / Raw Runtime：**Planned**（仅有 API 与控制器框架，当前尚不能运行工作负载）
+    - **Kubernetes Runtime — Preview**：已实现并可用于评估，但尚不承诺生产稳定性。
+    - **Docker / Raw Runtime — Planned**：仅有 API 与控制器框架，当前尚不能运行工作负载。
 - **任务与工作流编排**：用 Task 描述分布式任务角色，用 Workflow 组织可复用的任务流水线。
 - **跨集群网络**：通过 TUN、gVisor netstack 与 SSH 隧道连接工作负载，不要求数据面具备公网入站能力。
 - **交互式开发**：从控制台查看 Worker、复制 SSH 命令并打开 WebTerminal。

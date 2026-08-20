@@ -81,7 +81,7 @@ COPY server /rlark-server
 COPY agent /rlark-agent
 COPY controller-manager /rlark-controller-manager
 COPY gateway /rlark-gateway
-COPY network-sidecar /rlark-network-sidecar
+COPY network-sidecar /usr/local/bin/network-sidecar
 DOCKERFILE
 
 docker build -t "$IMAGE" -f /tmp/Dockerfile.rlark /tmp/rlark-bin
@@ -228,32 +228,43 @@ log "Step 7: Starting control plane..."
 KCP_KUBECONFIG=/tmp/rlark/kcp-kubeconfig.yaml \
 DB_CONFIG=/tmp/rlark/db-config.yaml \
 IMAGE="$IMAGE" \
-docker compose -f "$SCRIPT_DIR/docker-compose.yml" up -d --force-recreate rlark-server rlark-gateway rlark-controller-manager
+docker compose -f "$SCRIPT_DIR/docker-compose.yml" up -d --force-recreate rlark-server
 
-log "Waiting for control plane..."
-sleep 15
-
-# Gateway may need restart if admin-cert is not ready on first start
-for i in $(seq 1 30); do
-  if curl -s -o /dev/null -w "%{http_code}" "http://localhost:9000/api/v1/rlinf.io/v1alpha1/nodes" 2>/dev/null | grep -q "200"; then
+log "Waiting for Server to initialize Gateway certificates..."
+CERTS_READY=false
+for i in $(seq 1 60); do
+  ADMIN_CERT=$(kubectl --kubeconfig /tmp/rlark/admin.kubeconfig --context root-shard \
+    get secret rlark-admin-cert -n default \
+    -o jsonpath='{.data.client\.crt}' 2>/dev/null || true)
+  ADMIN_KEY=$(kubectl --kubeconfig /tmp/rlark/admin.kubeconfig --context root-shard \
+    get secret rlark-admin-cert -n default \
+    -o jsonpath='{.data.client\.key}' 2>/dev/null || true)
+  TLS_CA=$(kubectl --kubeconfig /tmp/rlark/admin.kubeconfig --context root-shard \
+    get secret rlark-tls-ca -n default \
+    -o jsonpath='{.data.ca\.crt}' 2>/dev/null || true)
+  if [ -n "$ADMIN_CERT" ] && [ -n "$ADMIN_KEY" ] && [ -n "$TLS_CA" ]; then
+    CERTS_READY=true
     break
   fi
   sleep 2
 done
-if ! curl -s -o /dev/null -w "%{http_code}" "http://localhost:9000/api/v1/rlinf.io/v1alpha1/nodes" 2>/dev/null | grep -q "200"; then
-  log "Gateway not ready, restarting..."
-  KCP_KUBECONFIG=/tmp/rlark/kcp-kubeconfig.yaml \
-  DB_CONFIG=/tmp/rlark/db-config.yaml \
-  IMAGE="$IMAGE" \
-  docker compose -f "$SCRIPT_DIR/docker-compose.yml" up -d --force-recreate rlark-gateway rlark-controller-manager
-  sleep 15
-  for i in $(seq 1 30); do
-    if curl -s -o /dev/null -w "%{http_code}" "http://localhost:9000/api/v1/rlinf.io/v1alpha1/nodes" 2>/dev/null | grep -q "200"; then
-      break
-    fi
-    sleep 2
-  done
-fi
+$CERTS_READY || err "Server did not initialize Gateway certificates"
+
+KCP_KUBECONFIG=/tmp/rlark/kcp-kubeconfig.yaml \
+DB_CONFIG=/tmp/rlark/db-config.yaml \
+IMAGE="$IMAGE" \
+docker compose -f "$SCRIPT_DIR/docker-compose.yml" up -d --no-deps --force-recreate rlark-gateway rlark-controller-manager
+
+log "Waiting for Gateway..."
+GATEWAY_READY=false
+for i in $(seq 1 30); do
+  if curl -s -o /dev/null -w "%{http_code}" "http://localhost:9000/api/v1/rlinf.io/v1alpha1/nodes" 2>/dev/null | grep -q "200"; then
+    GATEWAY_READY=true
+    break
+  fi
+  sleep 2
+done
+$GATEWAY_READY || err "Gateway failed to become ready"
 
 ok "Control plane is running"
 
@@ -335,16 +346,16 @@ deploy_agent() {
   kubectl --kubeconfig "$KC" apply -f "$SCRIPT_DIR/agent-rbac.yaml"
   sed "s|\${IMAGE}|$IMAGE|g" "$SCRIPT_DIR/agent-deploy.yaml" | kubectl --kubeconfig "$KC" apply -f -
 
-  kubectl --kubeconfig "$KC" wait --for=condition=Ready \
-    pods -n rlark-system -l app=rlark-agent --timeout=120s 2>/dev/null || \
-    echo -e "\033[1;33m[$(date +%H:%M:%S)] !\033[0m Agent $i not ready"
+  kubectl --kubeconfig "$KC" rollout status \
+    deployment/rlark-agent -n rlark-system --timeout=120s >/dev/null || \
+    err "Agent $i deployment did not become ready"
 
   NODE_NAME=$(kubectl --kubeconfig "$KC" get nodes -o jsonpath='{.items[0].metadata.name}')
   kubectl --kubeconfig "$KC" label node "$NODE_NAME" "rlark.io/cluster-id=rlark-${CID}" --overwrite 2>/dev/null || true
 
   echo -e "\033[1;32m[$(date +%H:%M:%S)] ✓\033[0m Agent $i deployed"
 }
-export -f deploy_agent
+export -f deploy_agent err
 export SCRIPT_DIR IMAGE
 
 for i in $(seq 1 $CLUSTER_COUNT); do
@@ -356,10 +367,22 @@ wait
 # Step 10: Verify nodes
 # =============================================================================
 log "Step 10: Verifying node registration..."
-sleep 10
-curl -s "http://localhost:9000/api/v1/rlinf.io/v1alpha1/nodes" | \
+for attempt in $(seq 1 30); do
+  REGISTERED=0
+  for i in $(seq 1 $CLUSTER_COUNT); do
+    CID="rlark-agent-my-cluster-$i"
+    if curl -fsS "http://localhost:9000/api/v1/rlinf.io/v1alpha1/nodes" | \
+      jq -e --arg cid "$CID" '.items[] | select(.metadata.labels["rlark.io/cluster-id"] == $cid)' >/dev/null; then
+      REGISTERED=$((REGISTERED + 1))
+    fi
+  done
+  [ "$REGISTERED" -eq "$CLUSTER_COUNT" ] && break
+  sleep 2
+done
+[ "${REGISTERED:-0}" -eq "$CLUSTER_COUNT" ] || err "Only ${REGISTERED:-0}/$CLUSTER_COUNT expected nodes registered"
+curl -fsS "http://localhost:9000/api/v1/rlinf.io/v1alpha1/nodes" | \
   jq -r '.items[] | "  \(.metadata.name)  cluster-id=\(.metadata.labels["rlark.io/cluster-id"])"'
-ok "Nodes verified"
+ok "All $CLUSTER_COUNT nodes verified"
 
 # =============================================================================
 # Step 11: Create workspace, domain, and cross-cluster test Job
@@ -390,27 +413,28 @@ EOF
   # Create Job (controller-manager will create Tasks from it)
   kubectl --kubeconfig /tmp/rlark/admin.kubeconfig --context root apply -f "$SCRIPT_DIR/cross-cluster-ping.yaml"
 
-  # Wait for controller-manager to create Tasks
+  # Wait for controller-manager to create one Task in each agent namespace.
   log "Waiting for controller-manager to create Tasks..."
-  sleep 10
-  for i in $(seq 1 12); do
-    TASK_COUNT=$(kubectl --kubeconfig /tmp/rlark/admin.kubeconfig --context root \
-      get tasks -A -l rlinf.io/job=cross-cluster-ping --no-headers 2>/dev/null | wc -l)
-    if [ "$TASK_COUNT" -ge 2 ]; then
-      break
-    fi
-    sleep 5
+  for attempt in $(seq 1 30); do
+    SERVER_TASK=$(kubectl --kubeconfig /tmp/rlark/admin.kubeconfig --context root \
+      get task cross-cluster-ping-server -n rlark-agent-my-cluster-1 --ignore-not-found -o name 2>/dev/null)
+    CLIENT_TASK=$(kubectl --kubeconfig /tmp/rlark/admin.kubeconfig --context root \
+      get task cross-cluster-ping-client -n rlark-agent-my-cluster-2 --ignore-not-found -o name 2>/dev/null)
+    [ -n "$SERVER_TASK" ] && [ -n "$CLIENT_TASK" ] && break
+    sleep 2
   done
+  [ -n "${SERVER_TASK:-}" ] && [ -n "${CLIENT_TASK:-}" ] || \
+    err "Controller-manager did not create Tasks in the agent namespaces"
 
   log "Waiting for Task pods..."
-  sleep 30
-  kubectl --kubeconfig /tmp/kind-kubeconfig-1 wait --for=condition=Ready \
-    pods -n rlark-system -l app=cross-cluster-ping-server --timeout=120s 2>/dev/null || warn "Server pod not ready" &
-  kubectl --kubeconfig /tmp/kind-kubeconfig-2 wait --for=condition=Ready \
-    pods -n rlark-system -l app=cross-cluster-ping-client --timeout=120s 2>/dev/null || warn "Client pod not ready" &
-  wait
+  kubectl --kubeconfig /tmp/kind-kubeconfig-1 rollout status \
+    deployment/cross-cluster-ping-server -n rlark-system --timeout=180s >/dev/null || \
+    err "Server workload did not become ready"
+  kubectl --kubeconfig /tmp/kind-kubeconfig-2 rollout status \
+    deployment/cross-cluster-ping-client -n rlark-system --timeout=180s >/dev/null || \
+    err "Client workload did not become ready"
 
-  ok "Cross-cluster test resources created"
+  ok "Cross-cluster test workloads are ready"
 
   # =============================================================================
   # Step 12: Verify cross-cluster network connectivity
@@ -433,7 +457,7 @@ EOF
   if echo "$RESULT" | grep -q "hello from server"; then
     ok "Cross-cluster network connectivity verified!"
   else
-    warn "Cross-cluster test returned unexpected output."
+    err "Cross-cluster connectivity test failed: unexpected response"
   fi
 fi
 

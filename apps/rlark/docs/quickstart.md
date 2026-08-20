@@ -150,9 +150,6 @@ Next steps:
 
 1. Open `http://localhost:5173/admin` and sign in as `admin`
 2. Navigate to **Cluster Management** → **Create Cluster**
-
-![Create a data-plane cluster](images/ui/admin-create-cluster.jpg)
-
 3. Enter a cluster name (e.g. `my-cluster`)
 4. Click **Sign Certificate** — the UI shows the Server address and complete `DeployConfig` YAML
 5. Keep the entered cluster name for the next step (e.g. `my-cluster`)
@@ -185,9 +182,7 @@ bash apps/rlark/docs/examples/quickstart-dp.sh \
 
 ### 4. Verify the Cluster and Nodes
 
-**Using the UI:** Admin Console → Clusters and Nodes. Verify the cluster is online and nodes are synchronized.
-
-![Verify data-plane nodes](images/ui/admin-clusters-nodes.jpg)
+**Using the UI:** Admin Console → Clusters and Nodes. Verify both clusters are online and their nodes are synchronized.
 
 **Using the API:**
 
@@ -200,29 +195,32 @@ curl -s "http://localhost:9000/api/v1/rlinf.io/v1alpha1/nodes" | \
 
 1. Open `http://localhost:5173` and sign in as `user`
 2. Navigate to **Jobs** → **Create Job**
-
-![Create a Job](images/ui/create-job.jpg)
-
 3. Select **Custom Task** as the job type
 4. Add a role named `worker`, set it as **Header**
 5. Configure the Worker:
    - **Cluster**: select your cluster
    - **Node count**: 1
-   - **Image**: `busybox:latest`
+   - **Image**: `rayproject/ray:2.9.0-py310`
    - **Run Script**: `echo hello from RLark; sleep 3600`
+
+![Configure the Job worker and placement](images/ui/create-job-worker-configuration.png)
+
 6. Review the YAML preview and click **Submit**
 
 For a detailed walkthrough, see [RL Training Best Practices](user-guide/best-practices.md).
 
-### 6. (Optional) Cross-Cluster Networking
+### 6. Create and Verify Cross-Cluster Networking
 
-If you deployed two or more data plane clusters, you can enable cross-cluster Pod communication
+With two data plane clusters deployed, complete the UI flow by creating a Domain and verifying cross-cluster Pod communication
 by creating a Domain and a multi-cluster Job.
 
 #### 6.1 Create a Domain
 
 1. Sign in to the Admin Console (`http://localhost:5173/admin`)
 2. Navigate to **Domain Management** → **Create Domain**
+
+![Open Domain Management and create a Domain](images/ui/domain-ui.png)
+
 3. Enter a name and CIDR (e.g. `cross-cluster-net`, `10.200.0.0/24`)
 
 #### 6.2 Create a Cross-Cluster Job
@@ -231,13 +229,15 @@ by creating a Domain and a multi-cluster Job.
 2. Navigate to **Jobs** → **Create Job**
 3. Select **Custom Task** as the job type
 4. Add two roles:
-   - **server**: header role, cluster `rlark-my-cluster-1`, image `busybox:latest`, run script:
+   - **server**: header role, cluster `rlark-my-cluster-1`, image `rayproject/ray:2.9.0-py310`, run script:
      ```bash
-     while true; do echo -e 'HTTP/1.1 200 OK\r\n\r\nhello from server' | nc -l -p 8000; done
+     python -u -m http.server 8000 --bind 0.0.0.0
      ```
-   - **client**: cluster `rlark-my-cluster-2`, image `busybox:latest`, run script: `sleep inf`
+   - **client**: cluster `rlark-my-cluster-2`, image `rayproject/ray:2.9.0-py310`, run script: `sleep infinity`
 5. In the **Common Config** step, select the Domain you created
-6. Review and submit
+6. Review and submit. On the job details page, confirm that Workers are running on the selected nodes.
+
+![Verify running Workers and Pod details](images/ui/job-details-worker-and-pod.png)
 
 #### 6.3 Verify Cross-Cluster Connectivity
 
@@ -249,11 +249,11 @@ kubectl --kubeconfig /tmp/kind-kubeconfig-2 get pods -n rlark-system
 
 # Test connectivity from the client pod
 kubectl --kubeconfig /tmp/kind-kubeconfig-2 exec -n rlark-system \
-  deploy/<job-name>-client -- \
-  sh -c "echo 'GET / HTTP/1.0' | nc <server-pod-name>.rlark-domain 8000"
+  <client-pod-name> -c main -- \
+  python -c "import urllib.request; print(urllib.request.urlopen('http://<server-pod-name>.rlark-domain:8000').status)"
 ```
 
-Expected output: `hello from server`
+Expected output: `200`
 
 See [Networking and Security](admin-guide/network-security.md) for details.
 
@@ -301,7 +301,7 @@ spec:
 
 ```
 Client Pod (cluster-2)                    Server Pod (cluster-1)
-  ├── wget → Domain IP (10.200.0.x)        ├── nc -l -p 8000
+  ├── HTTP → Domain IP (10.200.0.x)        ├── Python HTTP server :8000
   ├── gVisor netstack intercepts           │
   ├── TUN device → NodeServer socket       │
   └── NodeServer → SSH tunnel → ──────────→ Proxy → localhost:8000

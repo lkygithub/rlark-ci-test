@@ -17,7 +17,7 @@ import {
 import { selectorToStr } from "../utils/job";
 
 type Mode = "model" | "manual";
-type ResourceKind = "gpu" | "device";
+type ResourceKind = "gpu" | "device" | "compute";
 
 type NodeResource = {
   node: CRDNodeLite;
@@ -76,7 +76,16 @@ function nodeResource(node: CRDNodeLite): NodeResource | null {
   ).find(
     (key) => key === "rlinf.io/device" || key.startsWith("rlinf.io/device-"),
   );
-  if (!deviceKey) return null;
+  if (!deviceKey) {
+    return {
+      node,
+      kind: "compute",
+      model: "CPU",
+      resourceKey: "",
+      total: 1,
+      free: node.status?.phase !== "Offline" && !node.spec?.unschedulable ? 1 : 0,
+    };
+  }
   const deviceTotal = quantity(capacity[deviceKey] ?? allocatable[deviceKey]);
   if (deviceTotal <= 0) return null;
   return {
@@ -177,7 +186,8 @@ export function ResourcePlacementPicker({
         (resource) => isSchedulable(resource) && resource.free > 0,
       ).length,
     })).sort((left, right) => {
-      if (left.kind !== right.kind) return left.kind === "gpu" ? -1 : 1;
+      const order: Record<ResourceKind, number> = { gpu: 0, device: 1, compute: 2 };
+      if (left.kind !== right.kind) return order[left.kind] - order[right.kind];
       return left.model.localeCompare(right.model);
     });
   }, [resources]);
@@ -191,7 +201,7 @@ export function ResourcePlacementPicker({
   const selectedOption = resourceOptions.find(
     (option) => option.id === selectedOptionId,
   );
-  const kind = selectedOption?.kind ?? "gpu";
+  const kind = selectedOption?.kind ?? "compute";
   const model = selectedOption?.model ?? "";
   const resourceUnit =
     kind === "gpu"
@@ -200,11 +210,17 @@ export function ResourcePlacementPicker({
         : resourceAmount === 1
           ? "GPU"
           : "GPUs"
-      : zh
-        ? "个设备"
-        : resourceAmount === 1
-          ? "device"
-          : "devices";
+      : kind === "device"
+        ? zh
+          ? "个设备"
+          : resourceAmount === 1
+            ? "device"
+            : "devices"
+        : zh
+          ? "个计算槽"
+          : resourceAmount === 1
+            ? "compute slot"
+            : "compute slots";
   const candidates = selectedOption?.resources ?? [];
   const free = selectedOption?.freeDevices ?? 0;
   const requested = replicas * resourceAmount;
@@ -403,7 +419,7 @@ export function ResourcePlacementPicker({
               >
                 <span>{zh ? "资源类型与型号" : "Resource and model"}</span>
                 <span>
-                  {zh ? "设备 可用 / 总量" : "Devices available / total"}
+                  {zh ? "资源槽位 可用 / 总量" : "Resource slots available / total"}
                 </span>
                 <span>
                   {zh ? "节点 可用 / 总量" : "Nodes available / total"}
@@ -427,9 +443,13 @@ export function ResourcePlacementPicker({
                     <small>
                       {option.kind === "gpu"
                         ? "GPU"
-                        : zh
-                          ? "端侧设备"
-                          : "Edge device"}
+                        : option.kind === "device"
+                          ? zh
+                            ? "端侧设备"
+                            : "Edge device"
+                          : zh
+                            ? "通用计算"
+                            : "General compute"}
                     </small>
                     <strong>{option.model}</strong>
                   </span>
@@ -447,7 +467,7 @@ export function ResourcePlacementPicker({
           </div>
 
           <div className="placement-plan-controls">
-            <label className="placement-field">
+            {kind !== "compute" && <label className="placement-field">
               <span className="placement-field-label">
                 {zh
                   ? `单 Worker ${kind === "gpu" ? "GPU" : "设备"}数量`
@@ -486,7 +506,7 @@ export function ResourcePlacementPicker({
                   ? "自动选择和指定节点共用此规格"
                   : "Shared by automatic selection and node selection modes"}
               </small>
-            </label>
+            </label>}
 
             <fieldset className="placement-scheduling-choice">
               <legend>{zh ? "调度方式" : "Scheduling mode"}</legend>
@@ -665,16 +685,28 @@ export function ResourcePlacementPicker({
           <div className="placement-selection-summary">
             <div>
               <strong>
-                {mode === "model"
-                  ? zh
-                    ? `已配置 ${Math.max(1, replicas)} 个 Worker，共申请 ${requested} 个${kind === "gpu" ? " GPU" : "设备"}`
-                    : `${Math.max(1, replicas)} workers configured, ${requested} resources requested`
-                  : zh
-                    ? `已选择 ${selected.size} 个节点，将创建 ${selected.size} 个 Worker，共申请 ${selected.size * resourceAmount} 个${kind === "gpu" ? " GPU" : "设备"}`
-                    : `${selected.size} nodes selected, ${selected.size} workers, ${selected.size * resourceAmount} resources requested`}
+                {kind === "compute"
+                  ? mode === "model"
+                    ? zh
+                      ? `已配置 ${Math.max(1, replicas)} 个 Worker`
+                      : `${Math.max(1, replicas)} workers configured`
+                    : zh
+                      ? `已选择 ${selected.size} 个节点，将创建 ${selected.size} 个 Worker`
+                      : `${selected.size} nodes selected, ${selected.size} workers`
+                  : mode === "model"
+                    ? zh
+                      ? `已配置 ${Math.max(1, replicas)} 个 Worker，共申请 ${requested} 个${kind === "gpu" ? " GPU" : "设备"}`
+                      : `${Math.max(1, replicas)} workers configured, ${requested} resources requested`
+                    : zh
+                      ? `已选择 ${selected.size} 个节点，将创建 ${selected.size} 个 Worker，共申请 ${selected.size * resourceAmount} 个${kind === "gpu" ? " GPU" : "设备"}`
+                      : `${selected.size} nodes selected, ${selected.size} workers, ${selected.size * resourceAmount} resources requested`}
               </strong>
               <small>
-                {zh ? "单 Worker" : "Per worker"}：{resourceAmount} × {model}
+                {kind === "compute"
+                  ? zh
+                    ? `通用计算 · ${model}`
+                    : `General compute · ${model}`
+                  : `${zh ? "单 Worker" : "Per worker"}：${resourceAmount} × ${model}`}
               </small>
             </div>
             {mode === "model" ? (

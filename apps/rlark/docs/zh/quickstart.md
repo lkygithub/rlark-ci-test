@@ -152,9 +152,6 @@ bash apps/rlark/docs/examples/quickstart-cp.sh
 
 1. 打开 `http://localhost:5173/admin`，以 `admin` 登录
 2. 进入**集群管理** → **创建集群**
-
-![管理平台创建数据面集群](../images/ui/admin-create-cluster.jpg)
-
 3. 输入集群名称（如 `my-cluster`）
 4. 点击**签发证书** — UI 会显示 Server 地址和完整 `DeployConfig` YAML
 5. 记下输入的集群名称（如 `my-cluster`），供下一步使用
@@ -187,9 +184,7 @@ bash apps/rlark/docs/examples/quickstart-dp.sh \
 
 ### 4. 验证集群和节点
 
-**通过 UI：** 管理平台 → 集群与节点。确认集群在线，节点已同步。
-
-![管理平台验证集群节点](../images/ui/admin-clusters-nodes.jpg)
+**通过 UI：** 管理平台 → 集群与节点。确认两个集群均在线且节点已同步。
 
 **通过 API：**
 
@@ -202,28 +197,31 @@ curl -s "http://localhost:9000/api/v1/rlinf.io/v1alpha1/nodes" | \
 
 1. 打开 `http://localhost:5173`，以 `user` 登录
 2. 进入**任务** → **创建任务**
-
-![业务平台创建任务](../images/ui/create-job.jpg)
-
 3. 选择**自定义任务**作为任务类型
 4. 添加一个名为 `worker` 的角色，设置为**主角色**
 5. 配置 Worker：
    - **集群**：选择你的集群
    - **节点数**：1
-   - **镜像**：`busybox:latest`
+   - **镜像**：`rayproject/ray:2.9.0-py310`
    - **运行脚本**：`echo hello from RLark; sleep 3600`
+
+![配置任务 Worker 与调度位置](../images/ui/create-job-worker-configuration.png)
+
 6. 检查 YAML 预览，点击**提交**
 
 详细步骤参见 [RL 训练最佳实践](user-guide/best-practices.md)。
 
-### 6. （可选）跨集群网络
+### 6. 创建并验证跨集群网络
 
-如果部署了两个及以上数据面集群，可以通过创建 Domain 和跨集群任务实现跨集群 Pod 通信。
+部署两个数据面集群后，通过创建 Domain 和跨集群任务完成 UI 全流程，并验证 Pod 跨集群通信。
 
 #### 6.1 创建 Domain
 
 1. 登录管理平台（`http://localhost:5173/admin`）
-2. 进入**Domain 管理** → **创建 Domain**
+2. 进入**网络域** → **创建域**
+
+![进入网络域并创建 Domain](../images/ui/domain-ui.png)
+
 3. 输入名称和 CIDR（如 `cross-cluster-net`，`10.200.0.0/24`）
 
 #### 6.2 创建跨集群任务
@@ -232,13 +230,15 @@ curl -s "http://localhost:9000/api/v1/rlinf.io/v1alpha1/nodes" | \
 2. 进入**任务** → **创建任务**
 3. 选择**自定义任务**作为任务类型
 4. 添加两个角色：
-   - **server**：主角色，集群选 `rlark-my-cluster-1`，镜像 `busybox:latest`，运行脚本：
+   - **server**：主角色，集群选 `rlark-my-cluster-1`，镜像 `rayproject/ray:2.9.0-py310`，运行脚本：
      ```bash
-     while true; do echo -e 'HTTP/1.1 200 OK\r\n\r\nhello from server' | nc -l -p 8000; done
+     python -u -m http.server 8000 --bind 0.0.0.0
      ```
-   - **client**：集群选 `rlark-my-cluster-2`，镜像 `busybox:latest`，运行脚本：`sleep inf`
-5. 在**公共配置**步骤中，选择你创建的 Domain
-6. 检查并提交
+   - **client**：集群选 `rlark-my-cluster-2`，镜像 `rayproject/ray:2.9.0-py310`，运行脚本：`sleep infinity`
+5. 在**公共配置**步骤中，选择刚创建的 Domain
+6. 检查并提交；在任务详情页确认 Worker 已在所选节点运行。
+
+![确认 Worker 与 Pod 运行状态](../images/ui/job-details-worker-and-pod.png)
 
 #### 6.3 验证跨集群连通性
 
@@ -250,11 +250,11 @@ kubectl --kubeconfig /tmp/kind-kubeconfig-2 get pods -n rlark-system
 
 # 从 client pod 测试连通性
 kubectl --kubeconfig /tmp/kind-kubeconfig-2 exec -n rlark-system \
-  deploy/<任务名称>-client -- \
-  sh -c "echo 'GET / HTTP/1.0' | nc <server-pod名称>.rlark-domain 8000"
+  <client-pod名称> -c main -- \
+  python -c "import urllib.request; print(urllib.request.urlopen('http://<server-pod名称>.rlark-domain:8000').status)"
 ```
 
-预期输出：`hello from server`
+预期输出：`200`
 
 详见 [网络与安全](admin-guide/network-security.md)。
 
@@ -302,7 +302,7 @@ spec:
 
 ```
 客户端 Pod（集群 2）                        服务端 Pod（集群 1）
-  ├── wget → Domain IP（10.200.0.x）          ├── nc -l -p 8000
+  ├── HTTP → Domain IP（10.200.0.x）          ├── Python HTTP 服务 :8000
   ├── gVisor netstack 拦截                    │
   ├── TUN 设备 → NodeServer socket            │
   └── NodeServer → SSH 隧道 → ────────────────→ Proxy → localhost:8000
