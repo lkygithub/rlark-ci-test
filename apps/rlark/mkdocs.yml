@@ -23,15 +23,13 @@ theme:
         name: Switch to light mode
   features:
     # navigation.instant disabled: conflicts with ReadTheDocs injected JS
+    - navigation.sections
     - navigation.indexes
     - toc.follow
     - content.code.copy
 
 extra_css:
   - extra.css
-
-extra_javascript:
-  - extra.js
 
 plugins:
   - i18n:
