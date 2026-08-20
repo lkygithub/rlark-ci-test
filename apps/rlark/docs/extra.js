@@ -1,43 +1,52 @@
 /**
- * Fallback for browsers that do not support the CSS :has() selector
- * (extra.css handles the primary fix).
+ * Prevent RTD-injected JS from expanding all navigation sections.
  *
- * RTD's version-selector JS checks all nav toggle checkboxes, causing
- * the sidebar to appear fully expanded. This script unchecks toggles
- * that are not ancestors of the current page.
+ * RTD's version-selector script checks all nav toggle checkboxes, causing
+ * the sidebar to appear fully expanded. This script uses a MutationObserver
+ * to watch for attribute changes on nav toggles and reverts any check that
+ * is not on the current page's ancestor path.
+ *
+ * Unlike setTimeout-based approaches, MutationObserver fires in real time
+ * whenever RTD's JS modifies the DOM, so timing is never an issue.
  */
 (function () {
-  // Only run if :has() is not supported (e.g., older Firefox)
-  try {
-    document.querySelector(':has(*)');
-    return; // :has() supported, CSS handles it
-  } catch (e) { /* fall through to JS fallback */ }
+  var reverting = false;
 
-  function fixNav() {
-    var keepChecked = new Set();
-    var activeItems = document.querySelectorAll('.md-nav__item--active');
-    activeItems.forEach(function (item) {
-      var el = item;
-      while (el) {
-        if (el.classList.contains('md-nav__item--nested')) {
-          var toggle = el.querySelector(':scope > .md-nav__toggle');
-          if (toggle) {
-            keepChecked.add(toggle);
-            toggle.checked = true;
-          }
-        }
-        el = el.parentElement;
+  function isInActivePath(toggle) {
+    var li = toggle.closest('.md-nav__item--nested');
+    if (!li) return true; // not a nested item, allow
+    if (li.classList.contains('md-nav__item--active')) return true;
+    if (li.querySelector('.md-nav__item--active')) return true;
+    return false;
+  }
+
+  function revertIfNeeded(toggle) {
+    if (reverting) return;
+    if (toggle.checked && !isInActivePath(toggle)) {
+      reverting = true;
+      toggle.checked = false;
+      reverting = false;
+    }
+  }
+
+  var observer = new MutationObserver(function (mutations) {
+    mutations.forEach(function (m) {
+      if (m.type === 'attributes' && m.attributeName === 'checked') {
+        revertIfNeeded(m.target);
       }
     });
+  });
+
+  function observeAll() {
     document.querySelectorAll('.md-nav__toggle').forEach(function (t) {
-      if (!keepChecked.has(t)) {
-        t.checked = false;
-      }
+      observer.observe(t, { attributes: true, attributeFilter: ['checked'] });
+      revertIfNeeded(t);
     });
   }
 
-  document.addEventListener('DOMContentLoaded', function () {
-    fixNav();
-    setTimeout(fixNav, 500);
-  });
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', observeAll);
+  } else {
+    observeAll();
+  }
 })();
