@@ -6,15 +6,30 @@
  * to watch for attribute changes on nav toggles and reverts any check that
  * is not on the current page's ancestor path.
  *
- * Unlike setTimeout-based approaches, MutationObserver fires in real time
- * whenever RTD's JS modifies the DOM, so timing is never an issue.
+ * User-initiated clicks on nav labels are detected and allowed to pass
+ * through, so the native expand/collapse behavior works correctly.
  */
 (function () {
   var reverting = false;
+  var userClicked = null;
+
+  // Detect user clicks on nav labels (the arrow / section title)
+  document.addEventListener('click', function (e) {
+    var label = e.target.closest('.md-nav__link');
+    if (!label) return;
+    var li = label.closest('.md-nav__item--nested');
+    if (!li) return;
+    var toggle = li.querySelector(':scope > .md-nav__toggle');
+    if (toggle) {
+      userClicked = toggle;
+      // clear the flag after the click event chain completes
+      setTimeout(function () { userClicked = null; }, 0);
+    }
+  }, true); // capture phase: fire before the checkbox changes
 
   function isInActivePath(toggle) {
     var li = toggle.closest('.md-nav__item--nested');
-    if (!li) return true; // not a nested item, allow
+    if (!li) return true;
     if (li.classList.contains('md-nav__item--active')) return true;
     if (li.querySelector('.md-nav__item--active')) return true;
     return false;
@@ -22,6 +37,7 @@
 
   function revertIfNeeded(toggle) {
     if (reverting) return;
+    if (toggle === userClicked) return; // user clicked, allow
     if (toggle.checked && !isInActivePath(toggle)) {
       reverting = true;
       toggle.checked = false;
