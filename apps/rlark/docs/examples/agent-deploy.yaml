@@ -33,7 +33,7 @@ spec:
         - "--rlark-server-ssh-address=client@rlark-server:2222"
         - "--in-cluster"
         - "--metrics-bind-address=:0"
-        - "--network-sidecar-image=${IMAGE}"
+        - "--image=${IMAGE}"
         volumeMounts:
         - name: agent-certs
           mountPath: /etc/agent-certs

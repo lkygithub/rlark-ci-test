@@ -76,7 +76,7 @@ services:
       - "--server-address=https://rlark-server:8443"
       - "--db-config=/etc/rlark/db-config.yaml"
     ports:
-      - "8080:8080"
+      - "9000:8080"
     volumes:
       - ${KCP_KUBECONFIG:-./kcp-kubeconfig.yaml}:/etc/rlark/kubeconfig.yaml:ro
       - ${DB_CONFIG:-./db-config.yaml}:/etc/rlark/db-config.yaml:ro

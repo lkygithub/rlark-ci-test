@@ -2,17 +2,17 @@
 
 ## 1. Design Goals
 
-rlark is an embodied intelligence cloud-native management platform for cross-cluster, multi-runtime scenarios. Core design goals:
+RLark is an embodied intelligence cloud-native management platform for cross-cluster, multi-runtime scenarios. Core design goals:
 
 1. **Cloud-to-Edge workload orchestration**: From cloud GPU training (RL/LLM) to edge deployment (robot arm, sensor, camera), unified declarative abstraction across the full embodied AI pipeline
-2. **Multi-runtime data plane**: Native support for Kubernetes, Docker, and Raw runtimes — GPU clusters run k8s for large-scale training, edge devices run k8s or Docker/Raw for lightweight embodied deployment (Docker/Raw runtimes: framework in place, runtime implementation TODO)
+2. **Multi-runtime data plane**: Kubernetes provides unified management for cloud GPU clusters and edge devices, completing the path from cloud training and cross-cluster collaboration to embodied device deployment; Docker and Raw runtimes will extend coverage to additional lightweight edge scenarios
 3. **Cross-cluster resource pooling**: Unify GPU clusters and edge devices distributed across different regions into a single logical resource pool
 4. **Direct Pod-to-Pod network communication**: Embodied AI workloads require real-time communication between training actors and edge robots, requiring cross-cluster Pods to establish direct TCP connections
 5. **Security isolation**: Multi-tenant embodied AI tasks require network isolation — different teams/projects must not access each other's devices or data
 
 ## 2. Overall Architecture
 
-rlark uses a **control plane—data plane** separation architecture. The control plane runs on kcp (Kubernetes Control Plane), and data plane Agents are deployed in each GPU cluster or edge device, supporting k8s, Docker, and Raw runtimes. The **embodied-runtime** (Device Plugin + Controllers) runs as a DaemonSet on each data plane node to manage robot (ROS 1/2) and camera hardware, exposing them as Kubernetes device resources.
+RLark uses a **control plane—data plane** separation architecture. The control plane uses kcp as its Kubernetes-compatible API server, while Agents connect cloud GPU clusters and edge Kubernetes nodes through one management plane. The optional **embodied-runtime** Device Plugin runs on Kubernetes nodes equipped with robot (ROS 1/2) or camera hardware and exposes those devices as Kubernetes resources; future Docker and Raw data plane runtimes will extend coverage to additional lightweight edge environments.
 
 ![System Architecture](images/architecture.svg)
 
@@ -29,7 +29,7 @@ Server is the core of the control plane, responsible for managing all Agent and 
 | Agent Tunnel Management | Reverse proxy based on remotedialer; Agent actively connects to Server via WebSocket          | [handle\_proxy.go](https://github.com/RLinf/RLark/tree/main/apps/rlark/pkg/server/handle_proxy.go)         |
 | Certificate Signing     | X.509 and SSH certificate issuance/revocation, supporting agent/domain/ssh-guest roles        | [sign.go](https://github.com/RLinf/RLark/tree/main/apps/rlark/pkg/server/sign.go)                          |
 | SSH Service             | Two-phase user SSH authentication (certificate + public key), direct-tcpip channel forwarding | [ssh\_server.go](https://github.com/RLinf/RLark/tree/main/apps/rlark/pkg/server/ssh_server.go)             |
-| Peer Interconnection    | Server-to-Server P2P connections for high availability                                        | [peer\_manager.go](https://github.com/RLinf/RLark/tree/main/apps/rlark/pkg/server/peer_manager.go)         |
+| Peer Interconnection    | Server-to-Server P2P connection management                                                     | [peer\_manager.go](https://github.com/RLinf/RLark/tree/main/apps/rlark/pkg/server/peer_manager.go)         |
 | K8s Proxy               | Forward K8s API requests to data plane clusters via Agent tunnels                             | [kube\_proxy.go](https://github.com/RLinf/RLark/tree/main/apps/rlark/pkg/server/kube_proxy.go)             |
 | Pod Cache               | In-memory Pod cache based on Informer for fast SSH Pod lookup                                 | [caches/pod\_cache.go](https://github.com/RLinf/RLark/tree/main/apps/rlark/pkg/server/caches/pod_cache.go) |
 
@@ -183,7 +183,7 @@ NodeServer runs on each node (managed by nodeAgent), handling node-level network
 func (a *containerNetworkAdapter) GetContainerNetworkDial(...) (utils.Dial, error) {
     // 1. Same cluster → direct TCP to target Pod's Proxy
     if targetPod.GlobalNamespace == a.globalNamespace {
-        return dialer.DialContext("tcp", targetPod.LocalIP + ":57")
+        return dialer.DialContext(ctx, "tcp", net.JoinHostPort(targetPod.LocalIP, "5700"))
     }
     // 2. Cross-cluster → SSH tunnel
     return a.sshDialer.DialContext(ctx, domainID, sshAddr, cert, key, target)
@@ -281,8 +281,8 @@ graph TD
 | ---------------- | --------------------------------------------------------------------------- |
 | `agent`          | Connect to Server tunnel, proxy K8s API requests                            |
 | `domain`         | Access Pods in the same Domain, establish cross-cluster network connections |
-| `ssh-guest`      | SSH login to authorized Pods                                                |
-| `admin`          | Issue/revoke certificates, Kubernetes impersonation                         |
+| `ssh-guest`      | SSH bastion access after user-key authentication; per-Pod authorization is not implemented |
+| `admin`          | Issue certificates and Kubernetes impersonation; Gateway revocation is not implemented |
 
 ### 6.3 User SSH Login Flow
 
@@ -333,7 +333,7 @@ flowchart LR
 
 ### 8.1 Why kcp instead of native k8s API Server?
 
-kcp is more lightweight than a native k8s API Server and can run independently without a full Kubernetes cluster, reducing the control plane's resource overhead and operational complexity. Additionally, kcp's native logical cluster concept aligns naturally with rlark's Domain concept, leaving room for future multi-tenant scenarios.
+kcp is more lightweight than a native k8s API Server and can run independently without a full Kubernetes cluster, reducing the control plane's resource overhead and operational complexity. Additionally, kcp's native logical cluster concept aligns naturally with RLark's Domain concept, leaving room for future multi-tenant scenarios.
 
 ### 8.2 Why SSH tunnels instead of VPN?
 
@@ -348,7 +348,7 @@ VPN solutions require opening the underlying network, which is complex in hetero
 
 iptables/CNI solutions require modifying node network configuration with high privilege requirements. TUN + gVisor approach:
 
-- Runs in userspace; gVisor netstack supports full TCP/UDP/ICMP protocol family (note: creating TUN devices requires privileged access)
-- gVisor netstack supports full TCP/UDP/ICMP protocol family
+- Runs in userspace; creating TUN devices still requires privileged access
+- gVisor netstack supports the required network protocol handling
 - Can be injected as a Sidecar container, decoupled from business containers
 

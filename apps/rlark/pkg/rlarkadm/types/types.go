@@ -175,7 +175,7 @@ func LoadDeployConfig(path string) (*DeployConfig, error) {
 		return nil, fmt.Errorf("read deploy config: %w", err)
 	}
 	var cfg DeployConfig
-	if err := yaml.Unmarshal(data, &cfg); err != nil {
+	if err := yaml.UnmarshalStrict(data, &cfg); err != nil {
 		return nil, fmt.Errorf("unmarshal deploy config: %w", err)
 	}
 	if err := cfg.Validate(); err != nil {
@@ -218,6 +218,15 @@ func (c *DeployConfig) Validate() error {
 	if c.Plane == PlaneData {
 		if c.Cert == nil {
 			return fmt.Errorf("cert is required for data plane")
+		}
+		if c.Cert.CACert == "" {
+			return fmt.Errorf("cert.ca-cert is required for data plane")
+		}
+		if c.Cert.AgentCert == "" {
+			return fmt.Errorf("cert.agent-cert is required for data plane")
+		}
+		if c.Cert.AgentKey == "" {
+			return fmt.Errorf("cert.agent-key is required for data plane")
 		}
 
 		if c.ControlPlaneAddress == "" {
