@@ -83,7 +83,8 @@ function nodeResource(node: CRDNodeLite): NodeResource | null {
       model: "CPU",
       resourceKey: "",
       total: 1,
-      free: node.status?.phase !== "Offline" && !node.spec?.unschedulable ? 1 : 0,
+      free:
+        node.status?.phase !== "Offline" && !node.spec?.unschedulable ? 1 : 0,
     };
   }
   const deviceTotal = quantity(capacity[deviceKey] ?? allocatable[deviceKey]);
@@ -186,7 +187,11 @@ export function ResourcePlacementPicker({
         (resource) => isSchedulable(resource) && resource.free > 0,
       ).length,
     })).sort((left, right) => {
-      const order: Record<ResourceKind, number> = { gpu: 0, device: 1, compute: 2 };
+      const order: Record<ResourceKind, number> = {
+        gpu: 0,
+        device: 1,
+        compute: 2,
+      };
       if (left.kind !== right.kind) return order[left.kind] - order[right.kind];
       return left.model.localeCompare(right.model);
     });
@@ -419,7 +424,9 @@ export function ResourcePlacementPicker({
               >
                 <span>{zh ? "资源类型与型号" : "Resource and model"}</span>
                 <span>
-                  {zh ? "资源槽位 可用 / 总量" : "Resource slots available / total"}
+                  {zh
+                    ? "资源槽位 可用 / 总量"
+                    : "Resource slots available / total"}
                 </span>
                 <span>
                   {zh ? "节点 可用 / 总量" : "Nodes available / total"}
@@ -467,46 +474,48 @@ export function ResourcePlacementPicker({
           </div>
 
           <div className="placement-plan-controls">
-            {kind !== "compute" && <label className="placement-field">
-              <span className="placement-field-label">
-                {zh
-                  ? `单 Worker ${kind === "gpu" ? "GPU" : "设备"}数量`
-                  : "Resources per worker"}
-              </span>
-              <input
-                type="number"
-                min={0}
-                value={resourceAmount}
-                onChange={(event) => {
-                  const nextAmount = Math.max(0, Number(event.target.value));
-                  setResourceAmount(nextAmount);
-                  if (mode === "model") {
-                    commitModel(Math.max(1, replicas), nextAmount);
-                  } else {
-                    setSelected(new Set());
-                    onChange({
-                      nodeSelector: "",
-                      replicas: 0,
-                      gpu: kind === "gpu" ? String(nextAmount) : "0",
-                      devices:
-                        kind === "device" && candidates[0]
-                          ? [
-                              {
-                                name: candidates[0].resourceKey,
-                                quantity: String(nextAmount),
-                              },
-                            ]
-                          : [],
-                    });
-                  }
-                }}
-              />
-              <small>
-                {zh
-                  ? "自动选择和指定节点共用此规格"
-                  : "Shared by automatic selection and node selection modes"}
-              </small>
-            </label>}
+            {kind !== "compute" && (
+              <label className="placement-field">
+                <span className="placement-field-label">
+                  {zh
+                    ? `单 Worker ${kind === "gpu" ? "GPU" : "设备"}数量`
+                    : "Resources per worker"}
+                </span>
+                <input
+                  type="number"
+                  min={0}
+                  value={resourceAmount}
+                  onChange={(event) => {
+                    const nextAmount = Math.max(0, Number(event.target.value));
+                    setResourceAmount(nextAmount);
+                    if (mode === "model") {
+                      commitModel(Math.max(1, replicas), nextAmount);
+                    } else {
+                      setSelected(new Set());
+                      onChange({
+                        nodeSelector: "",
+                        replicas: 0,
+                        gpu: kind === "gpu" ? String(nextAmount) : "0",
+                        devices:
+                          kind === "device" && candidates[0]
+                            ? [
+                                {
+                                  name: candidates[0].resourceKey,
+                                  quantity: String(nextAmount),
+                                },
+                              ]
+                            : [],
+                      });
+                    }
+                  }}
+                />
+                <small>
+                  {zh
+                    ? "自动选择和指定节点共用此规格"
+                    : "Shared by automatic selection and node selection modes"}
+                </small>
+              </label>
+            )}
 
             <fieldset className="placement-scheduling-choice">
               <legend>{zh ? "调度方式" : "Scheduling mode"}</legend>

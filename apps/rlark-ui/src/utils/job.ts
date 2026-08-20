@@ -97,7 +97,11 @@ export function selectorToStr(sel: Record<string, string>): string {
 
 export function toResourceName(value: string): string {
   return Array.from(value.toLowerCase())
-    .map((char) => (/^[a-z0-9.-]$/.test(char) ? char : `-${char.codePointAt(0)?.toString(16)}-`))
+    .map((char) =>
+      /^[a-z0-9.-]$/.test(char)
+        ? char
+        : `-${char.codePointAt(0)?.toString(16)}-`,
+    )
     .join("")
     .replace(/-+/g, "-")
     .replace(/^[^a-z0-9]+|[^a-z0-9]+$/g, "");
