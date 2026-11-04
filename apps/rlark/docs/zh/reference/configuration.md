@@ -99,17 +99,26 @@ rlark-gateway \
 
 ## rlark-controller-manager
 
-控制器管理器。调和 Job、Workflow 和 Domain 资源。
+控制器管理器。调和 Job 和 Domain 资源。
 
 | 参数 | 类型 | 默认值 | 说明 |
 | ------ | ------ | -------- | ------ |
 | `--server-address` | string | `https://rlark-server.rlark-system.svc:8443` | RLark Server 地址 |
 | `--db-config` | string | `""` | 数据库配置文件路径 |
-| `--leader-elect` | bool | `true` | 启用 Leader Election（高可用） |
-| `--leader-election-id` | string | `rlark-controller-manager` | Leader Election 标识 |
+| `--leader-election` | bool | `true` | 启用 Leader Election（高可用） |
+| `--leader-election-key` | string | `rlark-controller-manager` | Leader Election 锁键（`name` 或 `namespace/name`） |
+| `--leader-election-id` | string | `""` | 预留的参与者标识；controller-runtime 当前自行生成标识 |
 | `--metrics-bind-address` | string | `:8080` | Metrics 端点绑定地址 |
 | `--health-probe-bind-address` | string | `:8081` | 健康检查端点绑定地址 |
-| `--sync-workers` | int | `5` | 并发同步 Worker 数 |
+| `--job-controller-workers` | int | `8` | Job 控制器最大并发调和数 |
+| `--task-controller-workers` | int | `8` | Task 控制器最大并发调和数 |
+| `--workflow-controller-workers` | int | `8` | Workflow 控制器最大并发调和数 |
+| `--node-controller-workers` | int | `8` | Node 控制器最大并发调和数 |
+| `--domain-controller-workers` | int | `8` | Domain 控制器最大并发调和数 |
+| `--job-sync-controller-workers` | int | `8` | Job 数据库同步控制器最大并发调和数 |
+| `--task-sync-controller-workers` | int | `8` | Task 数据库同步控制器最大并发调和数 |
+| `--workflow-sync-controller-workers` | int | `8` | Workflow 数据库同步控制器最大并发调和数 |
+| `--node-sync-controller-workers` | int | `8` | Node 数据库同步控制器最大并发调和数 |
 | `--kubeconfig` | string | `$KUBECONFIG` | kubeconfig 文件路径 |
 | `--master` | string | `""` | Kubernetes API Server 地址 |
 | `--in-cluster` | bool | `false` | 使用 in-cluster 配置 |
@@ -119,7 +128,7 @@ rlark-gateway \
 | `--kube-timeout` | duration | `0` | Kubernetes 客户端请求超时 |
 
 !!! note "单实例部署"
-    单实例部署时建议设置 `--leader-elect=false` 以避免不必要的选举开销。
+    单实例部署时建议设置 `--leader-election=false` 以避免不必要的选举开销。
 
 **示例：**
 
@@ -127,7 +136,7 @@ rlark-gateway \
 rlark-controller-manager \
   --server-address=https://rlark-server:8443 \
   --db-config=/etc/rlark/db-config.yaml \
-  --leader-elect=false \
+  --leader-election=false \
   --metrics-bind-address=:8080 \
   --health-probe-bind-address=:8081
 ```
@@ -150,8 +159,19 @@ rlark-controller-manager \
 | `--leader-election-key` | string | `default/rlark-agent` | Leader Election Key（namespace/name） |
 | `--leader-election-id` | string | `hostname-pid` | Leader Election 标识 |
 | `--metrics-bind-address` | string | `:8081` | Metrics 端点绑定地址 |
+| `--task-pull-controller-workers` | int | `8` | Task pull 控制器最大并发调和数 |
+| `--task-runtime-resync-period` | duration | `15m` | cluster 模式共享 Task Runtime 修复扫描的基础周期；实际间隔使用 80%–120% 抖动，`0` 表示禁用，负值无效；node-only 模式接受这个共享 flag，但不会运行扫描器 |
+| `--addon-pull-controller-workers` | int | `8` | Addon pull 控制器最大并发调和数 |
+| `--task-deployment-push-controller-workers` | int | `8` | Task Deployment push 控制器最大并发调和数 |
+| `--task-statefulset-push-controller-workers` | int | `8` | Task StatefulSet push 控制器最大并发调和数 |
+| `--node-push-controller-workers` | int | `8` | Node push 控制器最大并发调和数 |
+| `--pod-push-controller-workers` | int | `8` | Pod push 控制器最大并发调和数 |
+| `--pod-orphan-sweep-interval` | duration | `5m` | Agent 范围内管理 Pod 孤儿扫描间隔 |
+| `--pod-orphan-sweep-page-size` | int | `200` | 每页扫描的管理 Pod 数量 |
+| `--pod-stale-ttl` | duration | `15m` | 本地 Pod 缺失后以 `Unknown`/陈旧状态保留、再删除管理 Pod 的时长 |
 | `--rlark-server-ssh-address` | string | `""` | RLark Server SSH 地址（user@host:port） |
 | `--rlark-server-ssh-host-key` | string | `""` | RLark Server SSH Host Key |
+| `--ssh-max-connections-per-domain` | int | `4` | 每个 Domain 的物理 SSH 连接上限；单连接 channel 负载增长时连接池会弹性增加 transport |
 | `--image` | string | `""` | RLark 网络 Sidecar 镜像 |
 | `--enable-same-cluster-direct` | bool | `true` | 启用同集群 Pod 直接访问 |
 | `--enable-cross-cluster-direct` | bool | `true` | 启用跨集群 Pod 直接访问 |
@@ -168,6 +188,10 @@ rlark-controller-manager \
 | `--kube-qps` | float32 | `5000` | Kubernetes 客户端 QPS |
 | `--kube-burst` | int | `8000` | Kubernetes 客户端 Burst |
 | `--kube-timeout` | duration | `0` | Kubernetes 客户端请求超时 |
+
+Pod 孤儿扫描用于兜底处理遗漏的本地删除事件。它只删除 Agent 作用域内、本地 Pod UID 或已验证管理 Task UID 已失效的镜像。旧版镜像仅在以 UID 命名的镜像、存活本地 Pod 注解、管理命名空间、Task UID 以及可用的 Domain 全部一致时才会被接管；身份不明确的旧对象保持不变，需要手动清理。延迟删除会有意保留同名替代 Pod，因此旧镜像可能持续到下一次扫描。
+
+SSH 连接池为每个活跃 Domain 从一条 transport 开始；单条 transport 持续承载较高 channel 负载时，连接池会在后台扩容，最多不超过 `--ssh-max-connections-per-domain`。扩容期间请求继续使用已有 transport，空闲 transport 会自动回收。
 
 !!! tip "`--mode` 参数说明"
     - `cluster`：仅运行集群级 Agent，管理集群范围内的资源
@@ -197,9 +221,12 @@ rlark-agent \
 | `--sidecar-tun-name` | string | `gnet0` | TUN 设备名称 |
 | `--sidecar-tun-mtu` | int | `1500` | TUN 设备 MTU |
 | `--sidecar-proxy-listen` | string | `:5700` | Proxy TCP 监听地址 |
-| `--sidecar-hosts-sync-enabled` | bool | `true` | 启用 hosts 文件定期同步 |
-| `--sidecar-hosts-sync-interval` | duration | `30s` | hosts 同步间隔 |
+| `--sidecar-metrics-listen` | string | `:5790` | Metrics 与 pprof HTTP 监听地址；设为空值可禁用 |
+| `--sidecar-hosts-sync-enabled` | bool | `true` | 启用 hosts 文件同步 |
+| `--sidecar-hosts-sync-interval` | duration | `30s` | NodeServer 不支持 hosts watch 接口时的兜底轮询间隔 |
 | `--sidecar-hosts-file` | string | `/etc/hosts` | hosts 文件路径 |
+
+新版 sidecar 通过 NodeServer 的 `/watch_hosts` 长轮询接口接收 hosts 变化，通常可在约一秒内完成更新。如果接口不可用，会自动退回配置的轮询间隔，从而兼容旧版 NodeServer。
 
 **示例：**
 
@@ -210,21 +237,32 @@ rlark-network-sidecar \
   --sidecar-tun-mtu=1500
 ```
 
-## sshd
+## rlark-tools sshd
 
-SSH 守护进程。提供对运行中 Task Pod 的 SSH 访问。已集成到 rlark-server 中（通过 `--ssh-port` 参数）。
+`sshd` 子命令提供对运行中 Task Pod 的 SSH 访问。Agent 总是将 `rlark-tools` 注入到 `/rlark-tools/rlark-tools`，需要 SSH 的工作负载通过 `rlark-tools sshd` 启动服务。
 
 | 参数 | 类型 | 默认值 | 说明 |
 | ------ | ------ | -------- | ------ |
 | `--port` | string | `22` | SSH 监听端口 |
 | `--shell` | string | `""` | Shell 二进制路径（默认 /bin/bash） |
+| `--authorized-key-file` | string list | `/var/run/rlark/ssh/authorized_key` | 每次认证时重新打开的 authorized-key 文件；可重复传参或使用逗号分隔列表 |
 
-**环境变量：**
+Kubernetes workload Environment Handler 会在默认路径挂载归当前 Task incarnation 所有的 Secret。该 mount 使用目录 projection 且不使用 `subPath`，从而允许 kubelet 发布 Secret 更新。空文件不贡献任何 key；所有已配置来源均为空时关闭公钥认证。每个显式配置文件都必须保持可读；任一文件读取失败时，本次认证会 fail-closed，而不是静默使用其余文件。更新受 kubelet Secret projection 的最终一致性影响，不保证瞬时撤销访问。`RLARK_SSH_PUBLIC_KEY` 和用户目录下的 `~/.ssh/authorized_keys` 不再作为 fallback；在内置 workload 路径之外启动 `rlark-tools sshd` 时，可重复传入 `--authorized-key-file`。
 
-| 变量 | 说明 |
-| ------ | ------ |
-| `RLARK_SSH_PUBLIC_KEY` | 用于 authorized_keys 的 SSH 公钥 |
-| `RLARK_SSH_AUTHORIZED_KEYS_FILE` | authorized_keys 文件路径 |
+```bash
+rlark-tools sshd \
+  --authorized-key-file=/var/run/rlark/ssh/authorized_key \
+  --authorized-key-file=/etc/rlark/admin_authorized_keys
+```
+
+## Agent Task 执行环境变量
+
+| 变量 | 默认值 | 说明 |
+| ------ | -------- | ------ |
+| `RLARK_TENSORBOARD_IMAGE` | `rlinf/tensorboard:2.15.1-rc1` | Kubernetes Environment Handler 使用的可信 TensorBoard 镜像。值为空时也使用默认值。该变量是过渡配置方式，未来应迁移到经过校验的 typed Agent 配置。 |
+| `RLARK_ENABLE_UNSAFE_TASK_PRIVILEGES` | `false` | 仅当值严格等于 `true` 时开启旧版 unsafe Task 模式。 |
+
+unsafe Task 模式会在 Workload 编译阶段为 Task Pod template 中已经声明的 container 和 init container 授予 privileged 权限，并为 Ray Head 以外的任务启用宿主机网络。之后由 Environment binding 注入的 container 不受该旧版特权覆盖逻辑影响；每个可信 Environment Handler 会自行声明所需的 security context。特别是，跨 Domain Network sidecar 仍通过可信 Network profile 获得 privileged 和 `NET_ADMIN`，RLark Tools 与 TensorBoard 则保持各自声明的权限。仅应在可信集群中启用该模式。
 
 ## 存储 Provider 配置
 
@@ -264,8 +302,8 @@ Gateway 使用的对象存储后端配置。
 | `cert` | CertConfig | 未设置 | 证书配置；数据面部署时必填 |
 | `insecure-skip-tls-verify` | bool | `false` | 跳过 Server TLS 验证 |
 
-!!! note "环境选择"
-    `kubernetes`、`docker`、`raw` 三者选其一。数据面还必须提供 `control-plane-address` 和 `cert`。
+!!! warning "运行时支持范围"
+    配置 schema 仍保留 `kubernetes`、`docker` 和 `raw`，但当前仅支持 Kubernetes 工作负载路径。现阶段部署不应使用 Docker 或 Raw；这两种路径不受支持，也不推荐使用。Kubernetes 数据面还必须提供 `control-plane-address` 和 `cert`。
 
 ### DBConfig
 
@@ -281,6 +319,7 @@ Gateway 使用的对象存储后端配置。
 
 | 字段 | 类型 | 默认值 | 说明 |
 | ------ | ------ | -------- | ------ |
+| `management-api` | string | `kcp` | 管理 API 模式：`kcp` 部署 kcp 和可选 etcd；`kubernetes` 将 RLark 资源存储在目标集群中，且不部署 kcp/etcd |
 | `kubeconfig` | string | `""` | kubeconfig 文件路径；空值使用 client-go 常规加载规则 |
 | `gateway-image` | string | `""` | Gateway 镜像 |
 | `controller-manager-image` | string | `""` | Controller Manager 镜像 |
@@ -291,10 +330,11 @@ Gateway 使用的对象存储后端配置。
 | `etcd-image` | string | `""` | 内置 etcd 镜像；仅设置该字段且未配置外部地址时启用内置 etcd |
 | `postgresql-image` | string | `""` | PostgreSQL 镜像；仅设置顶层 `db` 块时启用 PostgreSQL |
 | `ui-image` | string | `""` | UI 镜像 |
+| `image-pull-secrets` | 字符串列表 | 空 | `rlark-system` 命名空间中已有的镜像拉取 Secret 名称，应用到所有组件 Pod |
 | `replicas` | int | `0`（解析为 `1`） | 组件默认副本数 |
 | `storage` | StorageConfig | 未设置 | 默认存储配置 |
-| `kcp` | ComponentConfig | 未设置 | kcp 组件配置 |
-| `etcd` | EtcdConfig | 未设置 | etcd 组件配置 |
+| `kcp` | ComponentConfig | 未设置 | kcp 当前限制为单副本。未配置 `etcd` 时使用 StatefulSet 并支持持久化存储；部署或指定外部 etcd 时使用 Deployment |
+| `etcd` | EtcdConfig | 未设置 | etcd 组件配置。`address` 为空时部署 etcd，非空时使用外部 etcd |
 | `postgresql` | ComponentConfig | 未设置 | PostgreSQL 组件配置 |
 | `containerd-socket` | string | `/run/containerd/containerd.sock` | 节点 Agent 的 Containerd Socket 路径 |
 
@@ -302,6 +342,9 @@ Gateway 使用的对象存储后端配置。
     `gateway-image` 等组件专用镜像优先于 `image`。
 
 ### DockerEnv
+
+!!! warning "当前不支持"
+    这些字段为兼容性保留在 schema 中，但 Docker 不是当前支持的工作负载路径，不建议用于部署。
 
 | 字段 | 类型 | 说明 |
 | ------ | ------ | ------ |
@@ -317,8 +360,8 @@ Gateway 使用的对象存储后端配置。
 
 ### RawEnv
 
-!!! warning "实验性功能"
-    Raw 部署模式目前处于实验阶段，建议优先使用 Kubernetes 或 Docker 部署。
+!!! warning "当前不支持"
+    这些字段为兼容性保留在 schema 中，但 Raw 不是当前支持的工作负载路径，不建议用于部署。请使用 Kubernetes。
 
 | 字段 | 类型 | 说明 |
 | ------ | ------ | ------ |

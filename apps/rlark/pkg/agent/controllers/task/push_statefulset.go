@@ -2,17 +2,15 @@ package task
 
 import (
 	"context"
-	"fmt"
 
 	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	"github.com/go-logr/logr"
 	rlarkv1alpha1 "github.com/rlinf/rlark/api/rlark.io/v1alpha1"
+	raykubernetes "github.com/rlinf/rlark/apps/rlark/pkg/agent/controllers/task/workload/ray/kubernetes"
 )
 
 // pushStatefulSetReconciler watches local StatefulSets and reports status to management Task.
@@ -35,8 +33,6 @@ func (r *pushStatefulSetReconciler) Reconcile(ctx context.Context, req reconcile
 
 	taskName := sts.Annotations[ManagementTaskNameAnnotation]
 	taskNamespace := sts.Annotations[ManagementTaskNamespaceAnnotation]
-	taskUID := sts.Annotations[ManagementTaskUIDAnnotation]
-
 	if taskName == "" || taskNamespace == "" {
 		logger.V(1).Info("StatefulSet has no management-task annotation, skipping")
 		return reconcile.Result{}, nil
@@ -52,51 +48,14 @@ func (r *pushStatefulSetReconciler) Reconcile(ctx context.Context, req reconcile
 		return reconcile.Result{}, nil
 	}
 
-	if mgmtTask.Spec.AgentType != rlarkv1alpha1.AgentType(r.c.AgentType) {
-		logger.Info(fmt.Sprintf("Task AgentType %s does not match controller AgentType %s, skipping", mgmtTask.Spec.AgentType, r.c.AgentType))
+	if !pushOwnsTask(&mgmtTask, r.c.AgentType, &sts, raykubernetes.CarrierStatefulSet) {
+		logger.Info("StatefulSet no longer owns management Task status, skipping")
 		return reconcile.Result{}, nil
 	}
 
-	if string(mgmtTask.UID) != taskUID {
-		logger.Info("management Task UID mismatch with annotation, skipping")
-		return reconcile.Result{}, nil
+	if err := r.c.emitRuntimeTrigger(ctx, &mgmtTask, kubernetesWorkloadRef(&mgmtTask, &sts, raykubernetes.CarrierStatefulSet)); err != nil {
+		logger.Error(err, "failed to emit Task Runtime trigger")
+		return reconcile.Result{}, err
 	}
-
-	phase, message, pods := statefulSetPhase(ctx, logger, r.c.LocalKubeClient, &sts)
-	observedNodes := podNodeNames(pods)
-	return updateMgmtTaskStatus(ctx, logger, r.c.ManagementClient, &mgmtTask, phase, message, observedNodes)
-}
-
-func statefulSetPhase(ctx context.Context, logger logr.Logger, localClient client.Client, sts *appsv1.StatefulSet) (rlarkv1alpha1.TaskPhase, string, []corev1.Pod) {
-	desired := computeDesiredReplicas(sts.Spec.Replicas)
-	var phase rlarkv1alpha1.TaskPhase
-	switch {
-	case desired == 0:
-		phase = rlarkv1alpha1.TaskPhaseStopped
-	case sts.Status.ReadyReplicas >= desired:
-		phase = rlarkv1alpha1.TaskPhaseRunning
-	default:
-		phase = rlarkv1alpha1.TaskPhasePending
-	}
-
-	pods, err := listTaskPods(ctx, localClient, sts.Namespace, sts.Spec.Selector.MatchLabels)
-	if err != nil {
-		logger.Error(err, "failed to list pods")
-	}
-	// Override to Failed when any pod container is in an abnormal state
-	// (CrashLoopBackOff, ImagePullBackOff, OOMKilled, etc.) so operators
-	// see the failure immediately instead of a misleading Running/Pending.
-	var message string
-	if podMsg, found := podFailureMessage(pods); found && phase != rlarkv1alpha1.TaskPhaseSucceeded {
-		phase = rlarkv1alpha1.TaskPhaseFailed
-		message = podMsg
-	}
-	if phase == rlarkv1alpha1.TaskPhasePending {
-		if found, err := hasFailedSchedulingEvent(ctx, localClient, sts.Namespace, pods); err != nil {
-			logger.Error(err, "failed to list pod scheduling events")
-		} else if found {
-			message = "FailedScheduling"
-		}
-	}
-	return phase, message, pods
+	return reconcile.Result{}, nil
 }

@@ -1,9 +1,10 @@
 package sync
 
 import (
-	"github.com/uptrace/bun"
+	"github.com/rlinf/rlark/apps/rlark/pkg/persistence"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	controllerconfig "sigs.k8s.io/controller-runtime/pkg/controller"
 
 	rlarkv1alpha1 "github.com/rlinf/rlark/api/rlark.io/v1alpha1"
 	"github.com/rlinf/rlark/apps/rlark/pkg/db"
@@ -26,7 +27,7 @@ func newNodeSyncHandler() Handler {
 
 // NodeReconciler reconciles Node resources.
 type NodeReconciler struct {
-	config Config
+	maxConcurrentReconciles int
 	*genericReconciler[*rlarkv1alpha1.Node]
 }
 
@@ -35,12 +36,12 @@ type NodeReconciler struct {
 // +kubebuilder:rbac:groups=rlinf.io,resources=nodes/finalizers,verbs=update
 
 // NewNodeReconciler creates a new NodeReconciler.
-func NewNodeReconciler(config Config, client client.Client, db *bun.DB) *NodeReconciler {
+func NewNodeReconciler(maxConcurrentReconciles int, client client.Client, backend persistence.Backend) *NodeReconciler {
 	return &NodeReconciler{
-		config: config,
+		maxConcurrentReconciles: maxConcurrentReconciles,
 		genericReconciler: &genericReconciler[*rlarkv1alpha1.Node]{
 			client:  client,
-			db:      db,
+			backend: backend,
 			handler: newNodeSyncHandler(),
 			newObj:  func() *rlarkv1alpha1.Node { return &rlarkv1alpha1.Node{} },
 		},
@@ -51,7 +52,7 @@ func NewNodeReconciler(config Config, client client.Client, db *bun.DB) *NodeRec
 func (r *NodeReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&rlarkv1alpha1.Node{}).
-		WithOptions(r.config.ToControllerOptions()).
+		WithOptions(controllerconfig.Options{MaxConcurrentReconciles: r.maxConcurrentReconciles}).
 		Named("node-sync").
 		Complete(r)
 }

@@ -26,7 +26,7 @@ Embodied Runtime 有三层结构：
 |------|------|------|
 | Device Plugin | `device-plugin` | 向 Kubernetes 注册设备资源（`rlinf.io/device-*`） |
 | 控制器 | `ros-controller`, `ros2-controller`, `camera-controller` | 管理设备生命周期的 gRPC 服务 |
-| Webhook | Mutating Webhook | 自动注入 `devinit` sidecar，用于 macvlan 网络 |
+| Webhook | Mutating Webhook | 可选地注入 `devinit` init container，用于 macvlan 网络 |
 
 ### 工作原理
 
@@ -46,9 +46,12 @@ Embodied Runtime 有三层结构：
 
 ### Helm（推荐）
 
+直接使用 Embodied Runtime Helm Chart 部署时，可通过 `config.ros2` 配置 ROS 2。RLark Addon 目录当前尚未暴露 ROS 2 配置，因此需要 ROS 2 时请直接使用 Helm Chart。
+
 ```bash
-helm install embodied-runtime ./charts/embodied-runtime \
+helm install embodied-runtime ./apps/embodied-runtime/charts/embodied-runtime \
   --namespace rlark-system \
+  --create-namespace \
   --set config.ros.enabled=true \
   --set config.camera.enabled=true
 ```
@@ -59,31 +62,33 @@ helm install embodied-runtime ./charts/embodied-runtime \
 
 ```yaml
 # device-plugin-config.yaml
+device_count: 1
+
 host_devices:
-  - name: rlinf.io/device-webcam
-    count: 2
-    devices:
-      - /dev/video0
-      - /dev/video1
+  - host_path: /dev/video0
+  - host_path: /dev/ttyUSB0
+    permissions: rw
 
 host_macvlans:
-  - name: rlinf.io/device-franka
-    count: 1
-    parent_interface: eth0
-    robot_ip: 192.168.1.100
+  - host_nic: eno1
+    name: macvlan0
+    ip: 172.16.0.0/24
+    # gateway: 172.16.0.1
 
 camera:
-  enabled: true
+  manager_mode: local
   socket: /var/run/rlark/camera-ctrl.sock
 
 ros:
-  enabled: true
+  manager_mode: local
   socket: /var/run/rlark/ros-ctrl.sock
 
 ros2:
-  enabled: false
+  manager_mode: disabled
   socket: /var/run/rlark/ros2-ctrl.sock
 ```
+
+每个控制器都支持 `disabled`（不启动）、`local`（作为 Device Plugin 子进程运行）和 `pod`（作为由 Device Plugin 管理的独立 Pod 运行）三种模式。
 
 ### 宿主设备透传
 
@@ -91,10 +96,9 @@ ros2:
 
 ```yaml
 host_devices:
-  - name: rlinf.io/device-webcam
-    count: 1
-    devices:
-      - /dev/video0
+  - host_path: /dev/video0
+    # container_path: /dev/video0
+    # permissions: rwm
 ```
 
 ### Macvlan 网络机器人
@@ -103,13 +107,13 @@ host_devices:
 
 ```yaml
 host_macvlans:
-  - name: rlinf.io/device-franka
-    count: 1
-    parent_interface: eth0
-    robot_ip: 192.168.1.100
+  - host_nic: eno1
+    name: macvlan0
+    ip: 172.16.0.0/24
+    # gateway: 172.16.0.1
 ```
 
-Mutating Webhook 会自动注入 `devinit` sidecar，在 Worker 容器中创建 macvlan 接口。
+Webhook 默认关闭。只有设置 `webhook.enabled=true` 且 `config.hostMacvlans` 列表非空时才会渲染；启用后，它会注入 `devinit` init container，在 Worker Pod 的网络命名空间中创建 macvlan 接口。
 
 ### 控制器 Pod
 
@@ -121,7 +125,7 @@ Mutating Webhook 会自动注入 `devinit` sidecar，在 Worker 容器中创建 
 
 ```bash
 # 1. 检查 Device Plugin 运行状态
-kubectl get pods -n rlark-system -l app=device-plugin
+kubectl get pods -n rlark-system -l app.kubernetes.io/name=embodied-runtime,app.kubernetes.io/component=device-plugin
 
 # 2. 验证设备资源已注册
 kubectl describe node <node-name> | grep rlinf.io/device

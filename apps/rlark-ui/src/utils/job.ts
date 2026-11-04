@@ -1,5 +1,22 @@
-import type { JobType } from "../data";
+import type { JobTag, JobType } from "../data";
 import type { RoleResource } from "../types";
+import type { CRDJob, CRDJobTask } from "../crdModels";
+
+// 任务名称限制：1-64 个字符，支持中英文、数字、中划线（-）、下划线（_）和英文句号（.）
+export const JOB_DISPLAY_NAME_MAX_LENGTH = 64;
+export const JOB_DISPLAY_NAME_PATTERN = /^[A-Za-z0-9\u4e00-\u9fa5._-]{1,64}$/;
+
+export function isValidJobDisplayName(name: string): boolean {
+  return JOB_DISPLAY_NAME_PATTERN.test(name);
+}
+
+// 角色名称与任务名称使用相同的字符与长度限制
+export const ROLE_NAME_MAX_LENGTH = JOB_DISPLAY_NAME_MAX_LENGTH;
+export const ROLE_NAME_PATTERN = JOB_DISPLAY_NAME_PATTERN;
+
+export function isValidRoleName(name: string): boolean {
+  return ROLE_NAME_PATTERN.test(name);
+}
 
 const TASK_ROLE_MAP: Record<string, "Actor" | "Rollout" | "Env"> = {
   Actor: "Actor",
@@ -143,57 +160,6 @@ export function toVolumeName(mountPath: string): string {
   return name;
 }
 
-export function computePvcStorageMap(
-  role: string,
-  mounts: Array<{
-    type: "host" | "storage";
-    objectStorage: string;
-    mountPath: string;
-    hostPath: string;
-    pvcSizeGb: number;
-  }>,
-  jobName?: string,
-): Record<string, string> | undefined {
-  const roleSlug = toResourceName(role);
-  const storageMounts = mounts.filter((m) => m.type === "storage");
-  if (storageMounts.length === 0) return undefined;
-  const map: Record<string, string> = {};
-  const jobSlug = jobName ? toResourceName(jobName) : "";
-  storageMounts.forEach((m) => {
-    const volName = toVolumeName(m.mountPath);
-    const claimName = jobSlug
-      ? `pvc-${jobSlug}-${roleSlug}-${volName}`
-      : `pvc-${roleSlug}-${volName}`;
-    map[claimName] = m.objectStorage ?? "";
-  });
-  return map;
-}
-
-export function computePvcSizeGbMap(
-  role: string,
-  mounts: Array<{
-    type: "host" | "storage";
-    mountPath: string;
-    pvcSizeGb: number;
-  }>,
-  jobName?: string,
-): Record<string, number> | undefined {
-  const roleSlug = toResourceName(role);
-  const storageMounts = mounts.filter((m) => m.type === "storage");
-  if (storageMounts.length === 0) return undefined;
-  const map: Record<string, number> = {};
-  const jobSlug = jobName ? toResourceName(jobName) : "";
-  storageMounts.forEach((m) => {
-    const volName =
-      m.mountPath.replace(/\//g, "-").replace(/^-|-$/g, "") || "vol";
-    const claimName = jobSlug
-      ? `pvc-${jobSlug}-${roleSlug}-${volName}`
-      : `pvc-${roleSlug}-${volName}`;
-    map[claimName] = Math.min(200, Math.max(1, m.pvcSizeGb));
-  });
-  return map;
-}
-
 export function automaticNetworkDomain(domains: Array<{ name: string }>) {
   return (
     [...domains].sort((left, right) => left.name.localeCompare(right.name))[0]
@@ -212,7 +178,8 @@ export function generateJobCRD(opts: {
   domain: string;
   tensorBoardDir?: string;
   sshPublicKey?: string;
-}) {
+  tags?: JobTag[];
+}): CRDJob {
   const tasks = opts.roles
     .map((role) => {
       const res = opts.roleResources[role];
@@ -227,10 +194,15 @@ export function generateJobCRD(opts: {
         { name: "RLARK_TASK_ROLE", value: role },
       ];
       const taskName = toResourceName(role);
-      const jobSlug = toResourceName(opts.name);
-
       const hostMounts = roleMounts.filter((m) => m.type === "host");
       const storageMounts = roleMounts.filter((m) => m.type === "storage");
+      // 表单无法编辑的卷（emptyDir、configMap、secret 等）按原始定义写回，
+      // 只把 name 对齐到挂载路径派生的名字，保证 volumes 与 volumeMounts 匹配。
+      const opaqueVolumes = roleMounts.flatMap((m) =>
+        m.type === "opaque" && m.rawVolume
+          ? [{ ...m.rawVolume, name: toVolumeName(m.mountPath) }]
+          : [],
+      );
 
       const containerVolumes = hostMounts.map((m) => ({
         name: toVolumeName(m.mountPath),
@@ -239,98 +211,124 @@ export function generateJobCRD(opts: {
 
       const storageVolumes = storageMounts.map((m) => {
         const volName = toVolumeName(m.mountPath);
-        const claimName = `pvc-${jobSlug}-${taskName}-${volName}`;
+        const pvcSizeGb =
+          m.pvcSizeGb === "" ? 10 : Math.min(200, Math.max(1, m.pvcSizeGb));
         return {
           name: volName,
-          persistentVolumeClaim: {
-            claimName,
+          ephemeral: {
+            volumeClaimTemplate: {
+              spec: {
+                accessModes: ["ReadWriteOnce"],
+                ...(m.objectStorage
+                  ? { storageClassName: m.objectStorage }
+                  : {}),
+                resources: {
+                  requests: { storage: `${pvcSizeGb}Gi` },
+                },
+              },
+            },
           },
         };
       });
 
-      const pvcStorageMap = computePvcStorageMap(
-        taskName,
-        roleMounts,
-        opts.name,
-      );
-      const pvcSizeGbMap = computePvcSizeGbMap(taskName, roleMounts, opts.name);
-
-      const allVolumeMounts = roleMounts.map((m) => ({
-        name: toVolumeName(m.mountPath),
-        mountPath: m.mountPath,
-      }));
+      // 丢失了原始定义的 opaque 挂载无法写出对应的 volume，跳过以免产生悬空引用。
+      const allVolumeMounts = roleMounts
+        .filter((m) => m.type !== "opaque" || m.rawVolume)
+        .map((m) => ({
+          name: toVolumeName(m.mountPath),
+          mountPath: m.mountPath,
+        }));
 
       return {
         name: taskName,
         head: isHead,
-        agentType: "Kubernetes",
         role: mapTaskRole(role),
-        nodeSelector: res ? parseNodeSelector(res.nodeSelector) : {},
-        prepareScript: res?.prepareScript ?? "",
-        ...(isHead ? { runScript: opts.runScript } : {}),
-        ...(isHead && opts.tensorBoardDir
-          ? { tensorBoardDir: opts.tensorBoardDir }
-          : {}),
-        kubernetes: {
-          workload: {
-            kind: "StatefulSet",
-            replicas: res ? Number(res.replicas) : 1,
-            ...(pvcStorageMap ? { pvcStorageMap } : {}),
-            ...(pvcSizeGbMap ? { pvcSizeGbMap } : {}),
-            template: {
-              spec: {
-                containers: [
-                  {
-                    name: "main",
-                    image: res?.image ?? "",
-                    env: envVars.length > 0 ? envVars : undefined,
-                    volumeMounts:
-                      allVolumeMounts.length > 0 ? allVolumeMounts : undefined,
-                    resources: res
-                      ? {
-                          requests: {
-                            ...(res.cpu ? { cpu: res.cpu } : {}),
-                            ...(res.memory ? { memory: res.memory } : {}),
-                            ...(res.gpu && res.gpu !== "0"
-                              ? { "nvidia.com/gpu": res.gpu }
-                              : {}),
-                            ...Object.fromEntries(
-                              (res.devices ?? [])
-                                .filter(
-                                  (d) =>
-                                    d.name && d.quantity && d.quantity !== "0",
-                                )
-                                .map((d) => [d.name, d.quantity]),
-                            ),
-                          },
-                          limits: {
-                            ...(res.gpu && res.gpu !== "0"
-                              ? { "nvidia.com/gpu": res.gpu }
-                              : {}),
-                            ...Object.fromEntries(
-                              (res.devices ?? [])
-                                .filter(
-                                  (d) =>
-                                    d.name && d.quantity && d.quantity !== "0",
-                                )
-                                .map((d) => [d.name, d.quantity]),
-                            ),
-                          },
-                        }
-                      : undefined,
-                  },
-                ],
-                volumes: [
-                  ...(containerVolumes.length > 0 ? containerVolumes : []),
-                  ...(storageVolumes.length > 0 ? storageVolumes : []),
-                ],
-              },
+        placement: {
+          nodeSelector: res ? parseNodeSelector(res.nodeSelector) : {},
+        },
+        runtime: { kind: "Kubernetes" },
+        workload: {
+          kind: "rlinf.io/ray",
+          version: "v1",
+          parameters: {
+            role: isHead ? "head" : "worker",
+            ...(res?.prepareScript
+              ? { prepare: { inline: res.prepareScript } }
+              : {}),
+            ...(isHead && opts.runScript
+              ? { run: { inline: opts.runScript } }
+              : {}),
+          },
+          carrier: {
+            type: "rlinf.io/kubernetes-statefulset",
+            version: "v1",
+            parameters: { replicas: res ? Number(res.replicas) : 1 },
+          },
+          template: {
+            spec: {
+              containers: [
+                {
+                  name: "main",
+                  image: res?.image ?? "",
+                  env: envVars.length > 0 ? envVars : undefined,
+                  volumeMounts:
+                    allVolumeMounts.length > 0 ? allVolumeMounts : undefined,
+                  resources: res
+                    ? {
+                        requests: {
+                          ...(res.cpu ? { cpu: res.cpu } : {}),
+                          ...(res.memory ? { memory: res.memory } : {}),
+                          ...(res.gpu && res.gpu !== "0"
+                            ? { "nvidia.com/gpu": res.gpu }
+                            : {}),
+                          ...Object.fromEntries(
+                            (res.devices ?? [])
+                              .filter(
+                                (d) =>
+                                  d.name && d.quantity && d.quantity !== "0",
+                              )
+                              .map((d) => [d.name, d.quantity]),
+                          ),
+                        },
+                        limits: {
+                          ...(res.gpu && res.gpu !== "0"
+                            ? { "nvidia.com/gpu": res.gpu }
+                            : {}),
+                          ...Object.fromEntries(
+                            (res.devices ?? [])
+                              .filter(
+                                (d) =>
+                                  d.name && d.quantity && d.quantity !== "0",
+                              )
+                              .map((d) => [d.name, d.quantity]),
+                          ),
+                        },
+                      }
+                    : undefined,
+                },
+              ],
+              volumes: [
+                ...(containerVolumes.length > 0 ? containerVolumes : []),
+                ...(storageVolumes.length > 0 ? storageVolumes : []),
+                ...opaqueVolumes,
+              ],
             },
           },
         },
+        environments:
+          isHead && opts.tensorBoardDir
+            ? [
+                {
+                  type: "rlinf.io/tensorboard",
+                  version: "v1",
+                  parameters: { logDir: opts.tensorBoardDir },
+                },
+              ]
+            : undefined,
       };
     })
-    .filter(Boolean);
+    .filter((task): task is Exclude<typeof task, null> => task !== null)
+    .map((task): CRDJobTask => task);
 
   return {
     apiVersion: "rlinf.io/v1alpha1",
@@ -345,6 +343,31 @@ export function generateJobCRD(opts: {
       tasks,
       ...(opts.domain ? { domain: opts.domain } : {}),
       ...(opts.sshPublicKey ? { sshPublicKey: opts.sshPublicKey } : {}),
+      ...(opts.tags && opts.tags.length > 0
+        ? {
+            tags: [
+              ...new Map(
+                opts.tags
+                  .filter((t) => t.key.trim() && t.value.trim())
+                  .map((t) => [
+                    t.key.trim(),
+                    {
+                      key: t.key.trim(),
+                      values: opts
+                        .tags!.filter(
+                          (item) => item.key.trim() === t.key.trim(),
+                        )
+                        .map((item) => item.value.trim())
+                        .filter(
+                          (value, index, values) =>
+                            value && values.indexOf(value) === index,
+                        ),
+                    },
+                  ]),
+              ).values(),
+            ],
+          }
+        : {}),
     },
   };
 }

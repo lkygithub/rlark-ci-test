@@ -14,7 +14,7 @@ RLark 是一个面向跨集群具身智能场景的云原生纳管平台，核�
 
 RLark 采用**控制面—数据面**分离架构，控制面使用 kcp 作为兼容 Kubernetes 的 API Server，Agent 将云端 GPU 集群与端侧 Kubernetes 节点统一接入控制面。可选的 **embodied-runtime** Device Plugin 部署到配有机械臂（ROS 1/2）或摄像头硬件的 Kubernetes 节点，将这些设备作为 Kubernetes 资源暴露；后续将通过 Docker 和 Raw 数据面运行时适配更多轻量端侧环境。
 
-![系统架构](../images/architecture.svg)
+![系统架构](../images/architecture-zh.svg)
 
 ## 3. 控制面组件
 
@@ -74,7 +74,6 @@ Controller-Manager 运行在控制面，负责协调高层资源的生命周期�
 | Domain Controller   | 管理 Domain CRD，分配 IP 子网，签发 DomainPeer 证书                 | [domain/](https://github.com/RLinf/RLark/tree/main/apps/rlark/pkg/controllermanager/domain/)     |
 | Task Controller     | 监听 Task 状态，同步到对应的 Job                                   | [task/](https://github.com/RLinf/RLark/tree/main/apps/rlark/pkg/controllermanager/task/)         |
 | Node Controller     | 监听 Node 注册/离线事件                                         | [node/](https://github.com/RLinf/RLark/tree/main/apps/rlark/pkg/controllermanager/node/)         |
-| Workflow Controller | DAG 编排，按依赖顺序调度 Job                                      | [workflow/](https://github.com/RLinf/RLark/tree/main/apps/rlark/pkg/controllermanager/workflow/) |
 
 **Job 状态机**：
 
@@ -123,20 +122,24 @@ graph LR
 **Pull 控制器**（以 Task 为例）：
 
 1. 监听管理面 Task CR 的创建/更新/删除（带 finalizer 保护）
-2. 根据 Task.Spec 构建对应的 K8s 资源（Deployment/DaemonSet/StatefulSet）
-3. 检测 ResourceVersion 变化决定是否需要更新已有 workload
-4. 自动注入 Network Sidecar 容器和 Ray 初始化脚本
-5. 删除时通过 finalizer 清理本地资源后移除 finalizer
+2. 将 Task 解码为 execution snapshot，并选择 Kubernetes Runtime 和面向 Ray 的 Kubernetes Workload Adapter；carrier 声明选择 Deployment 或 StatefulSet
+3. 编译声明式对象计划，由 Adapter 选择 ownership、lifecycle、owned field、update mode 和 typed Runtime reconcile profile；向 Adapter 请求有界 identity inventory，读取对应 Runtime 快照，再计算所需操作
+4. 按顺序执行幂等 Apply/Delete；`Replace` 对象先按 UID 校验并删除，再由后续 reconcile 重建；运行中的 Task 在期望 generation 变化后也会重新调谐
+5. 在编译期间应用 Ray bootstrap 等 Workload 自有 Pod 模板修改，再解析显式 Environment requirement，并且只向 Adapter 授权的 PodTemplate target 绑定跨 Domain Network Sidecar
+6. 停止、重启或删除时使用 claim 中冻结的 Workload implementation 生成 identity inventory，不重新编译当前 Spec，并在确认归属明确的主 workload 已消失后才移除 finalizer；仅为兼容升级，删除中的旧 claim 如果两个 selector 字段都缺失，可以从仍受 finalizer 保护的 Task 解码并校验 selector registration，但不编译资源也不写回该 selector；无法解码的已 claim Task会保留 workload 并等待恢复
 
 **Push 控制器**：
 
 1. 监听本地 K8s 资源变化（Pod 创建/删除/状态变更）
-2. 将状态同步到管理面对应的 Pod CR
-3. Node 信息（地址、容量、GPU 数量）定期上报
+2. 定向观测发生变化的 workload root、其拥有的 Pod 和 Pod Event，不执行完整期望计划 diff
+3. 将 workload 状态同步到管理面对应的 Task 和 Pod CR
+4. Node 信息（地址、容量、GPU 数量）定期上报
+
+当前只有进程内 Kubernetes 实现属于生产 workload 路径。项目已经为未来外部实现定义版本化 Runtime Provider 和 Workload Adapter gRPC 合同，但默认 Task controller 尚不选择远程实现。所选 Workload Adapter 会接收完整 Workload configuration，并负责所有 Workload-specific 可选功能；系统不再提供独立 Workload Extension service。详见 [Runtime、Workload 与 Environment 边界](developer-guide/runtime-provider.md)。
 
 ### 4.2 Network Sidecar
 
-Sidecar 以容器形式注入到每个训练 Pod 中，实现跨集群 Pod 间网络通信。
+Task 的 domain 非空时，Workload Adapter 会声明跨 Domain Environment requirement 和精确 PodTemplate target。可信 Kubernetes Environment Handler 始终将 Sidecar 注入为 restartable init container。最终 Runtime lowering 阶段会在 `KUBERNETES_SUPPORT_SIDECAR_FEATURE` 不为 `false` 时保留该形式；值为 `false` 时，会把 Adapter 声明的 Pod 或 PodTemplate unit 中所有 restartable init container 转换为普通 container。可信 image 配置缺失或 container/volume 声明冲突时，会在 Runtime effect 前 fail-closed。
 
 **关键文件**：[sidecar/server.go](https://github.com/RLinf/RLark/tree/main/apps/rlark/pkg/network/sidecar/server.go)
 
@@ -186,25 +189,32 @@ func (a *containerNetworkAdapter) GetContainerNetworkDial(...) (utils.Dial, erro
         return dialer.DialContext(ctx, "tcp", net.JoinHostPort(targetPod.LocalIP, "5700"))
     }
     // 2. 跨集群 → SSH 隧道
-    return a.sshDialer.DialContext(ctx, domainID, sshAddr, cert, key, target)
+    dialer := a.sshDialerManager.GetDialer(sshdialer.DomainInfo{
+        ID: domainID, SSHAddress: sshAddr, Certificate: cert, PrivateKey: key,
+    })
+    return dialer.DialContext(ctx, "tcp", target)
 }
 ```
 
-### 4.5 SSHDialer
+### 4.5 SSH Dialer Manager
 
-**关键文件**：[container/ssh\_dialer.go](https://github.com/RLinf/RLark/tree/main/apps/rlark/pkg/agent/container/ssh_dialer.go)
+**关键包**：[network/sshdialer](https://github.com/RLinf/RLark/tree/main/apps/rlark/pkg/network/sshdialer)
 
-按 Domain 维护的 SSH 连接池，设计要点：
+`DialerManager` 维护所有 Domain 的连接池，`GetDialer(DomainInfo)` 返回绑定单个 Domain 的拨号器。设计要点：
 
-- 每个 Domain 至多一个 SSH 连接（ssh.Client 多路复用）
-- 连接断开时自动重连，重连期间并发请求等待而非各自新建
+- 每个 Domain 在故障恢复时只建立一条共享的多路复用 SSH transport；并发调用者等待同一个有超时上限的握手，避免形成重连风暴
+- 新 channel 选择负载最低的健康连接，空闲物理连接由后台 GC 回收
+- 调用者取消只停止自身等待，不会取消共享恢复，也不会增加 Domain 的重连退避
+- 明确的传输层故障立即关闭；channel 自身超时不会影响其他 channel，keepalive 超时则先等待活跃 channel 排空，再按宽限期强制关闭
 - 重连失败指数退避（1s → 2s → 4s → ... → 30s）
-- 后台 GC 关闭空闲超时连接（默认 10 分钟）
-- 线程安全，正常路径读锁无阻塞
+- SSH 握手有硬超时，Manager 关闭时会取消仍在进行的重连
+- 证书、私钥或端点发生变化时推进 Domain generation，并排空旧 generation 的 transport
+- 后台 GC 关闭空闲或超龄连接并回收不活跃的 Domain entry（默认 24 小时）
+- 数据路径上的活跃时间使用原子、限频更新，避免每次读写获取互斥锁
 
 ### 4.6 Embodied Runtime
 
-**embodied-runtime** 是部署在每个数据面节点上的 DaemonSet 组件，管理机械臂（ROS 1/2）和摄像头硬件。它与 Agent 集成，将物理设备作为 Kubernetes 设备资源（`rlinf.io/device`）暴露，使训练 Task 可以像申请 GPU 一样申请机械臂和摄像头。
+**embodied-runtime** 以节点级 Device Plugin 为核心，通常通过 DaemonSet 部署到各数据面节点，用于管理机械臂（ROS 1/2）和摄像头硬件。Camera、ROS 1 和 ROS 2 控制器均可独立选择作为本地子进程运行、作为专用 Pod 运行或保持禁用。它与 Agent 集成，将物理设备作为 Kubernetes 设备资源（`rlinf.io/device`）暴露，使训练 Task 可以像申请 GPU 一样申请机械臂和摄像头。
 
 **关键文件**：[apps/embodied-runtime/](https://github.com/RLinf/RLark/tree/main/apps/embodied-runtime/)
 
@@ -238,7 +248,7 @@ sequenceDiagram
     participant SA as Sidecar A
     participant NS as NodeServer A
     participant CNA as ContainerNetworkAdapter
-    participant SD as SSHDialer
+    participant SD as SSH Dialer Manager
     participant SRV as Server
     participant NB as NodeServer B
     participant SB as Sidecar Proxy B
@@ -315,7 +325,6 @@ sequenceDiagram
 
 ```mermaid
 flowchart LR
-    wf["Workflow<br/><i>Cluster</i>"]
     job["Job<br/><i>Cluster</i>"]
     task["Task<br/><i>Namespaced</i>"]
     node["Node<br/><i>Namespaced</i>"]
@@ -351,4 +360,3 @@ iptables/CNI 方案需要修改节点网络配置，权限要求高。TUN + gVis
 - 运行在用户态，但创建 TUN 设备仍需要 privileged 权限
 - gVisor netstack 处理所需的网络协议
 - 可以作为 Sidecar 容器注入，与业务容器解耦
-

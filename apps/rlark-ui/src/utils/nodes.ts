@@ -19,7 +19,10 @@ export {
 export {
   formatResourceQuantity,
   getGPUResourceKey,
+  getNodeDiskUsage,
   getNodeResourceSummary,
+  getResourceUsagePercent,
+  isDiskUsageWarning,
   parseResourceQuantity,
   selectDeviceResourceKey,
 } from "./nodeResources";
@@ -52,6 +55,27 @@ export function getNodeDeviceModel(node: CRDNode): string {
   );
 }
 
+// node.status.reason values emitted by the node controller. Unknown values are
+// returned verbatim so server-provided reasons still surface in the UI.
+const nodeStatusReasonLabels: Record<string, { zh: string; en: string }> = {
+  AgentLeaseActive: { zh: "节点代理心跳正常", en: "Agent lease active" },
+  AgentLeaseExpired: { zh: "节点代理心跳已过期", en: "Agent lease expired" },
+  NodeAgentLeaseMissing: {
+    zh: "缺少节点代理心跳",
+    en: "Node agent lease missing",
+  },
+};
+
+export function nodeStatusReasonLabel(
+  reason: string | undefined,
+  zh: boolean,
+): string {
+  if (!reason) return "";
+  const label = nodeStatusReasonLabels[reason];
+  if (!label) return reason;
+  return zh ? label.zh : label.en;
+}
+
 export const categoryLabels: Record<
   NodeCategory,
   { zh: string; en: string; icon: typeof CloudCog }
@@ -72,6 +96,9 @@ export function buildMockCRDNodes(): CRDNode[] {
   };
 
   return mockNodes.map((node) => {
+    const diskPercent = node.id === "gpu-cloud-01" ? 90 : 40;
+    const diskCapacityBytes = 120 * 1024 ** 3;
+    const diskUsedBytes = (diskCapacityBytes * diskPercent) / 100;
     const city = node.cluster.includes("上海")
       ? "上海市"
       : node.cluster.includes("杭州")
@@ -123,6 +150,7 @@ export function buildMockCRDNodes(): CRDNode[] {
         allocatable: {
           cpu: "16",
           memory: "64Gi",
+          "ephemeral-storage": "100Gi",
           "nvidia.com/gpu": node.gpu.split(" / ")[1] ?? "0",
           ...(node.kind !== "CloudCompute"
             ? {
@@ -134,6 +162,7 @@ export function buildMockCRDNodes(): CRDNode[] {
         capacity: {
           cpu: "16",
           memory: "64Gi",
+          "ephemeral-storage": "120Gi",
           "nvidia.com/gpu": node.gpu.split(" / ")[1] ?? "0",
           ...(node.kind !== "CloudCompute"
             ? {
@@ -142,9 +171,15 @@ export function buildMockCRDNodes(): CRDNode[] {
               }
             : {}),
         },
+        storage: {
+          capacityBytes: diskCapacityBytes,
+          usedBytes: diskUsedBytes,
+          availableBytes: diskCapacityBytes - diskUsedBytes,
+        },
         used: {
           cpu: `${node.cpu}%`,
           memory: `${node.memory}%`,
+          "ephemeral-storage": `${diskPercent}Gi`,
           "nvidia.com/gpu": node.gpu.split(" / ")[0] ?? "0",
           ...(node.kind !== "CloudCompute"
             ? {
@@ -163,11 +198,9 @@ export function useNodeLabels() {
   const [loading, setLoading] = useState(false);
   useEffect(() => {
     setLoading(true);
-    fetch("/api/v1/rlinf.io/v1alpha1/nodes")
-      .then((r) =>
-        r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)),
-      )
-      .then((data) => setNodes(data.items ?? []))
+    nodesApi
+      .list()
+      .then(setNodes)
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
@@ -179,3 +212,4 @@ export function useNodeLabels() {
   const clusterDisplayNames = clusterNames;
   return { nodes, loading, clusterNames, clusterDisplayNames };
 }
+import { nodesApi } from "../backend";

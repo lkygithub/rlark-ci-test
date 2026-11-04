@@ -2,6 +2,7 @@ package v1alpha1
 
 import metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+// +kubebuilder:validation:Enum=Pending;Running;Succeeded;Failed;Unknown
 type PodPhase string
 
 const (
@@ -9,12 +10,17 @@ const (
 	PodPhaseRunning   PodPhase = "Running"
 	PodPhaseSucceeded PodPhase = "Succeeded"
 	PodPhaseFailed    PodPhase = "Failed"
+	PodPhaseUnknown   PodPhase = "Unknown"
 )
 
 const (
 	PodLabelTaskName          = "rlark.io/task-name"
+	PodLabelTaskUID           = "rlark.io/task-uid"
 	PodLabelLocalPodName      = "rlark.io/local-pod-name"
 	PodLabelLocalPodNamespace = "rlark.io/local-pod-namespace"
+	PodLabelLocalPodUID       = "rlark.io/local-pod-uid"
+	PodLabelAgentScope        = "rlark.io/agent-scope"
+	PodLabelDomain            = "rlark.io/domain"
 )
 
 // PodSpec 包含 Pod 的标识和引用信息，由数据面上报时设置。
@@ -40,7 +46,7 @@ type PodStatus struct {
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:path=pods,scope=Namespaced,shortName=rlpod
 // +kubebuilder:printcolumn:name="Domain",type=string,JSONPath=`.spec.domain`
-// +kubebuilder:printcolumn:name="Node",type=string,JSONPath=`.spec.node`
+// +kubebuilder:printcolumn:name="Node",type=string,JSONPath=`.status.node`
 // +kubebuilder:printcolumn:name="Phase",type=string,JSONPath=`.status.phase`
 // +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
 type Pod struct {

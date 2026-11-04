@@ -99,17 +99,26 @@ rlark-gateway \
 
 ## rlark-controller-manager
 
-Controller manager. Reconciles Jobs, Workflows, and Domain resources.
+Controller manager. Reconciles Jobs and Domain resources.
 
 | Flag | Type | Default | Description |
 | ------ | ------ | --------- | ------------- |
 | `--server-address` | string | `https://rlark-server.rlark-system.svc:8443` | RLark server address |
 | `--db-config` | string | `""` | Database configuration file path |
-| `--leader-elect` | bool | `true` | Enable leader election for HA |
-| `--leader-election-id` | string | `rlark-controller-manager` | Leader election identity |
+| `--leader-election` | bool | `true` | Enable leader election for HA |
+| `--leader-election-key` | string | `rlark-controller-manager` | Leader election lock key (`name` or `namespace/name`) |
+| `--leader-election-id` | string | `""` | Reserved participant identity; controller-runtime currently generates its own identity |
 | `--metrics-bind-address` | string | `:8080` | Metrics endpoint bind address |
 | `--health-probe-bind-address` | string | `:8081` | Health probe endpoint bind address |
-| `--sync-workers` | int | `5` | Number of concurrent sync workers |
+| `--job-controller-workers` | int | `8` | Maximum concurrent Job reconciles |
+| `--task-controller-workers` | int | `8` | Maximum concurrent Task reconciles |
+| `--workflow-controller-workers` | int | `8` | Maximum concurrent Workflow reconciles |
+| `--node-controller-workers` | int | `8` | Maximum concurrent Node reconciles |
+| `--domain-controller-workers` | int | `8` | Maximum concurrent Domain reconciles |
+| `--job-sync-controller-workers` | int | `8` | Maximum concurrent Job database sync reconciles |
+| `--task-sync-controller-workers` | int | `8` | Maximum concurrent Task database sync reconciles |
+| `--workflow-sync-controller-workers` | int | `8` | Maximum concurrent Workflow database sync reconciles |
+| `--node-sync-controller-workers` | int | `8` | Maximum concurrent Node database sync reconciles |
 | `--kubeconfig` | string | `$KUBECONFIG` | kubeconfig file path |
 | `--master` | string | `""` | Kubernetes API server address |
 | `--in-cluster` | bool | `false` | Use in-cluster Kubernetes config |
@@ -119,7 +128,7 @@ Controller manager. Reconciles Jobs, Workflows, and Domain resources.
 | `--kube-timeout` | duration | `0` | Kubernetes client request timeout |
 
 !!! note "Single-instance deployment"
-    Set `--leader-elect=false` for single-instance deployments to avoid unnecessary election overhead.
+    Set `--leader-election=false` for single-instance deployments to avoid unnecessary election overhead.
 
 **Example:**
 
@@ -127,7 +136,7 @@ Controller manager. Reconciles Jobs, Workflows, and Domain resources.
 rlark-controller-manager \
   --server-address=https://rlark-server:8443 \
   --db-config=/etc/rlark/db-config.yaml \
-  --leader-elect=false \
+  --leader-election=false \
   --metrics-bind-address=:8080 \
   --health-probe-bind-address=:8081
 ```
@@ -150,8 +159,19 @@ Data plane agent. Deployed on each cluster or node. Manages node registration, T
 | `--leader-election-key` | string | `default/rlark-agent` | Leader election key (namespace/name) |
 | `--leader-election-id` | string | `hostname-pid` | Leader election identity |
 | `--metrics-bind-address` | string | `:8081` | Metrics endpoint bind address |
+| `--task-pull-controller-workers` | int | `8` | Maximum concurrent Task pull reconciles |
+| `--task-runtime-resync-period` | duration | `15m` | Base period for cluster-mode shared Task Runtime repair scans; intervals use 80–120% jitter, `0` disables scans, and negative values are invalid; node-only mode accepts the shared flag but does not run the scanner |
+| `--addon-pull-controller-workers` | int | `8` | Maximum concurrent Addon pull reconciles |
+| `--task-deployment-push-controller-workers` | int | `8` | Maximum concurrent Task Deployment push reconciles |
+| `--task-statefulset-push-controller-workers` | int | `8` | Maximum concurrent Task StatefulSet push reconciles |
+| `--node-push-controller-workers` | int | `8` | Maximum concurrent Node push reconciles |
+| `--pod-push-controller-workers` | int | `8` | Maximum concurrent Pod push reconciles |
+| `--pod-orphan-sweep-interval` | duration | `5m` | Interval between agent-scoped management Pod orphan sweeps |
+| `--pod-orphan-sweep-page-size` | int | `200` | Management Pods processed per orphan sweep page |
+| `--pod-stale-ttl` | duration | `15m` | Time a missing local Pod is retained as `Unknown`/stale before its management Pod is deleted |
 | `--rlark-server-ssh-address` | string | `""` | RLark server SSH address (user@host:port) |
 | `--rlark-server-ssh-host-key` | string | `""` | RLark server SSH host key |
+| `--ssh-max-connections-per-domain` | int | `4` | Upper bound for physical SSH connections per Domain; the pool adds transports as per-connection channel load grows |
 | `--image` | string | `""` | RLark network sidecar image |
 | `--enable-same-cluster-direct` | bool | `true` | Enable same-cluster direct Pod access |
 | `--enable-cross-cluster-direct` | bool | `true` | Enable cross-cluster direct Pod access |
@@ -168,6 +188,10 @@ Data plane agent. Deployed on each cluster or node. Manages node registration, T
 | `--kube-qps` | float32 | `5000` | Kubernetes client QPS |
 | `--kube-burst` | int | `8000` | Kubernetes client burst |
 | `--kube-timeout` | duration | `0` | Kubernetes client request timeout |
+
+The Pod orphan sweep is a fallback for missed local delete events. It deletes only agent-scoped mirrors whose local Pod UID or verified management Task UID is no longer current. Legacy mirrors are adopted only when the UID-named mirror, live local Pod annotations, management namespace, Task UID, and available domain all agree; ambiguous legacy objects remain untouched and require manual cleanup. A delayed delete intentionally preserves a same-name replacement, so stale mirrors may remain until the next sweep interval.
+
+The SSH pool starts with one transport per active Domain and expands in the background when a transport carries sustained channel load, up to `--ssh-max-connections-per-domain`. Requests continue on existing transports while expansion is in progress, and idle transports are reclaimed automatically.
 
 !!! tip "`--mode` values"
     - `cluster`: Cluster-level agent only, manages cluster-wide resources
@@ -197,9 +221,12 @@ Network sidecar. Runs alongside each Task Pod to provide cross-cluster Pod-to-Po
 | `--sidecar-tun-name` | string | `gnet0` | TUN device name |
 | `--sidecar-tun-mtu` | int | `1500` | TUN device MTU |
 | `--sidecar-proxy-listen` | string | `:5700` | Proxy TCP listen address |
-| `--sidecar-hosts-sync-enabled` | bool | `true` | Enable periodic hosts file sync |
-| `--sidecar-hosts-sync-interval` | duration | `30s` | Hosts sync interval |
+| `--sidecar-metrics-listen` | string | `:5790` | Metrics and pprof HTTP listen address; set to an empty value to disable |
+| `--sidecar-hosts-sync-enabled` | bool | `true` | Enable hosts file synchronization |
+| `--sidecar-hosts-sync-interval` | duration | `30s` | Fallback polling interval for NodeServers without the hosts watch API |
 | `--sidecar-hosts-file` | string | `/etc/hosts` | Hosts file path |
+
+New sidecars use the NodeServer `/watch_hosts` long-poll endpoint to receive host changes within approximately one second. If the endpoint is unavailable, they automatically fall back to the configured polling interval, preserving compatibility with older NodeServers.
 
 **Example:**
 
@@ -210,21 +237,32 @@ rlark-network-sidecar \
   --sidecar-tun-mtu=1500
 ```
 
-## sshd
+## rlark-tools sshd
 
-SSH daemon. Provides SSH access to running Task Pods. Integrated into rlark-server via `--ssh-port`.
+The `sshd` subcommand provides SSH access to running Task Pods. The agent always injects the `rlark-tools` binary at `/rlark-tools/rlark-tools`; workloads that need SSH start it with `rlark-tools sshd`.
 
 | Flag | Type | Default | Description |
 | ------ | ------ | --------- | ------------- |
 | `--port` | string | `22` | SSH listen port |
 | `--shell` | string | `""` | Shell binary path (default: /bin/bash) |
+| `--authorized-key-file` | string list | `/var/run/rlark/ssh/authorized_key` | Authorized-key files reopened for every authentication attempt; repeat the flag or provide a comma-separated list |
 
-**Environment variables:**
+The Kubernetes workload Environment Handler mounts a Task-incarnation Secret at the default path. The mount is a directory projection without `subPath`, allowing kubelet to publish Secret updates. Empty files contribute no keys; public-key authentication is disabled when every configured source is empty. Every explicitly configured file must remain readable—if any read fails, that authentication attempt fails closed rather than silently using a subset. Updates are eventually consistent with kubelet Secret projection and are not guaranteed to revoke access instantaneously. `RLARK_SSH_PUBLIC_KEY` and the user's `~/.ssh/authorized_keys` are not fallback sources; use repeated `--authorized-key-file` flags when starting `rlark-tools sshd` outside the built-in workload path.
 
-| Variable | Description |
-| ---------- | ------------- |
-| `RLARK_SSH_PUBLIC_KEY` | SSH public key for authorized_keys |
-| `RLARK_SSH_AUTHORIZED_KEYS_FILE` | Path to authorized_keys file |
+```bash
+rlark-tools sshd \
+  --authorized-key-file=/var/run/rlark/ssh/authorized_key \
+  --authorized-key-file=/etc/rlark/admin_authorized_keys
+```
+
+## Agent Task Execution Environment Variables
+
+| Variable | Default | Description |
+| ---------- | --------- | ------------- |
+| `RLARK_TENSORBOARD_IMAGE` | `rlinf/tensorboard:2.15.1-rc1` | Trusted TensorBoard image used by the Kubernetes Environment Handler. Empty values also use the default. This variable is a transitional configuration mechanism and is expected to move to validated typed Agent configuration. |
+| `RLARK_ENABLE_UNSAFE_TASK_PRIVILEGES` | `false` | Set to exactly `true` to enable the legacy unsafe Task mode. |
+
+The unsafe Task mode grants privileged access during Workload compilation to the containers and init containers already declared in the Task Pod template. It also enables host networking for tasks other than Ray heads. Containers added later by Environment binding are not covered by this legacy privilege override; each trusted Environment Handler declares its own required security context. In particular, the cross-domain network sidecar remains privileged with `NET_ADMIN` through its trusted Network profile, while RLark Tools and TensorBoard retain their own declared permissions. Enable this mode only in trusted clusters.
 
 ## Storage Provider Configuration
 
@@ -264,8 +302,8 @@ These names are the exact YAML keys accepted by `rlarkadm`.
 | `cert` | CertConfig | unset | Certificate configuration; required for the data plane |
 | `insecure-skip-tls-verify` | bool | `false` | Skip Server TLS verification |
 
-!!! note "Environment selection"
-    Choose exactly one of `kubernetes`, `docker`, or `raw`. The data plane also requires `control-plane-address` and `cert`.
+!!! warning "Runtime support"
+    The configuration schema retains `kubernetes`, `docker`, and `raw`, but the current supported workload path is Kubernetes only. Do not use Docker or Raw for current deployments; they are not recommended or supported workload paths. For a Kubernetes data plane, also provide `control-plane-address` and `cert`.
 
 ### DBConfig
 
@@ -281,6 +319,7 @@ These names are the exact YAML keys accepted by `rlarkadm`.
 
 | Field | Type | Default | Description |
 | ------- | ------ | --------- | ------------- |
+| `management-api` | string | `kcp` | Management API mode: `kcp` deploys kcp/optional etcd; `kubernetes` stores RLark resources in the target cluster and deploys neither kcp nor etcd |
 | `kubeconfig` | string | `""` | kubeconfig file path; an empty value uses the normal client-go loading rules |
 | `gateway-image` | string | `""` | Gateway image |
 | `controller-manager-image` | string | `""` | Controller Manager image |
@@ -291,10 +330,11 @@ These names are the exact YAML keys accepted by `rlarkadm`.
 | `etcd-image` | string | `""` | Built-in etcd image; built-in etcd is enabled only when set and no external address is configured |
 | `postgresql-image` | string | `""` | PostgreSQL image; PostgreSQL is enabled only when the top-level `db` block is set |
 | `ui-image` | string | `""` | UI image |
+| `image-pull-secrets` | string list | empty | Names of existing image pull Secrets in the `rlark-system` namespace, applied to all component Pods |
 | `replicas` | int | `0` (resolved to `1`) | Default component replicas |
 | `storage` | StorageConfig | unset | Default storage configuration |
-| `kcp` | ComponentConfig | unset | kcp component config |
-| `etcd` | EtcdConfig | unset | etcd component config |
+| `kcp` | ComponentConfig | unset | kcp component config. kcp is currently limited to one replica. Without `etcd`, it uses a StatefulSet and supports persistent storage; with deployed or external etcd, it uses a Deployment |
+| `etcd` | EtcdConfig | unset | etcd component config. An empty `address` deploys etcd; a non-empty value selects external etcd |
 | `postgresql` | ComponentConfig | unset | PostgreSQL component config |
 | `containerd-socket` | string | `/run/containerd/containerd.sock` | Node Agent containerd socket path |
 
@@ -302,6 +342,9 @@ These names are the exact YAML keys accepted by `rlarkadm`.
     A component-specific image such as `gateway-image` takes priority over `image`.
 
 ### DockerEnv
+
+!!! warning "Not currently supported"
+    These fields remain in the schema for compatibility, but Docker is not a supported workload path and is not recommended for deployment.
 
 | Field | Type | Description |
 | ------- | ------ | ------------- |
@@ -317,8 +360,8 @@ These names are the exact YAML keys accepted by `rlarkadm`.
 
 ### RawEnv
 
-!!! warning "Experimental"
-    Raw deployment is experimental. Prefer Kubernetes or Docker.
+!!! warning "Not currently supported"
+    These fields remain in the schema for compatibility, but Raw is not a supported workload path and is not recommended for deployment. Use Kubernetes.
 
 | Field | Type | Description |
 | ------- | ------ | ------------- |

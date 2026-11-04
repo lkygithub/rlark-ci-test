@@ -22,6 +22,8 @@ Before creating a job, identify the cluster and nodes that will run your workloa
 
 Navigate to the administrator console or the clusters page to see available clusters:
 
+> **Screenshot note:** Screenshots are from an example environment. Resource names and data are illustrative; your environment will differ.
+
 ![Cluster list](../images/ui/first-login-cluster-list.png)
 
 Note the cluster name and the labels applied to nodes in each cluster. You will need these when configuring node selectors in your job.
@@ -64,7 +66,7 @@ SSH keys allow you to connect to your Workers for debugging and inspection.
 ssh-keygen -t ed25519 -C "rlark-training"
 ```
 
-The key will be available for injection into your Workers. When selected in a job, the public key is added to `~/.ssh/authorized_keys` inside every Worker container.
+The key will be available for selection by Jobs. For built-in Ray-on-Kubernetes workloads, the selected key is delivered through a Task-owned Secret, mounted read-only at `/var/run/rlark/ssh/authorized_key` in each Worker main container, and served by an optional `rlark-tools sshd` process managed by the workload supervisor. SSH availability does not determine Task success.
 
 ### Rotate Keys
 
@@ -96,6 +98,7 @@ Network domains enable cross-cluster communication between Workers. Skip this st
 4. Click **Create**
 
 The domain will allocate virtual IPs to Workers that join it, establishing SSH tunnels for cross-cluster traffic.
+IPv4 addresses ending in `.0` or `.255` are reserved and are never allocated automatically, including within CIDR ranges larger than `/24`.
 
 !!! warning "CIDR must not overlap"
     The domain CIDR must not overlap with any cluster's pod or service CIDR, or with any other domain.
@@ -218,6 +221,5 @@ Check that checkpoints and training outputs are written to the configured storag
 ## Next Steps
 
 - [Create a Training Job](jobs.md) — detailed field reference
-- [Plan Multi-Node Jobs](workflows.md) — multi-role and heterogeneous Workers
 - [Use Storage in Jobs](storage.md) — hostPath and object storage configuration
 - [Connect via SSH](ssh-keys.md) — SSH into running Workers
