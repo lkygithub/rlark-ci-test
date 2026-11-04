@@ -1,4 +1,13 @@
-import type { CRDWorkflow, NodeEventEntry } from "./types";
+import type { NodeEventEntry } from "./types";
+import type { CRDVolume, CRDWorkflow } from "./crdModels";
+
+/**
+ * Mount kinds the create/clone form can express.
+ * `opaque` covers every other Kubernetes volume source (emptyDir, configMap,
+ * secret, projected, ...). Such volumes are preserved verbatim in `rawVolume`
+ * so a clone round-trip does not silently rewrite them.
+ */
+export type MountType = "host" | "storage" | "opaque";
 
 export type Phase =
   | "Running"
@@ -6,8 +15,12 @@ export type Phase =
   | "Succeeded"
   | "Failed"
   | "Stopped"
+  | "Stopping"
+  | "Deleting"
+  | "Unknown"
   | "Online"
-  | "Offline";
+  | "Offline"
+  | "Downgraded";
 
 export type ClusterType = "Cloud" | "Embodied";
 export type NodeKind = "CloudCompute" | "EmbodiedCompute" | "Robot";
@@ -82,6 +95,20 @@ export interface Worker {
   // Task.status.events 聚合，仅在 worker 处于 Pending 时填充，供状态
   // 徽标 "i" tooltip 展示。
   events?: NodeEventEntry[];
+  // 已被后续进展取代的历史事件（如 Pod 绑定节点之前的 FailedScheduling）。
+  // 与 events 分开存放，tooltip 以"已恢复"的弱化样式单独分区展示，既不把
+  // 历史告警误报成当前原因，也不丢失排查线索。
+  resolvedEvents?: NodeEventEntry[];
+  // Task 名称，用于获取节点 RANK
+  taskName?: string;
+}
+
+// JobTag 表示任务标签，id 为前端生成的稳定标识（用于 React key），
+// key/value 为用户输入的实际标签内容（均不超过 10 字符）。
+export interface JobTag {
+  id: string;
+  key: string;
+  value: string;
 }
 
 export interface Job {
@@ -106,10 +133,11 @@ export interface Job {
   command: string;
   env: Array<{ key: string; value: string }>;
   mounts: Array<{
-    type: "host" | "storage";
+    type: MountType;
     objectStorage: string;
     mountPath: string;
     hostPath: string;
+    rawVolume?: CRDVolume;
   }>;
   headerRole: string;
   headerWorker: string;
@@ -118,6 +146,7 @@ export interface Job {
   domain?: string;
   tensorBoardDir?: string;
   sshPublicKey?: string;
+  tags?: JobTag[];
   resources: Array<{
     role: string;
     cluster: string;
@@ -131,14 +160,13 @@ export interface Job {
     prepareScript: string;
     env: Array<{ key: string; value: string }>;
     mounts: Array<{
-      type: "host" | "storage";
+      type: MountType;
       objectStorage: string;
       mountPath: string;
       hostPath: string;
       pvcSizeGb: number;
+      rawVolume?: CRDVolume;
     }>;
-    pvcStorageMap?: Record<string, string>;
-    pvcSizeGbMap?: Record<string, number>;
   }>;
   taskStatuses: Array<{
     name: string;
@@ -160,6 +188,7 @@ export interface PodInfo {
   node: string;
   ip: string;
   message: string;
+  env?: Array<{ name: string; value: string }>;
 }
 
 export interface Domain {
@@ -170,20 +199,19 @@ export interface Domain {
   createdAt: string;
 }
 
-export type StorageProvider =
-  | "AWS S3"
-  | "Google Cloud"
-  | "Azure Blob"
-  | "MinIO"
-  | "Aliyun OSS"
-  | "Tencent COS";
+/**
+ * Provider 取值由后端 `/api/v1/storage/storageclass/provider` 维护，
+ * 前端不再枚举：旧版枚举里混入了展示名和非 S3 的后端，提交后会被下发成
+ * rclone 无法识别的配置。
+ */
+export type StorageProvider = string;
 
 export interface StorageClass {
   id: string;
   name: string;
   namespace: string;
-  provider: StorageProvider;
   clusters: string[];
+  provider: StorageProvider;
   endpoint: string;
   region: string;
   bucket: string;
@@ -197,7 +225,6 @@ export interface StorageClassCreateRequest {
   name: string;
   namespace: string;
   provider: StorageProvider;
-  clusters: string[];
   endpoint: string;
   region: string;
   bucket: string;
@@ -207,7 +234,6 @@ export interface StorageClassCreateRequest {
   description: string;
 }
 
-export const storageClasses: StorageClass[] = [];
 export const clusters: Cluster[] = [
   {
     id: "cloud-east-a",
@@ -280,6 +306,37 @@ export const clusters: Cluster[] = [
     robotUsage: 72,
     runningJobs: 2,
     description: "面向仓储巡检、导航采集和 AMR 任务的现场真机场。",
+  },
+];
+
+export const storageClasses: StorageClass[] = [
+  {
+    id: "training-datasets",
+    name: "training-datasets",
+    namespace: "default",
+    clusters: ["cloud-east-a"],
+    provider: "MinIO",
+    endpoint: "https://minio.mock.local",
+    region: "local",
+    bucket: "rlark-training",
+    accessKeyId: "mock-access-key",
+    pathStyle: true,
+    description: "用于训练数据集的 Mock 对象存储",
+    createdAt: "2026-08-01T08:00:00Z",
+  },
+  {
+    id: "evaluation-results",
+    name: "evaluation-results",
+    namespace: "default",
+    clusters: ["cloud-east-a"],
+    provider: "AWS S3",
+    endpoint: "https://s3.mock.local",
+    region: "cn-east-1",
+    bucket: "rlark-evaluation",
+    accessKeyId: "mock-access-key",
+    pathStyle: false,
+    description: "用于评估产物的 Mock 对象存储",
+    createdAt: "2026-08-02T08:00:00Z",
   },
 ];
 

@@ -5,7 +5,6 @@
 RLark uses a multi-layer resource abstraction, from underlying infrastructure to top-level embodied AI workloads:
 
 ```
-Workflow  ──── Workflow (DAG orchestration of multiple Jobs)
   │
   └── Job  ──── Training Job (a complete embodied AI task)
         │
@@ -146,7 +145,7 @@ These business fields are stored on the KCP Node CR and are preserved when the A
 
 Workspace node totals and cluster-detail node lists include usable Workers carrying an RLark category label. Legacy `rlark.io/node-category` values and unlabeled Nodes that explicitly advertise GPU or embodied-device resources remain supported. Nodes carrying a Kubernetes `master` or `control-plane` role label remain visible only in the administration workspace and are not counted or shown as workload Workers in the business workspace.
 
-CPU, memory, and GPU usage in Node details is aggregated from the Kubernetes `resources.requests` of running Workers. It represents scheduler-reserved resources, not real-time hardware utilization from metrics-server. The detail page also lists every Worker on the Node with its Job, role, IP, resource requests, and runtime phase.
+CPU, memory, and GPU usage in Node details is aggregated from the Kubernetes `resources.requests` of running Workers. It represents scheduler-reserved resources, not real-time hardware utilization from metrics-server. Disk is reported separately from kubelet Stats Summary: the Agent combines nodefs with a dedicated imagefs, while avoiding double-counting when both refer to the same filesystem. The UI shows real used, total, and available storage and warns at 90% usage or when kubelet reports `DiskPressure=True`. The detail page also lists every Worker on the Node with its Job, role, IP, resource requests, and runtime phase.
 
 ## 5. Node Cordon/Uncordon
 
@@ -175,6 +174,10 @@ Job is the **core resource directly operated by users**, representing a complete
 
 A Job contains multiple Task templates, each representing a role in training (e.g., Actor, Rollout, Env). The Controller-Manager's Job Controller creates and manages Tasks based on templates.
 
+Before dispatching any Task, the Job Controller validates every template as one desired unit. Template names must be non-empty and unique, and `runtime.kind`, workload kind/version, and carrier type/version must be non-empty open identifiers. For the current Job-to-Ray-on-Kubernetes path, the controller additionally requires a Pod template containing exactly one regular container named `main`. This is an implementation capability check, not a universal Task CRD constraint: the CRD permits omitting `workload.template`, and other Workload Adapter/Runtime combinations define their own requirements. If any template is invalid, the controller creates none of them and reports `Validated=False` on the Job with the failing field path. It does not silently skip individual templates. The Agent independently validates the selected implementation before Runtime effects. The Job Controller does not enforce Ray head count or head replica topology.
+
+The Web UI keeps its existing Job and Workflow creation, editing, cloning, lifecycle, storage, and Worker interactions, but serializes them directly with the generated CRD contracts. New requests use `runtime`, `workload`, `carrier`, `placement`, and `environments`; lifecycle actions write `spec.suspended`; and storage selections become Kubernetes-native Pod template volumes. Volume types the form cannot express, such as `emptyDir`, `configMap`, or `secret`, are displayed read-only and preserved from the source definition when a Job is edited or cloned. The UI does not emit the removed `agentType`, nested `kubernetes.workload`, `stopped`, `pvcStorageMap`, or `pvcSizeGbMap` forms.
+
 ### Key Properties
 
 ```yaml
@@ -186,34 +189,54 @@ metadata:
     framework: ppo
     env: cartpole
 spec:
-  domain: ppo-experiment-1    # Owning Domain
+  domain: ppo-experiment-1    # Virtual network joined by generated Tasks
   tasks:
     - name: actor-head
       head: true               # Whether this is the head node
       role: Actor              # Role: Actor/Rollout/Env
-      agentType: Kubernetes    # Agent type: Kubernetes/Docker/Raw
-      nodeSelector:            # Node selector
-        nvidia.com/gpu: "true"
-      kubernetes:
-        workload:
-          kind: Deployment     # Workload type
-          replicas: 1
-          template:
-            spec:
-              containers:
-                - name: trainer
-                  image: pytorch/pytorch:2.3.0
-                  resources:
-                    limits:
-                      nvidia.com/gpu: "1"
+      placement:
+        nodeSelector:
+          nvidia.com/gpu: "true"
+      runtime:
+        kind: Kubernetes
+      workload:
+        kind: rlinf.io/ray
+        version: v1
+        parameters:
+          role: head
+          prepare:
+            inline: pip install -r requirements.txt
+          run:
+            inline: python main.py --role=head
+        carrier:
+          type: rlinf.io/kubernetes-deployment
+          version: v1
+          parameters:
+            replicas: 1
+        template:
+          spec:
+            containers:
+              - name: main
+                image: pytorch/pytorch:2.3.0
+                resources:
+                  limits:
+                    nvidia.com/gpu: "1"
     - name: rollout
       role: Rollout
-      agentType: Kubernetes
-      kubernetes:
-        workload:
-          kind: StatefulSet
-          replicas: 2
-          template: ...
+      runtime:
+        kind: Kubernetes
+      workload:
+        kind: rlinf.io/ray
+        version: v1
+        parameters:
+          role: worker
+          headTaskName: ppo-cartpole-v1-actor-head
+        carrier:
+          type: rlinf.io/kubernetes-statefulset
+          version: v1
+          parameters:
+            replicas: 2
+        template: ...
 status:
   phase: Running               # Pending/Running/Succeeded/Failed
   startTime: "2026-06-25T03:20:00Z"
@@ -228,11 +251,16 @@ status:
 
 ```
 (empty) ──init──▶ Pending ──tasks-running──▶ Running
-                              │                  │
-                              │ any-task-failed  │ all-tasks-succeeded
-                              ▼                  ▼
-                          Failed            Succeeded
+                     │             │              │
+                     │ stop        │ stop         │ all-tasks-succeeded
+                     ▼             ▼              ▼
+                  Stopping ──cleanup-complete──▶ Stopped    Succeeded
+                     ▲
+                     │ failed-run stop/restart cleanup
+                   Failed
 ```
+
+`Stopping` is transitional: RLark deletes the child Tasks and waits for their Workers to be cleaned up. Referenced external PVCs are not managed by RLark. Pod-scoped PVCs created from `ephemeral.volumeClaimTemplate` remain governed by Kubernetes and are deleted with their Pods. Stopping and then starting a terminal Job creates new Tasks and Workers, but it does not by itself guarantee empty persistent storage.
 
 ### Relationship with Task
 
@@ -243,23 +271,28 @@ After Job Controller reconciliation:
 
 ## 7. Job Stop/Start
 
-Jobs can be stopped and restarted via the `stopped` field in the Job spec, providing manual lifecycle control over running workloads.
+Jobs can be suspended and restarted via the `suspended` field in the Job spec, providing manual lifecycle control over running workloads.
 
 ### Concept
 
-Setting `spec.stopped: true` on a Job causes the Job controller to stop all associated workloads (Pods, Deployments, StatefulSets) without deleting the Job resource. Setting it back to `false` (or removing the field) restarts the workloads.
+Setting `spec.suspended: true` starts an orderly stop without deleting the Job resource. The Job is shown as `Stopping` while RLark waits for the Job and all child Tasks and Workers to stop, and then becomes `Stopped`. After `ArchiveTTL` (default 5 minutes), the Archive Controller deletes the Job CR from kcp (archive), while the persistence backend (PostgreSQL or Kubernetes Secret, test mode) retains the complete Job configuration and final status. Starting the Job later restores it from the persistence backend with the same name and spec.
 
 ### How it works
 
-1. **Stop**: When `spec.stopped` is set to `true`, the Job controller detects the change and deletes the underlying Kubernetes workloads (Deployments/StatefulSets) while keeping the Job CR.
-2. **Restart**: When `spec.stopped` is removed or set to `false`, the Job controller recreates the workloads from the Task templates.
-3. **State preservation**: The Job's phase and status fields are preserved during stop/restart cycles.
+1. **Stop**: RLark deletes the child Task CRs, waits for their underlying workloads to be cleaned up, and retains the Job CR and configuration. Referenced external PVCs remain outside RLark management. Pod-scoped ephemeral PVCs are deleted with their Pods.
+2. **Archive**: After `ArchiveTTL`, the Archive Controller deletes the Job CR from kcp. The persistence backend retains the complete Job record (spec + status). Deleting the Job CR frees etcd and controller memory; business records remain queryable and restorable.
+3. **Start**: `POST /jobs/:name/start` is the unified start endpoint. If the Job is active (KCP has the CR), it patches `spec.suspended=false` directly. If archived (KCP CR was removed after stop), it restores the Job from the persistence backend with the same name and spec, and sets `spec.suspended=false`. The new CR has a new Kubernetes UID but the same business identity (name).
+4. **Restart**: The Job controller treats the restart annotation as a Job-level operation identifier. It deletes the current Task objects, waits for each Agent-owned cleanup finalizer to complete Runtime cleanup, and then creates new Task objects with new Kubernetes UIDs from the templates. The Agent does not interpret the restart annotation itself. Restart leaves referenced external PVCs untouched but replaces Pod-scoped ephemeral PVCs. `Succeeded` and `Failed` Jobs both start a new run from their templates.
+5. **Delete**: Deleting a Job first performs the stop-and-wait sequence, then removes the Job and child Tasks. Referenced external PVCs and hostPath data are not deleted by RLark; Pod-scoped ephemeral PVCs are deleted with their Pods. The persistence backend record is also deleted (PostgreSQL row or Secret).
 
 ### Key Features
 
-- **Non-destructive**: Stopping a Job does not delete the Job CR or its Tasks
-- **Persistent state**: PVCs and other persistent resources are not affected by stopping
-- **Web UI integration**: The Web UI provides one-click Stop/Start buttons in the Job list
+- **External persistent storage**: Stop, restart, and delete do not manage PVCs referenced through `persistentVolumeClaim.claimName`; administrators own their lifecycle.
+- **Existing claim references**: A new Task can explicitly reference the same existing PVC and data. Pod-scoped `ephemeral.volumeClaimTemplate` claims are different: Kubernetes creates and deletes them with each Pod.
+- **Unified start endpoint**: `POST /jobs/:name/start` works for both active and archived Jobs. The frontend calls this endpoint without knowing whether the Job is in kcp or archived.
+- **Web UI integration**: The Web UI provides Stop, Start, Restart, and Delete actions with lifecycle-aware availability
+
+When a Workflow is stopped, RLark deletes all Jobs from the current run, including completed Jobs. Resuming the Workflow creates a new run from the beginning of the DAG; completion state from the previous run is not reused.
 
 ## 8. Task
 
@@ -281,20 +314,34 @@ metadata:
     rlinf.io/job: ppo-cartpole-v1
 spec:
   role: Actor
-  agentType: Kubernetes
-  domain: ppo-experiment-1
-  nodeSelector:
-    nvidia.com/gpu: "true"
-  kubernetes:
-    workload:
-      kind: Deployment
-      replicas: 1
-      template:
-        namespace: default
-        spec:
-          containers:
-            - name: trainer
-              image: pytorch/pytorch:2.3.0
+  placement:
+    nodeSelector:
+      nvidia.com/gpu: "true"
+  runtime:
+    kind: Kubernetes
+  workload:
+    kind: rlinf.io/ray
+    version: v1
+    parameters:
+      role: head
+    carrier:
+      type: rlinf.io/kubernetes-deployment
+      version: v1
+      parameters:
+        replicas: 1
+    template:
+      metadata:
+        labels:
+          app: ppo-trainer
+      spec:
+        containers:
+          - name: trainer
+            image: pytorch/pytorch:2.3.0
+  environments:
+    - type: rlinf.io/network
+      version: v1
+      parameters:
+        domain: ppo-experiment-1
 status:
   phase: Running
   observedNodes: ["gpu-node-01"]
@@ -313,13 +360,15 @@ status:
 | `Rollout` | Environment interaction, collect trajectories | Game environment simulator |
 | `Env` | Environment/auxiliary service | Data preprocessing, parameter server |
 
-### Agent Types
+### Runtime Types
 
 | Type | Description | Use Case |
 |------|-------------|----------|
-| `Kubernetes` | Create K8s native workloads (Deployment/DaemonSet/StatefulSet) | GPU clusters for large-scale training |
-| `Docker` | Manage containers via Docker API (TODO) | Edge devices (robot arm, sensor, camera) |
-| `Raw` | Download artifact and execute binary directly (TODO) | Bare metal servers, embedded devices |
+| `Kubernetes` | Run RLark/Ray Tasks using Deployment or StatefulSet as the Kubernetes carrier | GPU clusters for large-scale training |
+| `Docker` | Planned provider that lowers the common Pod template to Docker containers; not implemented or advertised | Edge devices (robot arm, sensor, camera) |
+| `Raw` | Planned provider that lowers the common Pod template to host processes; not implemented or advertised | Bare metal servers, embedded devices |
+
+`runtime.kind`, `workload.kind`, and `workload.carrier.type` are open identifiers rather than CRD enums. Openness permits provider extension without replacing the Task schema; it does not imply support. The Agent must resolve a registered Provider and Adapter and validate capabilities before any external effect. Workload semantics use `kind`, `version`, and `parameters`; the carrier independently uses `type`, `version`, and `parameters`. `environments` is an ordered list and may contain the same environment type more than once with different parameters.
 
 **Embodied AI Mapping**:
 
@@ -339,60 +388,7 @@ graph LR
     Rollout <-->|"obs"| Camera
 ```
 
-## 9. Workflow
-
-Workflow is **DAG orchestration of multiple Jobs**, supporting training pipelines with dependencies.
-
-### Concept
-
-A Workflow contains multiple Job templates, each declaring upstream dependencies via `dependencies`. The Workflow Controller schedules Jobs in topological order: upstream Jobs must succeed before dependent Jobs can start.
-
-### Key Properties
-
-```yaml
-apiVersion: rlinf.io/v1alpha1
-kind: Workflow
-metadata:
-  name: training-pipeline-v1
-spec:
-  jobTemplates:
-    - name: prepare-data
-      dependencies: []            # No dependencies, start immediately
-      spec:
-        tasks:
-          - name: prep
-            role: Env
-            agentType: Kubernetes
-            kubernetes: ...
-    - name: train
-      dependencies: ["prepare-data"]  # Start after prepare-data succeeds
-      spec:
-        tasks:
-          - name: actor-head
-            head: true
-            role: Actor
-            agentType: Kubernetes
-            kubernetes: ...
-    - name: evaluate
-      dependencies: ["train"]
-      spec:
-        tasks: ...
-```
-
-### Typical Pipeline
-
-```
-Data Preparation ──▶ Model Training ──▶ Model Evaluation
-    prepare             train             evaluate
-```
-
-### State Machine
-
-Similar to Job, Workflow state is determined by the aggregate of its Jobs' states:
-- All Jobs succeed → Workflow Succeeded
-- Any Job fails → Workflow Failed
-
-## 10. Pod
+## 9. Pod
 
 Pod CR is the **control plane mirror** of data plane Pods, reported by the Agent's Push controller.
 
@@ -406,19 +402,18 @@ When a Pod is created in the data plane cluster, the Agent's Pod Push controller
 - **SSH Lookup**: Server's PodCache quickly locates Pod's Agent based on Pod CR
 - **Log Queries**: Gateway finds Pod's Agent via Pod CR and forwards log requests
 
-## 11. Resource Relationship Summary
+## 9. Resource Relationship Summary
 
 ```mermaid
 graph TD
-    wf["Workflow<br/>(Cluster scoped)<br/>DAG Pipeline"] -->|"1:N"| job["Job<br/>(Cluster scoped)<br/>Training Job"]
     job -->|"1:N"| task["Task<br/>(Namespaced: agent-{id})<br/>Exec Unit"]
-    task -->|"1:1 (K8s workload)"| workload["Deployment /<br/>DaemonSet /<br/>StatefulSet<br/>(Local k8s cluster)"]
+    task -->|"1:1 (K8s workload)"| workload["Deployment /<br/>StatefulSet<br/>(Local k8s cluster)"]
     workload -->|"1:N"| pod["Pod + Sidecar<br/>Agent Push reports → Pod CR"]
     domain["Domain<br/>(Cluster scoped)<br/>Network Isolation"] -->|"1:N (one per cluster)"| dp["DomainPeer<br/>(Namespaced: agent-{id})<br/>Pod Routing Table"]
     node["Node<br/>(Namespaced)<br/>Compute Node"]
 ```
 
-## 12. Naming Conventions
+## 9. Naming Conventions
 
 | Namespace Prefix | Meaning | Example |
 |-----------------|---------|---------|
@@ -427,9 +422,9 @@ graph TD
 | Label `rlinf.io/job` | Pod/Task's owning Job | `rlinf.io/job=ppo-cartpole-v1` |
 | Annotation `rlinf.io/ray-role` | Ray cluster role | `head` / `worker` |
 
-## 13. Ray Cluster Integration
+## 9. Ray Cluster Integration
 
-RLark supports declarative Ray cluster creation via Task annotations:
+Ray configuration is carried by `spec.workload.parameters` for the `rlinf.io/ray` workload at version `v1`. A worker uses `parameters.headTaskName` to reference the concrete head Task in the same namespace. The Job controller also writes the derived `parameters.totalNodes` and `parameters.nodeRankStart` values used by the launcher. The implementation must verify the trusted Job relationship rather than trusting a matching name alone. Existing Ray annotations remain implementation compatibility metadata and must not be used as the canonical new Task declaration:
 
 ```yaml
 annotations:
@@ -438,49 +433,70 @@ annotations:
   rlinf.io/ray-head-task-name: "actor-head"  # worker only
 ```
 
-**Auto-initialization process**:
+**Process assembly and startup**:
 
-1. Agent's Pull controller detects Ray annotations
-2. Creates ConfigMap mounting init scripts (`ray_head.sh` / `ray_worker.sh` / `ray_check.py`)
-3. Modifies container startup command to `bash ray_head.sh` (or `ray_worker.sh`)
-4. Injects environment variables (`RLARK_RAY_PORT`, `RLARK_HEAD_ADDRESS`, etc.)
-5. Head node creates a Service (exposing 6379/8265/8080)
-6. Worker nodes wait for Head to be ready, then join the cluster
+1. Agent's Pull controller resolves `rlinf.io/ray/v1` and strictly decodes `role`, `headTaskName`, `prepare.inline`, and `run.inline`
+2. The Workload Adapter declares only `ray-launcher` as the required primary process, while the SSH Environment Handler declares `sshd` as an optional auxiliary process. Tools installation and supervision are mandatory Runtime facilities and require no Task or Adapter declaration. If a workload unit has no declared primary, the assembler supplies `/rlark-tools/rlark-tools idle`. An SSH failure does not stop the Task: an initial start failure leaves SSH unavailable, while a non-zero exit receives bounded restart attempts; a failed restart or exhausted attempts also leave SSH unavailable. Network and TensorBoard remain independently managed Environment features.
+3. The Binder's Runtime workload assembler installs `rlark-tools`, writes a Task-incarnation-owned supervisor ConfigMap, and changes the main container entrypoint to `rlark-tools supervisor`. The supervisor runs `ray-launcher` and `sshd` as separate OS child processes; RLark-owned Ray orchestration no longer uses mounted shell scripts.
+4. The Adapter consumes the canonical workload parameters and injects the launcher environment, including total-node and rank metadata plus the Head Pod IP. In particular, a worker's `parameters.headTaskName` becomes the same-namespace Head Service DNS name without networking, or `<headTaskName>-0.rlark-domain` when a Network Environment is declared. In the latter case the Adapter also enables the launcher's built-in network barrier: before the prepare script, Head waits for its own `.rlark-domain` name and Worker waits for the Head virtual-domain name to resolve. Cancellation stops the wait. This Go implementation replaces the inactive external `WAIT_NETWORK_SCRIPT` compatibility hook. Compatibility annotations are not the source of these values.
+5. Head node creates a Task-incarnation-owned Service (exposing 6379/8265/8080). Drift in RLark-owned Service fields uses delete-and-recreate replacement, which can briefly interrupt access and change API-server-assigned addresses or ports; Kubernetes defaults and allocations alone do not trigger replacement.
+6. `ray-launcher` verifies that the configured Ray CLI is executable before issuing Ray commands. Worker nodes then resolve and wait for Head before joining the cluster. The head waits for the declared node count and runs `ray status`; the cluster readiness check remains non-fatal for compatibility, while a failed `ray status` is fatal.
+
+Supervisor configuration changes update a Pod-template revision annotation and therefore roll out the workload. SSH public-key rotation updates only the separately projected Secret after the initial migration rollout; raw key bytes are not stored in the supervisor ConfigMap.
+
+Shutdown is primary-first. On Pod termination, the supervisor asks `ray-launcher` to stop and waits for its actual exit without starting its own timeout; Kubernetes' Pod termination grace remains the final bound if the primary hangs. Only after the primary exits does the supervisor terminate `sshd` and other declared auxiliaries, allowing them up to 15 seconds before force-killing any remainder.
+
+Ray's platform ports remain fixed compatibility contracts: cluster 6379, dashboard 8265, metrics 8080, head SSH 22, and worker SSH 2222. Task/Job configuration controls roles, replicas (from which total nodes and rank ranges are derived), the head Task, domain, `prepare.inline`, and `run.inline`. A workload image may continue to set `RAY_TEMP_DIR` and the existing `RAY_health_check_*` / `RAY_num_heartbeats_timeout` environment variables. Retry counts and ports are not currently Task-level settings. The standalone `ray-launcher` command also accepts Ray, Bash, and Python binary flags, but the built-in Adapter uses their defaults.
 
 ## 14. Object Storage & PVCs
 
-RLark supports mounting persistent volumes to training tasks via `pvcStorageMap` in the Task specification.
+RLark mounts remote storage to training tasks with Kubernetes generic ephemeral volumes.
 
 ### Concept
 
-When a Task specifies `pvcStorageMap`, the Agent's Pull controller automatically creates PVCs with the specified StorageClass before creating the workload, and cleans them up when the task is deleted.
+Each Pod gets a PVC created from its volume's `ephemeral.volumeClaimTemplate`. Kubernetes owns this PVC and removes it with the Pod.
 
 ### Configuration
 
 ```yaml
-kubernetes:
-  workload:
-    pvcStorageMap:
-      my-data-pvc: "ceph-rbd"    # PVC name → StorageClass name
+workload:
+  template:
+    spec:
+      volumes:
+        - name: data
+          ephemeral:
+            volumeClaimTemplate:
+              spec:
+                accessModes: [ReadWriteOnce]
+                storageClassName: ceph-rbd
+                resources:
+                  requests:
+                    storage: 10Gi
 ```
 
 ### How it works
 
-1. Agent queries StorageClasses via `GET /api/v1/storage/storageclass?clusters=<agent-id>`
-2. When creating a workload, Agent calls `ensurePVCs` to create PVCs with the specified StorageClass
-3. PVCs are created in the target namespace, scoped to the task
-4. On task deletion, PVCs are cleaned up automatically
+1. The frontend retrieves RLark-managed StorageClass declarations through `GET /api/v1/storage/storageclass?clusters=<agent-id>`; this filters configured target clusters and does not query the Agent.
+2. The selected class and requested size are written into `volumeClaimTemplate`.
+3. After the declaration is delivered, Kubernetes creates one PVC for each Pod and binds it through the selected StorageClass.
+4. Kubernetes removes the PVC when its Pod is deleted.
+
+A declaration in the list represents configured distribution intent. PVC provisioning also requires successful asynchronous delivery and a working rclone CSI driver in the target cluster.
+
+`pvcStorageMap` and `pvcSizeGbMap` are not part of the canonical Task schema. Use `ephemeral.volumeClaimTemplate`; upgrading deployments may require old Tasks or Jobs to be deleted and recreated.
 
 ## 15. User Authentication
 
-RLark provides login and role-based navigation for the Web UI. The current `admin` and `user` distinction is a **frontend gate only**: it selects the admin or platform console, but the Gateway does not enforce these roles as API authorization. Do not treat the UI role as a security boundary or expose the Gateway to untrusted clients on that basis.
+RLark authenticates Web UI and API requests with short-lived JWT access tokens. The verified `admin` and `user` roles enforce coarse-grained API authorization: platform operations are available to both roles, while control-plane configuration and credential management require `admin`.
 
 ### Authentication Flow
 
-1. During deployment, `rlarkadm` generates random passwords and stores them in a KCP Secret (`rlark-ui-auth`)
+1. During deployment, `rlarkadm` generates random passwords and a JWT signing key and stores them in a KCP Secret (`rlark-ui-auth`)
 2. Web UI sends `POST /api/v1/auth/login` with username and password
-3. Gateway validates against the KCP Secret and returns the role
-4. Frontend stores the login result in `sessionStorage` and uses the selected console route as the role gate
+3. Gateway validates against the Secret and returns an HS256 JWT containing the subject, role, issue time, and expiration time
+4. The frontend stores the token in `sessionStorage` and sends it as `Authorization: Bearer <token>` on API requests; the Gateway verifies it before dispatching protected routes
+
+`user` can manage Jobs, Workflows, Tasks, Pods, terminal sessions, SSH keys, and storage objects, and read cluster, node, Domain, image, StorageClass, and system configuration data. Node and Domain mutations, certificates, image registries, system configuration updates, StorageClass management, and Addon management require `admin`. This is role-level authorization; per-user resource ownership, including SSH key ownership, is not yet enforced.
 
 ## 16. Addon (Component Management)
 
@@ -611,7 +627,7 @@ Browser ──HTTP──▶ Gateway ──proxy to Server──▶ Server ──
 
 ### How it works
 
-1. Agent's Ray init script starts TensorBoard alongside the Ray head process
+1. The `rlinf.io/tensorboard/v1` Environment Handler declares TensorBoard as a restartable Kubernetes sidecar when `parameters.logDir` is non-empty; it is independent of the Ray supervisor processes
 2. Gateway injects a `tensorBoardProxy` field into Task status responses, pointing to the proxy URL
 3. User clicks the TensorBoard link in the Web UI
 4. Browser sends a request to `GET /api/v1/rlinf.io/v1alpha1/tasks/{name}/tensorboard/`
@@ -624,11 +640,19 @@ Browser ──HTTP──▶ Gateway ──proxy to Server──▶ Server ──
 - **No port exposure**: TensorBoard port 6006 stays internal to the Pod
 - **Automatic proxy injection**: Task listing/GET responses include the `tensorBoardProxy` URL
 - **HTML rewriting**: Proxied TensorBoard pages are rewritten so all relative and absolute paths work correctly
-- **Ray integration**: TensorBoard auto-starts for Ray tasks with the appropriate configuration
+- **Explicit integration**: TensorBoard starts when the Task requests the Environment below; it is not managed by `rlark-tools supervisor`
+
+```yaml
+environments:
+  - type: rlinf.io/tensorboard
+    version: v1
+    parameters:
+      logDir: /data/tensorboard
+```
 
 ## 20. SSH Key Management
 
-SSH Key Management allows users to upload SSH public keys through the API or Web UI. A registered key authenticates its named user to the RLark SSH bastion. A key explicitly selected in a Job is also copied to that Job's `sshPublicKey` field for workload injection.
+SSH Key Management allows users to upload SSH public keys through the API or Web UI. A registered key authenticates its named user to the RLark SSH bastion. Workload SSH is declared by `rlinf.io/ssh/v1`; its `parameters.authorizedKeys` array is Task-scoped desired-state material.
 
 ### Concept
 
@@ -643,7 +667,7 @@ Keys are stored by username in a Kubernetes Secret (`rlark-ssh-user-keys`) in th
 ### Key Features
 
 - **Web UI management**: A dedicated SSH Keys page in the Web UI for viewing and managing keys
-- **Explicit workload injection**: Individual Jobs and Tasks can specify an `sshPublicKey` field; the UI copies the selected registered key into a new Job
+- **Explicit workload injection**: a workload requests `rlinf.io/ssh/v1` with an `authorizedKeys` array. Authorized keys are public authentication configuration and may be retained in the Agent's local execution snapshot. They are omitted from portable plans and remote workload transport and must not be copied into status, logs, errors, revisions, or operation keys.
 - **Conflict detection**: Duplicate keys are detected and rejected with a 409 response
 - **Retry on conflict**: The API automatically retries on write conflicts (up to 5 attempts)
 - **Key validation**: Public keys are validated using `golang.org/x/crypto/ssh` before storage

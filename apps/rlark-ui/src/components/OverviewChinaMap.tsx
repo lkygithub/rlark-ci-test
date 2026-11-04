@@ -110,13 +110,13 @@ function parseNodeLocations(nodes: CRDNode[]): {
   const totalByCat = { cloud: 0, edge: 0, robot: 0 };
 
   for (const node of nodes) {
-    const city = getNodeLocation(node);
-    if (!city) continue;
-
     const categories = getNodeCategories(node).filter(
       (category) => category !== "unknown",
     );
     categories.forEach((category) => totalByCat[category]++);
+
+    const city = getNodeLocation(node);
+    if (!city) continue;
 
     const ns = node.metadata.namespace ?? "";
     if (!cityMap.has(city)) {
@@ -479,7 +479,7 @@ export function OverviewChinaMap({
                 </g>
               )}
               <g className="china-city-pins">
-                {cities.map((city, index) => {
+                {cities.map((city) => {
                   const point = project(city.lon, city.lat);
                   return (
                     <g

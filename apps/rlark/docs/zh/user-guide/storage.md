@@ -2,12 +2,14 @@
 
 ## 存储类型
 
-RLark 支持两种存储类型：
+Job 编辑器可创建两种存储：主机目录和 PVC 存储挂载。通过 API 提交的 Job 还可以使用其他 Kubernetes 原生 PodTemplate volume，编辑器对这类卷只做展示。其生命周期由 Kubernetes 原生 PodTemplate volume 形态决定：
 
 | 类型 | 适用场景 | 生命周期 |
 |------|----------|----------|
 | 主机目录 | 数据已在节点上，高 I/O | 任务生命周期操作不删除数据 |
-| 对象存储（PVC） | 单次任务运行内共享数据 | 停止/重启/删除会删除任务 PVC；启动/重启会新建空 PVC |
+| 对象存储（Pod 级临时 PVC） | 当前 Web UI 为 PVC 挂载写入的形态 | Kubernetes 随 Pod 创建和删除 PVC |
+| 已有持久 PVC 引用 | Task volume 使用 `persistentVolumeClaim.claimName` | RLark 不创建或删除该 PVC；生命周期由管理员管理 |
+| 其他 Kubernetes 原生卷（`emptyDir`、`configMap`、`secret` 等） | 通过 API 提交，Job 编辑器仅展示 | 由卷类型本身决定；编辑或复制任务时 RLark 原样写回其原始定义 |
 
 ## 主机目录
 
@@ -17,10 +19,21 @@ RLark 支持两种存储类型：
 
 ## 对象存储
 
-- 使用 Kubernetes StorageClass 和 PVC
-- PVC 自动创建，请求 10Gi
-- 先选择集群，可用 StorageClass 才会出现在下拉框中
-- 多个 Worker 可共享同一 PVC（注意 RWO 访问模式限制）
+- 使用 Kubernetes 通用临时卷和 RLark 管理的 StorageClass
+- 当前 Web UI 将 PVC 挂载写为 `ephemeral.volumeClaimTemplate`，因此新建或编辑的 Job 使用 Pod 级临时 PVC
+- 每个 PVC 挂载默认申请 10Gi，可配置范围为 1–200Gi
+- 先选择集群；下拉框会列出已配置为该集群目标的 StorageClass 声明
+- 每个 Worker Pod 使用独立的 PVC
+
+## 管理存储类
+
+进入 **存储** 页面可查看对象存储配置、目标集群、提供商和存储桶。创建或更新存储类会在控制面保存其声明，随后将生成的 rclone CSI StorageClass 和 Secret 异步分发到目标集群。为 Worker 配置 PVC 挂载前，需要先创建对应的存储类并等待下发完成。
+
+使用存储类前，请确认目标集群已安装 rclone CSI 驱动，且可以访问对象存储服务。若 PVC 一直处于 `Pending`，请检查资源分发状态、驱动、凭据和网络连通性。
+
+> **截图说明：** 截图来自示例环境，资源名称和数据仅供说明，实际环境会有所不同。
+
+![存储管理](../../images/ui/storage-file-browser.png)
 
 ## 在训练任务中使用存储
 
@@ -30,8 +43,6 @@ RLark 支持两种存储类型：
 3. 输入容器挂载路径
 4. 训练代码读写挂载路径
 
-![存储文件浏览器](../../images/ui/storage-file-browser.png)
-
 ## 检查读写
 
 验证存储链路：
@@ -39,13 +50,18 @@ RLark 支持两种存储类型：
 2. 容器挂载正确
 3. 应用可读取输入数据
 4. 应用可写入输出数据
-5. 停止或重启任务前，将需保留的 PVC 输出复制到其他位置
+5. 对当前 Web UI 创建的 Job，应将 PVC 视为 Pod 级临时存储，并在停止或重启前复制需要保留的输出。请检查 `spec.workload.template.spec.volumes`：`ephemeral.volumeClaimTemplate` 是 Pod 级临时卷，`persistentVolumeClaim.claimName` 引用已有且由外部管理的 PVC
 
 ## 生命周期
 
-- 停止或重启：删除任务 PVC，保留 hostPath 数据
-- 启动或重启：新建空的任务 PVC
-- 删除：删除任务 PVC，保留 hostPath 数据
+- 已有 `persistentVolumeClaim`：RLark 不创建、收养、修改或删除引用的 PVC；其生命周期和数据保留不属于 Task 管理范围
+- Pod 级 `ephemeral.volumeClaimTemplate`：删除 Worker Pod 时删除对应临时 PVC，新 Pod 获得新 PVC
+- hostPath：生命周期操作不删除节点数据
+- 其他 Kubernetes 原生卷：Job 编辑器无法创建或修改；编辑或复制任务时会原样写回其原始定义，因此生命周期仍由该卷类型本身决定
+
+已有 PVC 引用必须填写 `claimName`，且该 claim 必须已存在于 workload namespace。挂载或绑定失败由 Kubernetes 通过 workload 和 Pod 状态报告。删除被引用的 PVC 属于外部管理操作；删除前应确认没有 workload 使用它，并考虑绑定 PV 的 reclaim policy。
+
+`pvcStorageMap` 和 `pvcSizeGbMap` 不属于 canonical Task Schema。当前 Web UI 和 Kubernetes 原生示例写入 `ephemeral.volumeClaimTemplate`；破坏性升级时必须替换依赖已移除字段的旧资源。
 
 ## API 等效操作
 

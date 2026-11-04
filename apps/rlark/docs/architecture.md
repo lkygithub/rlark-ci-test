@@ -74,7 +74,6 @@ Controller-Manager runs in the control plane, coordinating the lifecycle of high
 | Domain Controller   | Manage Domain CRD, allocate IP subnets, sign DomainPeer certificates         | [domain/](https://github.com/RLinf/RLark/tree/main/apps/rlark/pkg/controllermanager/domain/)     |
 | Task Controller     | Watch Task status, sync to corresponding Job                                 | [task/](https://github.com/RLinf/RLark/tree/main/apps/rlark/pkg/controllermanager/task/)         |
 | Node Controller     | Watch Node registration/offline events                                       | [node/](https://github.com/RLinf/RLark/tree/main/apps/rlark/pkg/controllermanager/node/)         |
-| Workflow Controller | DAG orchestration, schedule Jobs in dependency order                         | [workflow/](https://github.com/RLinf/RLark/tree/main/apps/rlark/pkg/controllermanager/workflow/) |
 
 **Job State Machine**:
 
@@ -123,20 +122,24 @@ graph LR
 **Pull Controller** (Task example):
 
 1. Watch control plane Task CR create/update/delete events (with finalizer protection)
-2. Build corresponding K8s resources (Deployment/DaemonSet/StatefulSet) from Task.Spec
-3. Detect ResourceVersion changes to decide whether to update existing workloads
-4. Auto-inject Network Sidecar container and Ray initialization scripts
-5. On deletion, clean up local resources via finalizer then remove finalizer
+2. Decode the Task into an execution snapshot and select the Kubernetes Runtime plus the Ray-oriented Kubernetes Workload Adapter; the carrier declaration selects Deployment or StatefulSet
+3. Compile a declarative object plan whose Adapter selects ownership, lifecycle, owned fields, update mode, and a typed Runtime reconcile profile; ask the Adapter for bounded identity inventory, read that Runtime snapshot, and compute the required operations
+4. Execute ordered, idempotent Apply/Delete operations; a `Replace` object is UID-fenced and deleted before a later reconciliation recreates it, and running Tasks are reconciled again when their desired generation changes
+5. Apply Workload-owned Pod-template mutations such as Ray bootstrap during compilation, then resolve explicit Environment requirements and bind the cross-domain network sidecar only to the Adapter-authorized PodTemplate target
+6. For stop, restart, or deletion, use the Workload implementation frozen in the claim to derive identity inventory without recompiling the current Spec, and keep the finalizer until owned primary workloads are confirmed absent; for upgrade compatibility only, a deleting pre-freeze claim with both selector fields absent may decode and registration-check the selector from the still-finalized Task without compiling resources or persisting that selector; an undecodable claimed Task preserves its workload and waits for recovery
 
 **Push Controller**:
 
 1. Watch local K8s resource changes (Pod create/delete/status changes)
-2. Sync state to corresponding control plane Pod CR
-3. Periodically report Node info (addresses, capacity, GPU count)
+2. Observe the changed workload root, its owned Pods, and Pod events without running a full desired-plan diff
+3. Sync workload state to the corresponding control plane Task and Pod CRs
+4. Periodically report Node info (addresses, capacity, GPU count)
+
+The in-process Kubernetes implementation is the only production workload path. Versioned Runtime Provider and Workload Adapter gRPC contracts exist for future external implementations, but the default Task controller does not select remote implementations. A selected Workload Adapter receives the complete Workload configuration and owns all Workload-specific optional features; there is no separate Workload Extension service. See [Runtime, Workload, and Environment Boundary](developer-guide/runtime-provider.md).
 
 ### 4.2 Network Sidecar
 
-Sidecar is injected as a container into each training Pod, enabling cross-cluster Pod-to-Pod network communication.
+For a Task with a domain, the Workload Adapter declares a cross-domain Environment requirement and an exact PodTemplate target. A trusted Kubernetes Environment Handler always injects the sidecar as a restartable init container. During final Runtime lowering, Kubernetes preserves that representation when `KUBERNETES_SUPPORT_SIDECAR_FEATURE` is not `false`; when it is `false`, every restartable init container in an Adapter-declared Pod or PodTemplate unit is converted into a regular container. Missing trusted image configuration or conflicting container/volume declarations fail closed before Runtime effects.
 
 **Key File**: [sidecar/server.go](https://github.com/RLinf/RLark/tree/main/apps/rlark/pkg/network/sidecar/server.go)
 
@@ -186,25 +189,32 @@ func (a *containerNetworkAdapter) GetContainerNetworkDial(...) (utils.Dial, erro
         return dialer.DialContext(ctx, "tcp", net.JoinHostPort(targetPod.LocalIP, "5700"))
     }
     // 2. Cross-cluster → SSH tunnel
-    return a.sshDialer.DialContext(ctx, domainID, sshAddr, cert, key, target)
+    dialer := a.sshDialerManager.GetDialer(sshdialer.DomainInfo{
+        ID: domainID, SSHAddress: sshAddr, Certificate: cert, PrivateKey: key,
+    })
+    return dialer.DialContext(ctx, "tcp", target)
 }
 ```
 
-### 4.5 SSHDialer
+### 4.5 SSH Dialer Manager
 
-**Key File**: [container/ssh\_dialer.go](https://github.com/RLinf/RLark/tree/main/apps/rlark/pkg/agent/container/ssh_dialer.go)
+**Key Package**: [network/sshdialer](https://github.com/RLinf/RLark/tree/main/apps/rlark/pkg/network/sshdialer)
 
-Per-Domain SSH connection pool. Design highlights:
+`DialerManager` owns the connection pools and `GetDialer(DomainInfo)` returns a dialer bound to one Domain. Design highlights:
 
-- At most one SSH connection per Domain (ssh.Client multiplexing)
-- Auto-reconnect on disconnect; concurrent requests wait during reconnection instead of creating separate connections
+- Each Domain establishes one shared, multiplexed SSH transport during recovery; concurrent callers wait for the same bounded handshake instead of creating a reconnect storm
+- New channels use the least-loaded healthy connection; idle physical connections are reclaimed by background GC
+- Caller cancellation only stops that caller from waiting and does not cancel or penalize the shared recovery attempt
+- Definite transport failures are closed immediately; channel-local timeouts stay isolated, while keepalive timeouts drain active channels before forced closure
 - Exponential backoff on reconnection failure (1s → 2s → 4s → ... → 30s)
-- Background GC closes idle connections (default 10 min timeout)
-- Thread-safe; read lock on normal path, no blocking
+- SSH handshakes have a hard timeout, and manager shutdown cancels pending reconnects
+- Certificate, private-key, or endpoint changes advance a Domain generation and drain transports created from the old generation
+- Background GC closes idle or over-age connections and evicts inactive Domain entries (default 24 hour timeout)
+- Data-path activity timestamps are updated atomically and rate-limited to avoid a mutex on every read and write
 
 ### 4.6 Embodied Runtime
 
-The **embodied-runtime** is a node-level component deployed as a DaemonSet on each data plane node, managing robot (ROS 1/2) and camera hardware. It integrates with the Agent to expose physical devices as Kubernetes device resources (`rlinf.io/device`), allowing training Tasks to request robot arms and cameras just like GPU resources.
+The **embodied-runtime** is centered on a node-level Device Plugin, typically deployed as a DaemonSet on each data plane node, for managing robot (ROS 1/2) and camera hardware. Camera, ROS 1, and ROS 2 controllers can independently run as local subprocesses, dedicated Pods, or remain disabled. It integrates with the Agent to expose physical devices as Kubernetes device resources (`rlinf.io/device`), allowing training Tasks to request robot arms and cameras just like GPU resources.
 
 **Key Files**: [apps/embodied-runtime/](https://github.com/RLinf/RLark/tree/main/apps/embodied-runtime/)
 
@@ -238,7 +248,7 @@ sequenceDiagram
     participant SA as Sidecar A
     participant NS as NodeServer A
     participant CNA as ContainerNetworkAdapter
-    participant SD as SSHDialer
+    participant SD as SSH Dialer Manager
     participant SRV as Server
     participant NB as NodeServer B
     participant SB as Sidecar Proxy B
@@ -315,7 +325,6 @@ sequenceDiagram
 
 ```mermaid
 flowchart LR
-    wf["Workflow<br/><i>Cluster</i>"]
     job["Job<br/><i>Cluster</i>"]
     task["Task<br/><i>Namespaced</i>"]
     node["Node<br/><i>Namespaced</i>"]
@@ -351,4 +360,3 @@ iptables/CNI solutions require modifying node network configuration with high pr
 - Runs in userspace; creating TUN devices still requires privileged access
 - gVisor netstack supports the required network protocol handling
 - Can be injected as a Sidecar container, decoupled from business containers
-
