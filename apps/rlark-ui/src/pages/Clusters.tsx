@@ -9,6 +9,7 @@ import {
 } from "react";
 import {
   Activity,
+  AlertCircle,
   Check,
   ChevronRight,
   CloudCog,
@@ -28,29 +29,50 @@ import {
 import type { Phase } from "../data";
 import type { Copy } from "../i18n";
 import type { CRDNode } from "../types";
+import type { CRDTask } from "../crdModels";
 import { useAutoRefresh } from "../hooks";
+import { copyText } from "../utils/clipboard";
 import {
   categoryLabels,
   formatResourceQuantity,
   getGPUResourceKey,
   getNodeDeviceModel,
+  getNodeDiskUsage,
   getNodeCategories,
   getNodeCategory,
   getNodeGPUModel,
   getNodeLocation,
   getNodeResourceSummary,
+  getResourceUsagePercent,
   isBusinessWorkerNode,
   parseResourceQuantity,
 } from "../utils/nodes";
 import {
+  buildNodeWorkloads,
+  isActiveWorkerPhase,
+} from "../utils/nodeWorkloads";
+import {
   compareSortValues,
   MetricCard,
+  RefreshOverlay,
   SortButton,
   StatusBadge,
   type SortDirection,
 } from "../components/shared";
 import { NodeResourceBrowser } from "../components/NodeResourceBrowser";
 import { formatChinaDateTime } from "../utils/time";
+import {
+  formatDurationSince,
+  nodeAvailabilityNote,
+  nodeConditionLabel,
+  nodeConditionMessage,
+  nodeConditionStatusLabel,
+  nodeDegradationState,
+  nodeReasonLabel,
+  nodeSchedulingBadgeState,
+  nodeStateLabel,
+} from "../utils/nodeState";
+import { pullProgressLabel } from "../utils/pullProgress";
 
 type NodeWorker = {
   id: string;
@@ -63,16 +85,22 @@ type NodeWorker = {
   domain: string;
   ip: string;
   phase: string;
-  requests: Record<string, string>;
+  requests: Record<string, string | number>;
 };
 
 function addRequestedResource(
   totals: Record<string, number>,
   key: string,
-  raw?: string,
+  raw?: string | number,
 ) {
-  const value = parseResourceQuantity(key, raw);
+  const value = parseResourceQuantity(key, String(raw ?? ""));
   if (value !== null) totals[key] = (totals[key] ?? 0) + value;
+}
+
+function formatRelativeTime(value: string | undefined, zh: boolean): string {
+  const elapsed = formatDurationSince(value);
+  if (!elapsed) return "—";
+  return zh ? `${elapsed}前` : `${elapsed} ago`;
 }
 
 export function ClustersPage({
@@ -115,56 +143,13 @@ export function ClustersPage({
     if (isInitial) setLoading(true);
     setError("");
     try {
-      const [nodesResponse, tasksResponse, podsResponse] = await Promise.all([
-        fetch("/api/v1/rlinf.io/v1alpha1/nodes"),
-        fetch("/api/v1/rlinf.io/v1alpha1/tasks"),
-        fetch("/api/v1/rlinf.io/v1alpha1/pods"),
+      const [nodes, tasks, pods] = await Promise.all([
+        nodesApi.list(),
+        tasksApi.list(),
+        podsApi.list(),
       ]);
-      if (!nodesResponse.ok || !tasksResponse.ok || !podsResponse.ok) {
-        throw new Error(
-          `HTTP ${nodesResponse.status}/${tasksResponse.status}/${podsResponse.status}`,
-        );
-      }
-      const [nodesData, tasksData, podsData] = await Promise.all([
-        nodesResponse.json(),
-        tasksResponse.json(),
-        podsResponse.json(),
-      ]);
-      setRealNodes(nodesData.items ?? []);
-      const taskJobs = new Map<string, string>(
-        (tasksData.items ?? []).map(
-          (task: {
-            metadata?: { name?: string; labels?: Record<string, string> };
-          }) => [
-            task.metadata?.name ?? "",
-            task.metadata?.labels?.["rlinf.io/job"] ?? "",
-          ],
-        ),
-      );
-      const workloadMap = new Map<
-        string,
-        { jobs: Set<string>; workers: number }
-      >();
-      for (const pod of podsData.items ?? []) {
-        if (pod.status?.phase !== "Running" || !pod.status?.node) continue;
-        const nodeName = pod.status.node as string;
-        const current = workloadMap.get(nodeName) ?? {
-          jobs: new Set<string>(),
-          workers: 0,
-        };
-        const jobName = taskJobs.get(pod.spec?.taskName ?? "");
-        if (jobName) current.jobs.add(jobName);
-        current.workers += 1;
-        workloadMap.set(nodeName, current);
-      }
-      setNodeWorkloads(
-        Object.fromEntries(
-          [...workloadMap].map(([name, workload]) => [
-            name,
-            { jobs: [...workload.jobs].sort(), workers: workload.workers },
-          ]),
-        ),
-      );
+      setRealNodes(nodes);
+      setNodeWorkloads(buildNodeWorkloads(tasks, pods));
     } catch (e) {
       setRealNodes([]);
       setNodeWorkloads({});
@@ -175,6 +160,17 @@ export function ClustersPage({
   };
 
   useAutoRefresh(fetchNodes, 10000);
+
+  // Reset the detail-page container's scrollTop whenever the selected node
+  // changes. The node detail view is rendered inside an
+  // `overflow: hidden auto` container; browser scroll-restore (and any prior
+  // interaction that left the container scrolled) would otherwise hide the
+  // top heading and action bar below the viewport.
+  useEffect(() => {
+    if (!selectedNodeName) return;
+    const container = document.querySelector(".node-detail-page");
+    if (container) container.scrollTop = 0;
+  }, [selectedNodeName]);
 
   const handleRefresh = async () => {
     if (refreshing) return;
@@ -290,8 +286,11 @@ export function ClustersPage({
   return (
     <div
       className={`page-content resource-page cluster-page${
-        resourceView === "clusters" ? " cluster-overview-page" : ""
-      }`}
+        resourceView === "clusters"
+          ? " cluster-overview-page refreshable-region page-refresh-region"
+          : ""
+      }${resourceView === "clusters" && refreshing ? " is-refreshing" : ""}`}
+      aria-busy={resourceView === "clusters" ? refreshing : undefined}
     >
       <div className="section-heading">
         <div>
@@ -361,7 +360,7 @@ export function ClustersPage({
             <div className="panel cluster-map-card">
               <div className="panel-title">
                 <div>
-                  <span>Distribution</span>
+                  <span>{zh ? "分布" : "Distribution"}</span>
                   <h3>{zh ? "集群分布" : "Cluster Distribution"}</h3>
                 </div>
               </div>
@@ -406,6 +405,10 @@ export function ClustersPage({
           />
         </section>
       )}
+      <RefreshOverlay
+        visible={resourceView === "clusters" && refreshing}
+        label={zh ? "正在刷新集群概览" : "Refreshing cluster overview"}
+      />
     </div>
   );
 }
@@ -420,6 +423,17 @@ function formatBytes(bytes: number): string {
   if (bytes >= MB) return (bytes / MB).toFixed(1) + "MB";
   if (bytes >= KB) return (bytes / KB).toFixed(1) + "KB";
   return bytes + "B";
+}
+
+// nodePhaseTitle explains a degraded phase from the controller-written Degraded
+// condition so the UI never implies a cause the controller did not report.
+function nodePhaseTitle(node: CRDNode, zh: boolean): string | undefined {
+  if (node.status?.phase !== "Degraded") return undefined;
+  const degradation = nodeDegradationState(node);
+  const detail = nodeReasonLabel(degradation.condition?.reason, zh);
+  return detail
+    ? `${nodeStateLabel("degraded", zh)}${zh ? "：" : ": "}${detail}`
+    : undefined;
 }
 
 export function ClusterDetailReal({
@@ -471,7 +485,9 @@ export function ClusterDetailReal({
             <tr>
               <th>{zh ? "节点名称" : "Name"}</th>
               <th>{zh ? "类型" : "Type"}</th>
-              <th>{zh ? "状态" : "Phase"}</th>
+              <th>{zh ? "接入状态" : "Connection"}</th>
+              <th>{zh ? "上次心跳" : "Last heartbeat"}</th>
+              <th>{zh ? "状态变化时间" : "Status changed"}</th>
               <th>{zh ? "物理位置" : "Location"}</th>
               <th>{zh ? "节点 IP" : "Node IP"}</th>
               <th>{zh ? "资源与空闲" : "Resources"}</th>
@@ -497,11 +513,25 @@ export function ClusterDetailReal({
                   <td>
                     <small>{zh ? categoryInfo.zh : categoryInfo.en}</small>
                   </td>
-                  <td>
+                  <td title={nodePhaseTitle(node, zh)}>
                     <StatusBadge
                       phase={(node.status?.phase ?? "Offline") as Phase}
                       copy={c}
                     />
+                  </td>
+                  <td>
+                    <small>
+                      {node.status?.lastHeartbeatTime
+                        ? formatChinaDateTime(node.status.lastHeartbeatTime)
+                        : "—"}
+                    </small>
+                  </td>
+                  <td>
+                    <small>
+                      {node.status?.lastStatusChangeTime
+                        ? formatChinaDateTime(node.status.lastStatusChangeTime)
+                        : "—"}
+                    </small>
                   </td>
                   <td>
                     <small>{getNodeLocation(node) || "—"}</small>
@@ -557,36 +587,33 @@ export function NodeDetailReal({
   node,
   copy: c,
   onTaskNavigate,
+  showConditions = false,
 }: {
   node: CRDNode;
   copy: Copy;
   onTaskNavigate?: (name: string) => void;
+  showConditions?: boolean;
 }) {
   const zh = c.nav.overview === "总览";
   const [nodeWorkers, setNodeWorkers] = useState<NodeWorker[]>([]);
   useAutoRefresh(
     async () => {
-      const [tasksResponse, podsResponse] = await Promise.all([
-        fetch("/api/v1/rlinf.io/v1alpha1/tasks"),
-        fetch("/api/v1/rlinf.io/v1alpha1/pods"),
+      const [taskItems, podItems] = await Promise.all([
+        tasksApi.list(),
+        podsApi.list(),
       ]);
-      if (!tasksResponse.ok || !podsResponse.ok) {
-        throw new Error(`HTTP ${tasksResponse.status}/${podsResponse.status}`);
-      }
-      const [tasksBody, podsBody] = await Promise.all([
-        tasksResponse.json(),
-        podsResponse.json(),
-      ]);
-      const tasks = new Map<string, Record<string, unknown>>(
-        (tasksBody.items ?? []).map((task: Record<string, unknown>) => [
-          (task as { metadata?: { name?: string } }).metadata?.name ?? "",
-          task,
-        ]),
+      const tasks = new Map<string, CRDTask>(
+        taskItems.map((task) => [task.metadata?.name ?? "", task]),
       );
-      const workers: NodeWorker[] = (podsBody.items ?? [])
+      const workers: NodeWorker[] = (podItems as Record<string, unknown>[])
         .filter(
-          (pod: { status?: { node?: string } }) =>
-            pod.status?.node === node.metadata.name,
+          (pod: {
+            metadata?: { namespace?: string };
+            status?: { node?: string; phase?: string };
+          }) =>
+            pod.status?.node === node.metadata.name &&
+            pod.metadata?.namespace === node.metadata.namespace &&
+            isActiveWorkerPhase(pod.status?.phase),
         )
         .map(
           (pod: {
@@ -594,27 +621,7 @@ export function NodeDetailReal({
             spec?: { taskName?: string; podName?: string; domain?: string };
             status?: { phase?: string; ip?: string };
           }) => {
-            const task = tasks.get(pod.spec?.taskName ?? "") as
-              | {
-                  metadata?: { labels?: Record<string, string> };
-                  spec?: {
-                    role?: string;
-                    kubernetes?: {
-                      workload?: {
-                        template?: {
-                          spec?: {
-                            containers?: Array<{
-                              resources?: {
-                                requests?: Record<string, string>;
-                              };
-                            }>;
-                          };
-                        };
-                      };
-                    };
-                  };
-                }
-              | undefined;
+            const task = tasks.get(pod.spec?.taskName ?? "");
             const job = task?.metadata?.labels?.["rlinf.io/job"];
             if (!job) return null;
             return {
@@ -622,15 +629,19 @@ export function NodeDetailReal({
               crName: pod.metadata?.name ?? "",
               name: pod.spec?.podName || pod.metadata?.name || "—",
               job,
-              role: task?.spec?.role ?? "—",
+              role:
+                task?.metadata?.annotations?.["rlark.io/ray-role"] ??
+                task?.spec?.role ??
+                "—",
               node: node.metadata.name,
               cluster: pod.metadata?.namespace ?? "default",
               domain: pod.spec?.domain ?? "",
               ip: pod.status?.ip ?? "—",
               phase: pod.status?.phase ?? "Pending",
               requests:
-                task?.spec?.kubernetes?.workload?.template?.spec
-                  ?.containers?.[0]?.resources?.requests ?? {},
+                task?.spec?.workload.template?.spec?.containers?.find(
+                  (container) => container.name === "main",
+                )?.resources?.requests ?? {},
             };
           },
         )
@@ -643,7 +654,9 @@ export function NodeDetailReal({
     [node.metadata.name],
   );
   const phase = (node.status?.phase ?? "Offline") as Phase;
-  const labels = node.metadata.labels ?? {};
+  const schedulingBadge = nodeSchedulingBadgeState(node);
+  const schedulingNote = nodeAvailabilityNote(node, zh);
+  const labels = node.status?.observedNodeLabels ?? {};
   const addresses = node.status?.addresses ?? [];
   const internalAddress =
     addresses.find((address) => address.type === "InternalIP")?.address ??
@@ -663,19 +676,21 @@ export function NodeDetailReal({
       Object.entries(totals).map(([key, value]) => [key, String(value)]),
     );
   }, [nodeWorkers]);
+  // status.used is allocated Pod requests, not real-time utilization. The local
+  // fallback is also requests aggregated from the displayed Workers.
   const reportedUsed = node.status?.used ?? {};
   const used =
     Object.keys(reportedUsed).length > 0 ? reportedUsed : requestedFallback;
   const pullProgress = node.status?.pullProgress ?? [];
   const getPercent = (key: string) => {
     const rawUsed = used[key];
-    if (!rawUsed && (capacity[key] ?? allocatable[key])) return 0;
+    if (!rawUsed && (allocatable[key] ?? capacity[key])) return 0;
     if (rawUsed?.endsWith("%"))
       return Math.min(100, Math.max(0, Number.parseFloat(rawUsed)));
     const usedNumber = parseResourceQuantity(key, rawUsed);
     const capacityNumber = parseResourceQuantity(
       key,
-      capacity[key] ?? allocatable[key],
+      allocatable[key] ?? capacity[key],
     );
     return usedNumber !== null && capacityNumber !== null && capacityNumber > 0
       ? Math.min(
@@ -686,34 +701,37 @@ export function NodeDetailReal({
   };
   const formatUsedResource = (key: string) => {
     const raw = used[key];
-    if (!raw && (capacity[key] ?? allocatable[key])) {
-      return formatResourceQuantity(key, "0");
+    if (!raw && (allocatable[key] ?? capacity[key])) {
+      return formatResourceQuantity(key, "0", zh);
     }
     if (raw?.endsWith("%")) {
       const capacityValue = parseResourceQuantity(
         key,
-        capacity[key] ?? allocatable[key],
+        allocatable[key] ?? capacity[key],
       );
       const percent = Number.parseFloat(raw);
       if (capacityValue !== null && Number.isFinite(percent)) {
         return formatResourceQuantity(
           key,
           String((capacityValue * percent) / 100),
+          zh,
         );
       }
     }
-    return formatResourceQuantity(key, raw);
+    return formatResourceQuantity(key, raw, zh);
   };
   const formatAvailableResource = (key: string) => {
-    const available = parseResourceQuantity(
-      key,
-      allocatable[key] ?? capacity[key],
-    );
-    const requested = parseResourceQuantity(key, used[key]);
-    if (available === null) return "—";
+    const total = parseResourceQuantity(key, allocatable[key] ?? capacity[key]);
+    const requested = used[key]?.endsWith("%")
+      ? total !== null
+        ? (total * Number.parseFloat(used[key])) / 100
+        : null
+      : parseResourceQuantity(key, used[key]);
+    if (total === null) return "—";
     return formatResourceQuantity(
       key,
-      String(Math.max(0, available - (requested ?? 0))),
+      String(Math.max(0, total - (requested ?? 0))),
+      zh,
     );
   };
   const gpuResourceKey = getGPUResourceKey(node);
@@ -739,8 +757,18 @@ export function NodeDetailReal({
       .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
       .join(" ");
   };
-  const hasDiskPressure = node.status?.diskPressure === true;
-  const diskPressureKnown = node.status?.diskPressure !== undefined;
+  const diskKey = "ephemeral-storage";
+  const diskUsage = getNodeDiskUsage(node);
+  const diskPercent =
+    diskUsage?.percent ??
+    getResourceUsagePercent(
+      diskKey,
+      used[diskKey],
+      allocatable[diskKey] ?? capacity[diskKey],
+    );
+  const diskWarning =
+    node.status?.diskPressure === true ||
+    (diskPercent !== null && diskPercent >= 90);
   const resourceItems = [
     { key: "cpu", label: "CPU", icon: Cpu, available: true },
     {
@@ -754,7 +782,9 @@ export function NodeDetailReal({
       label: zh ? "磁盘" : "Storage",
       icon: HardDrive,
       available: Boolean(
-        capacity["ephemeral-storage"] ?? allocatable["ephemeral-storage"],
+        diskUsage ??
+        allocatable["ephemeral-storage"] ??
+        capacity["ephemeral-storage"],
       ),
     },
     {
@@ -781,6 +811,28 @@ export function NodeDetailReal({
       : []),
   ];
   const created = formatChinaDateTime(node.metadata.creationTimestamp);
+  const conditionOrder = [
+    "AgentConnected",
+    "Ready",
+    "RuntimeReady",
+    "NetworkReady",
+    "StorageReady",
+    "DeviceReady",
+    "ResourcePressure",
+    "Draining",
+    "Degraded",
+  ];
+  const conditions = [...(node.status?.conditions ?? [])].sort(
+    (left, right) => {
+      const leftOrder = conditionOrder.indexOf(left.type);
+      const rightOrder = conditionOrder.indexOf(right.type);
+      return (
+        (leftOrder === -1 ? conditionOrder.length : leftOrder) -
+          (rightOrder === -1 ? conditionOrder.length : rightOrder) ||
+        left.type.localeCompare(right.type)
+      );
+    },
+  );
   return (
     <>
       <div className="node-resource-detail node-insight-detail">
@@ -805,28 +857,17 @@ export function NodeDetailReal({
             <StatusBadge phase={phase} copy={c} />
             <span
               className={
-                node.spec.unschedulable
-                  ? "schedule-chip blocked"
-                  : "schedule-chip"
+                schedulingBadge === "schedulable"
+                  ? "schedule-chip"
+                  : "schedule-chip blocked"
               }
+              title={schedulingNote === "—" ? undefined : schedulingNote}
+              aria-label={schedulingNote === "—" ? undefined : schedulingNote}
             >
-              {node.spec.unschedulable
-                ? zh
-                  ? "已停止调度"
-                  : "Unschedulable"
-                : zh
-                  ? "可调度"
-                  : "Schedulable"}
+              {nodeStateLabel(schedulingBadge, zh)}
             </span>
           </div>
         </header>
-
-        {node.status?.reason && (
-          <div className="node-health-message">
-            <Activity size={15} />
-            <span>{node.status.reason}</span>
-          </div>
-        )}
 
         <div className="node-insight-facts">
           <div>
@@ -871,81 +912,99 @@ export function NodeDetailReal({
               </div>
               <div className="node-capacity-grid">
                 {resourceItems.map(({ key, label, icon: Icon, available }) => {
-                  if (key === "ephemeral-storage") {
-                    return (
-                      <div
-                        className={`node-capacity-card node-pressure-card ${
-                          hasDiskPressure ? "is-warning" : ""
-                        }`}
-                        key={key}
-                      >
-                        <div className="node-capacity-title">
-                          <span>
-                            <Icon size={16} />
-                          </span>
-                          <strong>{zh ? "磁盘压力" : "Disk pressure"}</strong>
-                          <b>
-                            {diskPressureKnown
-                              ? hasDiskPressure
-                                ? zh
-                                  ? "存在"
-                                  : "Detected"
-                                : zh
-                                  ? "正常"
-                                  : "Normal"
-                              : zh
-                                ? "未知"
-                                : "Unknown"}
-                          </b>
-                        </div>
-                        <div className="node-capacity-track">
-                          <i
-                            style={{ width: hasDiskPressure ? "100%" : "0%" }}
-                          />
-                        </div>
-                        <div className="node-capacity-amounts">
-                          <span>
-                            <em>{zh ? "状态" : "Status"}</em>
-                            <strong>
-                              {diskPressureKnown
-                                ? hasDiskPressure
-                                  ? zh
-                                    ? "节点存在磁盘压力"
-                                    : "Node has disk pressure"
-                                  : zh
-                                    ? "节点无磁盘压力"
-                                    : "No disk pressure"
-                                : zh
-                                  ? "未上报"
-                                  : "Not reported"}
-                            </strong>
-                          </span>
-                          <span>
-                            <em>{zh ? "可分配容量" : "Allocatable"}</em>
-                            <strong>
-                              {available
-                                ? formatResourceQuantity(
-                                    key,
-                                    allocatable[key] ?? capacity[key],
-                                  )
-                                : "—"}
-                            </strong>
-                          </span>
-                          <small>
-                            {zh ? "来自节点健康状态" : "From node health"}
-                          </small>
-                        </div>
-                      </div>
-                    );
-                  }
-                  const percent = available ? getPercent(key) : null;
+                  const percent =
+                    key === "ephemeral-storage"
+                      ? diskPercent
+                      : available
+                        ? getPercent(key)
+                        : null;
+                  const usedLabel =
+                    key === "ephemeral-storage" && diskUsage
+                      ? zh
+                        ? "已使用"
+                        : "Used"
+                      : zh
+                        ? "已请求"
+                        : "Requested";
+                  const usedValue =
+                    key === "ephemeral-storage" && diskUsage
+                      ? formatResourceQuantity(
+                          key,
+                          String(diskUsage.usedBytes),
+                          zh,
+                        )
+                      : formatUsedResource(key);
+                  const totalValue =
+                    key === "ephemeral-storage" && diskUsage
+                      ? formatResourceQuantity(
+                          key,
+                          String(diskUsage.capacityBytes),
+                          zh,
+                        )
+                      : formatResourceQuantity(
+                          key,
+                          allocatable[key] ?? capacity[key],
+                          zh,
+                        );
+                  const availableValue =
+                    key === "ephemeral-storage" && diskUsage
+                      ? formatResourceQuantity(
+                          key,
+                          String(diskUsage.availableBytes),
+                          zh,
+                        )
+                      : formatAvailableResource(key);
                   return (
-                    <div className="node-capacity-card" key={key}>
+                    <div
+                      className={`node-capacity-card${
+                        key === "ephemeral-storage" && diskWarning
+                          ? " is-warning"
+                          : ""
+                      }`}
+                      key={key}
+                    >
                       <div className="node-capacity-title">
                         <span>
                           <Icon size={16} />
                         </span>
                         <strong>{label}</strong>
+                        {key === "ephemeral-storage" && diskWarning && (
+                          <span
+                            className="node-capacity-alert"
+                            tabIndex={0}
+                            aria-label={
+                              zh
+                                ? "查看磁盘异常详情"
+                                : "View disk alert details"
+                            }
+                          >
+                            <AlertCircle size={16} />
+                            <span
+                              className="node-capacity-alert-tooltip"
+                              role="status"
+                            >
+                              <strong>
+                                {zh
+                                  ? "健康与容量告警"
+                                  : "Health & capacity alert"}
+                              </strong>
+                              <small>
+                                {node.status?.diskPressure
+                                  ? zh
+                                    ? "节点存在磁盘压力，请及时清理空间"
+                                    : "Node disk pressure detected; free up space"
+                                  : zh
+                                    ? `磁盘使用率已达到 ${diskPercent ?? 90}%，请及时清理空间`
+                                    : `Disk usage reached ${diskPercent ?? 90}%; free up space`}
+                              </small>
+                            </span>
+                          </span>
+                        )}
+                      </div>
+                      <div className="node-capacity-progress">
+                        <div className="node-capacity-track">
+                          <i style={{ width: `${percent ?? 0}%` }} />
+                        </div>
                         <b>
                           {available
                             ? percent === null
@@ -956,41 +1015,25 @@ export function NodeDetailReal({
                               : "None"}
                         </b>
                       </div>
-                      <div className="node-capacity-track">
-                        <i style={{ width: `${percent ?? 0}%` }} />
-                      </div>
                       <div className="node-capacity-amounts">
                         <span>
-                          <em>{zh ? "已请求" : "Requested"}</em>
+                          <em>{usedLabel}</em>
                           <strong>
-                            {available
-                              ? formatUsedResource(key)
-                              : zh
-                                ? "无"
-                                : "None"}
+                            {available ? usedValue : zh ? "无" : "None"}
                           </strong>
                         </span>
                         <span>
                           <em>{zh ? "总量" : "Total"}</em>
                           <strong>
-                            {available
-                              ? formatResourceQuantity(
-                                  key,
-                                  capacity[key] ?? allocatable[key],
-                                )
-                              : zh
-                                ? "无"
-                                : "None"}
+                            {available ? totalValue : zh ? "无" : "None"}
                           </strong>
                         </span>
-                        <small>
-                          {zh ? "剩余" : "Available"}{" "}
-                          {available
-                            ? formatAvailableResource(key)
-                            : zh
-                              ? "无"
-                              : "None"}
-                        </small>
+                        <span>
+                          <em>{zh ? "剩余量" : "Available"}</em>
+                          <strong>
+                            {available ? availableValue : zh ? "无" : "None"}
+                          </strong>
+                        </span>
                       </div>
                     </div>
                   );
@@ -1030,7 +1073,7 @@ export function NodeDetailReal({
                             {p.image}
                           </code>
                           <span className={`node-pull-status chip-${p.status}`}>
-                            {p.message || p.status}
+                            {pullProgressLabel(p.message, p.status, zh)}
                           </span>
                         </div>
                         {isPulling && p.total > 0 && (
@@ -1111,7 +1154,9 @@ export function NodeDetailReal({
                   <dd>
                     {deviceResourceKeys.length > 0
                       ? getNodeDeviceModel(node) ||
-                        deviceResourceKeys.map(deviceLabel).join("、")
+                        deviceResourceKeys
+                          .map(deviceLabel)
+                          .join(zh ? "、" : ", ")
                       : zh
                         ? "无端设备"
                         : "No device"}
@@ -1148,6 +1193,76 @@ export function NodeDetailReal({
           onTaskNavigate={onTaskNavigate}
         />
       </section>
+      {showConditions && (
+        <section className="node-insight-section node-conditions-section">
+          <div className="node-insight-section-head">
+            <div>
+              <span>{zh ? "节点状态条件" : "Conditions"}</span>
+              <small>
+                {zh
+                  ? "以条件类型、状态和原因表达当前节点结论；说明文本仅供诊断。"
+                  : "Current node conclusions use condition type, status, and reason; messages are diagnostic only."}
+              </small>
+            </div>
+          </div>
+          {conditions.length === 0 ? (
+            <p className="muted">
+              {zh ? "尚未上报节点状态条件。" : "No conditions reported."}
+            </p>
+          ) : (
+            <div className="node-conditions-table-wrap">
+              <table className="node-conditions-table">
+                <thead>
+                  <tr>
+                    <th>{zh ? "类型" : "Type"}</th>
+                    <th>{zh ? "状态" : "Status"}</th>
+                    <th>{zh ? "原因" : "Reason"}</th>
+                    <th>{zh ? "说明" : "Message"}</th>
+                    <th>{zh ? "最后转换" : "Last transition"}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {conditions.map((condition) => (
+                    <tr key={condition.type}>
+                      <td>
+                        <strong title={condition.type}>
+                          {nodeConditionLabel(condition.type, zh)}
+                        </strong>
+                      </td>
+                      <td>
+                        <span
+                          className={`node-condition-status ${condition.status.toLowerCase()}`}
+                        >
+                          {nodeConditionStatusLabel(condition.status, zh)}
+                        </span>
+                      </td>
+                      <td>{nodeReasonLabel(condition.reason, zh) ?? "—"}</td>
+                      <td>
+                        {nodeConditionMessage(
+                          condition.type,
+                          condition.message,
+                          zh,
+                        ) || "—"}
+                      </td>
+                      <td
+                        title={
+                          condition.lastTransitionTime
+                            ? formatChinaDateTime(condition.lastTransitionTime)
+                            : undefined
+                        }
+                      >
+                        {condition.lastTransitionTime
+                          ? formatRelativeTime(condition.lastTransitionTime, zh)
+                          : "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      )}
     </>
   );
 }
@@ -1176,9 +1291,14 @@ function NodeWorkerTable({
     sshJumpPort?: string;
   }>({});
   useEffect(() => {
-    fetch("/api/v1/system-config")
-      .then((response) => (response.ok ? response.json() : {}))
-      .then(setSSHConfig)
+    systemConfigApi
+      .get()
+      .then((config) =>
+        setSSHConfig({
+          sshJumpHost: config.ssh?.jumpHost || config.sshJumpHost,
+          sshJumpPort: config.ssh?.jumpPort || config.sshJumpPort,
+        }),
+      )
       .catch(() => setSSHConfig({}));
   }, []);
   const requestTextFor = useCallback(
@@ -1186,7 +1306,7 @@ function NodeWorkerTable({
       Object.entries(worker.requests)
         .filter(
           ([key, value]) =>
-            Number.parseFloat(value) > 0 &&
+            Number.parseFloat(String(value)) > 0 &&
             (/(^|[./-])gpu($|[./-])/i.test(key) ||
               key === "rlinf.io/device" ||
               key.startsWith("rlinf.io/device-")),
@@ -1284,14 +1404,16 @@ function NodeWorkerTable({
               ? `${sshConfig.sshJumpHost}${sshConfig.sshJumpPort ? `:${sshConfig.sshJumpPort}` : ""}`
               : "";
             const sshCommand = sshJump
-              ? `ssh -J ${sshJump} root@${worker.name}`
+              ? `ssh -J ${sshJump} root@${worker.name} -p 2222`
               : "";
             const isExpanded = expanded === worker.id;
             return (
               <Fragment key={worker.id}>
                 <tr>
                   <td>
-                    <strong>{worker.name}</strong>
+                    <strong className="node-worker-name" title={worker.name}>
+                      {worker.name}
+                    </strong>
                   </td>
                   <td>
                     <button
@@ -1318,7 +1440,7 @@ function NodeWorkerTable({
                         title={zh ? "复制 SSH 命令" : "Copy SSH command"}
                         onClick={async () => {
                           if (!sshCommand) return;
-                          await navigator.clipboard.writeText(sshCommand);
+                          if (!(await copyText(sshCommand))) return;
                           setCopied(worker.id);
                           window.setTimeout(() => setCopied(null), 1500);
                         }}
@@ -1384,9 +1506,7 @@ function NodeWorkerTable({
                               <button
                                 className="icon-button"
                                 onClick={async () => {
-                                  await navigator.clipboard.writeText(
-                                    sshCommand,
-                                  );
+                                  if (!(await copyText(sshCommand))) return;
                                   setCopied(worker.id);
                                   window.setTimeout(
                                     () => setCopied(null),
@@ -1448,13 +1568,13 @@ function NodeWorkerTable({
                                 <td>{worker.ip}</td>
                                 <td>
                                   {worker.domain ? (
-                                    <>
-                                      <Network
-                                        size={13}
-                                        style={{ marginRight: 4 }}
-                                      />
-                                      {worker.domain}
-                                    </>
+                                    <span
+                                      className="pod-subtable-truncated"
+                                      title={worker.domain}
+                                    >
+                                      <Network size={13} />
+                                      <span>{worker.domain}</span>
+                                    </span>
                                   ) : (
                                     "—"
                                   )}
@@ -1481,3 +1601,4 @@ function NodeWorkerTable({
     </div>
   );
 }
+import { nodesApi, podsApi, systemConfigApi, tasksApi } from "../backend";

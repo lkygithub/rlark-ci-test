@@ -2,17 +2,20 @@ package agent
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
+	"strings"
+	"sync"
+	"sync/atomic"
+	"time"
 
-	"golang.org/x/sync/errgroup"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 
 	"github.com/rlinf/rlark/api/kubeclients/clientset/versioned"
 	rlarkv1alpha1 "github.com/rlinf/rlark/api/rlark.io/v1alpha1"
-	"github.com/rlinf/rlark/apps/rlark/pkg/common"
 	"github.com/rlinf/rlark/apps/rlark/pkg/server"
 	"github.com/rlinf/rlark/apps/rlark/pkg/utils"
 )
@@ -32,6 +35,9 @@ type Agent struct {
 
 	localListener net.Listener
 	localDialer   utils.Dial
+	ready         atomic.Bool
+	drainMu       sync.Mutex
+	drain         context.CancelFunc
 }
 
 // NewAgent creates a new Agent.
@@ -41,10 +47,28 @@ func NewAgent(config Config) *Agent {
 	}
 }
 
+func (a *Agent) SetReady(ready bool) {
+	a.ready.Store(ready)
+}
+
+func (a *Agent) startDrain() {
+	a.ready.Store(false)
+	a.drainMu.Lock()
+	drain := a.drain
+	a.drainMu.Unlock()
+	if drain != nil {
+		drain()
+	}
+}
+
 func (a *Agent) init(ctx context.Context) error {
 	_ = ctx
 	var err error
-
+	a.config.AgentType = strings.ToLower(a.config.AgentType)
+	a.config.Execution.Image = a.config.Image
+	if err := a.config.Validate(); err != nil {
+		return fmt.Errorf("validate agent config: %w", err)
+	}
 	// Initialize server client
 	a.serverClient, err = server.NewClientFromConfig(a.config.ClientConfig)
 	if err != nil {
@@ -61,7 +85,7 @@ func (a *Agent) init(ctx context.Context) error {
 		return fmt.Errorf("create management API client: %w", err)
 	}
 
-	switch rlarkv1alpha1.AgentType(a.config.AgentType) {
+	switch a.config.RuntimeKind() {
 	case rlarkv1alpha1.AgentTypeKubernetes:
 		// Initialize Kubernetes client
 		a.localKubeConfig, err = a.config.KubeClientConfig.BuildRestConfig()
@@ -91,8 +115,17 @@ func (a *Agent) init(ctx context.Context) error {
 	}
 
 	// Initialize local listener and dialer
-	a.localListener, a.localDialer = utils.NetPipeWithBuffer(65536)
+	// Successful private dials must reach HTTP Accept; queued buffered peers
+	// are not tracked or closed by http.Server during shutdown.
+	a.localListener, a.localDialer = utils.NetPipe()
 
+	return nil
+}
+
+func validateTaskRuntimeResyncPeriod(mode string, period time.Duration) error {
+	if mode != "node" && period < 0 {
+		return fmt.Errorf("task Runtime resync period must not be negative")
+	}
 	return nil
 }
 
@@ -101,38 +134,43 @@ func (a *Agent) Run(ctx context.Context) error {
 	if err := a.init(ctx); err != nil {
 		return err
 	}
+	defer func() { _ = a.localListener.Close() }() // Process-owned in-memory listener; no persistent state is removed.
+	if err := a.localPreflight(ctx); err != nil {
+		return err
+	}
+	ctx, cancel := context.WithCancel(ctx)
+	a.drainMu.Lock()
+	a.drain = cancel
+	a.drainMu.Unlock()
+	defer func() {
+		a.ready.Store(false)
+		a.drainMu.Lock()
+		a.drain = nil
+		a.drainMu.Unlock()
+		cancel()
+	}()
 
-	var eg errgroup.Group
-
-	// Run tunnel for all modes
-	eg.Go(func() error {
-		role := ""
-		if a.config.Mode == "node" {
-			role = "node-agent:" + common.NodeName("-")
+	tunnels := tunnelRoles(a.config)
+	err := runWithRegistration(ctx, func(ctx context.Context, registered func()) error {
+		return a.runRegistrationTunnel(ctx, tunnels[0], registered)
+	}, func(ctx context.Context) ([]func(context.Context) error, error) {
+		if err := a.managementPreflight(ctx); err != nil {
+			return nil, err
 		}
-		return a.runTunnel(ctx, role)
+		roles, err := buildRoles(ctx, a.config, &clusterAgent{a: a}, &nodeAgent{a: a})
+		if err != nil {
+			return nil, err
+		}
+		components := append([]func(context.Context) error{a.runLocalHTTPServer}, roles...)
+		for _, role := range tunnels[1:] {
+			components = append(components, func(ctx context.Context) error { return a.runTunnel(ctx, role) })
+		}
+		return components, nil
 	})
-
-	// Run local HTTP server for all modes
-	eg.Go(func() error {
-		return a.runLocalHTTPServer(ctx)
-	})
-
-	// Run cluster agent (controller manager) based on mode
-	if a.config.Mode == "cluster" || a.config.Mode == "both" {
-		eg.Go(func() error {
-			return (&clusterAgent{a: a}).Run(ctx)
-		})
-	}
-
-	// Run node agent based on mode
-	if a.config.Mode == "node" || a.config.Mode == "both" {
-		eg.Go(func() error {
-			return (&nodeAgent{a: a}).Run(ctx)
-		})
-	}
-
-	if err := eg.Wait(); err != nil {
+	if err != nil {
+		if errors.Is(err, context.Canceled) && ctx.Err() != nil {
+			return nil
+		}
 		return fmt.Errorf("agent run error: %w", err)
 	}
 	return nil

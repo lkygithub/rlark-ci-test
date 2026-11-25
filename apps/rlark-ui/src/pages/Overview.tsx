@@ -8,19 +8,22 @@ import {
   Server,
   Workflow,
 } from "lucide-react";
-import { activity, type Cluster, type Job, type Phase } from "../data";
+import { type Cluster, type Job, type Phase } from "../data";
 import type { Copy } from "../i18n";
-import type { CRDJob, CRDNode, Page, ResourceRow } from "../types";
+import type { CRDNode, Page, ResourceRow } from "../types";
 import { useAutoRefresh } from "../hooks";
 import { crdToJob } from "../utils/crd";
+import { effectiveJobPhase, isActiveJob } from "../utils/jobPhase";
 import {
   getNodeCategories,
   getNodeDeviceModel,
   getNodeGPUModel,
   hasNodeCategory,
+  isBusinessWorkerNode,
 } from "../utils/nodes";
 import {
   MetricCard,
+  RefreshOverlay,
   ResourceDistribution,
   StatusBadge,
 } from "../components/shared";
@@ -46,21 +49,14 @@ export function Overview({
   const isZh = c.nav.overview === "总览";
 
   const { refresh } = useAutoRefresh(async () => {
-    const [clustersRes, nodesRes, jobsRes] = await Promise.all([
-      fetch("/api/v1/clusters")
-        .then((r) => (r.ok ? r.json() : Promise.reject()))
-        .catch(() => ({ data: [] })),
-      fetch("/api/v1/rlinf.io/v1alpha1/nodes")
-        .then((r) => (r.ok ? r.json() : Promise.reject()))
-        .catch(() => ({ items: [] })),
-      fetch("/api/v1/rlinf.io/v1alpha1/jobs")
-        .then((r) => (r.ok ? r.json() : Promise.reject()))
-        .catch(() => ({ items: [] })),
+    const [clusters, nodes, jobs] = await Promise.all([
+      clustersApi.list<Cluster>().catch(() => []),
+      nodesApi.list().catch(() => []),
+      jobsApi.list().catch(() => []),
     ]);
-    setRealClusters(clustersRes.data ?? []);
-    setRealNodes(nodesRes.items ?? []);
-    const jobItems: CRDJob[] = jobsRes.items ?? [];
-    setRealJobs(jobItems.map(crdToJob));
+    setRealClusters(clusters);
+    setRealNodes(nodes);
+    setRealJobs(jobs.map(crdToJob));
   }, 15000);
 
   const handleRefresh = async () => {
@@ -73,7 +69,7 @@ export function Overview({
     }
   };
 
-  const displayNodes = realNodes;
+  const displayNodes = realNodes.filter(isBusinessWorkerNode);
   const embodiedClusters = realClusters.filter((x) => x.type === "Embodied");
   const runningJobs = realJobs.filter((x) => x.phase === "Running").length;
   const gpuModelList = Array.from(
@@ -157,14 +153,35 @@ export function Overview({
   ];
 
   const robotNodes = displayNodes.filter((n) => hasNodeCategory(n, "robot"));
+  // 「活跃任务」面板只展示非终态任务（等待中 / 运行中 / 停止中）。
+  const activeJobs = realJobs.filter(isActiveJob);
   return (
-    <div className="page-content overview-page">
+    <div
+      className={`page-content resource-page overview-page refreshable-region page-refresh-region${refreshing ? " is-refreshing" : ""}`}
+      aria-busy={refreshing}
+    >
       <div className="section-heading">
         <div>
           <span className="eyebrow">{c.overview.eyebrow}</span>
           <h2>{c.overview.title}</h2>
           <p>{c.overview.desc}</p>
         </div>
+        <button
+          className="secondary-button"
+          onClick={handleRefresh}
+          disabled={refreshing}
+          aria-busy={refreshing}
+        >
+          <RefreshCw
+            size={16}
+            className={refreshing ? "job-action-loading" : ""}
+          />
+          {refreshing
+            ? isZh
+              ? "刷新中..."
+              : "Refreshing..."
+            : c.common.refresh}
+        </button>
       </div>
       <section className="metric-grid platform-metrics">
         <MetricCard
@@ -222,7 +239,7 @@ export function Overview({
               <ArrowRight size={14} />
             </button>
           </div>
-          <ResourceDistribution copy={c} rows={resourceRows} />
+          <ResourceDistribution rows={resourceRows} />
         </div>
         <div className="panel workload-panel">
           <div className="panel-title">
@@ -249,11 +266,11 @@ export function Overview({
             ) : (
               robotNodes.slice(0, 6).map((n) => {
                 const phase = (n.status?.phase ?? "Offline") as Phase;
+                const labels = n.status?.observedNodeLabels ?? {};
                 const model =
                   getNodeDeviceModel(n) ||
-                  n.metadata.labels?.["node.kubernetes.io/instance-type"] ||
+                  labels["node.kubernetes.io/instance-type"] ||
                   "—";
-                const reason = n.status?.reason || "—";
                 return (
                   <div key={n.metadata.name}>
                     <span className={"node-status-ring " + phase.toLowerCase()}>
@@ -261,9 +278,7 @@ export function Overview({
                     </span>
                     <div>
                       <strong>{n.metadata.name}</strong>
-                      <small>
-                        {model} · {reason}
-                      </small>
+                      <small>{model}</small>
                     </div>
                     <StatusBadge phase={phase} copy={c} />
                   </div>
@@ -286,76 +301,48 @@ export function Overview({
             </button>
           </div>
           <div className="workflow-list">
-            {realJobs.slice(0, 4).map((job) => (
-              <button key={job.id} onClick={() => navigate("jobs")}>
-                <span className={"workflow-symbol " + job.phase.toLowerCase()}>
-                  <Workflow size={17} />
-                </span>
-                <span className="workflow-info">
-                  <strong>{job.name}</strong>
-                  <small>
-                    {c.jobType[job.type]} · {job.target}
-                  </small>
-                </span>
-                <StatusBadge phase={job.phase} copy={c} />
-                <span className="progress-cell">
-                  <i>
-                    <b style={{ width: job.progress + "%" }} />
-                  </i>
-                  <small>
-                    {job.runningWorkers}/{job.workers}
-                  </small>
-                </span>
-                <ChevronRight size={17} />
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="panel activity-panel">
-          <div className="panel-title">
-            <div>
-              <span>{c.overview.recent}</span>
-              <h3>{c.common.production}</h3>
-            </div>
-            <button
-              className="icon-button small"
-              onClick={handleRefresh}
-              disabled={refreshing}
-              aria-busy={refreshing}
-              aria-label={isZh ? "刷新" : "Refresh"}
-              title={isZh ? "刷新" : "Refresh"}
-            >
-              <RefreshCw
-                size={15}
-                className={refreshing ? "job-action-loading" : ""}
-              />
-            </button>
-          </div>
-          <div className="activity-list">
-            {activity.length === 0 ? (
+            {activeJobs.length === 0 ? (
               <p
                 className="muted"
                 style={{ padding: "16px 0", textAlign: "center" }}
               >
-                {isZh ? "暂无活动" : "No recent activity"}
+                {c.overview.noLiveJobs}
               </p>
             ) : (
-              activity.map((item, i) => (
-                <div key={i}>
-                  <span className={"activity-dot " + item.type}>
-                    <i />
+              activeJobs.slice(0, 4).map((job) => (
+                <button key={job.id} onClick={() => navigate("jobs", job.name)}>
+                  <span
+                    className={"workflow-symbol " + job.phase.toLowerCase()}
+                  >
+                    <Workflow size={17} />
                   </span>
-                  <div>
-                    <strong>{item.title}</strong>
-                    <small>{item.meta}</small>
-                  </div>
-                  <time>{item.time}</time>
-                </div>
+                  <span className="workflow-info">
+                    <strong>{job.name}</strong>
+                    <small>
+                      {c.jobType[job.type]} · {job.target}
+                    </small>
+                  </span>
+                  <StatusBadge phase={effectiveJobPhase(job)} copy={c} />
+                  <span className="progress-cell">
+                    <i>
+                      <b style={{ width: job.progress + "%" }} />
+                    </i>
+                    <small>
+                      {job.runningWorkers}/{job.workers}
+                    </small>
+                  </span>
+                  <ChevronRight size={17} />
+                </button>
               ))
             )}
           </div>
         </div>
       </section>
+      <RefreshOverlay
+        visible={refreshing}
+        label={isZh ? "正在刷新总览数据" : "Refreshing overview data"}
+      />
     </div>
   );
 }
+import { clustersApi, jobsApi, nodesApi } from "../backend";

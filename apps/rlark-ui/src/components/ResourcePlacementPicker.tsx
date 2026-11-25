@@ -9,6 +9,12 @@ import {
 import { Check, CircleAlert, MapPin } from "lucide-react";
 import type { CRDNodeLite } from "../types";
 import {
+  nodeAvailabilityReasonText,
+  nodeAvailabilityState,
+  nodeReasonLabel,
+  nodeStateLabel,
+} from "../utils/nodeState";
+import {
   getGPUResourceKey,
   getNodeDeviceModel,
   getNodeGPUModel,
@@ -23,6 +29,11 @@ import {
 
 type Mode = "model" | "manual";
 type ResourceKind = "gpu" | "device" | "compute";
+
+// 型号缺失时用占位标识参与分组，展示时再按语言翻译，避免把中文写进数据层。
+const UNLABELED_GPU = "__unlabeled_gpu__";
+const unlabeledGPULabel = (zh: boolean) =>
+  zh ? "未标注 GPU" : "Unlabeled GPU";
 
 type NodeResource = {
   node: CRDNodeLite;
@@ -45,9 +56,15 @@ type ResourceOption = {
   availableNodes: number;
 };
 
-const isSchedulable = (resource: NodeResource) =>
-  resource.node.status?.phase !== "Offline" &&
-  !resource.node.spec?.unschedulable;
+// Placement eligibility comes from the controller-written Schedulable
+// condition. Service-degraded nodes remain eligible because the Node
+// Controller does not treat Degraded as a placement blocker.
+const isAvailable = (resource: NodeResource) =>
+  nodeAvailabilityState(resource.node).kind !== "unavailable";
+
+// Manual selection uses the same backend-owned eligibility so a node offered
+// here is never filtered out later by the Job scheduler.
+const isSelectable = isAvailable;
 
 const quantity = (value?: string) => {
   const parsed = Number.parseFloat(value ?? "0");
@@ -76,7 +93,7 @@ function nodeResources(
     resources.push({
       node,
       kind: "gpu",
-      model: getNodeGPUModel(fullNode) || "未标注 GPU",
+      model: getNodeGPUModel(fullNode) || UNLABELED_GPU,
       resourceKey: gpuKey,
       total: gpuTotal,
       free: availableResource(
@@ -123,6 +140,44 @@ function nodeResources(
   return resources;
 }
 
+// 整数输入框：编辑期间保留用户的原始输入（包括空字符串），失焦后再归一化
+// 回受控数值。直接用 value={number} + Number(event.target.value) 的写法会在
+// 用户按删除键清空最后一位时立刻把 "" 解析成 min 并写回，导致输入框永远无法
+// 清空（只能变成 0/1），并且在 "0" 这类前缀输入时让 DOM 与 state 失去同步
+// （输入框残留 "01"）。
+function IntegerField({
+  value,
+  min,
+  disabled,
+  onCommit,
+}: {
+  value: number;
+  min: number;
+  disabled?: boolean;
+  onCommit: (next: number) => void;
+}) {
+  const [draft, setDraft] = useState<string | null>(null);
+  return (
+    <input
+      type="number"
+      min={min}
+      disabled={disabled}
+      value={draft ?? String(value)}
+      onChange={(event) => {
+        const raw = event.target.value;
+        setDraft(raw);
+        const parsed = Number(raw);
+        onCommit(
+          raw.trim() === "" || !Number.isFinite(parsed)
+            ? min
+            : Math.max(min, Math.trunc(parsed)),
+        );
+      }}
+      onBlur={() => setDraft(null)}
+    />
+  );
+}
+
 export function ResourcePlacementPicker({
   zh,
   cluster,
@@ -162,6 +217,7 @@ export function ResourcePlacementPicker({
     requestedResourceAmount(gpu, devices[0]?.quantity),
   );
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [showUnavailable, setShowUnavailable] = useState(false);
   const initializedRef = useRef(false);
   const skipInitialCommitRef = useRef(false);
   const previousClusterRef = useRef(cluster);
@@ -211,13 +267,12 @@ export function ResourcePlacementPicker({
         0,
       ),
       freeDevices: groupedResources
-        .filter(isSchedulable)
+        .filter(isAvailable)
         .reduce((sum, resource) => sum + resource.free, 0),
       totalNodes: groupedResources.length,
       availableNodes: groupedResources.filter(
         (resource) =>
-          isSchedulable(resource) &&
-          (!resource.configured || resource.free > 0),
+          isAvailable(resource) && (!resource.configured || resource.free > 0),
       ).length,
     })).sort((left, right) => {
       const order: Record<ResourceKind, number> = {
@@ -272,7 +327,7 @@ export function ResourcePlacementPicker({
       const matchingNames = matchingOption.resources
         .filter(
           (resource) =>
-            isSchedulable(resource) &&
+            isAvailable(resource) &&
             (!resource.configured || resource.free >= resourceAmount),
         )
         .map((resource) => resource.node.metadata.name);
@@ -310,15 +365,17 @@ export function ResourcePlacementPicker({
   const kind = selectedOption?.kind ?? "compute";
   const model = selectedOption?.model ?? "";
   const displayModel =
-    model === "__unset_device_model__"
-      ? zh
-        ? "未设置设备型号"
-        : "Device model not set"
-      : model === "__undiscovered_device__"
+    model === UNLABELED_GPU
+      ? unlabeledGPULabel(zh)
+      : model === "__unset_device_model__"
         ? zh
-          ? "未发现设备"
-          : "No device discovered"
-        : model;
+          ? "未设置设备型号"
+          : "Device model not set"
+        : model === "__undiscovered_device__"
+          ? zh
+            ? "未发现设备"
+            : "No device discovered"
+          : model;
   const isUnconfiguredDevice =
     kind === "device" &&
     selectedOption?.resources.every((resource) => !resource.configured);
@@ -341,12 +398,20 @@ export function ResourcePlacementPicker({
             ? "compute slot"
             : "compute slots";
   const candidates = selectedOption?.resources ?? [];
+  // 不可用节点默认隐藏；服务降级节点仍可被选择。
+  const visibleCandidates = candidates.filter((resource) => {
+    if (!isSelectable(resource)) return showUnavailable;
+    return !resource.configured || resource.free >= resourceAmount;
+  });
+  const unavailableCount = candidates.filter(
+    (resource) => !isSelectable(resource),
+  ).length;
   const free = selectedOption?.freeDevices ?? 0;
   const requested = replicas * resourceAmount;
   const eligibleNames = candidates
     .filter(
       (resource) =>
-        isSchedulable(resource) &&
+        isAvailable(resource) &&
         (!resource.configured || resource.free >= resourceAmount),
     )
     .map((resource) => resource.node.metadata.name);
@@ -355,7 +420,7 @@ export function ResourcePlacementPicker({
     const names = candidates
       .filter(
         (resource) =>
-          isSchedulable(resource) &&
+          isAvailable(resource) &&
           (!resource.configured || resource.free >= nextPerWorker),
       )
       .map((resource) => resource.node.metadata.name);
@@ -417,7 +482,7 @@ export function ResourcePlacementPicker({
     setSelected(new Set());
   };
 
-  const commitSelection = (next: Set<string>) => {
+  const commitSelection = (next: Set<string>, amount = resourceAmount) => {
     setSelected(next);
     const selectedResources = candidates.filter((item) =>
       next.has(item.node.metadata.name),
@@ -431,13 +496,26 @@ export function ResourcePlacementPicker({
           })
         : "",
       replicas: next.size,
-      gpu: kind === "gpu" ? String(resourceAmount) : "0",
+      gpu: kind === "gpu" ? String(amount) : "0",
       devices:
         kind === "device" && resourceKey
-          ? [{ name: resourceKey, quantity: String(resourceAmount) }]
+          ? [{ name: resourceKey, quantity: String(amount) }]
           : [],
     });
   };
+
+  // 改规格不是重新选节点：只剔除空闲量不再满足新规格的节点，其余选择保留。
+  // 输入过程中的空值会被归一化成 min，因此中间态不会误伤已选节点。
+  const selectionWithin = (amount: number) =>
+    new Set(
+      candidates
+        .filter(
+          (resource) =>
+            selected.has(resource.node.metadata.name) &&
+            (!resource.configured || resource.free >= amount),
+        )
+        .map((resource) => resource.node.metadata.name),
+    );
 
   const handleSelectionStart = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (event.button !== 0 || !gridRef.current) return;
@@ -448,7 +526,7 @@ export function ResourcePlacementPicker({
       initial: new Set(selected),
       targetName:
         (event.target as HTMLElement).closest<HTMLButtonElement>(
-          ".placement-node-card:not(:disabled)",
+          '.placement-node-card:not([aria-disabled="true"])',
         )?.dataset.nodeName ?? null,
     };
     pendingSelectionRef.current = new Set(selected);
@@ -486,7 +564,7 @@ export function ResourcePlacementPicker({
     const next = new Set(start.initial);
     grid
       .querySelectorAll<HTMLButtonElement>(
-        ".placement-node-card:not(:disabled)",
+        '.placement-node-card:not([aria-disabled="true"])',
       )
       .forEach((card) => {
         const rect = card.getBoundingClientRect();
@@ -588,15 +666,17 @@ export function ResourcePlacementPicker({
                               : "General compute"}
                     </small>
                     <strong>
-                      {option.model === "__undiscovered_device__"
-                        ? zh
-                          ? "未发现设备"
-                          : "No device discovered"
-                        : option.model === "__unset_device_model__"
+                      {option.model === UNLABELED_GPU
+                        ? unlabeledGPULabel(zh)
+                        : option.model === "__undiscovered_device__"
                           ? zh
-                            ? "未设置设备型号"
-                            : "Device model not set"
-                          : option.model}
+                            ? "未发现设备"
+                            : "No device discovered"
+                          : option.model === "__unset_device_model__"
+                            ? zh
+                              ? "未设置设备型号"
+                              : "Device model not set"
+                            : option.model}
                     </strong>
                   </span>
                   <span className="placement-resource-option-stat">
@@ -620,32 +700,16 @@ export function ResourcePlacementPicker({
                     ? `单 Worker ${kind === "gpu" ? "GPU" : "设备"}数量`
                     : "Resources per worker"}
                 </span>
-                <input
-                  type="number"
-                  min={0}
+                <IntegerField
                   value={resourceAmount}
+                  min={0}
                   disabled={isUnconfiguredDevice}
-                  onChange={(event) => {
-                    const nextAmount = Math.max(0, Number(event.target.value));
+                  onCommit={(nextAmount) => {
                     setResourceAmount(nextAmount);
                     if (mode === "model") {
                       commitModel(Math.max(1, replicas), nextAmount);
                     } else {
-                      setSelected(new Set());
-                      onChange({
-                        nodeSelector: "",
-                        replicas: 0,
-                        gpu: kind === "gpu" ? String(nextAmount) : "0",
-                        devices:
-                          kind === "device" && candidates[0]?.resourceKey
-                            ? [
-                                {
-                                  name: candidates[0].resourceKey,
-                                  quantity: String(nextAmount),
-                                },
-                              ]
-                            : [],
-                      });
+                      commitSelection(selectionWithin(nextAmount), nextAmount);
                     }
                   }}
                 />
@@ -720,15 +784,11 @@ export function ResourcePlacementPicker({
                 <span className="placement-field-label">
                   {zh ? "Worker 数量" : "Workers"}
                 </span>
-                <input
-                  type="number"
-                  min={1}
+                <IntegerField
                   value={replicas || 1}
-                  onChange={(event) =>
-                    commitModel(
-                      Math.max(1, Number(event.target.value)),
-                      resourceAmount,
-                    )
+                  min={1}
+                  onCommit={(nextReplicas) =>
+                    commitModel(nextReplicas, resourceAmount)
                   }
                 />
                 <small>
@@ -753,19 +813,42 @@ export function ResourcePlacementPicker({
 
           {mode === "manual" && (
             <div>
-              <p className="placement-manual-hint">
-                {zh
-                  ? isUnconfiguredDevice
-                    ? model === "__unset_device_model__"
-                      ? "显示有设备资源但未设置设备型号的节点，不申请设备资源。点击单选，拖拽可批量选择或取消。"
-                      : "显示尚未发现 GPU 或端侧设备资源的未分类节点。点击单选，拖拽可批量选择或取消。"
-                    : `仅显示空闲数量不少于 ${resourceAmount} ${resourceUnit}${kind === "gpu" ? " " : ""}的节点。点击单选，拖拽可批量选择或取消。`
-                  : isUnconfiguredDevice
-                    ? model === "__unset_device_model__"
-                      ? "Showing nodes with device resources but no configured device model; no device resource is requested. Click or drag to select."
-                      : "Showing unclassified nodes without discovered GPU or edge-device resources. Click or drag to select."
-                    : `Showing nodes with at least ${resourceAmount} ${resourceUnit} available. Click or drag to select and deselect.`}
-              </p>
+              <div className="placement-node-grid-head">
+                <p className="placement-manual-hint">
+                  {zh
+                    ? isUnconfiguredDevice
+                      ? model === "__unset_device_model__"
+                        ? "显示有设备资源但未设置设备型号的节点，不申请设备资源。点击单选，拖拽可批量选择或取消。"
+                        : "显示尚未发现 GPU 或端侧设备资源的未分类节点。点击单选，拖拽可批量选择或取消。"
+                      : `仅显示空闲数量不少于 ${resourceAmount} ${resourceUnit}${kind === "gpu" ? " " : ""}的节点。点击单选，拖拽可批量选择或取消。`
+                    : isUnconfiguredDevice
+                      ? model === "__unset_device_model__"
+                        ? "Showing nodes with device resources but no configured device model; no device resource is requested. Click or drag to select."
+                        : "Showing unclassified nodes without discovered GPU or edge-device resources. Click or drag to select."
+                      : `Showing nodes with at least ${resourceAmount} ${resourceUnit} available. Click or drag to select and deselect.`}
+                </p>
+                <label className="placement-node-grid-toggle">
+                  <input
+                    type="checkbox"
+                    checked={showUnavailable}
+                    onChange={(event) =>
+                      setShowUnavailable(event.target.checked)
+                    }
+                  />
+                  <span>
+                    {zh
+                      ? `查看不可用节点（${unavailableCount}）`
+                      : `Show unavailable nodes (${unavailableCount})`}
+                  </span>
+                </label>
+              </div>
+              {visibleCandidates.length === 0 ? (
+                <p className="placement-manual-hint">
+                  {zh
+                    ? "当前规格下没有可选择的可用节点。勾选“查看不可用节点”可查看其余节点及其不可用原因。"
+                    : "No selectable nodes match the current spec. Enable “Show unavailable nodes” to inspect the other nodes and their reasons."}
+                </p>
+              ) : null}
               <div
                 className="placement-node-grid"
                 ref={gridRef}
@@ -781,59 +864,82 @@ export function ResourcePlacementPicker({
                     aria-hidden="true"
                   />
                 )}
-                {candidates
-                  .filter(
-                    (resource) =>
-                      !resource.configured || resource.free >= resourceAmount,
-                  )
-                  .map((resource) => {
-                    const name = resource.node.metadata.name;
-                    const offline = resource.node.status?.phase === "Offline";
-                    const cordoned = Boolean(resource.node.spec?.unschedulable);
-                    const disabled = offline || cordoned;
-                    const active = selected.has(name);
-                    const location =
-                      getNodeLocation(
-                        resource.node as Parameters<typeof getNodeLocation>[0],
-                      ) || (zh ? "位置未标注" : "Location not set");
-                    const statusText = offline
-                      ? zh
-                        ? "节点离线"
-                        : "Node offline"
-                      : cordoned
-                        ? zh
-                          ? "已暂停调度"
-                          : "Scheduling disabled"
-                        : zh
-                          ? "可调度"
-                          : "Schedulable";
-                    return (
-                      <button
-                        type="button"
-                        key={name}
-                        data-node-name={name}
-                        disabled={disabled}
-                        className={`placement-node-card${active ? " active" : ""}${disabled ? " unavailable" : ""}`}
-                        title={name}
-                      >
-                        <div className="placement-node-head">
-                          <strong>{name}</strong>
-                        </div>
-                        <div className="placement-node-meta">
-                          <span className="placement-node-location">
-                            <MapPin size={12} /> {location}
+                {visibleCandidates.map((resource) => {
+                  const name = resource.node.metadata.name;
+                  const availability = nodeAvailabilityState(resource.node);
+                  const disabled = availability.kind === "unavailable";
+                  const active = selected.has(name);
+                  const location =
+                    getNodeLocation(
+                      resource.node as Parameters<typeof getNodeLocation>[0],
+                    ) || (zh ? "位置未标注" : "Location not set");
+                  const statusText = nodeStateLabel(availability.kind, zh);
+                  const reasonText = nodeAvailabilityReasonText(
+                    availability,
+                    zh,
+                  );
+                  return (
+                    <button
+                      type="button"
+                      key={name}
+                      data-node-name={name}
+                      aria-disabled={disabled}
+                      className={`placement-node-card${active ? " active" : ""}${availability.kind === "unavailable" ? " unavailable" : ""}${availability.kind === "serviceDegraded" ? " degraded" : ""}`}
+                      title={reasonText ? `${name} · ${reasonText}` : name}
+                    >
+                      <div className="placement-node-head">
+                        <strong>{name}</strong>
+                      </div>
+                      <div className="placement-node-meta">
+                        <span className="placement-node-location">
+                          <MapPin size={12} /> {location}
+                        </span>
+                        <span className="placement-node-state">
+                          <em>{statusText}</em>
+                          {availability.reasons.length > 0 && (
+                            <>
+                              <CircleAlert
+                                size={13}
+                                className="node-availability-info"
+                                role="img"
+                                aria-label={
+                                  zh ? "查看不可用原因" : "View reasons"
+                                }
+                              />
+                              <span
+                                className="node-availability-info-tooltip"
+                                role="tooltip"
+                              >
+                                {availability.reasons.map((reason, index) => {
+                                  const detail = nodeReasonLabel(
+                                    reason.condition?.reason,
+                                    zh,
+                                  );
+                                  return (
+                                    <span
+                                      className="node-availability-reason"
+                                      key={index}
+                                    >
+                                      {nodeStateLabel(reason.kind, zh)}
+                                      {detail
+                                        ? `${zh ? "：" : ": "}${detail}`
+                                        : ""}
+                                    </span>
+                                  );
+                                })}
+                              </span>
+                            </>
+                          )}
+                          <span className="placement-node-check">
+                            {active && <Check size={14} />}
                           </span>
-                          <span className="placement-node-state">
-                            <em>{statusText}</em>
-                            {disabled && <CircleAlert size={13} />}
-                            <span className="placement-node-check">
-                              {active && <Check size={14} />}
-                            </span>
-                          </span>
-                        </div>
-                        <div className="placement-node-specs">
-                          <span>
-                            {resource.model === "__unset_device_model__"
+                        </span>
+                      </div>
+                      <div className="placement-node-specs">
+                        <span>
+                          {resource.model === UNLABELED_GPU
+                            ? unlabeledGPULabel(zh)
+                            : resource.model === "__unset_device_model__"
                               ? zh
                                 ? "未设置设备型号"
                                 : "Device model not set"
@@ -842,15 +948,15 @@ export function ResourcePlacementPicker({
                                 : zh
                                   ? "未分类 · 未发现设备"
                                   : "Unclassified · No device discovered"}
-                          </span>
-                          <span>
-                            <b>{resource.free}</b> / {resource.total}
-                            {zh ? " 空闲" : " free"}
-                          </span>
-                        </div>
-                      </button>
-                    );
-                  })}
+                        </span>
+                        <span>
+                          <b>{resource.free}</b> / {resource.total}
+                          {zh ? " 空闲" : " free"}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -894,7 +1000,7 @@ export function ResourcePlacementPicker({
                     ? zh
                       ? `通用计算 · ${model}`
                       : `General compute · ${model}`
-                    : `${zh ? "单 Worker" : "Per worker"}：${resourceAmount} × ${displayModel}`}
+                    : `${zh ? "单 Worker：" : "Per worker: "}${resourceAmount} × ${displayModel}`}
               </small>
             </div>
             {mode === "model" ? (

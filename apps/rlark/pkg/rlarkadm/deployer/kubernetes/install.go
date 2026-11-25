@@ -1,26 +1,21 @@
 package kubernetes
 
 import (
-	"bytes"
 	"context"
 	"crypto/rand"
-	"encoding/base64"
-	"encoding/json"
 	"fmt"
-	"os/exec"
-	"strings"
-	"time"
 
-	"github.com/rlinf/rlark/api/config"
 	"github.com/rlinf/rlark/apps/rlark/pkg/common"
 	"github.com/rlinf/rlark/apps/rlark/pkg/log"
 	"github.com/rlinf/rlark/apps/rlark/pkg/rlarkadm/cert"
 	"github.com/rlinf/rlark/apps/rlark/pkg/rlarkadm/component"
 	"github.com/rlinf/rlark/apps/rlark/pkg/rlarkadm/constants"
 	"github.com/rlinf/rlark/apps/rlark/pkg/rlarkadm/health"
+	"github.com/rlinf/rlark/apps/rlark/pkg/rlarkadm/runtime"
 	"github.com/rlinf/rlark/apps/rlark/pkg/rlarkadm/types"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -29,7 +24,8 @@ import (
 
 // Installer installs RLark components.
 type Installer struct {
-	summary *types.InstallSummary
+	summary    *types.InstallSummary
+	kubeconfig string
 }
 
 // Install installs the components.
@@ -39,6 +35,7 @@ func (d *Installer) Install(cfg *types.DeployConfig, certBundle *cert.Bundle) er
 	if kubeconfig == "" {
 		kubeconfig = clientcmd.NewDefaultClientConfigLoadingRules().GetDefaultFilename()
 	}
+	d.kubeconfig = kubeconfig
 	restConfig, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
 	if err != nil {
 		return fmt.Errorf("build kubeconfig: %w", err)
@@ -47,10 +44,25 @@ func (d *Installer) Install(cfg *types.DeployConfig, certBundle *cert.Bundle) er
 	if err != nil {
 		return fmt.Errorf("create clientset: %w", err)
 	}
-	ctx := context.Background()
+	// Inject runtime dependencies into context
+	ctx := runtime.WithClientset(context.Background(), clientset)
+	ctx = runtime.WithKubeconfig(ctx, kubeconfig)
 
 	if err := ensureNamespace(ctx, clientset); err != nil {
 		return err
+	}
+	if cfg.UsesKubernetesManagementAPI() {
+		apiExtensions, err := apiextensionsclient.NewForConfig(restConfig)
+		if err != nil {
+			return fmt.Errorf("create apiextensions clientset: %w", err)
+		}
+		installer := &component.DirectCRDInstaller{Client: apiExtensions}
+		if err := installer.Install(ctx); err != nil {
+			return err
+		}
+		if err := ensureUIAuthSecretInKubernetes(ctx, clientset, constants.Namespace); err != nil {
+			return err
+		}
 	}
 
 	if certBundle != nil {
@@ -68,20 +80,9 @@ func (d *Installer) Install(cfg *types.DeployConfig, certBundle *cert.Bundle) er
 		}
 	}
 
-	// todo 可以并发部署
+	// Deploy components in dependency order
 	for _, c := range component.ComponentsForPlane(cfg) {
-		c.HealthCheckFn = health.K8sWorkloadHealthCheck(clientset, c)
-		if c.Name == constants.ComponentKCP {
-			c.PostDeployFn = extractKCPKubeconfigFn(ctx, clientset)
-		}
-
-		// 如果组件已存在且健康，跳过部署（CRD apply 在循环结束后统一执行）
-		if c.HealthCheckFn != nil && c.HealthCheckFn(cfg) == nil {
-			logger.Info("component already healthy, skipping", "name", c.Name)
-			continue
-		}
-
-		if err := ensureRBAC(ctx, clientset, &c); err != nil {
+		if err := ensureRBAC(ctx, clientset, cfg, &c); err != nil {
 			return err
 		}
 
@@ -98,24 +99,16 @@ func (d *Installer) Install(cfg *types.DeployConfig, certBundle *cert.Bundle) er
 
 		logger.Info("component deployed", "name", c.Name, "port", c.Port)
 
-		if err := health.WaitForHealthy(cfg, c); err != nil {
+		// Health check using context-injected clientset
+		if err := health.WaitForHealthy(ctx, cfg, c); err != nil {
 			return err
 		}
 
+		// Post-deploy hook
 		if c.PostDeployFn != nil {
-			if err := c.PostDeployFn(cfg); err != nil {
+			if err := c.PostDeployFn(ctx, cfg); err != nil {
 				return err
 			}
-		}
-	}
-
-	// 始终 apply CRD，无论 KCP 是否新部署
-	if cfg.Plane == types.PlaneControl {
-		if err := createUIAuthSecretInKCP(ctx, clientset); err != nil {
-			return err
-		}
-		if err := applyKCP(ctx, clientset); err != nil {
-			return err
 		}
 	}
 
@@ -147,7 +140,7 @@ func (d *Installer) buildSummary(ctx context.Context, clientset *kubernetes.Clie
 		}
 		healthy := false
 		if c.HealthCheckFn != nil {
-			healthy = c.HealthCheckFn(cfg) == nil
+			healthy = c.HealthCheckFn(ctx, cfg) == nil
 		}
 		summary.Components = append(summary.Components, types.ComponentStatus{
 			Name:    c.Name,
@@ -162,7 +155,14 @@ func (d *Installer) buildSummary(ctx context.Context, clientset *kubernetes.Clie
 	}
 
 	if cfg.Plane == types.PlaneControl {
-		if adminPW, userPW, err := readUIAuthFromKCP(ctx, clientset); err == nil {
+		var adminPW, userPW string
+		var err error
+		if cfg.UsesKubernetesManagementAPI() {
+			adminPW, userPW, err = readUIAuthFromKubernetes(ctx, clientset, constants.Namespace)
+		} else {
+			adminPW, userPW, err = component.ReadUIAuthFromKCP(ctx, clientset, d.kubeconfig)
+		}
+		if err == nil {
 			summary.AdminPassword = adminPW
 			summary.UserPassword = userPW
 		}
@@ -171,210 +171,68 @@ func (d *Installer) buildSummary(ctx context.Context, clientset *kubernetes.Clie
 	return summary
 }
 
-func ensureNamespace(ctx context.Context, clientset *kubernetes.Clientset) error {
-	_, err := clientset.CoreV1().Namespaces().Get(ctx, constants.Namespace, metav1.GetOptions{})
-	if err == nil {
+func ensureUIAuthSecretInKubernetes(ctx context.Context, clientset kubernetes.Interface, namespace string) error {
+	if secret, err := clientset.CoreV1().Secrets(namespace).Get(ctx, common.UIAuthSecretName, metav1.GetOptions{}); err == nil {
+		if len(secret.Data[common.UIAuthAdminPasswordKey]) > 0 &&
+			len(secret.Data[common.UIAuthUserPasswordKey]) > 0 &&
+			len(secret.Data[common.UIAuthJWTSigningKey]) >= 32 {
+			return nil
+		}
+		if secret.Data == nil {
+			secret.Data = make(map[string][]byte)
+		}
+		if len(secret.Data[common.UIAuthAdminPasswordKey]) == 0 {
+			password, err := generatePassword(16)
+			if err != nil {
+				return fmt.Errorf("generate admin password: %w", err)
+			}
+			secret.Data[common.UIAuthAdminPasswordKey] = []byte(password)
+		}
+		if len(secret.Data[common.UIAuthUserPasswordKey]) == 0 {
+			password, err := generatePassword(16)
+			if err != nil {
+				return fmt.Errorf("generate user password: %w", err)
+			}
+			secret.Data[common.UIAuthUserPasswordKey] = []byte(password)
+		}
+		if len(secret.Data[common.UIAuthJWTSigningKey]) < 32 {
+			signingKey, err := generateSecret(32)
+			if err != nil {
+				return fmt.Errorf("generate JWT signing key: %w", err)
+			}
+			secret.Data[common.UIAuthJWTSigningKey] = signingKey
+		}
+		if _, err := clientset.CoreV1().Secrets(namespace).Update(ctx, secret, metav1.UpdateOptions{}); err != nil {
+			return fmt.Errorf("update ui auth secret: %w", err)
+		}
 		return nil
+	} else if !errors.IsNotFound(err) {
+		return fmt.Errorf("get ui auth secret: %w", err)
 	}
-	if !errors.IsNotFound(err) {
-		return fmt.Errorf("get namespace %s: %w", constants.Namespace, err)
+	adminPassword, err := generatePassword(16)
+	if err != nil {
+		return fmt.Errorf("generate admin password: %w", err)
 	}
-	_, err = clientset.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{
-		ObjectMeta: metav1.ObjectMeta{Name: constants.Namespace},
+	userPassword, err := generatePassword(16)
+	if err != nil {
+		return fmt.Errorf("generate user password: %w", err)
+	}
+	signingKey, err := generateSecret(32)
+	if err != nil {
+		return fmt.Errorf("generate JWT signing key: %w", err)
+	}
+	_, err = clientset.CoreV1().Secrets(namespace).Create(ctx, &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: common.UIAuthSecretName, Namespace: namespace},
+		Type:       corev1.SecretTypeOpaque,
+		Data: map[string][]byte{
+			common.UIAuthAdminPasswordKey: []byte(adminPassword),
+			common.UIAuthUserPasswordKey:  []byte(userPassword),
+			common.UIAuthJWTSigningKey:    signingKey,
+		},
 	}, metav1.CreateOptions{})
 	if err != nil && !errors.IsAlreadyExists(err) {
-		return fmt.Errorf("create namespace %s: %w", constants.Namespace, err)
+		return fmt.Errorf("create ui auth secret: %w", err)
 	}
-	return nil
-}
-
-func ensureRBAC(ctx context.Context, clientset *kubernetes.Clientset, c *types.Component) error {
-	logger := log.FromContext(ctx)
-	sa, cr, crb := component.RBAC(c)
-	if sa == nil {
-		return nil
-	}
-
-	if _, err := clientset.CoreV1().ServiceAccounts(constants.Namespace).Create(ctx, sa, metav1.CreateOptions{}); err != nil {
-		if !errors.IsAlreadyExists(err) {
-			return fmt.Errorf("create serviceaccount %s: %w", sa.Name, err)
-		}
-		if _, err := clientset.CoreV1().ServiceAccounts(constants.Namespace).Update(ctx, sa, metav1.UpdateOptions{}); err != nil {
-			return fmt.Errorf("update serviceaccount %s: %w", sa.Name, err)
-		}
-	}
-
-	if _, err := clientset.RbacV1().ClusterRoles().Create(ctx, cr, metav1.CreateOptions{}); err != nil {
-		if errors.IsAlreadyExists(err) {
-			if _, err := clientset.RbacV1().ClusterRoles().Update(ctx, cr, metav1.UpdateOptions{}); err != nil {
-				return fmt.Errorf("update clusterrole %s: %w", cr.Name, err)
-			}
-		} else {
-			return fmt.Errorf("create clusterrole %s: %w", cr.Name, err)
-		}
-	}
-
-	if _, err := clientset.RbacV1().ClusterRoleBindings().Create(ctx, crb, metav1.CreateOptions{}); err != nil {
-		if errors.IsAlreadyExists(err) {
-			if _, err := clientset.RbacV1().ClusterRoleBindings().Update(ctx, crb, metav1.UpdateOptions{}); err != nil {
-				return fmt.Errorf("update clusterrolebinding %s: %w", crb.Name, err)
-			}
-		} else {
-			return fmt.Errorf("create clusterrolebinding %s: %w", crb.Name, err)
-		}
-	}
-
-	logger.Info("ensured RBAC", "component", c.Name, "serviceAccount", sa.Name)
-	return nil
-}
-
-// extractKCPKubeconfigFn returns a PostDeployFn that extracts admin.kubeconfig
-// from the KCP pod and creates a ConfigMap for other components to mount.
-func extractKCPKubeconfigFn(ctx context.Context, clientset *kubernetes.Clientset) func(cfg *types.DeployConfig) error {
-	return func(cfg *types.DeployConfig) error {
-		return extractAndApplyKCP(ctx, clientset)
-	}
-}
-
-func applyKCP(ctx context.Context, clientset *kubernetes.Clientset) error {
-	return extractAndApplyKCP(ctx, clientset)
-}
-
-func extractAndApplyKCP(ctx context.Context, clientset *kubernetes.Clientset) error {
-	logger := log.GetLogger()
-	pods, err := clientset.CoreV1().Pods(constants.Namespace).List(ctx, metav1.ListOptions{
-		LabelSelector: "app=" + constants.ComponentKCP,
-	})
-	if err != nil {
-		return fmt.Errorf("list kcp pods: %w", err)
-	}
-	if len(pods.Items) == 0 {
-		return fmt.Errorf("no kcp pods found")
-	}
-
-	podName := pods.Items[0].Name
-
-	// Wait for admin.kubeconfig to be available, then extract via kubectl exec
-	deadline := time.Now().Add(60 * time.Second)
-	var kubeconfigData string
-	for {
-		cmd := exec.Command("kubectl", "-n", constants.Namespace, "exec", podName, "--", "cat", constants.KCPDataDir+"/admin.kubeconfig")
-		var buf bytes.Buffer
-		cmd.Stdout = &buf
-		err := cmd.Run()
-		if err == nil && buf.Len() > 0 {
-			kubeconfigData = buf.String()
-			break
-		}
-		if time.Now().After(deadline) {
-			return fmt.Errorf("timeout waiting for kcp admin.kubeconfig: %w", err)
-		}
-		time.Sleep(2 * time.Second)
-	}
-
-	cm := &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{Name: "rlark-kcp-kubeconfig"},
-		Data:       map[string]string{"admin.kubeconfig": kubeconfigData},
-	}
-	_, err = clientset.CoreV1().ConfigMaps(constants.Namespace).Create(ctx, cm, metav1.CreateOptions{})
-	if err != nil {
-		if errors.IsAlreadyExists(err) {
-			_, err = clientset.CoreV1().ConfigMaps(constants.Namespace).Update(ctx, cm, metav1.UpdateOptions{})
-			if err != nil {
-				return fmt.Errorf("update kcp kubeconfig configmap: %w", err)
-			}
-		} else {
-			return fmt.Errorf("create kcp kubeconfig configmap: %w", err)
-		}
-	}
-
-	logger.Info("extracted admin.kubeconfig to ConfigMap")
-
-	if err := installCRDs(podName); err != nil {
-		return fmt.Errorf("install CRDs to kcp: %w", err)
-	}
-
-	return nil
-}
-
-// installCRDs applies embedded CRD manifests into the KCP pod via kubectl exec,
-// since the local machine cannot reach the KCP API directly.
-func installCRDs(podName string) error {
-	logger := log.GetLogger()
-
-	entries, err := config.CRDFiles.ReadDir("crd/bases")
-	if err != nil {
-		return fmt.Errorf("read embedded CRD files: %w", err)
-	}
-	if len(entries) == 0 {
-		logger.Error(nil, "no CRD files embedded, skipping CRD install")
-		return nil
-	}
-
-	for _, entry := range entries {
-		if entry.IsDir() {
-			continue
-		}
-		crdName := entry.Name()
-		content, err := config.CRDFiles.ReadFile("crd/bases/" + crdName)
-		if err != nil {
-			return fmt.Errorf("read embedded CRD %s: %w", crdName, err)
-		}
-
-		kc := constants.KCPDataDir + "/admin.kubeconfig"
-		var lastErr error
-		for attempt := 0; attempt < 5; attempt++ {
-			createCmd := exec.Command("kubectl", "-n", constants.Namespace, "exec", "-i", podName, "--",
-				"kubectl", "--kubeconfig", kc, "create", "--validate=false", "-f", "-")
-			createCmd.Stdin = strings.NewReader(string(content))
-			var createErr bytes.Buffer
-			createCmd.Stderr = &createErr
-			if err := createCmd.Run(); err == nil {
-				lastErr = nil
-				break
-			}
-			replaceCmd := exec.Command("kubectl", "-n", constants.Namespace, "exec", "-i", podName, "--",
-				"kubectl", "--kubeconfig", kc, "replace", "--validate=false", "-f", "-")
-			replaceCmd.Stdin = strings.NewReader(string(content))
-			var replaceErr bytes.Buffer
-			replaceCmd.Stderr = &replaceErr
-			if err := replaceCmd.Run(); err == nil {
-				lastErr = nil
-				break
-			}
-			if strings.Contains(replaceErr.String(), "field is immutable") {
-				deleteCmd := exec.Command("kubectl", "-n", constants.Namespace, "exec", podName, "--",
-					"kubectl", "--kubeconfig", kc, "delete", "--ignore-not-found", "-f", "-")
-				deleteCmd.Stdin = strings.NewReader(string(content))
-				var deleteErr bytes.Buffer
-				deleteCmd.Stderr = &deleteErr
-				if err := deleteCmd.Run(); err == nil {
-					recreateCmd := exec.Command("kubectl", "-n", constants.Namespace, "exec", "-i", podName, "--",
-						"kubectl", "--kubeconfig", kc, "create", "--validate=false", "-f", "-")
-					recreateCmd.Stdin = strings.NewReader(string(content))
-					var recreateErr bytes.Buffer
-					recreateCmd.Stderr = &recreateErr
-					if err := recreateCmd.Run(); err == nil {
-						lastErr = nil
-						break
-					}
-					lastErr = fmt.Errorf("apply %s: recreate after delete: %s", crdName, recreateErr.String())
-				} else {
-					lastErr = fmt.Errorf("apply %s: delete before recreate: %s", crdName, deleteErr.String())
-				}
-			} else {
-				lastErr = fmt.Errorf("apply %s: create: %s | replace: %s", crdName, createErr.String(), replaceErr.String())
-			}
-			if attempt < 2 {
-				time.Sleep(5 * time.Second)
-			}
-		}
-		if lastErr != nil {
-			return lastErr
-		}
-		logger.Info("applied CRD", "file", crdName)
-	}
-
 	return nil
 }
 
@@ -394,115 +252,100 @@ func generatePassword(length int) (string, error) {
 	return string(out), nil
 }
 
-// createUIAuthSecretInKCP creates the rlark-ui-auth secret in KCP (not local K8s)
-// by running kubectl inside the KCP pod.
-func createUIAuthSecretInKCP(ctx context.Context, clientset *kubernetes.Clientset) error {
-	logger := log.FromContext(ctx)
-
-	pods, err := clientset.CoreV1().Pods(constants.Namespace).List(ctx, metav1.ListOptions{
-		LabelSelector: "app=" + constants.ComponentKCP,
-	})
-	if err != nil {
-		return fmt.Errorf("list kcp pods: %w", err)
+func generateSecret(length int) ([]byte, error) {
+	secret := make([]byte, length)
+	if _, err := rand.Read(secret); err != nil {
+		return nil, err
 	}
-	if len(pods.Items) == 0 {
-		return fmt.Errorf("no kcp pods found")
-	}
-	podName := pods.Items[0].Name
-	kc := constants.KCPDataDir + "/admin.kubeconfig"
-
-	// Check if secret already exists in KCP.
-	checkCmd := exec.Command("kubectl", "-n", constants.Namespace, "exec", podName, "--",
-		"kubectl", "--kubeconfig", kc, "get", "secret", common.UIAuthSecretName, "-n", "default")
-	if err := checkCmd.Run(); err == nil {
-		logger.Info("ui auth secret already exists in KCP, skipping", "name", common.UIAuthSecretName)
-		return nil
-	}
-
-	adminPassword, err := generatePassword(16)
-	if err != nil {
-		return fmt.Errorf("generate admin password: %w", err)
-	}
-	userPassword, err := generatePassword(16)
-	if err != nil {
-		return fmt.Errorf("generate user password: %w", err)
-	}
-
-	manifest := fmt.Sprintf(`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: %s
-  namespace: default
-type: Opaque
-stringData:
-  admin-password: %s
-  user-password: %s
-`, common.UIAuthSecretName, adminPassword, userPassword)
-
-	applyCmd := exec.Command("kubectl", "-n", constants.Namespace, "exec", "-i", podName, "--",
-		"kubectl", "--kubeconfig", kc, "apply", "--validate=false", "-f", "-")
-	applyCmd.Stdin = strings.NewReader(manifest)
-	var errBuf bytes.Buffer
-	applyCmd.Stderr = &errBuf
-	if err := applyCmd.Run(); err != nil {
-		return fmt.Errorf("apply ui auth secret in kcp: %w: %s", err, errBuf.String())
-	}
-
-	logger.Info("ui auth secret created in KCP", "name", common.UIAuthSecretName)
-	return nil
+	return secret, nil
 }
 
-// readUIAuthFromKCP reads the ui auth secret from KCP via kubectl exec.
-func readUIAuthFromKCP(ctx context.Context, clientset *kubernetes.Clientset) (adminPW, userPW string, err error) {
-	pods, err := clientset.CoreV1().Pods(constants.Namespace).List(ctx, metav1.ListOptions{
-		LabelSelector: "app=" + constants.ComponentKCP,
-	})
+func readUIAuthFromKubernetes(ctx context.Context, clientset kubernetes.Interface, namespace string) (string, string, error) {
+	secret, err := clientset.CoreV1().Secrets(namespace).Get(ctx, common.UIAuthSecretName, metav1.GetOptions{})
 	if err != nil {
-		return "", "", fmt.Errorf("list kcp pods: %w", err)
+		return "", "", fmt.Errorf("get ui auth secret: %w", err)
 	}
-	if len(pods.Items) == 0 {
-		return "", "", fmt.Errorf("no kcp pods found")
-	}
-	podName := pods.Items[0].Name
-	kc := constants.KCPDataDir + "/admin.kubeconfig"
-
-	cmd := exec.Command("kubectl", "-n", constants.Namespace, "exec", podName, "--",
-		"kubectl", "--kubeconfig", kc, "get", "secret", common.UIAuthSecretName, "-n", "default",
-		"-o", "json")
-	var jsonOut bytes.Buffer
-	cmd.Stdout = &jsonOut
-	if err := cmd.Run(); err != nil {
-		return "", "", fmt.Errorf("read ui auth secret from kcp: %w", err)
-	}
-
-	return parseAuthSecretJSON(jsonOut.Bytes())
-}
-
-func parseAuthSecretJSON(data []byte) (adminPW, userPW string, err error) {
-	var s struct {
-		Data map[string]string `json:"data"`
-	}
-	if err := json.Unmarshal(data, &s); err != nil {
-		return "", "", err
-	}
-	adminRaw, ok := s.Data["admin-password"]
+	adminPassword, ok := secret.Data[common.UIAuthAdminPasswordKey]
 	if !ok {
 		return "", "", fmt.Errorf("admin-password not found in secret")
 	}
-	userRaw, ok := s.Data["user-password"]
+	userPassword, ok := secret.Data[common.UIAuthUserPasswordKey]
 	if !ok {
 		return "", "", fmt.Errorf("user-password not found in secret")
 	}
-	adminDec, err := base64.StdEncoding.DecodeString(adminRaw)
-	if err != nil {
-		return "", "", fmt.Errorf("decode admin-password: %w", err)
+	return string(adminPassword), string(userPassword), nil
+}
+
+func ensureNamespace(ctx context.Context, clientset *kubernetes.Clientset) error {
+	_, err := clientset.CoreV1().Namespaces().Get(ctx, constants.Namespace, metav1.GetOptions{})
+	if err == nil {
+		return nil
 	}
-	userDec, err := base64.StdEncoding.DecodeString(userRaw)
-	if err != nil {
-		return "", "", fmt.Errorf("decode user-password: %w", err)
+	if !errors.IsNotFound(err) {
+		return fmt.Errorf("get namespace %s: %w", constants.Namespace, err)
 	}
-	return string(adminDec), string(userDec), nil
+	_, err = clientset.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{Name: constants.Namespace},
+	}, metav1.CreateOptions{})
+	if err != nil && !errors.IsAlreadyExists(err) {
+		return fmt.Errorf("create namespace %s: %w", constants.Namespace, err)
+	}
+	return nil
+}
+
+func ensureRBAC(ctx context.Context, clientset *kubernetes.Clientset, cfg *types.DeployConfig, c *types.Component) error {
+	logger := log.FromContext(ctx)
+	sa, cr, crb := component.RBAC(cfg, c)
+	if sa == nil {
+		return nil
+	}
+
+	if _, err := clientset.CoreV1().ServiceAccounts(constants.Namespace).Create(ctx, sa, metav1.CreateOptions{}); err != nil {
+		if !errors.IsAlreadyExists(err) {
+			return fmt.Errorf("create serviceaccount %s: %w", sa.Name, err)
+		}
+		existing, getErr := clientset.CoreV1().ServiceAccounts(constants.Namespace).Get(ctx, sa.Name, metav1.GetOptions{})
+		if getErr != nil {
+			return fmt.Errorf("get serviceaccount %s: %w", sa.Name, getErr)
+		}
+		sa.ResourceVersion = existing.ResourceVersion
+		if _, err := clientset.CoreV1().ServiceAccounts(constants.Namespace).Update(ctx, sa, metav1.UpdateOptions{}); err != nil {
+			return fmt.Errorf("update serviceaccount %s: %w", sa.Name, err)
+		}
+	}
+
+	if _, err := clientset.RbacV1().ClusterRoles().Create(ctx, cr, metav1.CreateOptions{}); err != nil {
+		if errors.IsAlreadyExists(err) {
+			existing, getErr := clientset.RbacV1().ClusterRoles().Get(ctx, cr.Name, metav1.GetOptions{})
+			if getErr != nil {
+				return fmt.Errorf("get clusterrole %s: %w", cr.Name, getErr)
+			}
+			cr.ResourceVersion = existing.ResourceVersion
+			if _, err := clientset.RbacV1().ClusterRoles().Update(ctx, cr, metav1.UpdateOptions{}); err != nil {
+				return fmt.Errorf("update clusterrole %s: %w", cr.Name, err)
+			}
+		} else {
+			return fmt.Errorf("create clusterrole %s: %w", cr.Name, err)
+		}
+	}
+
+	if _, err := clientset.RbacV1().ClusterRoleBindings().Create(ctx, crb, metav1.CreateOptions{}); err != nil {
+		if errors.IsAlreadyExists(err) {
+			existing, getErr := clientset.RbacV1().ClusterRoleBindings().Get(ctx, crb.Name, metav1.GetOptions{})
+			if getErr != nil {
+				return fmt.Errorf("get clusterrolebinding %s: %w", crb.Name, getErr)
+			}
+			crb.ResourceVersion = existing.ResourceVersion
+			if _, err := clientset.RbacV1().ClusterRoleBindings().Update(ctx, crb, metav1.UpdateOptions{}); err != nil {
+				return fmt.Errorf("update clusterrolebinding %s: %w", crb.Name, err)
+			}
+		} else {
+			return fmt.Errorf("create clusterrolebinding %s: %w", crb.Name, err)
+		}
+	}
+
+	logger.Info("ensured RBAC", "component", c.Name, "serviceAccount", sa.Name)
+	return nil
 }
 
 func createDBConfigMap(ctx context.Context, clientset *kubernetes.Clientset, cfg *types.DeployConfig) error {
@@ -541,6 +384,11 @@ func createCertSecret(ctx context.Context, clientset *kubernetes.Clientset, cfg 
 	_, err := clientset.CoreV1().Secrets(constants.Namespace).Create(ctx, secret, metav1.CreateOptions{})
 	if err != nil {
 		if errors.IsAlreadyExists(err) {
+			existing, getErr := clientset.CoreV1().Secrets(constants.Namespace).Get(ctx, name, metav1.GetOptions{})
+			if getErr != nil {
+				return fmt.Errorf("get cert secret %s: %w", name, getErr)
+			}
+			secret.ResourceVersion = existing.ResourceVersion
 			_, err = clientset.CoreV1().Secrets(constants.Namespace).Update(ctx, secret, metav1.UpdateOptions{})
 			if err != nil {
 				return fmt.Errorf("update cert secret %s: %w", name, err)
@@ -556,6 +404,11 @@ func createDeployment(ctx context.Context, clientset *kubernetes.Clientset, dep 
 	_, err := clientset.AppsV1().Deployments(constants.Namespace).Create(ctx, dep, metav1.CreateOptions{})
 	if err != nil {
 		if errors.IsAlreadyExists(err) {
+			existing, getErr := clientset.AppsV1().Deployments(constants.Namespace).Get(ctx, dep.Name, metav1.GetOptions{})
+			if getErr != nil {
+				return fmt.Errorf("get deployment %s: %w", dep.Name, getErr)
+			}
+			dep.ResourceVersion = existing.ResourceVersion
 			_, err = clientset.AppsV1().Deployments(constants.Namespace).Update(ctx, dep, metav1.UpdateOptions{})
 			if err != nil {
 				return fmt.Errorf("update deployment %s: %w", dep.Name, err)
@@ -587,6 +440,11 @@ func createStatefulSet(ctx context.Context, clientset *kubernetes.Clientset, sts
 	_, err := clientset.AppsV1().StatefulSets(constants.Namespace).Create(ctx, sts, metav1.CreateOptions{})
 	if err != nil {
 		if errors.IsAlreadyExists(err) {
+			existing, getErr := clientset.AppsV1().StatefulSets(constants.Namespace).Get(ctx, sts.Name, metav1.GetOptions{})
+			if getErr != nil {
+				return fmt.Errorf("get statefulset %s: %w", sts.Name, getErr)
+			}
+			sts.ResourceVersion = existing.ResourceVersion
 			_, err = clientset.AppsV1().StatefulSets(constants.Namespace).Update(ctx, sts, metav1.UpdateOptions{})
 			if err != nil {
 				return fmt.Errorf("update statefulset %s: %w", sts.Name, err)
@@ -602,6 +460,11 @@ func createDaemonSet(ctx context.Context, clientset *kubernetes.Clientset, ds *a
 	_, err := clientset.AppsV1().DaemonSets(constants.Namespace).Create(ctx, ds, metav1.CreateOptions{})
 	if err != nil {
 		if errors.IsAlreadyExists(err) {
+			existing, getErr := clientset.AppsV1().DaemonSets(constants.Namespace).Get(ctx, ds.Name, metav1.GetOptions{})
+			if getErr != nil {
+				return fmt.Errorf("get daemonset %s: %w", ds.Name, getErr)
+			}
+			ds.ResourceVersion = existing.ResourceVersion
 			_, err = clientset.AppsV1().DaemonSets(constants.Namespace).Update(ctx, ds, metav1.UpdateOptions{})
 			if err != nil {
 				return fmt.Errorf("update daemonset %s: %w", ds.Name, err)
@@ -617,6 +480,16 @@ func createService(ctx context.Context, clientset *kubernetes.Clientset, svc *co
 	_, err := clientset.CoreV1().Services(constants.Namespace).Create(ctx, svc, metav1.CreateOptions{})
 	if err != nil {
 		if errors.IsAlreadyExists(err) {
+			existing, getErr := clientset.CoreV1().Services(constants.Namespace).Get(ctx, svc.Name, metav1.GetOptions{})
+			if getErr != nil {
+				return fmt.Errorf("get service %s: %w", svc.Name, getErr)
+			}
+			svc.ResourceVersion = existing.ResourceVersion
+			svc.Spec.ClusterIP = existing.Spec.ClusterIP
+			svc.Spec.ClusterIPs = existing.Spec.ClusterIPs
+			svc.Spec.IPFamilies = existing.Spec.IPFamilies
+			svc.Spec.IPFamilyPolicy = existing.Spec.IPFamilyPolicy
+			svc.Spec.HealthCheckNodePort = existing.Spec.HealthCheckNodePort
 			_, err = clientset.CoreV1().Services(constants.Namespace).Update(ctx, svc, metav1.UpdateOptions{})
 			if err != nil {
 				return fmt.Errorf("update service %s: %w", svc.Name, err)
@@ -632,6 +505,11 @@ func createOrUpdateConfigMap(ctx context.Context, clientset *kubernetes.Clientse
 	_, err := clientset.CoreV1().ConfigMaps(constants.Namespace).Create(ctx, cm, metav1.CreateOptions{})
 	if err != nil {
 		if errors.IsAlreadyExists(err) {
+			existing, getErr := clientset.CoreV1().ConfigMaps(constants.Namespace).Get(ctx, cm.Name, metav1.GetOptions{})
+			if getErr != nil {
+				return fmt.Errorf("get configmap %s: %w", cm.Name, getErr)
+			}
+			cm.ResourceVersion = existing.ResourceVersion
 			_, err = clientset.CoreV1().ConfigMaps(constants.Namespace).Update(ctx, cm, metav1.UpdateOptions{})
 			if err != nil {
 				return fmt.Errorf("update configmap %s: %w", cm.Name, err)

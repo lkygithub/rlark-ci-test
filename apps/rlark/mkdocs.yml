@@ -58,7 +58,6 @@ plugins:
             "Console Access and Navigation": 控制台访问与导航
             "Find Compute Resources": 查找算力资源
             "Submit and Manage Jobs": 提交和管理任务
-            "Build Workflows": 构建工作流
             "Attach Storage": 挂载存储
             "Connect with SSH Keys": 使用 SSH 密钥连接
             "RL Training Best Practices": "RL 训练最佳实践"
@@ -77,6 +76,8 @@ plugins:
             "Developer Guide Overview": 开发者指南概览
             "Local Development and Debugging": 本地开发与调试
             "Project Layout": 项目结构
+            "Project Design Principles": 项目设计原则
+            "API Conventions": "API 约定"
             "Technical Architecture": 技术架构
             "New Device Integration": 新设备适配
             Contributing: 贡献指南
@@ -106,7 +107,6 @@ nav:
     - Console Access and Navigation: user-guide/console.md
     - Find Compute Resources: user-guide/clusters-nodes.md
     - Submit and Manage Jobs: user-guide/jobs.md
-    - Build Workflows: user-guide/workflows.md
     - Attach Storage: user-guide/storage.md
     - Connect with SSH Keys: user-guide/ssh-keys.md
   - Administrator Guide:
@@ -121,9 +121,12 @@ nav:
     - Complete Deployment Reference: deployment.md
   - Developer Guide:
     - Developer Guide Overview: developer-guide/index.md
+    - Project Design Principles: developer-guide/design-principles.md
+    - API Conventions: developer-guide/api-conventions.md
     - Local Development and Debugging: developer-guide/local-development.md
     - Debugging: developer-guide/debugging.md
     - Project Layout: developer-guide/project-layout.md
+    - Users and Tenants: developer-guide/tenancy.md
     - New Device Integration: developer-guide/device-integration.md
     - Embodied Runtime: developer-guide/embodied-runtime-reference.md
     - Contributing: developer-guide/contributing.md

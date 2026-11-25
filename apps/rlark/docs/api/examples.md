@@ -1,19 +1,20 @@
 # API Examples
 
-This page provides end-to-end RLark Gateway HTTP API examples, focused on the **Kubernetes runtime** (`agentType=Kubernetes`). For resource operations and schemas, see [API Reference](reference.md). The machine-readable contract is available as the [OpenAPI specification](swagger.yaml).
+This page provides end-to-end RLark Gateway HTTP API examples, focused on the **Kubernetes runtime** (`spec.runtime.kind=Kubernetes`). For resource operations and schemas, see [API Reference](reference.md). The machine-readable contract is available as the [OpenAPI specification](swagger.yaml).
 
-!!! warning "Authentication limitation"
-    The login endpoint only validates the built-in Web UI credentials. It does not return a Bearer token or session cookie for subsequent requests, and the other Gateway APIs do not authorize requests based on that result. Run these commands only on a trusted network or through an ingress that enforces authentication and authorization.
+Authenticate first and use the returned `token` as `Authorization: Bearer <token>` for subsequent Gateway API requests. Tokens expire after 8 hours by default.
 
 ## Conventions
 
 - The standalone Gateway listens on `http://localhost:8080` by default. An `rlarkadm` deployment exposes it internally on port `8090` and routes browser traffic through the UI service.
 - CRD API root: `/api/v1/rlinf.io/v1alpha1`
-- Namespaced resources such as `nodes` and `tasks` require `namespace=<namespace>` in the query string.
-- Cluster-scoped resources such as `jobs` and `workflows` do not use a namespace query parameter.
-- `spec.agentType` accepts `Kubernetes`, `Docker`, or `Raw`. Only the Kubernetes runtime is currently implemented; Docker and Raw are planned.
+- Namespaced resources such as `nodes` and `tasks` accept `namespace=<namespace>` in the query string. Without `namespace`, the Node list includes only Nodes in namespaces currently claimed by a Cluster's `spec.agentNamespace`; orphaned Nodes are excluded.
+- Cluster-scoped resources such as `jobs` do not use a namespace query parameter.
+- `spec.runtime.kind` is an open Runtime identifier. Only `Kubernetes` is currently implemented; writing `Docker`, `Raw`, or an unknown value does not advertise support and must fail before external effects.
 - `spec.role` is required and accepts `Actor`, `Rollout`, or `Env`.
-- `kubernetes.workload.template` is a Kubernetes `corev1.PodTemplateSpec`.
+- `spec.workload.template` is an optional Kubernetes `corev1.PodTemplateSpec` in the general Task CRD contract. Each selected Workload Adapter and Runtime validates whether it is required and which fields it supports. The current built-in Ray-on-Kubernetes implementation requires the template and exactly one regular container named `main`; custom implementations are not bound by that implementation-specific rule.
+- `spec.workload.kind` and `spec.workload.version` select the Adapter contract, while `spec.workload.parameters` carries arbitrary JSON validated by that Adapter. `spec.workload.carrier` independently selects the Runtime carrier by `type`, `version`, and arbitrary JSON `parameters`.
+- `spec.environments` is an ordered list of independently typed capabilities. The same type and version may appear more than once with different parameters.
 
 Set a base URL once for the examples:
 
@@ -59,28 +60,33 @@ JOB_ID="$(curl -fsS -X POST "$RLARK_GATEWAY/api/v1/rlinf.io/v1alpha1/jobs" \
           "name": "actor-head",
           "head": true,
           "role": "Actor",
-          "agentType": "Kubernetes",
-          "nodeSelector": {"rlark.io/cluster-id": "cluster-a"},
-          "kubernetes": {
-            "workload": {
-              "kind": "Deployment",
-              "replicas": 1,
-              "template": {
-                "metadata": {"labels": {"app": "ppo-cartpole"}},
-                "spec": {
-                  "containers": [
-                    {
-                      "name": "trainer",
-                      "image": "registry.example.com/rl/ppo:v1",
-                      "command": ["python", "main.py"],
-                      "args": ["--role=head"],
-                      "resources": {
-                        "limits": {"nvidia.com/gpu": "1"}
-                      }
+          "placement": {
+            "nodeSelector": {"rlark.io/cluster-id": "cluster-a"}
+          },
+          "runtime": {"kind": "Kubernetes"},
+          "workload": {
+            "kind": "Deployment",
+            "replicas": 1,
+            "template": {
+              "metadata": {"labels": {"app": "ppo-cartpole"}},
+              "spec": {
+                "containers": [
+                  {
+                    "name": "trainer",
+                    "image": "registry.example.com/rl/ppo:v1",
+                    "command": ["python", "main.py"],
+                    "args": ["--role=head"],
+                    "resources": {
+                      "limits": {"nvidia.com/gpu": "1"}
                     }
-                  ]
-                }
+                  }
+                ]
               }
+            },
+            "execution": {
+              "type": "rlinf.io/ray",
+              "version": "v1alpha1",
+              "parameters": {"role": "head"}
             }
           }
         }
@@ -91,7 +97,41 @@ JOB_ID="$(curl -fsS -X POST "$RLARK_GATEWAY/api/v1/rlinf.io/v1alpha1/jobs" \
 echo "$JOB_ID" # jo-<16 hexadecimal characters>
 ```
 
-The image, command, environment, resources, and volumes belong under `kubernetes.workload.template.spec.containers`; they are not top-level Task fields.
+The image, command, environment, resources, and volumes belong under `workload.template.spec.containers`; they are not top-level Task fields. Ray execution uses the `rlinf.io/ray/v1` parameter contract: `role` is `head` or `worker`, workers set `headTaskName`, and optional scripts use `prepare.inline` and `run.inline`.
+
+### Access an unsupported device through HostNetwork
+
+If embodied-runtime does not yet support a network device but the data-plane node can reach it directly, enable host networking explicitly in the Task PodTemplate:
+
+```json
+{
+  "placement": {"nodeSelector": {"kubernetes.io/hostname": "worker-1"}},
+  "runtime": {"kind": "Kubernetes"},
+  "workload": {
+    "kind": "Deployment",
+    "replicas": 1,
+    "template": {
+      "metadata": {"labels": {"app": "vendor-device-client"}},
+      "spec": {
+        "hostNetwork": true,
+        "dnsPolicy": "ClusterFirstWithHostNet",
+        "containers": [
+          {
+            "name": "app",
+            "image": "registry.example.com/vendor/device-sdk:latest",
+            "command": ["sh", "-c"],
+            "args": ["./device-client --address 192.168.10.20"]
+          }
+        ]
+      }
+    }
+  }
+}
+```
+
+This is a partial structure: retain the Job's registered workload and carrier declarations. This path does not provide embodied-runtime device discovery, resource isolation, controllers, CLIs, or SDK injection. The workload image is responsible for device drivers and lifecycle management. `hostNetwork` reduces network isolation and can cause port conflicts, so use it only on trusted data planes and dedicated device nodes. Do not enable `RLARK_ENABLE_UNSAFE_TASK_PRIVILEGES` for this purpose; that variable globally applies the legacy privileged/hostNetwork mode to multiple tasks.
+
+For the native and compatibility paths, see the "Unsupported devices" section in the embodied-runtime documentation at `apps/embodied-runtime/docs/examples.md`.
 
 ```bash
 # List Jobs by label.
@@ -104,7 +144,7 @@ curl "$RLARK_GATEWAY/api/v1/rlinf.io/v1alpha1/jobs/$JOB_ID"
 curl -X PATCH \
   "$RLARK_GATEWAY/api/v1/rlinf.io/v1alpha1/jobs/$JOB_ID" \
   -H "Content-Type: application/merge-patch+json" \
-  -d '{"spec":{"stopped":true}}'
+  -d '{"spec":{"suspended":true}}'
 
 # Delete the Job.
 curl -X DELETE "$RLARK_GATEWAY/api/v1/rlinf.io/v1alpha1/jobs/$JOB_ID"
@@ -124,80 +164,7 @@ curl "$RLARK_GATEWAY/api/v1/rlinf.io/v1alpha1/tasks?namespace=default&labelSelec
 curl "$RLARK_GATEWAY/api/v1/rlinf.io/v1alpha1/tasks/ppo-cartpole-actor-head?namespace=default"
 ```
 
-## 4. Create a Workflow
-
-A Workflow contains Job templates linked by dependencies. Each `jobTemplates[].spec` is a complete Job spec.
-
-```bash
-curl -X POST "$RLARK_GATEWAY/api/v1/rlinf.io/v1alpha1/workflows" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "apiVersion": "rlinf.io/v1alpha1",
-    "kind": "Workflow",
-    "metadata": {"name": "training-pipeline"},
-    "spec": {
-      "jobTemplates": [
-        {
-          "name": "prepare",
-          "dependencies": [],
-          "spec": {
-            "tasks": [
-              {
-                "name": "prepare-data",
-                "role": "Env",
-                "agentType": "Kubernetes",
-                "kubernetes": {
-                  "workload": {
-                    "kind": "Deployment",
-                    "replicas": 1,
-                    "template": {
-                      "spec": {
-                        "containers": [
-                          {"name": "prepare", "image": "registry.example.com/rl/prepare:v1"}
-                        ]
-                      }
-                    }
-                  }
-                }
-              }
-            ]
-          }
-        },
-        {
-          "name": "train",
-          "dependencies": ["prepare"],
-          "spec": {
-            "tasks": [
-              {
-                "name": "trainer",
-                "head": true,
-                "role": "Actor",
-                "agentType": "Kubernetes",
-                "kubernetes": {
-                  "workload": {
-                    "kind": "Deployment",
-                    "replicas": 1,
-                    "template": {
-                      "spec": {
-                        "containers": [
-                          {"name": "trainer", "image": "registry.example.com/rl/train:v1"}
-                        ]
-                      }
-                    }
-                  }
-                }
-              }
-            ]
-          }
-        }
-      ]
-    }
-  }'
-
-curl "$RLARK_GATEWAY/api/v1/rlinf.io/v1alpha1/workflows/training-pipeline"
-```
-
-## 5. UI credential check
+## 4. UI credential check
 
 Only the built-in usernames `admin` and `user` are accepted. A successful response is `{"ok":true,"role":"admin"}` or `{"ok":true,"role":"user"}`.
 
@@ -215,7 +182,7 @@ This response is for the current Web UI login gate only. It does not grant crede
 # List connected clusters.
 curl "$RLARK_GATEWAY/api/v1/clusters"
 
-# List StorageClasses across clusters or filter by cluster IDs.
+# List RLark-managed StorageClass declarations, optionally filtered by configured target cluster IDs.
 curl "$RLARK_GATEWAY/api/v1/storage/storageclass"
 curl "$RLARK_GATEWAY/api/v1/storage/storageclass?clusters=cluster-a,cluster-b"
 

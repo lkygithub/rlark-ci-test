@@ -20,6 +20,7 @@ Choose one of two approaches to complete the minimum RLark lifecycle:
 | kind | >= 0.20 | Run local k8s data plane |
 | kubectl | >= 1.28 | Interact with clusters |
 | jq | >= 1.6 | Parse JSON |
+| curl | >= 7.68 | Call the Gateway REST API |
 | python3 | >= 3.8 | Process kubeconfig |
 | node + npm | >= 18 | UI dev server (Method B only) |
 
@@ -70,10 +71,31 @@ The script completes these steps:
 | 6 | Configure kubeconfig, install CRDs, create UI credentials |
 | 7 | Start control plane (server, gateway, controller-manager) |
 | 8 | Create kind clusters (`rlark-data-1`, `rlark-data-2`) |
-| 9 | Deploy agents (certificates, RBAC, agent deployment) |
+| 9 | Deploy agents (certificates, RBAC, cluster Agent Deployment and node Agent DaemonSet) |
 | 10 | Verify node registration |
 | 11 | Create cross-cluster test resources (Workspace, Domain, Job) |
 | 12 | Verify cross-cluster network connectivity |
+
+#### Advanced options
+
+The one-click script accepts environment variables rather than command-line flags:
+
+```bash
+# Create three data plane clusters instead of the default two
+CLUSTER_COUNT=3 bash apps/rlark/docs/examples/quickstart.sh
+
+# Use a different kind node image (default: kindest/node:v1.31.0)
+KIND_IMAGE=kindest/node:v1.32.0 bash apps/rlark/docs/examples/quickstart.sh
+
+# Combine both settings
+CLUSTER_COUNT=3 KIND_IMAGE=kindest/node:v1.32.0 \
+  bash apps/rlark/docs/examples/quickstart.sh
+
+# Use a different Ray version for the sample workload image (default: 2.9.0)
+RAY_VERSION=2.9.3 bash apps/rlark/docs/examples/quickstart.sh
+```
+
+`CLUSTER_COUNT` controls how many `rlark-data-N` clusters are created. `KIND_IMAGE` must name a kind-compatible node image; the script first checks the local Docker image cache, then tries Docker Hub and its configured mirror. `RAY_VERSION` selects the `rayproject/ray` tag used by the sample cross-cluster workloads; the script appends `-py310` (or `-py310-aarch64` on ARM hosts) and pushes it to the local registry as `localhost:5555/ray:quickstart`. This image is several GB, so the first run needs free disk space and time to pull it.
 
 ### 2. Sign in to the UI
 
@@ -90,7 +112,7 @@ Open `http://localhost:5173/admin`. Use the credentials from the script output:
 | Service | URL | Purpose |
 |---------|-----|---------|
 | Admin Console | `http://localhost:5173/admin` | Cluster onboarding, nodes, certificates |
-| Platform | `http://localhost:5173` | Jobs, Workers, Workflows, storage |
+| Platform | `http://localhost:5173` | Jobs, Workers, storage |
 | Gateway API | `http://localhost:9000` | Automation |
 
 ### 3. Clean Up
@@ -124,6 +146,12 @@ This script:
 !!! tip "Keep the terminal open"
     The UI dev server runs in the foreground. Keep this terminal open while you use the UI. Press `Ctrl+C` to stop the UI when done.
 
+To start only the control plane without installing Node.js or running the UI dev server, pass `--no-ui`:
+
+```bash
+bash apps/rlark/docs/examples/quickstart-cp.sh --no-ui
+```
+
 The output shows:
 
 ```
@@ -142,7 +170,7 @@ Next steps:
   1. Open http://localhost:5173/admin and sign in as admin
   2. Go to Cluster Management → Create Cluster
   3. Enter a cluster name (e.g. my-cluster) and create it
-  4. Copy the cluster name and run: bash quickstart-dp.sh --cluster-id=my-cluster
+  4. Copy the cluster name and run: bash quickstart-dp.sh --cluster-id my-cluster
   5. Return to the UI to create domains and submit jobs
 ```
 
@@ -180,32 +208,58 @@ bash apps/rlark/docs/examples/quickstart-dp.sh \
   --cluster-id my-cluster-2
 ```
 
+The script derives the number of kind clusters from the number of repeated `--cluster-id` options. Use `--cluster-name` to change the kind cluster name prefix (the default is `rlark-data`); an index is always appended, even for one cluster:
+
+```bash
+# Creates edge-1 and edge-2 for the two cluster IDs
+bash apps/rlark/docs/examples/quickstart-dp.sh \
+  --cluster-id my-cluster-1 \
+  --cluster-id my-cluster-2 \
+  --cluster-name edge
+
+# Override the kind node image (default: kindest/node:v1.31.0)
+KIND_IMAGE=kindest/node:v1.32.0 \
+  bash apps/rlark/docs/examples/quickstart-dp.sh --cluster-id my-cluster
+```
+
+`CLUSTER_COUNT` is not an input for `quickstart-dp.sh`; it is calculated internally from the supplied cluster IDs. Set `CLUSTER_COUNT` only when running the one-click `quickstart.sh` script.
+
 ### 4. Verify the Cluster and Nodes
 
 **Using the UI:** Admin Console → Clusters and Nodes. Verify both clusters are online and their nodes are synchronized.
 
-**Using the API:**
+**Using the API:** Every `/api/v1` route except `/api/v1/auth/login` requires a JWT, so log in first and send the returned token as a bearer token. The `admin` password is printed by the quickstart script and also stored in the `rlark-ui-auth` secret.
 
 ```bash
-curl -s "http://localhost:9000/api/v1/rlinf.io/v1alpha1/nodes" | \
+TOKEN=$(curl -fsS -H 'Content-Type: application/json' \
+  -d '{"username":"admin","password":"<admin-password>"}' \
+  "http://localhost:9000/api/v1/auth/login" | jq -r .token)
+
+curl -fsS -H "Authorization: Bearer $TOKEN" \
+  "http://localhost:9000/api/v1/rlinf.io/v1alpha1/nodes" | \
   jq '.items[] | {name: .metadata.name, cluster: .metadata.labels["rlark.io/cluster-id"]}'
 ```
+
+`quickstart-dp.sh` performs this login itself. Export `RLARK_TOKEN` with an existing admin token to reuse one instead.
 
 ### 5. Create a Job via the UI
 
 1. Open `http://localhost:5173` and sign in as `user`
-2. Navigate to **Jobs** → **Create Job**
-3. Select **Custom Task** as the job type
-4. Add a role named `worker`, set it as **Header**
-5. Configure the Worker:
-   - **Cluster**: select your cluster
-   - **Node count**: 1
-   - **Image**: `rayproject/ray:2.9.0-py310`
-   - **Run Script**: `echo hello from RLark; sleep 3600`
+2. Navigate to **Jobs** → **Create job**
+3. Select **Custom job** as the job type
+4. In the **Roles & Resources** step, click **Add Role** and name it `worker`. The first role is the Header role
+   automatically; no extra action is required.
+5. In the **Worker Config** step:
+   - **Target cluster**: select your cluster (for example `rlark-agent-my-cluster-1`)
+   - **Scheduling mode**: choose **Select nodes** and pick one node, which yields 1 worker
+   - **Image**: `localhost:5555/ray:quickstart` (pushed by the quickstart script into the local registry)
+6. In the **Common Config** step, set **Run Script** to `echo hello from RLark; sleep 3600`
+
+> **Screenshot note:** Screenshots are from an example environment. Resource names and data are illustrative; your environment will differ.
 
 ![Configure the Job worker and placement](images/ui/create-job-worker-configuration.png)
 
-6. Review the YAML preview and click **Submit**
+7. Review the YAML preview and click **Submit Job**
 
 For a detailed walkthrough, see [RL Training Best Practices](user-guide/best-practices.md).
 
@@ -226,14 +280,16 @@ by creating a Domain and a multi-cluster Job.
 #### 6.2 Create a Cross-Cluster Job
 
 1. Open `http://localhost:5173` and sign in as `user`
-2. Navigate to **Jobs** → **Create Job**
-3. Select **Custom Task** as the job type
+2. Navigate to **Jobs** → **Create job**
+3. Select **Custom job** as the job type
 4. Add two roles:
-   - **server**: header role, cluster `rlark-my-cluster-1`, image `rayproject/ray:2.9.0-py310`, run script:
+   - **server**: Header role (the first role added), target cluster `rlark-agent-my-cluster-1`,
+     image `localhost:5555/ray:quickstart`, run script:
      ```bash
      python -u -m http.server 8000 --bind 0.0.0.0
      ```
-   - **client**: cluster `rlark-my-cluster-2`, image `rayproject/ray:2.9.0-py310`, run script: `sleep infinity`
+   - **client**: target cluster `rlark-agent-my-cluster-2`, image `localhost:5555/ray:quickstart`,
+     run script: `sleep infinity`
 5. In the **Common Config** step, select the Domain you created
 6. Review and submit. On the job details page, confirm that Workers are running on the selected nodes.
 
@@ -255,7 +311,13 @@ kubectl --kubeconfig /tmp/kind-kubeconfig-2 exec -n rlark-system \
 
 Expected output: `200`
 
-See [Networking and Security](admin-guide/network-security.md) for details.
+> **Kubernetes runtime constraints.** The Kubernetes runtime currently supports only the `rlinf.io/ray` workload. The Job
+> controller always rewrites `workload.parameters` so that the main container runs `rlark-tools ray-launcher` as its primary
+> process, so a `command` in the Pod template is replaced and the workload image must ship the Ray CLI, `bash` and `python`.
+> Put the workload command in `workload.parameters.run.inline` (the UI "run script" field) instead; only the Ray head executes
+> it, after its Ray cluster reaches `parameters.totalNodes` nodes.
+
+See [Networking and Security](admin-guide/network-security.md) for details. Reusable manifests: [domain.yaml](examples/domain.yaml) and [cross-cluster-ping.yaml](examples/cross-cluster-ping.yaml).
 
 ### 7. Clean Up
 

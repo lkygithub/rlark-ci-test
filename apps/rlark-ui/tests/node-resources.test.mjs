@@ -1,9 +1,142 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  formatResourceQuantity,
+  getNodeDiskUsage,
   getNodeResourceSummary,
+  getResourceUsagePercent,
+  isDiskUsageWarning,
   selectDeviceResourceKey,
 } from "../dist/test/utils/nodeResources.js";
+
+test("formats Kubernetes binary quantities without inflating them", () => {
+  assert.equal(
+    formatResourceQuantity("ephemeral-storage", "3748906852Ki", true),
+    "3575 GiB",
+  );
+  assert.equal(formatResourceQuantity("memory", "1Gi", true), "1.0 GiB");
+  assert.equal(formatResourceQuantity("memory", "1000M", true), "0.9 GiB");
+});
+
+test("localizes the CPU core unit", () => {
+  assert.equal(formatResourceQuantity("cpu", "8", true), "8 核");
+  assert.equal(formatResourceQuantity("cpu", "8", false), "8 cores");
+});
+
+test("calculates scheduled allocation against allocatable capacity", () => {
+  assert.equal(
+    getResourceUsagePercent("ephemeral-storage", "90Gi", "100Gi"),
+    90,
+  );
+  assert.equal(
+    getResourceUsagePercent("ephemeral-storage", "89%", "100Gi"),
+    89,
+  );
+});
+
+test("reports device scheduling availability from allocatable minus allocated requests", () => {
+  const summary = getNodeResourceSummary(
+    {
+      metadata: { name: "reserved-gpu" },
+      spec: {},
+      status: {
+        capacity: { "nvidia.com/gpu": "8" },
+        allocatable: { "nvidia.com/gpu": "6" },
+        used: { "nvidia.com/gpu": "2" },
+      },
+    },
+    false,
+  );
+  assert.equal(summary.lines[0].amount, "4 / 8 GPU");
+});
+
+test("derives pressure from the ResourcePressure condition, not monitoring thresholds", () => {
+  const node = {
+    metadata: { name: "disk-warning" },
+    spec: {},
+    status: {
+      storage: {
+        capacityBytes: 1000,
+        usedBytes: 995,
+        availableBytes: 5,
+      },
+    },
+  };
+  // Monitoring samples alone must not produce a pressure conclusion.
+  assert.equal(isDiskUsageWarning(node), false);
+  node.status.conditions = [
+    {
+      type: "ResourcePressure",
+      status: "True",
+      reason: "ResourcePressureDetected",
+    },
+  ];
+  assert.equal(isDiskUsageWarning(node), true);
+  node.status.conditions[0].status = "False";
+  node.status.conditions[0].reason = "NoResourcePressure";
+  assert.equal(isDiskUsageWarning(node), false);
+});
+
+test("keeps disk usage below one hundred percent while space remains", () => {
+  const usage = getNodeDiskUsage({
+    metadata: { name: "nearly-full" },
+    spec: {},
+    status: {
+      storage: {
+        capacityBytes: 3838880616448,
+        usedBytes: 3827780616448,
+        availableBytes: 11100000000,
+      },
+    },
+  });
+  assert.equal(usage?.percent, 99);
+});
+
+test("uses available bytes as the source of truth for disk percentage", () => {
+  const usage = getNodeDiskUsage({
+    metadata: { name: "inconsistent-stats" },
+    spec: {},
+    status: {
+      storage: {
+        capacityBytes: 1000,
+        usedBytes: 1000,
+        availableBytes: 100,
+      },
+    },
+  });
+  assert.equal(usage?.percent, 90);
+});
+
+test("shows one hundred percent only when no disk space remains", () => {
+  const usage = getNodeDiskUsage({
+    metadata: { name: "full" },
+    spec: {},
+    status: {
+      storage: {
+        capacityBytes: 1000,
+        usedBytes: 1000,
+        availableBytes: 0,
+      },
+    },
+  });
+  assert.equal(usage?.percent, 100);
+});
+
+test("warns whenever kubelet reports disk pressure", () => {
+  const node = {
+    metadata: { name: "disk-pressure" },
+    spec: {},
+    status: {
+      diskPressure: true,
+      storage: {
+        capacityBytes: 1000,
+        usedBytes: 100,
+        availableBytes: 900,
+      },
+    },
+  };
+  assert.equal(isDiskUsageWarning(node), true);
+});
 
 test("prefers a positive modeled device resource over zero-capacity keys", () => {
   const capacity = {
@@ -60,6 +193,45 @@ test("shows GPU and embodied device resources together on an edge node", () => {
     [
       { kind: "gpu", primary: "1 / 2 GPU", secondary: "NVIDIA RTX 4090" },
       { kind: "device", primary: "1 / 1 设备", secondary: "Franka" },
+    ],
+  );
+});
+
+test("prefers annotation models over legacy observed labels", () => {
+  const summary = getNodeResourceSummary(
+    {
+      metadata: {
+        name: "migrated",
+        annotations: {
+          "rlark.io/gpu-model": "A100",
+          "rlark.io/device-model": "Unitree G1",
+        },
+      },
+      spec: {},
+      status: {
+        capacity: {
+          "nvidia.com/gpu": "1",
+          "rlinf.io/device-unitree": "1",
+        },
+        allocatable: {
+          "nvidia.com/gpu": "1",
+          "rlinf.io/device-unitree": "1",
+        },
+        used: { "nvidia.com/gpu": "0", "rlinf.io/device-unitree": "0" },
+        observedNodeLabels: {
+          "rlark.io/gpu-model": "legacy-gpu",
+          "rlark.io/device-model": "legacy-device",
+        },
+      },
+    },
+    true,
+  );
+
+  assert.deepEqual(
+    summary.lines.map(({ kind, secondary }) => ({ kind, secondary })),
+    [
+      { kind: "gpu", secondary: "A100" },
+      { kind: "device", secondary: "Unitree G1" },
     ],
   );
 });

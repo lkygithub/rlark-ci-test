@@ -12,6 +12,7 @@ import {
   ListChecks,
   LayoutDashboard,
   Terminal,
+  ArrowUpCircle,
 } from "lucide-react";
 import type { NavParent, AdminNavItem } from "./types";
 
@@ -52,18 +53,24 @@ export const adminNavItems: AdminNavItem[] = [
       },
       { id: "clusters-nodes", icon: Server, zh: "节点管理", en: "Nodes" },
       { id: "addons", icon: Package, zh: "组件市场", en: "Addons" },
+      {
+        id: "upgrades",
+        icon: ArrowUpCircle,
+        zh: "集群升级",
+        en: "Upgrades",
+      },
     ],
   },
   { id: "jobs", icon: ListChecks, zh: "任务管理", en: "Jobs" },
   { id: "domains", icon: Globe2, zh: "网络域", en: "Domains" },
-  { id: "api", icon: Braces, zh: "接口参考", en: "API Reference" },
-  { id: "config", icon: Settings, zh: "系统配置", en: "Config" },
   { id: "storageClass", icon: HardDrive, zh: "存储管理", en: "Storage" },
-  { id: "ssh-keys", icon: Terminal, zh: "SSH 公钥", en: "SSH Keys" },
   {
     id: "image-registries",
     icon: Image,
     zh: "镜像管理",
     en: "Image Registries",
   },
+  { id: "ssh-keys", icon: Terminal, zh: "SSH 公钥", en: "SSH Keys" },
+  { id: "config", icon: Settings, zh: "系统配置", en: "System Config" },
+  { id: "api", icon: Braces, zh: "接口参考", en: "API Reference" },
 ];

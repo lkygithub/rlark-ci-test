@@ -10,7 +10,190 @@ RLark supports three deployment modes for different scenarios:
 | Kubernetes | Medium | Production, cluster deployment |
 | Raw Binary | High | Minimal deployment, embedded scenarios |
 
-## 2. Deployment Tool: rlarkadm
+Two deployment tools are available for Kubernetes:
+
+| Tool | Description |
+|------|-------------|
+| `rlarkadm` | CLI tool that reads a DeployConfig YAML and applies resources directly |
+| Helm Charts | Standard Helm charts under `charts/` for control plane and data plane |
+
+## 2. Helm Chart Deployment
+
+Helm charts provide an alternative to `rlarkadm` for Kubernetes deployments. Two charts are available:
+
+| Chart | Description |
+|-------|-------------|
+| `charts/rlark-control-plane` | KCP, etcd, PostgreSQL, Server, Gateway, Controller Manager, UI |
+| `charts/rlark-data-plane` | Agent (Deployment), Node Agent (DaemonSet) |
+
+### 2.1 Control Plane
+
+```bash
+helm install rlark-control-plane ./charts/rlark-control-plane \
+  --namespace rlark-system \
+  --create-namespace \
+  --set images.gateway=rlark:latest \
+  --set images.controllerManager=rlark:latest \
+  --set images.server=rlark:latest \
+  --set images.ui=rlark-ui:latest
+```
+
+With KCP mode (default), a post-install hook Job extracts `admin.kubeconfig` from KCP, installs CRDs, and creates the `rlark-ui-auth` secret. Admin credentials are printed in the hook Job logs:
+
+```bash
+kubectl -n rlark-system logs job/kcp-post-install | grep -A2 "Admin password"
+```
+
+To use the target Kubernetes cluster as the management API instead of KCP:
+
+```bash
+helm install rlark-control-plane ./charts/rlark-control-plane \
+  --namespace rlark-system \
+  --create-namespace \
+  --set managementApi=kubernetes \
+  --set kcp.enabled=false \
+  --set etcd.enabled=false \
+  --set images.gateway=rlark:latest \
+  --set images.controllerManager=rlark:latest \
+  --set images.server=rlark:latest \
+  --set images.ui=rlark-ui:latest
+```
+
+With `managementApi=kubernetes`, CRDs are installed directly into the target cluster by the chart. In the default kcp mode, a post-install hook installs CRDs into KCP instead.
+
+#### Storage Configuration
+
+```bash
+# PVC storage (recommended for production)
+helm install rlark-control-plane ./charts/rlark-control-plane \
+  --namespace rlark-system \
+  --set global.storage.type=pvc \
+  --set global.storage.storageClass=standard \
+  --set global.storage.size=10Gi
+
+# hostPath storage (single-node)
+helm install rlark-control-plane ./charts/rlark-control-plane \
+  --namespace rlark-system \
+  --set global.storage.type=hostPath \
+  --set global.storage.hostPath=/data/rlark
+```
+
+#### External Database
+
+```bash
+helm install rlark-control-plane ./charts/rlark-control-plane \
+  --namespace rlark-system \
+  --set db.host=pg-managed.example.com \
+  --set db.port=5432 \
+  --set db.database=rlark \
+  --set db.user=rlark \
+  --set db.password=CHANGE_ME
+```
+
+To deploy embedded PostgreSQL instead:
+
+```bash
+helm install rlark-control-plane ./charts/rlark-control-plane \
+  --namespace rlark-system \
+  --set postgresql.enabled=true \
+  --set db.host=postgresql \
+  --set db.port=5432 \
+  --set db.database=rlark \
+  --set db.user=rlark \
+  --set db.password=CHANGE_ME
+```
+
+#### External etcd
+
+```bash
+helm install rlark-control-plane ./charts/rlark-control-plane \
+  --namespace rlark-system \
+  --set etcd.address=https://my-etcd.example.com:2379
+```
+
+#### etcd Cluster with hostPath
+
+Deploy a 3-node etcd cluster using hostPath storage:
+
+```yaml
+# values.yaml
+etcd:
+  enabled: true
+  replicas: 3
+  storage:
+    type: hostPath
+    hostPath: /data/rlark/etcd
+```
+
+```bash
+helm install rlark-control-plane ./charts/rlark-control-plane \
+  --namespace rlark-system \
+  --create-namespace \
+  -f values.yaml
+```
+
+> **Note**: When redeploying with `hostPath` or `PVC` storage, delete existing etcd PVCs first:
+> ```bash
+> kubectl delete pvc -n rlark-system etcd-data-0 etcd-data-1 etcd-data-2
+> ```
+
+#### Image Configuration
+
+All component images are configurable via `values.yaml`. By default, RLark's own images use the local `make docker-build-*` tags (`rlark:latest`, `rlark-ui:latest`); override them when installing from a registry:
+
+```yaml
+images:
+  gateway: your-registry/rlark:v0.0.50
+  controllerManager: your-registry/rlark:v0.0.50
+  server: your-registry/rlark:v0.0.50
+  kcp: your-registry/kcp:v0.30.0
+  etcd: your-registry/etcd:3.5.15-0
+  ui: your-registry/rlark-ui:v0.0.50
+
+# Image for KCP post-install hook (requires kubectl + shell)
+hookImage: your-registry/bitnami/kubectl:1.33.1
+```
+
+### 2.2 Data Plane
+
+First, obtain agent certificates from the control plane:
+
+```bash
+curl -X POST "http://localhost:8080/api/v1/certificates/agent" \
+  -H "Content-Type: application/json" \
+  -d '{"cluster_id": "beijing"}'
+```
+
+`certs.caCert`, `certs.agentCert`, and `certs.agentKey` have no defaults; the chart fails rendering when any of them is empty. Pass them from files at install time and never commit them into `values.yaml`:
+
+```bash
+helm install rlark-data-plane ./charts/rlark-data-plane \
+  --namespace rlark-system \
+  --set controlPlaneAddress=https://rlark-server.rlark-system.svc:8443 \
+  --set-file certs.caCert=ca.crt \
+  --set-file certs.agentCert=agent.crt \
+  --set-file certs.agentKey=agent.key
+```
+
+Enable nodes for the node agent DaemonSet:
+
+```bash
+kubectl label node <node-name> rlark.io/enabled=true
+```
+
+For k3s or non-standard containerd paths:
+
+```bash
+helm install rlark-data-plane ./charts/rlark-data-plane \
+  --namespace rlark-system \
+  --set controlPlaneAddress=https://rlark-server.rlark-system.svc:8443 \
+  --set agentNode.containerdSocket=/run/k3s/containerd/containerd.sock \
+  --set-file certs.caCert=ca.crt \
+  --set-file certs.agentCert=agent.crt \
+  --set-file certs.agentKey=agent.key
+```
+
+## 3. Deployment Tool: rlarkadm
 
 `rlarkadm` is RLark's deployment CLI for installing and uninstalling control-plane and data-plane components. Installation waits up to 180 seconds for each Kubernetes workload to become ready; there is no separate `health` subcommand.
 
@@ -70,6 +253,17 @@ kubernetes:
 ```
 
 ## 3. Kubernetes Deployment
+
+By default, `rlarkadm` deploys kcp as the management API. To use the target Kubernetes cluster itself, set:
+
+```yaml
+kubernetes:
+  management-api: kubernetes
+```
+
+In this mode, `rlarkadm` installs the RLark CRDs directly into the target cluster and does not deploy kcp or etcd. Server, Gateway, and Controller Manager use dedicated ServiceAccounts, ClusterRoles, and in-cluster credentials. Normal uninstall keeps the cluster-scoped CRDs, RLark custom resources, and management Secrets; removing them is a separate destructive operation.
+
+With kcp, `rlarkadm` stores the Controller Manager election Lease in the management API's `default` namespace. When the target Kubernetes cluster is the management API, it stores the Lease in `rlark-system`, alongside the deployed control-plane workloads.
 
 ### 3.1 Control Plane Deployment
 
@@ -159,6 +353,8 @@ volumes:
 | `--kubeconfig` | `$KUBECONFIG` | Control plane kubeconfig |
 | `--https-port` | `8443` | HTTPS service port |
 | `--ssh-port` | `2222` | SSH service port |
+| `--ssh-max-pending-targets` | `64` | Positive per-SSH-connection upstream-open limit; also bounds additional waiters, excluding established channels |
+| `--ssh-admission-wait-timeout` | `5s` | Positive open-slot wait budget within the shared 30-second context deadline; a full wait queue rejects immediately |
 | `--unsafe-http-port` | `8888` | Unauthenticated HTTP port for `/healthz`, `/readyz`, and metrics |
 | `--db-config` | `""` | Database config file path |
 | `--auto-sign-tls-ca-cert` | `false` | Generate the TLS CA and server certificate in Kubernetes when absent |
@@ -170,9 +366,11 @@ volumes:
 |-----------|---------|-------------|
 | `--kubeconfig` | `$KUBECONFIG` | Control plane kubeconfig |
 | `--server-address` | `https://rlark-server.rlark-system.svc:8443` | Server address |
-| `--leader-elect` | `true` | Enable leader election |
+| `--leader-election` | `true` | Enable leader election |
 | `--metrics-bind-address` | `:8080` | Metrics bind address |
 | `--health-probe-bind-address` | `:8081` | `/healthz` and `/readyz` bind address |
+| `--archive-ttl` | `5m` | Time to keep terminal resources in kcp before archiving |
+| `--enable-secret-backend` | `false` | Use Kubernetes Secret as persistence backend (test mode, only when PostgreSQL is not configured) |
 
 ### 5.3 Gateway
 
@@ -181,9 +379,12 @@ volumes:
 | `--kubeconfig` | `$KUBECONFIG` | Control plane kubeconfig |
 | `--addr` | `:8080` | Standalone default; `rlarkadm` overrides it to `:8090` |
 | `--db-config` | `""` | Database config file path |
+| `--enable-secret-backend` | `false` | Use Kubernetes Secret as persistence backend (test mode, only when PostgreSQL is not configured) |
 | `--server-address` | `https://rlark-server.rlark-system.svc:8443` | Server address for certificate signing |
 
 ### 5.4 Agent
+
+Ready-to-use data-plane manifests: [agent-rbac.yaml](examples/agent-rbac.yaml) and [agent-deploy.yaml](examples/agent-deploy.yaml).
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
@@ -192,12 +393,12 @@ volumes:
 | `--client-cert` | `""` | Agent certificate path |
 | `--client-key` | `""` | Agent private key path |
 | `--ca-cert` | `""` | CA certificate path |
-| `--mode` | `cluster` | Run mode: `cluster` / `node` / `both` |
+| `--mode` | `cluster` | Role: `cluster` / `node`; local composition uses `--node-startup=embedded` |
 | `--rlark-server-ssh-address` | `""` | Server SSH address (`user@host:port`) |
 | `--rlark-server-ssh-host-key` | `""` | Server SSH host public key |
-| `--agent-type` | `Kubernetes` | Agent type: `Kubernetes` / `Docker` / `Raw` |
-| `--leader-election` | `false` | `rlarkadm` enables it for multi-replica cluster agents |
-| `--image` | `""` | RLark container image (network sidecar, SSH server, etc.) |
+| `--agent-type` | `kubernetes` | Case-insensitive startup selector; Docker/Raw execution unsupported |
+| `--leader-election` | `false` | Installer may set this legacy flag; current Agent managers do not enforce leadership through it |
+| `--image` | `""` | RLark tools/network/SSH image; required for Kubernetes cluster-mode Task assembly |
 | `--in-cluster` | `false` | `rlarkadm` sets it in Kubernetes mode |
 | `--insecure-skip-tls-verify` | `false` | Skip TLS certificate verification |
 
@@ -215,15 +416,19 @@ In the config file, specify exactly one of `kubernetes`, `docker`, or `raw` env 
 
 ### 5.6 Agent Modes
 
-Agent supports three running modes via `--mode`:
+Agent supports two roles via `--mode`, independently from deployment method:
 
 | Mode | Description | Component |
 |------|-------------|-----------|
 | `cluster` | Cluster-level workload management | Deployment (agent) |
 | `node` | Node-level network operations | DaemonSet (agent-node) |
-| `both` | Run both cluster and node controllers | Combined |
+| `cluster` + `--node-startup=embedded` | Add local node services under shared fatal-error cancellation/join | Manually supervised process |
+
+External node startup is the default; `rlarkadm` and Helm retain separate Deployment/DaemonSet workloads and canonical lower-case runtime arguments. Embedded does not discover or deploy remote agents and needs both roles' mounts/permissions, node name and separate metrics ports (cluster `:8081`, node `:8082`). Legacy combined mode and unimplemented managed are rejected. Startup-only Agent YAML, local checks, source diagnostics and environment compatibility are described in the [configuration reference](reference/configuration.md#agent-startup-file-and-validation); it is not DeployConfig and has no reload/rollout controller.
 
 When `--mode=node`, the agent runs as a DaemonSet on each node, handling SSH tunnel setup for cross-cluster networking.
+
+The cluster agent reports Node storage capacity by reading kubelet stats through the API server node proxy (`api/v1/nodes/<node>/proxy/stats/summary`). Its ServiceAccount therefore needs `get` on the `nodes/proxy` subresource; without it the agent logs `failed to get kubelet storage stats ... 403 Forbidden` on every sync and Node `status.storage` stays empty. The Helm chart and `rlarkadm` already grant it; a hand-written RBAC manifest must include it (see [agent-rbac.yaml](examples/agent-rbac.yaml)).
 
 ## 6. Addon Configuration
 
@@ -240,13 +445,20 @@ pkg/addons/catalog/
 │       ├── configmap-template.yaml  # ConfigMap template (camera/ROS controller configs)
 │       ├── headless-services.yaml   # Headless Services for camera/ROS controllers
 │       └── rbac.yaml       # ClusterRole + ClusterRoleBinding
-└── csi-driver-rclone/
-    ├── addon.yaml          # Addon metadata (name, version, category: storage)
+├── csi-driver-rclone/
+│   ├── addon.yaml          # Addon metadata (name, version, category: storage)
+│   └── manifests/
+│       ├── controller.yaml  # CSI Controller Deployment
+│       ├── node.yaml        # CSI Node DaemonSet
+│       ├── configmap.yaml   # RClone configuration
+│       ├── csidriver.yaml   # CSIDriver resource
+│       └── rbac.yaml        # RBAC permissions
+└── fluent-bit/
+    ├── addon.yaml           # Addon metadata and logging backend configuration
     └── manifests/
-        ├── controller.yaml  # CSI Controller Deployment
-        ├── node.yaml        # CSI Node DaemonSet
-        ├── configmap.yaml   # RClone configuration
-        ├── csidriver.yaml   # CSIDriver resource
+        ├── daemonset.yaml   # Fluent Bit log collector DaemonSet
+        ├── configmap.yaml   # Input, filter, and output configuration
+        ├── secret.yaml      # Backend credentials
         └── rbac.yaml        # RBAC permissions
 ```
 
@@ -254,12 +466,16 @@ Key configurable parameters for `embodied-runtime-device-plugin`:
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
-| `image` | Device plugin container image | `rlark/embodied-device-plugin:0.1.0` |
+| `deviceCount` | Number of devices exposed per node | `"1"` |
+| `robots` | Global robot configuration in YAML | `""` |
+| `macvlans` | Global MacVlan configuration in YAML | `""` |
+| `nodeOverrides` | Per-node YAML overrides keyed by node name | `""` |
+| `image` | Device plugin container image | `rlinf/embodied-runtime:v0.1.0-b4b4d6f8` |
 | `rendererImage` | Node-level config renderer initContainer image (yq) | `yq:4.53.2` |
-| `cameraImage` | Camera controller container image | — |
-| `rosImage` | ROS controller container image | — |
-| `nodeSelector` | Node selector for DaemonSet scheduling | `nvidia.com/gpu=true` |
-| `robotTolerationKey` | Toleration key for robot nodes | — |
+| `cameraImage` | Camera controller container image | `rlinf/camera-base:v0.1.0-946787a0` |
+| `rosImage` | ROS controller container image | `rlinf/serl_franka_controllers:v0.1.0-libfranka-0.19.0-frankaros-0.10.2` |
+| `nodeSelector` | Node selector for DaemonSet scheduling | `""` |
+| `robotTolerationKey` | Toleration key for robot nodes | `rlinf.io/robot` |
 
 The addon also deploys two headless Services (`camera-controller-headless` and `ros-controller-headless`) for stable DNS-based discovery of camera and ROS controllers within the cluster.
 
@@ -267,16 +483,34 @@ Key configurable parameters for `csi-driver-rclone`:
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
-| `rcloneImage` | RClone CSI driver container image | `csi-driver-rclone:v0.2.0` |
-| `csiProvisionerImage` | CSI provisioner sidecar image | `csi-provisioner:v6.2.0` |
-| `livenessProbeImage` | Liveness probe sidecar image | `livenessprobe:v2.18.0` |
-| `nodeDriverRegistrarImage` | Node driver registrar sidecar image | `csi-node-driver-registrar:v2.16.0` |
+| `rcloneImage` | RClone CSI driver container image | `rlinf/csi-rclone/csi-driver-rclone:v0.2.0` |
+| `csiProvisionerImage` | CSI provisioner sidecar image | `rlinf/csi-rclone/csi-provisioner:v6.2.0` |
+| `livenessProbeImage` | Liveness probe sidecar image | `rlinf/csi-rclone/livenessprobe:v2.18.0` |
+| `nodeDriverRegistrarImage` | Node driver registrar sidecar image | `rlinf/csi-rclone/csi-node-driver-registrar:v2.16.0` |
 | `driverName` | CSI driver registration name | `rclone.csi.veloxpack.io` |
+| `nodeSelector` | Node DaemonSet selector in `label=value` format | `""` |
 | `controllerReplicas` | Controller Deployment replicas | `1` |
 | `controllerLogLevel` | Controller log level (0-10) | `5` |
 | `nodeLogLevel` | Node DaemonSet log level (0-10) | `5` |
 
 The RClone CSI driver enables dynamic provisioning of PersistentVolumes backed by remote storage (S3, GCS, Azure Blob, etc.) via RClone.
+
+Key configurable parameters for `fluent-bit`:
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `backend` | Logging backend; currently only `sls` is supported | `sls` |
+| `endpoint` | Backend endpoint; for SLS, the Kafka endpoint | `""` |
+| `project` | SLS project or backend tenant/organization | `""` |
+| `logstore` | SLS Logstore or backend index | `""` |
+| `accessKeyId` | Backend authentication ID | `""` |
+| `accessKeySecret` | Backend authentication secret | `""` |
+| `clusterId` | Value attached to logs as the `cluster_id` label | `""` |
+| `image` | Fluent Bit container image | `fluent/fluent-bit:3.1.8` |
+| `cpuLimit` | Fluent Bit CPU limit | `200m` |
+| `memoryLimit` | Fluent Bit memory limit | `256Mi` |
+
+For SLS, set `endpoint` to `<project>.<endpoint>:<port>` (public port `10012`, private port `10011`), `project` to the SLS project, `logstore` to the Kafka topic, and provide an AccessKey with SLS write permission. The DaemonSet collects Pod stdout/stderr and adds labels including `cluster_id`, `job`, `task`, `pod`, and `namespace`.
 
 ### 6.2 Installing an Addon
 
@@ -286,9 +520,9 @@ curl -X POST "http://localhost:8080/api/v1/clusters/agent-beijing/addons" \
   -H "Content-Type: application/json" \
   -d '{
     "addonName": "embodied-runtime-device-plugin",
-    "version": "0.1.0",
+    "version": "v0.1.0",
     "values": {
-      "image": "rlark/embodied-device-plugin:0.1.0"
+      "image": "rlinf/embodied-runtime:v0.1.0-b4b4d6f8"
     }
   }'
 ```
@@ -306,19 +540,19 @@ curl "http://localhost:8080/api/v1/installed-addons"
 curl "http://localhost:8080/api/v1/clusters/agent-beijing/addons"
 
 # Get addon details
-curl "http://localhost:8080/api/v1/clusters/agent-beijing/addons/embodied-device-plugin"
+curl "http://localhost:8080/api/v1/clusters/agent-beijing/addons/embodied-runtime-device-plugin"
 
 # Update addon configuration
-curl -X PUT "http://localhost:8080/api/v1/clusters/agent-beijing/addons/embodied-device-plugin" \
+curl -X PUT "http://localhost:8080/api/v1/clusters/agent-beijing/addons/embodied-runtime-device-plugin" \
   -H "Content-Type: application/json" \
   -d '{
     "values": {
-      "image": "rlark/embodied-device-plugin:0.2.0"
+      "image": "rlinf/embodied-runtime:v0.1.0-b4b4d6f8"
     }
   }'
 
 # Uninstall an addon
-curl -X DELETE "http://localhost:8080/api/v1/clusters/agent-beijing/addons/embodied-device-plugin"
+curl -X DELETE "http://localhost:8080/api/v1/clusters/agent-beijing/addons/embodied-runtime-device-plugin"
 ```
 
 ## 7. Storage Configuration
@@ -393,20 +627,21 @@ Returns certificate and private key for deployment to the data plane Agent.
 
 ### 9.3 UI Authentication
 
-During deployment, `rlarkadm` automatically creates a `rlark-ui-auth` Secret in the kcp cluster's `default` namespace, containing randomly generated passwords for admin and user roles:
+During deployment, `rlarkadm` automatically creates a `rlark-ui-auth` Secret containing randomly generated passwords and the JWT signing key. It is stored in the kcp `default` namespace when kcp is used, or in `rlark-system` when the target Kubernetes cluster is the management API:
 
 | Key | Purpose |
 |-----|---------|
 | `admin-password` | Admin role password (16 random characters) |
 | `user-password` | User role password (16 random characters) |
+| `jwt-signing-key` | 32-byte HS256 signing key; existing Secrets are upgraded without rotating an existing key |
 
-Passwords are displayed in the install summary. The web UI uses `POST /api/v1/auth/login` to authenticate.
+Passwords are displayed in the install summary; the signing key is not. The web UI uses `POST /api/v1/auth/login` to authenticate and obtain an expiring JWT.
 
 ## 10. Production Deployment and High Availability
 
 ### 10.1 Current `rlarkadm` Scope
 
-The maintained `rlarkadm` example deploys one replica of each enabled control-plane component. Although the configuration accepts global and component-level `replicas`, RLark does not currently document or validate a production HA topology for Gateway, Server, kcp, etcd, or PostgreSQL. Increasing replica counts alone must not be assumed to provide high availability.
+The maintained `rlarkadm` example deploys one replica of each enabled control-plane component. kcp is currently limited to one replica; an explicit `kubernetes.kcp.replicas` value greater than one is rejected, and global `replicas` does not scale kcp. RLark does not currently document or validate a production HA topology for the other components, so increasing replica counts alone must not be assumed to provide high availability.
 
 For production, keep the maintained single-replica topology unless you have independently designed and tested the component topology, shared state, traffic routing, failure recovery, and storage behavior. Use externally managed highly available data services where required; `rlarkadm` does not configure PostgreSQL primary/standby replication.
 
@@ -442,6 +677,14 @@ Gateway and Server expose Prometheus metrics:
 - `rlark_peer_connections`: Current peer connections
 - `rlark_ssh_connections_total`: SSH connection count
 
+Controller Manager publishes one series set per reconcile pass on `--metrics-bind-address`:
+
+- `rlark_controller_reconcile_total{controller,outcome}`: Completed reconcile passes, partitioned by the classified outcome (`Succeeded`, `WaitingForChange`, `Retrying`, `CleanupInProgress`, `Blocked`, `Dropped`)
+- `rlark_controller_reconcile_failures_total{controller,reason}`: Passes that returned an error, partitioned by the reason code
+- `rlark_controller_reconcile_duration_seconds{controller}`: Wall-clock duration of a pass
+
+Label values come from closed sets declared in Go source (resource kind, outcome enum, reason constants). Object names, namespaces, UIDs, and raw error strings are never used as labels, so series count does not grow with the number of objects.
+
 ### 11.2 Logging
 
 Structured logging (zap), controlled via `LOG_LEVEL` environment variable:
@@ -473,6 +716,11 @@ curl --fail http://localhost:8081/readyz
 
 Gateway and Agent expose metrics but do not define dedicated HTTP health routes; use Kubernetes workload readiness and logs for them.
 
+Controller Manager separates the two probes:
+
+- `/healthz` (liveness) only answers whether the process itself is alive. It deliberately does not check the management API or any other external dependency, because a dependency outage would otherwise be amplified into a restart storm.
+- `/readyz` (readiness) reports whether the informer caches have synced. Before the caches sync, a reconcile pass would decide from an incomplete view, so the instance is not ready to serve.
+
 ## 12. Upgrades
 
 ```bash
@@ -490,16 +738,20 @@ kubectl get pods -n rlark-system
 
 1. Check if Agent certificate is valid (not expired, signed by correct CA)
 2. Check network connectivity: `curl -k https://<server>:8443`
-3. Check Server logs: `kubectl logs -n rlark-system deployment/server`
+3. Check Server logs: `kubectl logs -n rlark-system deployment/rlark-server`
 
 ### Training Job Cannot Start
 
-1. Check if Node has sufficient resources: `kubectl get nodes -n rlark-system`
+1. Check if Node has sufficient resources: `kubectl describe node <node-name>`
 2. Check Task status: query the corresponding Task CR
-3. Check Agent logs: `kubectl logs -n rlark-system daemonset/agent`
+3. Check cluster Agent logs: `kubectl logs -n rlark-system deployment/rlark-agent`
 
 ### Cross-Cluster Network Not Working
 
 1. Check if DomainPeer has been created
 2. Check if Domain certificate was signed successfully
 3. Check if network-sidecar is injected into the Pod
+
+## 14. Physical Device Onboarding
+
+For the complete workflow for onboarding GPU nodes, robots, cameras, and other physical devices, configuring the Embodied Runtime, and submitting device workloads, see [Embodied Device Onboarding](admin-guide/embodied-runtime.md).

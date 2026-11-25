@@ -20,10 +20,12 @@ package v1alpha1
 // JobSpecApplyConfiguration represents a declarative configuration of the JobSpec type for use
 // with apply.
 type JobSpecApplyConfiguration struct {
-	Domain       *string                             `json:"domain,omitempty"`
-	Stopped      *bool                               `json:"stopped,omitempty"`
+	Domain *string `json:"domain,omitempty"`
+	// Setting spec.suspended to true starts an orderly stop without deleting the Job resource. The Job becomes Stopped and is archived into the persistence backend after ArchiveTTL (default 5 minutes), while the Job CR is deleted from kcp. Starting the Job via POST /jobs/:name/start restores it from the persistence backend with the same name and spec but a new Kubernetes UID.
+	Suspended    *bool                               `json:"suspended,omitempty"`
 	Tasks        []JobTaskTemplateApplyConfiguration `json:"tasks,omitempty"`
 	SSHPublicKey *string                             `json:"sshPublicKey,omitempty"`
+	Tags         []JobTagApplyConfiguration          `json:"tags,omitempty"`
 }
 
 // JobSpecApplyConfiguration constructs a declarative configuration of the JobSpec type for use with
@@ -40,11 +42,11 @@ func (b *JobSpecApplyConfiguration) WithDomain(value string) *JobSpecApplyConfig
 	return b
 }
 
-// WithStopped sets the Stopped field in the declarative configuration to the given value
+// WithSuspended sets the Suspended field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
-// If called multiple times, the Stopped field is set to the value of the last call.
-func (b *JobSpecApplyConfiguration) WithStopped(value bool) *JobSpecApplyConfiguration {
-	b.Stopped = &value
+// If called multiple times, the Suspended field is set to the value of the last call.
+func (b *JobSpecApplyConfiguration) WithSuspended(value bool) *JobSpecApplyConfiguration {
+	b.Suspended = &value
 	return b
 }
 
@@ -66,5 +68,18 @@ func (b *JobSpecApplyConfiguration) WithTasks(values ...*JobTaskTemplateApplyCon
 // If called multiple times, the SSHPublicKey field is set to the value of the last call.
 func (b *JobSpecApplyConfiguration) WithSSHPublicKey(value string) *JobSpecApplyConfiguration {
 	b.SSHPublicKey = &value
+	return b
+}
+
+// WithTags adds the given value to the Tags field in the declarative configuration
+// and returns the receiver, so that objects can be build by chaining "With" function invocations.
+// If called multiple times, values provided by each call will be appended to the Tags field.
+func (b *JobSpecApplyConfiguration) WithTags(values ...*JobTagApplyConfiguration) *JobSpecApplyConfiguration {
+	for i := range values {
+		if values[i] == nil {
+			panic("nil value passed to WithTags")
+		}
+		b.Tags = append(b.Tags, *values[i])
+	}
 	return b
 }

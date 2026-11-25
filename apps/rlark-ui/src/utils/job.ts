@@ -1,5 +1,22 @@
-import type { JobType } from "../data";
+import type { JobTag, JobType } from "../data";
 import type { RoleResource } from "../types";
+import type { CRDJob, CRDJobTask } from "../crdModels";
+
+// 任务名称限制：1-64 个字符，支持中英文、数字、中划线（-）、下划线（_）和英文句号（.）
+export const JOB_DISPLAY_NAME_MAX_LENGTH = 64;
+export const JOB_DISPLAY_NAME_PATTERN = /^[A-Za-z0-9\u4e00-\u9fa5._-]{1,64}$/;
+
+export function isValidJobDisplayName(name: string): boolean {
+  return JOB_DISPLAY_NAME_PATTERN.test(name);
+}
+
+// 角色名称与任务名称使用相同的字符与长度限制
+export const ROLE_NAME_MAX_LENGTH = JOB_DISPLAY_NAME_MAX_LENGTH;
+export const ROLE_NAME_PATTERN = JOB_DISPLAY_NAME_PATTERN;
+
+export function isValidRoleName(name: string): boolean {
+  return ROLE_NAME_PATTERN.test(name);
+}
 
 const TASK_ROLE_MAP: Record<string, "Actor" | "Rollout" | "Env"> = {
   Actor: "Actor",
@@ -27,6 +44,10 @@ const ROLE_TEMPLATES: Record<JobType, string[]> = {
   Evaluation: ["Rollout", "Environment"],
   Custom: [],
 };
+
+// 任务类型的持久化载体。写入侧只写这一个规范形式，读取侧在缺失时回落到从
+// task.role 反推，以兼容此前创建的存量任务。
+export const JOB_TYPE_LABEL = "rlark.io/job-type";
 
 export { TASK_ROLE_MAP, ROLE_TEMPLATES };
 
@@ -95,6 +116,77 @@ export function selectorToStr(sel: Record<string, string>): string {
     .join(",");
 }
 
+export type PlacementCluster = {
+  id?: string;
+  name?: string;
+  agentNamespace?: string;
+  phase?: string;
+};
+
+// 只有 Online 与服务降级（Downgraded）的集群接受新的调度；停止调度
+// （Cordoned）、排空、离线或已下架的集群仍会返回节点，但调度器不会再向
+// 其中放置新的 Worker。
+export function isClusterSchedulable(cluster: PlacementCluster): boolean {
+  return cluster.phase === "Online" || cluster.phase === "Downgraded";
+}
+
+// Node CR 位于所属集群的 Agent 命名空间。由 Agent 纳管的集群通常以集群名作为
+// 该命名空间，历史或自定义集群可能显式设置 agentNamespace，因此同时接受 id、
+// name 与 agentNamespace，避免把可调度节点误判为不可用。
+export function schedulableNodeNamespaces(
+  clusters: PlacementCluster[],
+): Set<string> {
+  const namespaces = new Set<string>();
+  for (const cluster of clusters) {
+    if (!isClusterSchedulable(cluster)) continue;
+    for (const value of [cluster.id, cluster.name, cluster.agentNamespace]) {
+      if (value) namespaces.add(value);
+    }
+  }
+  return namespaces;
+}
+
+// 复制、编辑或编辑后重启的任务可能保留一个已经不存在或已停止调度的集群，
+// 此时不能继续沿用该选择。
+export function isSchedulableClusterValue(
+  value: string,
+  clusters: PlacementCluster[],
+): boolean {
+  return clusters.some(
+    (cluster) =>
+      isClusterSchedulable(cluster) &&
+      (cluster.id === value ||
+        cluster.name === value ||
+        cluster.agentNamespace === value),
+  );
+}
+
+// 历史集群的 Cluster 名称与 Agent 命名空间可能不同，一个集群选择值应同时
+// 匹配其 id、name 与 agentNamespace，避免把合法节点误判为不属于该集群。
+export function clusterNodeNamespaces(
+  value: string,
+  clusters: PlacementCluster[],
+): Set<string> {
+  const namespaces = new Set<string>();
+  for (const cluster of clusters) {
+    if (
+      cluster.id !== value &&
+      cluster.name !== value &&
+      cluster.agentNamespace !== value
+    )
+      continue;
+    for (const candidate of [
+      cluster.id,
+      cluster.name,
+      cluster.agentNamespace,
+    ]) {
+      if (candidate) namespaces.add(candidate);
+    }
+  }
+  if (namespaces.size === 0 && value) namespaces.add(value);
+  return namespaces;
+}
+
 export function generateJobResourceName(): string {
   const bytes = new Uint8Array(8);
   crypto.getRandomValues(bytes);
@@ -143,57 +235,6 @@ export function toVolumeName(mountPath: string): string {
   return name;
 }
 
-export function computePvcStorageMap(
-  role: string,
-  mounts: Array<{
-    type: "host" | "storage";
-    objectStorage: string;
-    mountPath: string;
-    hostPath: string;
-    pvcSizeGb: number;
-  }>,
-  jobName?: string,
-): Record<string, string> | undefined {
-  const roleSlug = toResourceName(role);
-  const storageMounts = mounts.filter((m) => m.type === "storage");
-  if (storageMounts.length === 0) return undefined;
-  const map: Record<string, string> = {};
-  const jobSlug = jobName ? toResourceName(jobName) : "";
-  storageMounts.forEach((m) => {
-    const volName = toVolumeName(m.mountPath);
-    const claimName = jobSlug
-      ? `pvc-${jobSlug}-${roleSlug}-${volName}`
-      : `pvc-${roleSlug}-${volName}`;
-    map[claimName] = m.objectStorage ?? "";
-  });
-  return map;
-}
-
-export function computePvcSizeGbMap(
-  role: string,
-  mounts: Array<{
-    type: "host" | "storage";
-    mountPath: string;
-    pvcSizeGb: number;
-  }>,
-  jobName?: string,
-): Record<string, number> | undefined {
-  const roleSlug = toResourceName(role);
-  const storageMounts = mounts.filter((m) => m.type === "storage");
-  if (storageMounts.length === 0) return undefined;
-  const map: Record<string, number> = {};
-  const jobSlug = jobName ? toResourceName(jobName) : "";
-  storageMounts.forEach((m) => {
-    const volName =
-      m.mountPath.replace(/\//g, "-").replace(/^-|-$/g, "") || "vol";
-    const claimName = jobSlug
-      ? `pvc-${jobSlug}-${roleSlug}-${volName}`
-      : `pvc-${roleSlug}-${volName}`;
-    map[claimName] = Math.min(200, Math.max(1, m.pvcSizeGb));
-  });
-  return map;
-}
-
 export function automaticNetworkDomain(domains: Array<{ name: string }>) {
   return (
     [...domains].sort((left, right) => left.name.localeCompare(right.name))[0]
@@ -212,7 +253,8 @@ export function generateJobCRD(opts: {
   domain: string;
   tensorBoardDir?: string;
   sshPublicKey?: string;
-}) {
+  tags?: JobTag[];
+}): CRDJob {
   const tasks = opts.roles
     .map((role) => {
       const res = opts.roleResources[role];
@@ -227,10 +269,15 @@ export function generateJobCRD(opts: {
         { name: "RLARK_TASK_ROLE", value: role },
       ];
       const taskName = toResourceName(role);
-      const jobSlug = toResourceName(opts.name);
-
       const hostMounts = roleMounts.filter((m) => m.type === "host");
       const storageMounts = roleMounts.filter((m) => m.type === "storage");
+      // 表单无法编辑的卷（emptyDir、configMap、secret 等）按原始定义写回，
+      // 只把 name 对齐到挂载路径派生的名字，保证 volumes 与 volumeMounts 匹配。
+      const opaqueVolumes = roleMounts.flatMap((m) =>
+        m.type === "opaque" && m.rawVolume
+          ? [{ ...m.rawVolume, name: toVolumeName(m.mountPath) }]
+          : [],
+      );
 
       const containerVolumes = hostMounts.map((m) => ({
         name: toVolumeName(m.mountPath),
@@ -239,104 +286,148 @@ export function generateJobCRD(opts: {
 
       const storageVolumes = storageMounts.map((m) => {
         const volName = toVolumeName(m.mountPath);
-        const claimName = `pvc-${jobSlug}-${taskName}-${volName}`;
+        const pvcSizeGb =
+          m.pvcSizeGb === "" ? 10 : Math.min(200, Math.max(1, m.pvcSizeGb));
         return {
           name: volName,
-          persistentVolumeClaim: {
-            claimName,
+          ephemeral: {
+            volumeClaimTemplate: {
+              spec: {
+                accessModes: ["ReadWriteOnce"],
+                ...(m.objectStorage
+                  ? { storageClassName: m.objectStorage }
+                  : {}),
+                resources: {
+                  requests: { storage: `${pvcSizeGb}Gi` },
+                },
+              },
+            },
           },
         };
       });
 
-      const pvcStorageMap = computePvcStorageMap(
-        taskName,
-        roleMounts,
-        opts.name,
-      );
-      const pvcSizeGbMap = computePvcSizeGbMap(taskName, roleMounts, opts.name);
-
-      const allVolumeMounts = roleMounts.map((m) => ({
-        name: toVolumeName(m.mountPath),
-        mountPath: m.mountPath,
-      }));
+      // 丢失了原始定义的 opaque 挂载无法写出对应的 volume，跳过以免产生悬空引用。
+      const allVolumeMounts = roleMounts
+        .filter((m) => m.type !== "opaque" || m.rawVolume)
+        .map((m) => ({
+          name: toVolumeName(m.mountPath),
+          mountPath: m.mountPath,
+        }));
 
       return {
         name: taskName,
         head: isHead,
-        agentType: "Kubernetes",
-        role: mapTaskRole(role),
-        nodeSelector: res ? parseNodeSelector(res.nodeSelector) : {},
-        prepareScript: res?.prepareScript ?? "",
-        ...(isHead ? { runScript: opts.runScript } : {}),
-        ...(isHead && opts.tensorBoardDir
-          ? { tensorBoardDir: opts.tensorBoardDir }
-          : {}),
-        kubernetes: {
-          workload: {
-            kind: "StatefulSet",
-            replicas: res ? Number(res.replicas) : 1,
-            ...(pvcStorageMap ? { pvcStorageMap } : {}),
-            ...(pvcSizeGbMap ? { pvcSizeGbMap } : {}),
-            template: {
-              spec: {
-                containers: [
-                  {
-                    name: "main",
-                    image: res?.image ?? "",
-                    env: envVars.length > 0 ? envVars : undefined,
-                    volumeMounts:
-                      allVolumeMounts.length > 0 ? allVolumeMounts : undefined,
-                    resources: res
-                      ? {
-                          requests: {
-                            ...(res.cpu ? { cpu: res.cpu } : {}),
-                            ...(res.memory ? { memory: res.memory } : {}),
-                            ...(res.gpu && res.gpu !== "0"
-                              ? { "nvidia.com/gpu": res.gpu }
-                              : {}),
-                            ...Object.fromEntries(
-                              (res.devices ?? [])
-                                .filter(
-                                  (d) =>
-                                    d.name && d.quantity && d.quantity !== "0",
-                                )
-                                .map((d) => [d.name, d.quantity]),
-                            ),
-                          },
-                          limits: {
-                            ...(res.gpu && res.gpu !== "0"
-                              ? { "nvidia.com/gpu": res.gpu }
-                              : {}),
-                            ...Object.fromEntries(
-                              (res.devices ?? [])
-                                .filter(
-                                  (d) =>
-                                    d.name && d.quantity && d.quantity !== "0",
-                                )
-                                .map((d) => [d.name, d.quantity]),
-                            ),
-                          },
-                        }
-                      : undefined,
-                  },
-                ],
-                volumes: [
-                  ...(containerVolumes.length > 0 ? containerVolumes : []),
-                  ...(storageVolumes.length > 0 ? storageVolumes : []),
-                ],
-              },
+        // 自定义类型没有角色模板，mapTaskRole 的兜底会把任意角色名折叠成 Actor，
+        // 丢失用户填写的语义。TaskRole 在 CRD 层不做枚举校验，可以承载自定义
+        // 角色名，因此自定义类型直接写回原始角色名。
+        role: opts.type === "Custom" ? role : mapTaskRole(role),
+        placement: {
+          nodeSelector: res ? parseNodeSelector(res.nodeSelector) : {},
+        },
+        runtime: { kind: "Kubernetes" },
+        workload: {
+          kind: "rlinf.io/ray",
+          version: "v1",
+          parameters: {
+            role: isHead ? "head" : "worker",
+            ...(res?.prepareScript
+              ? { prepare: { inline: res.prepareScript } }
+              : {}),
+            ...(isHead && opts.runScript
+              ? { run: { inline: opts.runScript } }
+              : {}),
+          },
+          carrier: {
+            type: "rlinf.io/kubernetes-statefulset",
+            version: "v1",
+            parameters: { replicas: res ? Number(res.replicas) : 1 },
+          },
+          template: {
+            spec: {
+              containers: [
+                {
+                  name: "main",
+                  image: res?.image ?? "",
+                  env: envVars.length > 0 ? envVars : undefined,
+                  volumeMounts:
+                    allVolumeMounts.length > 0 ? allVolumeMounts : undefined,
+                  resources: res
+                    ? {
+                        requests: {
+                          ...(res.cpu ? { cpu: res.cpu } : {}),
+                          ...(res.memory ? { memory: res.memory } : {}),
+                          ...(res.gpu && res.gpu !== "0"
+                            ? { "nvidia.com/gpu": res.gpu }
+                            : {}),
+                          ...Object.fromEntries(
+                            (res.devices ?? [])
+                              .filter(
+                                (d) =>
+                                  d.name && d.quantity && d.quantity !== "0",
+                              )
+                              .map((d) => [d.name, d.quantity]),
+                          ),
+                        },
+                        limits: {
+                          ...(res.gpu && res.gpu !== "0"
+                            ? { "nvidia.com/gpu": res.gpu }
+                            : {}),
+                          ...Object.fromEntries(
+                            (res.devices ?? [])
+                              .filter(
+                                (d) =>
+                                  d.name && d.quantity && d.quantity !== "0",
+                              )
+                              .map((d) => [d.name, d.quantity]),
+                          ),
+                        },
+                      }
+                    : undefined,
+                },
+              ],
+              volumes: [
+                ...(containerVolumes.length > 0 ? containerVolumes : []),
+                ...(storageVolumes.length > 0 ? storageVolumes : []),
+                ...opaqueVolumes,
+              ],
             },
           },
         },
+        environments: (() => {
+          const envs: Array<{
+            type: string;
+            version: string;
+            parameters: Record<string, unknown>;
+          }> = [];
+          if (isHead && opts.tensorBoardDir) {
+            envs.push({
+              type: "rlinf.io/tensorboard",
+              version: "v1",
+              parameters: { logDir: opts.tensorBoardDir },
+            });
+          }
+          if (res?.advanced?.sharedMemorySize) {
+            envs.push({
+              type: "rlinf.io/shared-memory",
+              version: "v1",
+              parameters: { size: res.advanced.sharedMemorySize },
+            });
+          }
+          return envs.length > 0 ? envs : undefined;
+        })(),
       };
     })
-    .filter(Boolean);
+    .filter((task): task is Exclude<typeof task, null> => task !== null)
+    .map((task): CRDJobTask => task);
 
   return {
     apiVersion: "rlinf.io/v1alpha1",
     kind: "Job",
     metadata: {
       name: opts.name,
+      // 任务类型是用户在向导里显式选择的，必须持久化。读取侧不能只从 task.role
+      // 反推：role 是被折叠过的粗粒度分类，自定义类型会被误判成 RL。
+      labels: { [JOB_TYPE_LABEL]: opts.type },
       ...(opts.displayName
         ? { annotations: { "rlark.io/display-name": opts.displayName } }
         : {}),
@@ -345,6 +436,31 @@ export function generateJobCRD(opts: {
       tasks,
       ...(opts.domain ? { domain: opts.domain } : {}),
       ...(opts.sshPublicKey ? { sshPublicKey: opts.sshPublicKey } : {}),
+      ...(opts.tags && opts.tags.length > 0
+        ? {
+            tags: [
+              ...new Map(
+                opts.tags
+                  .filter((t) => t.key.trim() && t.value.trim())
+                  .map((t) => [
+                    t.key.trim(),
+                    {
+                      key: t.key.trim(),
+                      values: opts
+                        .tags!.filter(
+                          (item) => item.key.trim() === t.key.trim(),
+                        )
+                        .map((item) => item.value.trim())
+                        .filter(
+                          (value, index, values) =>
+                            value && values.indexOf(value) === index,
+                        ),
+                    },
+                  ]),
+              ).values(),
+            ],
+          }
+        : {}),
     },
   };
 }

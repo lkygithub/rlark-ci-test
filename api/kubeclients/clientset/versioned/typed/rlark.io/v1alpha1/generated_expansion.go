@@ -19,6 +19,10 @@ package v1alpha1
 
 type AddonExpansion interface{}
 
+type ClusterExpansion interface{}
+
+type ClusterUpgradeJobExpansion interface{}
+
 type DomainExpansion interface{}
 
 type DomainPeerExpansion interface{}
@@ -30,5 +34,7 @@ type NodeExpansion interface{}
 type PodExpansion interface{}
 
 type TaskExpansion interface{}
+
+type UpgradeJobExpansion interface{}
 
 type WorkflowExpansion interface{}
