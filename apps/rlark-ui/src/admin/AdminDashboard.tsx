@@ -5,7 +5,6 @@ import {
   ArrowRight,
   Boxes,
   CheckCircle2,
-  CloudCog,
   Database,
   HardDrive,
   Image,
@@ -17,9 +16,11 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import type { Copy } from "../i18n";
-import type { CRDDomain, CRDJob, CRDNode } from "../types";
+import type { CRDDomain, CRDNode } from "../types";
+import type { CRDJob } from "../crdModels";
 import { useAutoRefresh } from "../hooks";
 import { formatChinaDateTime } from "../utils/time";
+import { RefreshOverlay } from "../components/shared";
 
 type DashboardData = {
   nodes: CRDNode[];
@@ -35,16 +36,13 @@ const emptyData: DashboardData = {
   storageClasses: [],
 };
 
-async function fetchItems<T>(url: string): Promise<T[]> {
-  const response = await fetch(url);
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
-  const data = await response.json();
-  if (Array.isArray(data)) return data;
-  if (Array.isArray(data.items)) return data.items;
-  if (data.data && typeof data.data === "object") {
-    return Object.values(data.data) as T[];
-  }
-  return [];
+function jobDisplayName(job: CRDJob) {
+  return (
+    job.metadata?.annotations?.["rlark.io/display-name"] ??
+    job.metadata?.labels?.["rlark.io/display-name"] ??
+    job.metadata?.name ??
+    ""
+  );
 }
 
 export function AdminDashboard({
@@ -57,6 +55,7 @@ export function AdminDashboard({
   const zh = c.nav.overview === "总览";
   const [data, setData] = useState<DashboardData>(emptyData);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
 
@@ -65,10 +64,12 @@ export function AdminDashboard({
     setError("");
     try {
       const [nodes, jobs, domains, storageClasses] = await Promise.all([
-        fetchItems<CRDNode>("/api/v1/rlinf.io/v1alpha1/nodes"),
-        fetchItems<CRDJob>("/api/v1/rlinf.io/v1alpha1/jobs"),
-        fetchItems<CRDDomain>("/api/v1/rlinf.io/v1alpha1/domains"),
-        fetchItems<{ name?: string }>("/api/v1/storage/storageclass"),
+        nodesApi.list(),
+        jobsApi.list(),
+        domainsApi.list(),
+        storageClassesApi
+          .list<{ name?: string }>()
+          .then((items) => Object.values(items)),
       ]);
       setData({ nodes, jobs, domains, storageClasses });
       setUpdatedAt(new Date());
@@ -80,6 +81,16 @@ export function AdminDashboard({
   };
 
   useAutoRefresh(fetchDashboard, 15000);
+
+  const handleRefresh = async () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    try {
+      await fetchDashboard(false);
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const summary = useMemo(() => {
     const clusterNames = new Set(
@@ -114,17 +125,19 @@ export function AdminDashboard({
     () =>
       [
         ...data.jobs.map((job) => ({
-          id: `job-${job.metadata.name}`,
+          id: `job-${job.metadata?.name ?? ""}`,
           type: zh ? "任务" : "Job",
-          name: job.metadata.name,
+          name: jobDisplayName(job),
+          resourceName: job.metadata?.name ?? "",
           state: job.status?.phase ?? "Pending",
-          time: job.metadata.creationTimestamp,
+          time: job.metadata?.creationTimestamp,
           target: "jobs",
         })),
         ...data.nodes.map((node) => ({
           id: `node-${node.metadata.name}`,
           type: zh ? "节点" : "Node",
           name: node.metadata.name,
+          resourceName: node.metadata.name,
           state: node.status?.phase ?? "Offline",
           time: node.metadata.creationTimestamp,
           target: "clusters-nodes",
@@ -220,7 +233,10 @@ export function AdminDashboard({
   ];
 
   return (
-    <div className="page-content resource-page admin-dashboard-page">
+    <div
+      className={`page-content resource-page admin-dashboard-page refreshable-region page-refresh-region${refreshing ? " is-refreshing" : ""}`}
+      aria-busy={refreshing}
+    >
       <section className="admin-dashboard-hero">
         <div>
           <span className="eyebrow">
@@ -254,12 +270,19 @@ export function AdminDashboard({
           </small>
           <button
             className="secondary-button"
-            onClick={() => fetchDashboard()}
-            disabled={loading}
-            aria-busy={loading}
+            onClick={handleRefresh}
+            disabled={loading || refreshing}
+            aria-busy={refreshing}
           >
-            <RefreshCw size={15} className={loading ? "spin" : ""} />
-            {loading ? (zh ? "刷新中..." : "Refreshing...") : c.common.refresh}
+            <RefreshCw
+              size={15}
+              className={refreshing ? "job-action-loading" : ""}
+            />
+            {refreshing
+              ? zh
+                ? "刷新中..."
+                : "Refreshing..."
+              : c.common.refresh}
           </button>
         </div>
       </section>
@@ -362,14 +385,14 @@ export function AdminDashboard({
             ))}
             {summary.pendingJobs.slice(0, 3).map((job) => (
               <button
-                key={job.metadata.name}
-                onClick={() => onNavigate("jobs", job.metadata.name)}
+                key={job.metadata?.name ?? ""}
+                onClick={() => onNavigate("jobs", job.metadata?.name ?? "")}
               >
                 <span className="pending">
                   <Activity size={15} />
                 </span>
                 <div>
-                  <strong>{job.metadata.name}</strong>
+                  <strong>{jobDisplayName(job)}</strong>
                   <small>
                     {zh ? "任务等待调度" : "Job pending scheduling"}
                   </small>
@@ -410,7 +433,7 @@ export function AdminDashboard({
           {recentItems.map((item) => (
             <button
               key={item.id}
-              onClick={() => onNavigate(item.target, item.name)}
+              onClick={() => onNavigate(item.target, item.resourceName)}
             >
               <span className="admin-recent-type">{item.type}</span>
               <strong>{item.name}</strong>
@@ -426,6 +449,11 @@ export function AdminDashboard({
           )}
         </div>
       </section>
+      <RefreshOverlay
+        visible={refreshing}
+        label={zh ? "正在刷新管理工作台" : "Refreshing admin dashboard"}
+      />
     </div>
   );
 }
+import { domainsApi, jobsApi, nodesApi, storageClassesApi } from "../backend";

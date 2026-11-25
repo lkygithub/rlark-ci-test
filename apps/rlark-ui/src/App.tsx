@@ -4,14 +4,14 @@ import type { Job } from "./data";
 import { copy, type Lang, type Theme } from "./i18n";
 import { navItems } from "./constants";
 import type { Page } from "./types";
-import { useIsAdminPath, parseRoute } from "./utils/route";
+import { hasTerminalSession, parseRoute, useIsAdminPath } from "./utils/route";
 import { Logo, Header, PlatformFooter } from "./components/shared";
 import { TerminalPage } from "./components/terminal";
 import { Overview } from "./pages/Overview";
 import { ClustersPage } from "./pages/Clusters";
 import { ClusterManagementPage } from "./pages/ClusterManagement";
 import { JobsPage } from "./pages/Jobs";
-import { WorkflowsPage, CreateWorkflowModal } from "./pages/Workflows";
+import { WorkflowsPage } from "./pages/Workflows";
 import {
   StorageClassesPage,
   StorageClassCreatePage,
@@ -22,6 +22,7 @@ import { UserLogin } from "./pages/Login";
 import { SSHKeysPage } from "./pages/SSHKeys";
 import { AdminApp } from "./admin/AdminApp";
 import { useBackendMode, usePersistentState } from "./hooks";
+import { clearAuthSession, hasAuthSession, UNAUTHORIZED_EVENT } from "./api";
 
 type NavigateOptions = {
   replace?: boolean;
@@ -37,7 +38,6 @@ export default function App() {
     false,
   );
   const [createOpen, setCreateOpen] = useState(false);
-  const [createWfOpen, setCreateWfOpen] = useState(false);
   const [storageCreateOpen, setStorageCreateOpen] = useState(() => {
     const route = parseRoute();
     return route.page === "storageClass" && route.sub === "create";
@@ -52,9 +52,12 @@ export default function App() {
   const [userLoggedIn, setUserLoggedIn] = useState(
     () =>
       import.meta.env.DEV ||
-      (typeof sessionStorage !== "undefined" &&
-        sessionStorage.getItem("rlark-user-auth") === "1"),
+      (typeof sessionStorage !== "undefined" && hasAuthSession()),
   );
+  const terminalLoggedIn =
+    import.meta.env.DEV ||
+    (typeof sessionStorage !== "undefined" &&
+      hasTerminalSession(sessionStorage));
   const [userName, setUserName] = useState(
     () => sessionStorage.getItem("rlark-user-name") || "user",
   );
@@ -66,13 +69,17 @@ export default function App() {
     document.title = isTerminal
       ? "WebTerminal · RLark"
       : isAdmin
-        ? "RLark 管理后台"
-        : "RLark具身智能云原生纳管平台";
+        ? lang === "zh"
+          ? "RLark 管理后台"
+          : "RLark Admin Console"
+        : lang === "zh"
+          ? "RLark具身智能云原生纳管平台"
+          : "RLark Cloud-Native Embodied Intelligence Platform";
     const favicon = document.querySelector<HTMLLinkElement>("#app-favicon");
     if (favicon) {
       favicon.href = "/favicon.png";
     }
-  }, [isAdmin, isTerminal]);
+  }, [isAdmin, isTerminal, lang]);
 
   const navigate = (
     next: Page,
@@ -111,15 +118,22 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    const onUnauthorized = () => setUserLoggedIn(false);
+    window.addEventListener(UNAUTHORIZED_EVENT, onUnauthorized);
+    return () => window.removeEventListener(UNAUTHORIZED_EVENT, onUnauthorized);
+  }, []);
+
+  useEffect(() => {
     if (!jobSubmitNotice) return;
     const timer = window.setTimeout(() => setJobSubmitNotice(""), 4000);
     return () => window.clearTimeout(timer);
   }, [jobSubmitNotice]);
 
   if (isAdmin) return <AdminApp />;
-  if (!userLoggedIn) {
+  if (!userLoggedIn && !(isTerminal && terminalLoggedIn)) {
     return (
       <UserLogin
+        lang={lang}
         onLogin={(name) => {
           setUserName(name);
           setUserLoggedIn(true);
@@ -136,7 +150,9 @@ export default function App() {
     if (!workerCRName) {
       return (
         <div className="terminal-page-error">
-          缺少 Worker 参数，无法连接终端。
+          {lang === "zh"
+            ? "缺少 Worker 参数，无法连接终端。"
+            : "Missing worker parameter, cannot open the terminal."}
         </div>
       );
     }
@@ -146,6 +162,7 @@ export default function App() {
         workerName={workerCRName}
         jobName={jobName}
         workerStatus={workerStatus}
+        lang={lang}
       />
     );
   }
@@ -164,7 +181,9 @@ export default function App() {
             const Icon = item.icon;
             const isParent = item.children && item.children.length > 0;
             const itemLabel = isParent ? c.nav.clustersParent : c.nav[item.id];
-            const isActive = page === item.id;
+            const isActive =
+              page === item.id ||
+              (item.id === "storageClass" && page === "files");
             const isChildActive = isParent
               ? item.children!.some((ch) => ch.id === page)
               : false;
@@ -253,8 +272,7 @@ export default function App() {
           userName={userName}
           onCreate={() => setCreateOpen(true)}
           onLogout={() => {
-            sessionStorage.removeItem("rlark-user-auth");
-            sessionStorage.removeItem("rlark-user-name");
+            clearAuthSession();
             setUserLoggedIn(false);
           }}
         />
@@ -339,6 +357,7 @@ export default function App() {
               navigate("storageClass", name, { replace: !name })
             }
             onCreate={() => setStorageCreateOpen(true)}
+            onBrowseFiles={(storageClass) => navigate("files", storageClass)}
             refreshKey={storageRefreshKey}
           />
         )}
@@ -358,11 +377,10 @@ export default function App() {
             onSelect={(name?: string) =>
               navigate("workflows", name, { replace: !name })
             }
-            onCreate={() => setCreateWfOpen(true)}
             onJobClick={(name) => navigate("jobs", name)}
           />
         )}
-        {page === "ssh-keys" && <SSHKeysPage copy={c} />}
+        {page === "ssh-keys" && <SSHKeysPage copy={c} userName={userName} />}
         <PlatformFooter />
       </main>
       {createOpen && (
@@ -386,9 +404,6 @@ export default function App() {
           editJob={editJob}
           restartAfterSave={restartAfterEdit}
         />
-      )}
-      {createWfOpen && (
-        <CreateWorkflowModal onClose={() => setCreateWfOpen(false)} copy={c} />
       )}
       {storageCreateOpen && (
         <StorageClassCreatePage

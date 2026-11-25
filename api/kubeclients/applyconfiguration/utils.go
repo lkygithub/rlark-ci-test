@@ -37,12 +37,18 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 		return &rlarkiov1alpha1.AddonSpecApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("AddonStatus"):
 		return &rlarkiov1alpha1.AddonStatusApplyConfiguration{}
-	case v1alpha1.SchemeGroupVersion.WithKind("DockerContainerSpec"):
-		return &rlarkiov1alpha1.DockerContainerSpecApplyConfiguration{}
-	case v1alpha1.SchemeGroupVersion.WithKind("DockerTaskSpec"):
-		return &rlarkiov1alpha1.DockerTaskSpecApplyConfiguration{}
-	case v1alpha1.SchemeGroupVersion.WithKind("DockerVolumeRef"):
-		return &rlarkiov1alpha1.DockerVolumeRefApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("Cluster"):
+		return &rlarkiov1alpha1.ClusterApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("ClusterSpec"):
+		return &rlarkiov1alpha1.ClusterSpecApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("ClusterStatus"):
+		return &rlarkiov1alpha1.ClusterStatusApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("ClusterUpgradeJob"):
+		return &rlarkiov1alpha1.ClusterUpgradeJobApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("ClusterUpgradeJobSpec"):
+		return &rlarkiov1alpha1.ClusterUpgradeJobSpecApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("ClusterUpgradeJobStatus"):
+		return &rlarkiov1alpha1.ClusterUpgradeJobStatusApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("Domain"):
 		return &rlarkiov1alpha1.DomainApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("DomainIPAllocation"):
@@ -57,48 +63,92 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 		return &rlarkiov1alpha1.DomainSpecApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("DomainStatus"):
 		return &rlarkiov1alpha1.DomainStatusApplyConfiguration{}
-	case v1alpha1.SchemeGroupVersion.WithKind("EnvVar"):
-		return &rlarkiov1alpha1.EnvVarApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("Job"):
 		return &rlarkiov1alpha1.JobApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("JobSpec"):
 		return &rlarkiov1alpha1.JobSpecApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("JobStatus"):
 		return &rlarkiov1alpha1.JobStatusApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("JobTag"):
+		return &rlarkiov1alpha1.JobTagApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("JobTaskStatus"):
 		return &rlarkiov1alpha1.JobTaskStatusApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("JobTaskTemplate"):
 		return &rlarkiov1alpha1.JobTaskTemplateApplyConfiguration{}
-	case v1alpha1.SchemeGroupVersion.WithKind("KubernetesTaskSpec"):
-		return &rlarkiov1alpha1.KubernetesTaskSpecApplyConfiguration{}
-	case v1alpha1.SchemeGroupVersion.WithKind("KubernetesWorkloadSpec"):
-		return &rlarkiov1alpha1.KubernetesWorkloadSpecApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("MaintenanceWindow"):
+		return &rlarkiov1alpha1.MaintenanceWindowApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("Node"):
 		return &rlarkiov1alpha1.NodeApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("NodeCapabilitySnapshot"):
+		return &rlarkiov1alpha1.NodeCapabilitySnapshotApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("NodeDeviceCapability"):
+		return &rlarkiov1alpha1.NodeDeviceCapabilityApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("NodeDrainOperationStatus"):
+		return &rlarkiov1alpha1.NodeDrainOperationStatusApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("NodeEvent"):
 		return &rlarkiov1alpha1.NodeEventApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("NodeIdentity"):
+		return &rlarkiov1alpha1.NodeIdentityApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("NodeInfo"):
 		return &rlarkiov1alpha1.NodeInfoApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("NodeNetworkCapability"):
+		return &rlarkiov1alpha1.NodeNetworkCapabilityApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("NodeOperationRequest"):
+		return &rlarkiov1alpha1.NodeOperationRequestApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("NodeOperationsCapability"):
+		return &rlarkiov1alpha1.NodeOperationsCapabilityApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("NodeRuntimeCapability"):
+		return &rlarkiov1alpha1.NodeRuntimeCapabilityApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("NodeRuntimeReference"):
+		return &rlarkiov1alpha1.NodeRuntimeReferenceApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("NodeSpec"):
 		return &rlarkiov1alpha1.NodeSpecApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("NodeStatus"):
 		return &rlarkiov1alpha1.NodeStatusApplyConfiguration{}
-	case v1alpha1.SchemeGroupVersion.WithKind("PullProgress"):
-		return &rlarkiov1alpha1.PullProgressApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("NodeStorageCapability"):
+		return &rlarkiov1alpha1.NodeStorageCapabilityApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("NodeStorageStatus"):
+		return &rlarkiov1alpha1.NodeStorageStatusApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("NodeWorkloadSummary"):
+		return &rlarkiov1alpha1.NodeWorkloadSummaryApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("Pod"):
 		return &rlarkiov1alpha1.PodApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("PodSpec"):
 		return &rlarkiov1alpha1.PodSpecApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("PodStatus"):
 		return &rlarkiov1alpha1.PodStatusApplyConfiguration{}
-	case v1alpha1.SchemeGroupVersion.WithKind("RawTaskSpec"):
-		return &rlarkiov1alpha1.RawTaskSpecApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("PullProgress"):
+		return &rlarkiov1alpha1.PullProgressApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("Task"):
 		return &rlarkiov1alpha1.TaskApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("TaskDrainRequest"):
+		return &rlarkiov1alpha1.TaskDrainRequestApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("TaskDrainStatus"):
+		return &rlarkiov1alpha1.TaskDrainStatusApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("TaskEnvironment"):
+		return &rlarkiov1alpha1.TaskEnvironmentApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("TaskPlacementSpec"):
+		return &rlarkiov1alpha1.TaskPlacementSpecApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("TaskRuntimeSpec"):
+		return &rlarkiov1alpha1.TaskRuntimeSpecApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("TaskSpec"):
 		return &rlarkiov1alpha1.TaskSpecApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("TaskStatus"):
 		return &rlarkiov1alpha1.TaskStatusApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("TaskWorkloadCarrier"):
+		return &rlarkiov1alpha1.TaskWorkloadCarrierApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("TaskWorkloadSpec"):
+		return &rlarkiov1alpha1.TaskWorkloadSpecApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("UpgradeJob"):
+		return &rlarkiov1alpha1.UpgradeJobApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("UpgradeJobCondition"):
+		return &rlarkiov1alpha1.UpgradeJobConditionApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("UpgradeJobSpec"):
+		return &rlarkiov1alpha1.UpgradeJobSpecApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("UpgradeJobStatus"):
+		return &rlarkiov1alpha1.UpgradeJobStatusApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("UpgradeStrategy"):
+		return &rlarkiov1alpha1.UpgradeStrategyApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("Workflow"):
 		return &rlarkiov1alpha1.WorkflowApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("WorkflowJobStatus"):

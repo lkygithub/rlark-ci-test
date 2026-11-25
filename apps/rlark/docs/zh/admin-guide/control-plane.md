@@ -10,7 +10,7 @@
 | PostgreSQL | 配置顶层 `db` 块时使用的可选持久化存储 | 5432 |
 | rlark-server | 证书管理、Agent 隧道、SSH、健康检查和指标 | 8443（HTTPS/WSS）、2222（SSH）、8888（内部 HTTP） |
 | rlark-gateway | 控制台和 CLI 的 REST API 网关 | 8090 |
-| rlark-controller-manager | Job/Workflow/Domain 调和 | 8080（指标）、8081（健康检查） |
+| rlark-controller-manager | Job/Domain 调和 | 8080（指标）、8081（健康检查） |
 | rlark-ui | Web 管理控制台和 `/api/` 反向代理 | 80 |
 
 Gateway 独立二进制默认监听 `:8080`，`rlarkadm` 部署时会覆盖为 `:8090`。
@@ -111,3 +111,5 @@ curl --fail http://localhost:8080/
 ```
 
 Gateway 没有专用健康路由，请通过 Deployment 就绪状态和日志检查。
+
+Controller Manager 的 `/healthz` 只报告进程存活，不探测任何外部依赖；`/readyz` 在 informer 缓存同步完成前会失败。因此「存活但未就绪」的 Controller Manager 是正在预热缓存，而不是出现故障。

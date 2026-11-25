@@ -1,11 +1,13 @@
 package sync
 
 import (
-	"github.com/uptrace/bun"
+	"github.com/rlinf/rlark/apps/rlark/pkg/persistence"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	controllerconfig "sigs.k8s.io/controller-runtime/pkg/controller"
 
 	rlarkv1alpha1 "github.com/rlinf/rlark/api/rlark.io/v1alpha1"
+	"github.com/rlinf/rlark/apps/rlark/pkg/controllermanager/controller"
 	"github.com/rlinf/rlark/apps/rlark/pkg/db"
 )
 
@@ -26,7 +28,7 @@ func newWorkflowSyncHandler() Handler {
 
 // WorkflowReconciler reconciles Workflow resources.
 type WorkflowReconciler struct {
-	config Config
+	maxConcurrentReconciles int
 	*genericReconciler[*rlarkv1alpha1.Workflow]
 }
 
@@ -35,14 +37,16 @@ type WorkflowReconciler struct {
 // +kubebuilder:rbac:groups=rlinf.io,resources=workflows/finalizers,verbs=update
 
 // NewWorkflowReconciler creates a new WorkflowReconciler.
-func NewWorkflowReconciler(config Config, client client.Client, db *bun.DB) *WorkflowReconciler {
+func NewWorkflowReconciler(maxConcurrentReconciles int, client client.Client, backend persistence.Backend, shell controller.Shell) *WorkflowReconciler {
 	return &WorkflowReconciler{
-		config: config,
+		maxConcurrentReconciles: maxConcurrentReconciles,
 		genericReconciler: &genericReconciler[*rlarkv1alpha1.Workflow]{
 			client:  client,
-			db:      db,
+			backend: backend,
 			handler: newWorkflowSyncHandler(),
 			newObj:  func() *rlarkv1alpha1.Workflow { return &rlarkv1alpha1.Workflow{} },
+			kind:    "workflow-sync",
+			shell:   shell,
 		},
 	}
 }
@@ -51,7 +55,7 @@ func NewWorkflowReconciler(config Config, client client.Client, db *bun.DB) *Wor
 func (r *WorkflowReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&rlarkv1alpha1.Workflow{}).
-		WithOptions(r.config.ToControllerOptions()).
+		WithOptions(controllerconfig.Options{MaxConcurrentReconciles: r.maxConcurrentReconciles}).
 		Named("workflow-sync").
 		Complete(r)
 }

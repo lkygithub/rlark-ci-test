@@ -30,6 +30,8 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 
 		&Domain{},
 		&DomainList{},
+		&Cluster{},
+		&ClusterList{},
 		&DomainPeer{},
 		&DomainPeerList{},
 
@@ -38,6 +40,11 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 
 		&Addon{},
 		&AddonList{},
+
+		&UpgradeJob{},
+		&UpgradeJobList{},
+		&ClusterUpgradeJob{},
+		&ClusterUpgradeJobList{},
 	)
 	metav1.AddToGroupVersion(scheme, GroupVersion)
 	return nil

@@ -4,6 +4,8 @@
 
 接入 Kubernetes 数据面需要 Agent 证书及供 `rlarkadm` 使用的 `DeployConfig`。当前管理表单用于签发证书，不要求填写集群类型或区域，也不会生成 Shell 安装命令。
 
+`rlarkadm` 仍安装独立 cluster/node 工作负载，使用规范的 `--agent-type=kubernetes`，节点启动责任默认 external。手工 Agent 启动文件是不同 schema，不是这里的 DeployConfig。本机 embedded 组合及启动校验/脱敏诊断见 [Agent 指南](agent.md) 和 [配置参考](../reference/configuration.md#agent-startup-file-and-validation)。managed 部署和 Docker/Raw 执行仍不支持。
+
 ## 通过 UI 获取证书
 
 ### 第一步：签发集群证书
@@ -13,9 +15,13 @@
 3. 只需输入集群名称，例如 `my-cluster-01`。
 4. 选择**签发证书**。
 
+> **截图说明：** 截图来自示例环境，资源名称和数据仅供说明，实际环境会有所不同。
+
 ![创建集群](../../images/ui/admin-create-cluster.jpg)
 
 签发后，页面会显示集群名称、Server 地址和完整部署 YAML，并将名称加入**已签发集群**；之后仍可展开该记录并再次复制 YAML。
+
+管理员可在**系统配置 > 部署配置**中设置生成 YAML 的默认值，这些字段沿用 `rlarkadm` 的 `DeployConfig` 结构。已配置的控制面与 SSH 地址会覆盖生成值；TLS 验证、Kubeconfig、Agent 镜像、共享 RLark 镜像、镜像拉取策略、镜像拉取 Secret 和 containerd socket 也会在有值时写入 YAML。展开历史签发记录时会使用当前默认值重新生成 YAML。
 
 !!! warning "保护 YAML"
     页面显示的 `agent-key` 是私钥。请安全保存复制的 YAML，且不要在其他集群复用。
@@ -45,11 +51,12 @@ cert:
     -----END PRIVATE KEY-----
 
 kubernetes:
-  kubeconfig: /path/to/kubeconfig.yaml
-  agent-image: rlark-agent:latest
+  kubeconfig: ~/.kube/config
+  agent-image: rlark:latest
+  image: rlark:latest
 ```
 
-将 `kubernetes.kubeconfig` 替换为可向目标集群部署资源的 kubeconfig，并设置可用的 Agent 镜像。仅在启用需要共享 RLark 镜像的组件时添加可选的 `kubernetes.image`。所有可用字段参见[配置参考](../reference/configuration.md)。
+将 `kubernetes.kubeconfig` 替换为可向目标集群部署资源的 kubeconfig，并设置可用的 Agent 和 RLark tools 镜像。`kubernetes.image` 提供必需 Task tools 及可选网络/SSH 功能；Kubernetes cluster Agent 会在启动时拒绝为空或纯空白的值。仅设置 `kubernetes.agent-image` 不会提供 tools 镜像。所有可用字段参见[配置参考](../reference/configuration.md)。
 
 ### 第三步：安装数据面
 
@@ -86,7 +93,7 @@ rlarkadm install -f apps/rlark/docs/examples/deploy-data-plane.yaml
 
 ## 添加调度元数据
 
-使用节点管理的批量编辑器设置城市、一个或多个云算力/端算力/真机分类、GPU 型号或设备型号，也可批量 Cordon/Uncordon。字段存储在控制面的 Node CR 上，并会在 Agent 刷新 Kubernetes 发现状态时保留。
+使用节点管理的批量编辑器设置城市、一个或多个云算力/端算力/真机分类、GPU 型号或设备型号，也可批量执行暂停调度/恢复调度（Pause Schedule/Resume Schedule）。字段存储在控制面的 Node CR 上，并会在 Agent 刷新 Kubernetes 发现状态时保留。
 
 ## 运行冒烟测试
 

@@ -43,6 +43,7 @@ services:
   rlark-server:
     image: ${IMAGE:-rlark/rlark:latest}
     container_name: rlark-server
+    restart: on-failure
     command:
       - "/rlark-server"
       - "--kubeconfig=/etc/rlark/kubeconfig.yaml"
@@ -69,6 +70,7 @@ services:
   rlark-gateway:
     image: ${IMAGE:-rlark/rlark:latest}
     container_name: rlark-gateway
+    restart: on-failure
     command:
       - "/rlark-gateway"
       - "--kubeconfig=/etc/rlark/kubeconfig.yaml"
@@ -89,11 +91,14 @@ services:
   rlark-controller-manager:
     image: ${IMAGE:-rlark/rlark:latest}
     container_name: rlark-controller-manager
+    # The control-plane components depend on kcp, its CRDs, and each other, so
+    # retry instead of staying exited when a dependency is not ready yet.
+    restart: on-failure
     command:
       - "/rlark-controller-manager"
       - "--kubeconfig=/etc/rlark/kubeconfig.yaml"
       - "--server-address=https://rlark-server:8443"
-      - "--leader-elect=false"
+      - "--leader-election=false"
       - "--metrics-bind-address=:0"
       - "--health-probe-bind-address=:0"
       - "--db-config=/etc/rlark/db-config.yaml"

@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { Package } from "lucide-react";
-import type { Copy, Lang } from "../i18n";
+import type { Lang } from "../i18n";
 
-export function AddonsPage({ copy: c, lang }: { copy: Copy; lang: Lang }) {
+export function AddonsPage({ lang }: { lang: Lang }) {
   const zh = lang === "zh";
   const [clusters, setClusters] = useState<{ id: string; name: string }[]>([]);
   const [catalog, setCatalog] = useState<any[]>([]);
@@ -10,30 +10,28 @@ export function AddonsPage({ copy: c, lang }: { copy: Copy; lang: Lang }) {
   const [clusterFilter, setClusterFilter] = useState("");
   const [page, setPage] = useState(1);
   const pageSize = 10;
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [installAddonName, setInstallAddonName] = useState("");
   const [configInstalled, setConfigInstalled] = useState<any>(null);
 
   useEffect(() => {
-    fetch("/api/v1/clusters")
-      .then((r) => r.json())
-      .then((data) => setClusters(data.data || []))
+    clustersApi
+      .list<{ id: string; name: string }>()
+      .then(setClusters)
       .catch((e) => setError(e instanceof Error ? e.message : String(e)));
   }, []);
 
   useEffect(() => {
-    fetch("/api/v1/addons")
-      .then((r) => r.json())
-      .then((data) => setCatalog(data.data || []))
+    addonsApi
+      .catalog()
+      .then(setCatalog)
       .catch((e) => setError(e instanceof Error ? e.message : String(e)));
   }, []);
 
   const fetchInstalled = () => {
-    const q = clusterFilter ? `?cluster=${clusterFilter}` : "";
-    fetch(`/api/v1/installed-addons${q}`)
-      .then((r) => r.json())
-      .then((data) => setInstalled(data.data || []))
+    addonsApi
+      .installed(clusterFilter || undefined)
+      .then(setInstalled)
       .catch((e) => setError(e instanceof Error ? e.message : String(e)));
   };
 
@@ -58,6 +56,26 @@ export function AddonsPage({ copy: c, lang }: { copy: Copy; lang: Lang }) {
         return "#f59e35";
       default:
         return "#7f8998";
+    }
+  };
+
+  // Addon.status.phase values reported by the addon controller. Unknown values
+  // are rendered verbatim so new phases still surface in the UI.
+  const phaseLabel = (phase: string) => {
+    if (!zh) return phase;
+    switch (phase) {
+      case "Ready":
+        return "就绪";
+      case "Failed":
+        return "失败";
+      case "Installing":
+        return "安装中";
+      case "Upgrading":
+        return "升级中";
+      case "Pending":
+        return "等待中";
+      default:
+        return phase;
     }
   };
 
@@ -107,7 +125,7 @@ export function AddonsPage({ copy: c, lang }: { copy: Copy; lang: Lang }) {
 
   return (
     <div
-      className="page-content"
+      className="page-content resource-page addon-page"
       style={{ display: "flex", flexDirection: "column", gap: 18 }}
     >
       <div className="section-heading">
@@ -211,27 +229,22 @@ export function AddonsPage({ copy: c, lang }: { copy: Copy; lang: Lang }) {
                     <td>{a.status?.version || a.spec?.version || "-"}</td>
                     <td>
                       <span style={{ color: phaseColor(a.status?.phase) }}>
-                        {a.status?.phase || "Pending"}
+                        {phaseLabel(a.status?.phase || "Pending")}
                       </span>
                     </td>
                     <td className="muted">{a.status?.message || "-"}</td>
                     <td>
-                      <div style={{ display: "flex", gap: 6 }}>
+                      <div className="row-actions addon-row-actions">
                         <button
+                          type="button"
+                          className="table-action-button"
                           onClick={() => setConfigInstalled(a)}
-                          style={{
-                            padding: "4px 10px",
-                            borderRadius: 6,
-                            border: "1px solid var(--line)",
-                            background: "transparent",
-                            cursor: "pointer",
-                            fontSize: 12,
-                            color: "var(--blue)",
-                          }}
                         >
                           {zh ? "配置" : "Config"}
                         </button>
                         <button
+                          type="button"
+                          className="table-action-button danger"
                           onClick={() => {
                             const label = a.spec?.addonName || a.metadata?.name;
                             if (
@@ -242,27 +255,10 @@ export function AddonsPage({ copy: c, lang }: { copy: Copy; lang: Lang }) {
                               )
                             )
                               return;
-                            fetch(
-                              `/api/v1/clusters/${a.clusterId}/addons/${a.metadata?.name}`,
-                              {
-                                method: "DELETE",
-                              },
-                            )
-                              .then((r) => {
-                                if (!r.ok) throw new Error("Uninstall failed");
-                                return r.json();
-                              })
+                            addonsApi
+                              .remove(a.clusterId, a.metadata?.name)
                               .then(() => fetchInstalled())
                               .catch((e) => setError(e.message));
-                          }}
-                          style={{
-                            padding: "4px 10px",
-                            borderRadius: 6,
-                            border: "1px solid var(--line)",
-                            background: "transparent",
-                            cursor: "pointer",
-                            fontSize: 12,
-                            color: "#ef4444",
                           }}
                         >
                           {zh ? "卸载" : "Uninstall"}
@@ -356,18 +352,11 @@ export function AddonInstallPage({
     if (!installCluster) return;
     setLoading(true);
     setError("");
-    fetch(`/api/v1/clusters/${installCluster}/addons`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+    addonsApi
+      .install(installCluster, {
         addonName: addon.name,
         version: addon.version,
         values,
-      }),
-    })
-      .then((r) => {
-        if (!r.ok) throw new Error("Install failed");
-        return r.json();
       })
       .then(() => {
         setLoading(false);
@@ -381,7 +370,7 @@ export function AddonInstallPage({
 
   return (
     <div
-      className="page-content"
+      className="page-content resource-page addon-page"
       style={{ display: "flex", flexDirection: "column", gap: 18 }}
     >
       <button
@@ -630,18 +619,11 @@ export function AddonConfigPage({
   const handleSave = () => {
     setLoading(true);
     setError("");
-    fetch(`/api/v1/clusters/${clusterId}/addons/${addonName}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+    addonsApi
+      .update(clusterId, addonName, {
         addonName: addon.name,
         version: addon.version,
         values,
-      }),
-    })
-      .then((r) => {
-        if (!r.ok) throw new Error("Update failed");
-        return r.json();
       })
       .then(() => {
         setLoading(false);
@@ -655,7 +637,7 @@ export function AddonConfigPage({
 
   return (
     <div
-      className="page-content"
+      className="page-content resource-page addon-page"
       style={{ display: "flex", flexDirection: "column", gap: 18 }}
     >
       <button
@@ -851,3 +833,4 @@ export function AddonConfigPage({
     </div>
   );
 }
+import { addonsApi, clustersApi } from "../backend";

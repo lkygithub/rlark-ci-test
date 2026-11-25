@@ -2,12 +2,14 @@
 
 ## Storage Types
 
-RLark supports two storage types for training jobs:
+The Job editor can create two storage choices: a host directory or a PVC-backed storage mount. A Job submitted through the API may also use other Kubernetes-native PodTemplate volumes, which the editor shows read-only. Kubernetes-native PodTemplate volumes define their lifecycle:
 
 | Type | Use Case | Lifecycle |
 |------|----------|-----------|
 | Host Directory | Data already on the node, high I/O | Job lifecycle actions do not delete data |
-| Object Storage (PVC) | Shared data within a Job run | Stop/restart/delete removes task PVCs; start/restart creates empty PVCs |
+| Object Storage (Pod-scoped ephemeral PVC) | The form written by the current Web UI for a PVC-backed mount | Kubernetes creates and removes the PVC with its Pod |
+| Existing persistent PVC reference | A Task volume uses `persistentVolumeClaim.claimName` | RLark neither creates nor deletes the referenced PVC; its administrator controls the lifecycle |
+| Other Kubernetes-native volume (`emptyDir`, `configMap`, `secret`, and so on) | Submitted through the API; the Job editor only displays it | The volume type defines it; RLark writes back the original definition when a Job is edited or cloned |
 
 ## Host Directory
 
@@ -17,10 +19,21 @@ RLark supports two storage types for training jobs:
 
 ## Object Storage
 
-- Uses Kubernetes StorageClass and PVC
-- PVC is auto-created with 10Gi request
-- Select cluster first, then available StorageClasses appear in the dropdown
-- Multiple workers can share the same PVC (be aware of RWO access mode limitations)
+- Uses a Kubernetes generic ephemeral volume and an RLark-managed StorageClass
+- The current Web UI writes PVC-backed mounts as `ephemeral.volumeClaimTemplate`; newly created or edited Jobs therefore use Pod-scoped ephemeral PVCs
+- Each PVC mount defaults to a 10Gi request; the configurable size range is 1–200Gi
+- Select a cluster first; the dropdown lists StorageClass declarations configured to target that cluster
+- Each worker Pod receives its own PVC
+
+## Managing Storage Classes
+
+Open **Storage** to review object-storage configurations, target clusters, providers, and buckets. Creating or updating a storage class stores its declaration in the control plane; the generated rclone CSI StorageClass and Secret are then distributed asynchronously to target clusters. Create the required storage class and wait for delivery before configuring a PVC mount for a Worker.
+
+Before using a storage class, confirm the target cluster has the rclone CSI driver installed and can reach the object storage service. If a PVC remains `Pending`, check the distribution status, driver, credentials, and network connectivity.
+
+> **Screenshot note:** Screenshots are from an example environment. Resource names and data are illustrative; your environment will differ.
+
+![Storage management](../images/ui/storage-file-browser.png)
 
 ## Using Storage in a Training Job
 
@@ -30,8 +43,6 @@ When creating a job, in the Worker configuration step:
 3. Enter the container mount path
 4. Your training code reads/writes to the mount path
 
-![Storage file browser](../images/ui/storage-file-browser.png)
-
 ## Checking Read/Write
 
 Verify the storage chain:
@@ -39,13 +50,18 @@ Verify the storage chain:
 2. Container mount is correct
 3. Application can read input data
 4. Application can write output data
-5. Copy required PVC output elsewhere before stopping or restarting the Job
+5. For a current Web UI Job, treat the PVC as Pod-scoped ephemeral storage and copy required output elsewhere before stopping or restarting. In `spec.workload.template.spec.volumes`, `ephemeral.volumeClaimTemplate` is Pod-scoped, while `persistentVolumeClaim.claimName` references an existing, externally managed PVC.
 
 ## Lifecycle
 
-- Stop or restart: task PVCs are deleted; hostPath data is preserved
-- Start or restart: new empty task PVCs are created
-- Delete: task PVCs are deleted; hostPath data is preserved
+- Existing `persistentVolumeClaim`: RLark does not create, adopt, mutate, or delete the referenced PVC. Its lifecycle and data retention are external to the Task.
+- Pod-scoped `ephemeral.volumeClaimTemplate`: deleting a Worker Pod deletes its ephemeral PVC; a new Pod receives a new PVC.
+- HostPath: lifecycle actions do not delete node data.
+- Other Kubernetes-native volumes: the Job editor cannot create or modify them. Editing or cloning a Job writes the original volume definition back unchanged, so the volume type keeps its own lifecycle.
+
+An existing PVC reference must include `claimName`, and the claim must already exist in the workload namespace. Kubernetes reports mount or binding failures through the workload and Pod status. Deleting a referenced PVC is an external administrative action; confirm that no workload uses it and account for the bound PV's reclaim policy.
+
+`pvcStorageMap` and `pvcSizeGbMap` are not part of the canonical Task schema. The current Web UI and Kubernetes-native examples write `ephemeral.volumeClaimTemplate`; old resources that depend on removed fields must be replaced during a breaking upgrade.
 
 ## API Equivalent
 

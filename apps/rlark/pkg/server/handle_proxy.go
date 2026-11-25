@@ -13,13 +13,13 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/rancher/remotedialer"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/rlinf/rlark/api/rlark.io/v1alpha1"
 	"github.com/rlinf/rlark/apps/rlark/pkg/apis"
 	"github.com/rlinf/rlark/apps/rlark/pkg/auth"
 	"github.com/rlinf/rlark/apps/rlark/pkg/log"
+	"github.com/rlinf/rlark/apps/rlark/pkg/remotedialer"
 	"github.com/rlinf/rlark/apps/rlark/pkg/server/reverseproxy"
 )
 
@@ -84,27 +84,30 @@ func (s *Server) GetDial(ctx context.Context, dialType, address string, certMeta
 }
 
 // getAgentDialer returns a remotedialer.Dialer for the specified agentID and nodeName.
-// If nodeName is provided, it will prioritize the dialer for that specific node.
+// If nodeName is provided it tries the node-specific agent key first, then falls back
+// to the generic agent key. Candidate keys are evaluated lazily when the returned
+// Dialer is called, so sessions that become available between calls are usable.
 func (s *Server) getAgentDialer(ctx context.Context, agentID, nodeName string) remotedialer.Dialer {
-	_ = ctx
-	candidateClientKeys := []string{}
+	candidateKeys := make([]string, 0, 2)
 	if nodeName != "" {
-		candidateClientKeys = append(candidateClientKeys, agentID+":node-agent:"+nodeName)
+		candidateKeys = append(candidateKeys, agentID+":node-agent:"+nodeName)
 	}
-	candidateClientKeys = append(candidateClientKeys, agentID)
+	candidateKeys = append(candidateKeys, agentID)
+	candidateKeys = append(candidateKeys, agentID+":node-agent:*")
 
 	return func(ctx context.Context, network, addr string) (net.Conn, error) {
-		for _, clientKey := range candidateClientKeys {
-			d := s.dialerFactory.GetDialer(ctx, clientKey)
-			conn, err := d(ctx, network, addr)
-			if err == nil {
-				return conn, nil
+		for _, clientKey := range candidateKeys {
+			d, err := s.dialerFactory.GetDialer(ctx, clientKey)
+			if err != nil {
+				continue
 			}
-			if !strings.Contains(err.Error(), "failed to find Session") {
+			conn, err := d(ctx, network, addr)
+			if err != nil {
 				return nil, err
 			}
+			return conn, nil
 		}
-		return nil, fmt.Errorf("no available dialer found for candidate client keys: %v", candidateClientKeys)
+		return nil, fmt.Errorf("no active session for candidates %v", candidateKeys)
 	}
 }
 
@@ -198,11 +201,11 @@ func (s *Server) handleProxyConnect(ctx *gin.Context) {
 			ctx.JSON(http.StatusBadGateway, gin.H{"error": fmt.Sprintf("agent registration failed: %v", err)})
 			return
 		}
-		// 在接入期间，启动 Broadcast 机制，向集群广播该 Agent 的存在信息
+		// 在接入期间维护该 Agent 的心跳 Lease，向控制面广播它的连接状态
 		role := ctx.Request.Header.Get(apis.RemoteDialerRoleHeader)
-		if err := s.startAgentBroadcaster(ctx.Request.Context(), agentID, role, uuid.NewString()); err != nil {
-			logger.Error(err, "Start agent broadcaster failed", "agentID", agentID)
-			ctx.JSON(http.StatusBadGateway, gin.H{"error": fmt.Sprintf("start agent broadcaster failed: %v", err)})
+		if err := s.startAgentHeartbeat(ctx.Request.Context(), agentID, role, uuid.NewString()); err != nil {
+			logger.Error(err, "Start agent heartbeat failed", "agentID", agentID)
+			ctx.JSON(http.StatusBadGateway, gin.H{"error": fmt.Sprintf("start agent heartbeat failed: %v", err)})
 			return
 		}
 	}
@@ -220,6 +223,7 @@ func (s *Server) handlePeerConnectProxy(ctx *gin.Context) {
 		Path:   "/api/connect",
 	}
 	proxy := httputil.ReverseProxy{
+		//nolint:staticcheck // Ignore staticcheck warnings for the Director function in the reverse proxy
 		Director: func(req *http.Request) {
 			req.URL = url
 			req.Host = url.Host

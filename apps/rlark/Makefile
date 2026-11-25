@@ -24,7 +24,7 @@ GATEWAY_BIN           := gateway
 AGENT_BIN             := agent
 NETWORK_SIDECAR_BIN   := network-sidecar
 RLARKADM_BIN          := rlarkadm
-SSHD_BIN              := rlark-sshd
+RLARK_TOOLS_BIN       := rlark-tools
 
 ##@ Lint & format
 
@@ -43,7 +43,7 @@ fmt: ## Format Go (gofmt)
 
 .PHONY: all build
 all: build ## Build all binaries (default)
-build: $(SERVER_BIN) $(CONTROLLER_MANAGER_BIN) $(GATEWAY_BIN) $(AGENT_BIN) $(NETWORK_SIDECAR_BIN) $(RLARKADM_BIN) $(SSHD_BIN) ## Build all binaries
+build: $(SERVER_BIN) $(CONTROLLER_MANAGER_BIN) $(GATEWAY_BIN) $(AGENT_BIN) $(NETWORK_SIDECAR_BIN) $(RLARKADM_BIN) $(RLARK_TOOLS_BIN) ## Build all binaries
 
 .PHONY: $(SERVER_BIN)
 $(SERVER_BIN): ## Build server binary
@@ -69,9 +69,9 @@ $(NETWORK_SIDECAR_BIN): ## Build network-sidecar binary
 $(RLARKADM_BIN): ## Build rlarkadm binary
 	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build -ldflags="$(LDFLAGS)" -o bin/$@ ./cmd/$@
 
-.PHONY: $(SSHD_BIN)
-$(SSHD_BIN): ## Build rlark-sshd binary
-	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build -ldflags="$(LDFLAGS)" -o bin/$@ ./cmd/sshd
+.PHONY: $(RLARK_TOOLS_BIN)
+$(RLARK_TOOLS_BIN): ## Build rlark-tools binary
+	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build -ldflags="$(LDFLAGS)" -o bin/$@ ./cmd/rlark-tools
 
 .PHONY: vet test clean
 vet: ## Run go vet
@@ -79,6 +79,29 @@ vet: ## Run go vet
 
 test: ## Run tests
 	go test -v -count=1 ./...
+
+##@ envtest
+
+# setup-envtest is pinned to the controller-runtime release branch that matches
+# the controller-runtime version in go.mod, so the downloaded control-plane
+# binaries stay compatible with pkg/envtest.
+# The control-plane archive is fetched from GitHub releases; set HTTPS_PROXY if
+# that host is unreachable from the build environment.
+SETUP_ENVTEST_VERSION ?= release-0.24
+ENVTEST_K8S_VERSION   ?= 1.34.1
+LOCALBIN              := $(CURDIR)/bin
+SETUP_ENVTEST         := $(LOCALBIN)/setup-envtest
+
+.PHONY: setup-envtest test-envtest
+setup-envtest: ## Install setup-envtest and download envtest control-plane binaries into bin/
+	@mkdir -p $(LOCALBIN)
+	@test -x $(SETUP_ENVTEST) || \
+		GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-runtime/tools/setup-envtest@$(SETUP_ENVTEST_VERSION)
+	@$(SETUP_ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path >/dev/null
+
+test-envtest: setup-envtest ## Run tests against a real API server (envtest); omits -short
+	KUBEBUILDER_ASSETS="$$($(SETUP_ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" \
+		go test -v -count=1 ./...
 
 clean: ## Clean Go cache and bin/
 	go clean -cache
@@ -105,6 +128,17 @@ docker-push: ## Build rlark image and push to registry
 		--build-arg RUNTIME_BASE_IMAGE=$(RUNTIME_BASE_IMAGE) \
 		-t $(REGISTRY)/rlark:$(IMAGE_TAG) \
 		-f Dockerfile \
+		../..
+
+.PHONY: docker-upgrade-push
+docker-upgrade-push: ## Build rlark-upgrade image and push to registry
+	docker buildx build \
+		--platform $(BUILDX_PLATFORMS) \
+		--push \
+		--build-arg GO_BASE_IMAGE=$(GO_BASE_IMAGE) \
+		--build-arg RUNTIME_BASE_IMAGE=$(RUNTIME_BASE_IMAGE) \
+		-t $(REGISTRY)/rlark-upgrade:$(IMAGE_TAG) \
+		-f Dockerfile.upgrade \
 		../..
 
 ##@ Help

@@ -1,4 +1,5 @@
 import type { CRDNode } from "../types";
+import { getNodeAllLabels } from "./nodeVisibility.js";
 
 export type NodeResourceLine = {
   key: string;
@@ -38,8 +39,12 @@ function formatResourceNumber(value: number): string {
   return Number.isInteger(value) ? String(value) : value.toFixed(1);
 }
 
-function metadataValue(node: CRDNode, key: string): string {
-  return node.metadata.annotations?.[key] ?? node.metadata.labels?.[key] ?? "";
+// nodeLabelValue prefers the administrator annotation and falls back to legacy
+// values on observedNodeLabels. metadata.labels is deliberately skipped because
+// RLark does not mirror the data-plane label set there.
+function nodeLabelValue(node: CRDNode, key: string): string {
+  const labels = getNodeAllLabels(node);
+  return node.metadata.annotations?.[key] ?? labels[key] ?? "";
 }
 
 function isOtherDeviceResourceKey(key: string): boolean {
@@ -101,21 +106,97 @@ export function parseResourceQuantity(
   return value;
 }
 
-export function formatResourceQuantity(key: string, raw?: string): string {
+export function formatResourceQuantity(
+  key: string,
+  raw: string | undefined,
+  zh: boolean,
+): string {
   const value = parseResourceQuantity(key, raw);
   if (value === null) return "—";
   if (key === "memory" || key === "ephemeral-storage") {
-    const gb = value / 1000 ** 3;
-    return `${gb >= 100 ? gb.toFixed(0) : gb.toFixed(1)} GB`;
+    const gib = value / 1024 ** 3;
+    return `${gib >= 100 ? gib.toFixed(0) : gib.toFixed(1)} GiB`;
   }
-  if (key === "cpu") return `${formatResourceNumber(value)} 核`;
+  if (key === "cpu")
+    return `${formatResourceNumber(value)} ${zh ? "核" : "cores"}`;
   return formatResourceNumber(value);
+}
+
+export function getResourceUsagePercent(
+  key: string,
+  used?: string,
+  total?: string,
+): number | null {
+  const totalValue = parseResourceQuantity(key, total);
+  if (totalValue === null || totalValue <= 0) return null;
+  if (!used) return 0;
+  if (used.endsWith("%")) {
+    const percent = Number.parseFloat(used);
+    return Number.isFinite(percent)
+      ? Math.min(100, Math.max(0, Math.round(percent)))
+      : null;
+  }
+  const usedValue = parseResourceQuantity(key, used);
+  return usedValue === null
+    ? null
+    : Math.min(100, Math.max(0, Math.round((usedValue / totalValue) * 100)));
+}
+
+export function getNodeDiskUsage(node: CRDNode): {
+  capacityBytes: number;
+  usedBytes: number;
+  availableBytes: number;
+  percent: number;
+} | null {
+  const storage = node.status?.storage;
+  const capacityBytes = storage?.capacityBytes;
+  const availableBytes = storage?.availableBytes;
+  if (
+    capacityBytes === undefined ||
+    availableBytes === undefined ||
+    capacityBytes <= 0
+  ) {
+    return null;
+  }
+  const usedBytes = Math.min(
+    capacityBytes,
+    Math.max(0, storage?.usedBytes ?? capacityBytes - availableBytes),
+  );
+  const normalizedAvailableBytes = Math.min(
+    capacityBytes,
+    Math.max(0, availableBytes),
+  );
+  const rawPercent =
+    ((capacityBytes - normalizedAvailableBytes) / capacityBytes) * 100;
+  return {
+    capacityBytes,
+    usedBytes,
+    availableBytes: normalizedAvailableBytes,
+    percent:
+      normalizedAvailableBytes > 0
+        ? Math.min(99, Math.max(0, Math.floor(rawPercent)))
+        : 100,
+  };
+}
+
+export function isDiskUsageWarning(node: CRDNode): boolean {
+  // Resource pressure is a controller conclusion. Monitoring samples may
+  // corroborate it, but must not be thresholded on the client to infer it.
+  const pressure = node.status?.conditions?.find(
+    (condition) => condition.type === "ResourcePressure",
+  );
+  if (pressure && pressure.status !== "Unknown") {
+    return pressure.status === "True";
+  }
+  return node.status?.diskPressure === true;
 }
 
 export function getNodeResourceSummary(
   node: CRDNode,
   zh: boolean,
 ): { primary: string; secondary: string; lines: NodeResourceLine[] } {
+  // Capacity is inventory, allocatable is scheduler-declared capacity, and used
+  // is scheduled Pod requests. Do not treat storage monitoring data as either.
   const capacity = node.status?.capacity ?? node.status?.allocatable ?? {};
   const allocatable = node.status?.allocatable ?? capacity;
   const used = node.status?.used ?? {};
@@ -132,8 +213,8 @@ export function getNodeResourceSummary(
       allocatableGPU - resourceNumber(used[gpuKey]),
     );
     const label =
-      metadataValue(node, "rlark.io/gpu-model") ||
-      metadataValue(node, "rlark.io/model") ||
+      nodeLabelValue(node, "rlark.io/gpu-model") ||
+      nodeLabelValue(node, "rlark.io/model") ||
       (zh ? "未标注" : "Unlabeled");
     const amount = `${formatResourceNumber(available)} / ${formatResourceNumber(gpuTotal)} GPU`;
     lines.push({
@@ -174,8 +255,8 @@ export function getNodeResourceSummary(
       .map((key) => key.replace(/^rlinf\.io\/device-?/, ""))
       .filter(Boolean);
     const label =
-      metadataValue(node, "rlark.io/device-model") ||
-      metadataValue(node, "rlark.io/model") ||
+      nodeLabelValue(node, "rlark.io/device-model") ||
+      nodeLabelValue(node, "rlark.io/model") ||
       resourceModels.join(" / ") ||
       (zh ? "未标注" : "Unlabeled");
     const amount = `${formatResourceNumber(available)} / ${formatResourceNumber(deviceTotal)} ${zh ? "设备" : "devices"}`;

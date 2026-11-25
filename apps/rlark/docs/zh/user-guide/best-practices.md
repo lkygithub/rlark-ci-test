@@ -22,6 +22,8 @@
 
 进入管理后台或集群页面查看可用集群：
 
+> **截图说明：** 截图来自示例环境，资源名称和数据仅供说明，实际环境会有所不同。
+
 ![集群列表](../../images/ui/first-login-cluster-list.png)
 
 记录集群名称和节点标签。这些信息将在配置任务节点选择器时使用。
@@ -64,7 +66,7 @@ SSH 密钥让你可以连接到 Worker 进行调试和检查。
 ssh-keygen -t ed25519 -C "rlark-training"
 ```
 
-公钥添加后即可在任务中使用。选择后，公钥会注入到每个 Worker 容器的 `~/.ssh/authorized_keys` 中。
+公钥添加后即可供 Job 选择。对于内置 Ray-on-Kubernetes workload，所选公钥通过 Task-owned Secret 交付，以只读方式挂载到每个 Worker main container 的 `/var/run/rlark/ssh/authorized_key`，并由 workload supervisor 管理的 optional `rlark-tools sshd` 进程提供服务。SSH 可用性不决定 Task 是否成功。
 
 ### 轮换密钥
 
@@ -96,6 +98,7 @@ ssh-keygen -t ed25519 -C "rlark-training"
 4. 点击 **创建**
 
 网络域会为加入的 Worker 分配虚拟 IP，并通过 SSH 隧道建立跨集群流量转发。
+末字节为 `.0` 或 `.255` 的 IPv4 地址始终保留，不会被自动分配；该规则同样适用于大于 `/24` 的 CIDR。
 
 !!! warning "CIDR 不能重叠"
     网络域的 CIDR 不能与任何集群的 Pod CIDR 或 Service CIDR 重叠，也不能与其他网络域重叠。
@@ -218,6 +221,5 @@ ssh-keygen -t ed25519 -C "rlark-training"
 ## 下一步
 
 - [创建训练任务](jobs.md) — 详细字段参考
-- [工作流](workflows.md) — 多角色和异构 Worker
 - [在任务中使用存储](storage.md) — hostPath 和对象存储配置
 - [通过 SSH 连接 Worker](ssh-keys.md) — SSH 到运行中的 Worker

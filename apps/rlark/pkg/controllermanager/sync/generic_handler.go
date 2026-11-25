@@ -72,10 +72,6 @@ func (h *genericSyncHandler) ToPersistedModelObject(obj client.Object) (db.Resou
 		CreatedAt: obj.GetCreationTimestamp().Time,
 		Raw:       rawData,
 	}
-	if obj.GetDeletionTimestamp() != nil {
-		deletedAt := obj.GetDeletionTimestamp().Time
-		m.DeletedAt = &deletedAt
-	}
 	return h.wrapBaseModel(m), nil
 }
 
@@ -93,10 +89,6 @@ func (h *genericSyncHandler) ToPersistedLastestModelObject(obj client.Object) (d
 		UID:       string(obj.GetUID()),
 		CreatedAt: obj.GetCreationTimestamp().Time,
 		Raw:       rawData,
-	}
-	if obj.GetDeletionTimestamp() != nil {
-		deletedAt := obj.GetDeletionTimestamp().Time
-		m.DeletedAt = &deletedAt
 	}
 	return h.wrapLatestBaseModel(m), nil
 }
